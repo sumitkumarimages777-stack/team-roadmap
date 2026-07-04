@@ -11,33 +11,20 @@
 
 <script>
 /* ============================================================
-   ONE-TIME SETUP (5 minutes) — after this, nobody ever edits
-   this file again. All editing happens on the website itself
-   and syncs live for the whole team.
-
-   1. Go to https://console.firebase.google.com → "Add project"
-      (any name, you can turn OFF Google Analytics)
-   2. In the left menu: Build → Realtime Database → Create database
-      → choose location → start in TEST MODE
-   3. Click the gear icon → Project settings → scroll to "Your apps"
-      → click the </> (Web) icon → register the app (any nickname)
-   4. Firebase shows you a firebaseConfig object. Copy the values
-      into the matching fields below.
-   5. Push this file to GitHub → Vercel redeploys → done.
-
-   Optional: set EDIT_PASSCODE to any word (e.g. "team2026") so
-   only people who know it can turn on Edit mode.
+   ONE-TIME SETUP — paste your Firebase values below (same as
+   before). If you already set this up in the previous version,
+   just copy the same 4 values + passcode into this file.
+   Full instructions are in README.md.
    ============================================================ */
 const FIREBASE_CONFIG = {
   apiKey: "",            // ← paste from Firebase
   authDomain: "",        // ← paste from Firebase
-  databaseURL: "",       // ← paste from Firebase (starts with https:// and ends with firebasedatabase.app)
+  databaseURL: "",       // ← paste from Firebase
   projectId: "",         // ← paste from Firebase
 };
 const EDIT_PASSCODE = "";   // optional, e.g. "team2026". Leave "" for no passcode.
 
-/* ---- Starting data: used only the very first time, to seed the
-   database. After that the website is the source of truth. ---- */
+/* ---- Seed data: used only the first time, to fill the database ---- */
 const DEFAULT_ROADMAP = {
   title: "Product Roadmap",
   subtitle: "One place for the whole team to see what we're building, who owns it, and where it stands.",
@@ -95,6 +82,26 @@ const DEFAULT_ROADMAP = {
     ]},
   ],
 };
+
+const DEFAULT_OKRS = {
+  cycles: [
+    { name: "Q3 2026 (Jul–Sep)", key: "q3-2026", objectives: [
+      { title: "Make the Test Series panel fully teacher-independent", owner: "Panel team", krs: [
+        { title: "Teachers generating batch reports without tech help", current: 2, target: 10, unit: "teachers" },
+        { title: "Report generation time", note:"From 'upload marks' to shareable PDF", current: 30, target: 5, unit: "min", invert: true },
+        { title: "Panel usability score from teacher feedback", current: 0, target: 8, unit: "/10" },
+      ]},
+      { title: "Ship AI paper solving that teachers trust", owner: "AI team", krs: [
+        { title: "Papers auto-solved end-to-end", current: 0, target: 50, unit: "papers" },
+        { title: "AI solutions approved by teachers without edits", current: 0, target: 80, unit: "%" },
+      ]},
+      { title: "Grow Seniors platform engagement", owner: "Seniors team", krs: [
+        { title: "Sessions booked per week", current: 12, target: 60, unit: "sessions" },
+        { title: "Average session rating", current: 0, target: 4.5, unit: "★" },
+      ]},
+    ]},
+  ],
+};
 </script>
 
 <style>
@@ -118,10 +125,9 @@ input,textarea{font:inherit;color:var(--ink)}
 :focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:4px}
 
 .banner{background:#FFF7E0;border-bottom:1px solid #EAD9A0;color:#6B5410;padding:9px 24px;font-size:13.5px;text-align:center}
-.banner b{font-weight:600}
 
 header{border-bottom:1px solid var(--line);background:var(--card)}
-.head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 20px}
+.head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 0}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em;margin-top:4px}
 .subtitle{color:var(--muted);max-width:640px;margin-top:6px}
@@ -136,6 +142,10 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter
 .updated{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .live{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;background:var(--done-bg);color:var(--done)}
 .live.off{background:var(--planned-bg);color:var(--planned)}
+.tabs{display:flex;gap:4px;margin-top:18px}
+.tab{font-family:var(--disp);font-weight:600;font-size:14.5px;padding:10px 18px;color:var(--muted);border-bottom:2.5px solid transparent}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--indigo);border-bottom-color:var(--indigo)}
 
 .layout{max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:260px 1fr;gap:24px}
 @media(max-width:860px){.layout{grid-template-columns:1fr;padding:16px}}
@@ -200,14 +210,38 @@ aside{position:sticky;top:16px;align-self:start}
 .empty{color:var(--muted);text-align:center;padding:40px 0}
 
 .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
-.node .row:hover .acts, .module-head:hover .acts{opacity:1}
+.node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
 .act:hover{background:var(--indigo-soft);color:var(--indigo)}
 .act.danger:hover{background:var(--blocked-bg);color:var(--blocked)}
 .act svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.addline{margin:4px 0 2px 70px;font-size:13px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:8px;padding:6px 12px}
+.addline{margin:6px 0 2px;font-size:13px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:8px;padding:6px 12px;display:block;width:100%;text-align:center}
 .addline:hover{color:var(--indigo);border-color:var(--indigo)}
+.addline.indent{width:auto;margin-left:70px;text-align:left}
+
+/* ---------- OKR view ---------- */
+.obj-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px}
+.obj-head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.obj-tag{font-family:var(--mono);font-size:12px;color:#fff;background:var(--indigo);border-radius:7px;padding:3px 8px;margin-top:2px}
+.obj-title{font-family:var(--disp);font-size:18px;font-weight:600;flex:1;min-width:200px}
+.obj-score{font-family:var(--mono);font-size:13px;font-weight:500;padding:4px 12px;border-radius:99px}
+.score-low{background:var(--blocked-bg);color:var(--blocked)}
+.score-mid{background:var(--progress-bg);color:var(--progress)}
+.score-high{background:var(--done-bg);color:var(--done)}
+.krs{margin-top:14px;display:flex;flex-direction:column;gap:4px}
+.kr{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:8px}
+.kr:hover{background:var(--paper)}
+.kr .num{min-width:44px}
+.kr .body{flex:1;min-width:0}
+.kr .bar-wrap{display:flex;align-items:center;gap:10px;margin-top:6px}
+.kr .bar{flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden;max-width:340px}
+.kr .bar i{display:block;height:100%;border-radius:99px;transition:width .4s ease}
+.kr .fig{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.kr .fig b{color:var(--ink);font-weight:500}
+.upd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;color:var(--indigo)}
+.upd:hover{background:var(--indigo-soft)}
+@media(max-width:600px){.kr{flex-wrap:wrap}.kr .meta{width:100%;justify-content:flex-start;padding-left:54px}}
 
 .overlay{position:fixed;inset:0;background:rgba(23,35,58,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:100}
 .overlay.show{display:flex}
@@ -217,6 +251,10 @@ aside{position:sticky;top:16px;align-self:start}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
 .field input,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
 .field textarea{resize:vertical;min-height:56px}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.check input{width:auto}
 .dialog .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .btn{padding:8px 16px;border-radius:8px;border:1px solid var(--line);font-size:14px}
 .btn.save{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
@@ -233,44 +271,41 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 
 <header>
   <div class="head-inner">
-    <span class="eyebrow">Internal · Team Roadmap</span>
+    <span class="eyebrow">Internal · Team Workspace</span>
     <h1 id="rm-title"></h1>
     <p class="subtitle" id="rm-subtitle"></p>
-    <div class="head-meta">
-      <div class="stat"><b id="st-done">0</b><span>Done</span></div>
-      <div class="stat"><b id="st-progress">0</b><span>In progress</span></div>
-      <div class="stat"><b id="st-planned">0</b><span>Planned</span></div>
-      <div class="stat"><b id="st-blocked">0</b><span>Blocked</span></div>
-      <div class="overall">
-        <label>Overall completion — <b id="st-pct">0%</b></label>
-        <div class="bar"><i id="st-bar" style="width:0%"></i></div>
-      </div>
-      <span class="updated">Updated: <span id="rm-updated"></span></span>
-      <span class="live off" id="live">local only</span>
-    </div>
+    <div class="head-meta" id="stats"></div>
+    <nav class="tabs">
+      <button class="tab active" id="tab-roadmap">Roadmap</button>
+      <button class="tab" id="tab-okr">OKRs</button>
+    </nav>
   </div>
 </header>
 
 <div class="layout">
   <aside>
-    <div class="side-title">Modules</div>
+    <div class="side-title" id="side-title">Modules</div>
     <div class="mods" id="mods"></div>
   </aside>
 
   <main>
     <div class="controls">
-      <div class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="search" type="search" placeholder="Search tasks, owners…" aria-label="Search roadmap">
-      </div>
-      <button class="chip active" data-status="all">All</button>
-      <button class="chip" data-status="progress"><span class="dot" style="background:var(--progress)"></span>In progress</button>
-      <button class="chip" data-status="planned"><span class="dot" style="background:var(--planned)"></span>Planned</button>
-      <button class="chip" data-status="done"><span class="dot" style="background:var(--done)"></span>Done</button>
-      <button class="chip" data-status="blocked"><span class="dot" style="background:var(--blocked)"></span>Blocked</button>
+      <span id="rm-controls" style="display:contents">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search" type="search" placeholder="Search tasks, owners…" aria-label="Search roadmap">
+        </div>
+        <button class="chip active" data-status="all">All</button>
+        <button class="chip" data-status="progress"><span class="dot" style="background:var(--progress)"></span>In progress</button>
+        <button class="chip" data-status="planned"><span class="dot" style="background:var(--planned)"></span>Planned</button>
+        <button class="chip" data-status="done"><span class="dot" style="background:var(--done)"></span>Done</button>
+        <button class="chip" data-status="blocked"><span class="dot" style="background:var(--blocked)"></span>Blocked</button>
+      </span>
       <div class="tools">
-        <button class="tool" id="expand-all">Expand all</button>
-        <button class="tool" id="collapse-all">Collapse all</button>
+        <span id="rm-tools" style="display:contents">
+          <button class="tool" id="expand-all">Expand all</button>
+          <button class="tool" id="collapse-all">Collapse all</button>
+        </span>
         <button class="tool primary" id="edit-toggle">✎ Edit</button>
       </div>
     </div>
@@ -279,15 +314,21 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 </div>
 
 <footer id="foot">
-  Turn on <b>Edit</b> to add modules, tasks and sub-tasks, change statuses, or delete items. Click any status pill to cycle Planned → In progress → Done → Blocked.
+  Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
 </footer>
 
 <div class="overlay" id="overlay">
   <div class="dialog" role="dialog" aria-modal="true">
     <h3 id="dlg-title">Edit</h3>
-    <div class="field"><label for="f-title">Title</label><input id="f-title" placeholder="e.g. AI paper solving"></div>
+    <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
+    <div class="field-row" id="f-metric-wrap">
+      <div class="field"><label for="f-current">Current</label><input id="f-current" type="number" step="any"></div>
+      <div class="field"><label for="f-target">Target</label><input id="f-target" type="number" step="any"></div>
+      <div class="field"><label for="f-unit">Unit</label><input id="f-unit" placeholder="%, users, min…"></div>
+    </div>
+    <label class="check" id="f-invert-wrap"><input type="checkbox" id="f-invert"> Lower is better (e.g. reducing time, cost, errors)</label>
     <div class="btns">
       <button class="btn" id="dlg-cancel">Cancel</button>
       <button class="btn save" id="dlg-save">Save</button>
@@ -302,10 +343,11 @@ const STATUS_ORDER = ["planned","progress","done","blocked"];
 const STATUS_LABEL = {planned:"Planned", progress:"In progress", done:"Done", blocked:"Blocked"};
 const $ = id => document.getElementById(id);
 
-let DATA = null;
-let db = null;
+let DATA = null, OKRS = null, db = null;
+let view = "roadmap";           // "roadmap" | "okr"
 let editMode = false;
 let activeModule = "all";
+let activeCycle = null;
 let activeStatus = "all";
 let query = "";
 const collapsed = new Set();
@@ -318,6 +360,15 @@ function normalize(d){
   const walk = n => { n.items = n.items || []; n.items.forEach(walk); };
   d.modules.forEach(m => { m.items = m.items || []; m.items.forEach(walk); });
   return d;
+}
+function normalizeOkrs(o){
+  o = o || {};
+  o.cycles = o.cycles || [];
+  o.cycles.forEach(c => {
+    c.objectives = c.objectives || [];
+    c.objectives.forEach(ob => ob.krs = ob.krs || []);
+  });
+  return o;
 }
 function leavesOf(node){
   if(node.items && node.items.length) return node.items.flatMap(leavesOf);
@@ -334,56 +385,75 @@ function counts(leaves){
   leaves.forEach(l=>c[l.status]++);
   return c;
 }
-function clean(d){ return JSON.parse(JSON.stringify(d)); }
-function todayStr(){
-  return new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+function krPct(kr){
+  const cur = Number(kr.current)||0, tgt = Number(kr.target)||0;
+  if(kr.invert){
+    // lower is better: score how far we've moved from start toward target.
+    const start = Number(kr.start ?? kr.current);
+    if(!isFinite(start) || start===tgt) return cur<=tgt ? 100 : 0;
+    return Math.max(0, Math.min(100, Math.round((start-cur)/(start-tgt)*100)));
+  }
+  if(!tgt) return 0;
+  return Math.max(0, Math.min(100, Math.round(cur/tgt*100)));
 }
+function objPct(ob){
+  if(!ob.krs.length) return 0;
+  return Math.round(ob.krs.reduce((a,k)=>a+krPct(k),0)/ob.krs.length);
+}
+function scoreClass(p){ return p<30 ? "score-low" : p<70 ? "score-mid" : "score-high"; }
+function scoreColor(p){ return p<30 ? "var(--blocked)" : p<70 ? "var(--progress)" : "var(--done)"; }
+function clean(d){ return JSON.parse(JSON.stringify(d)); }
+function todayStr(){ return new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}); }
+function fmt(n){ n = Number(n)||0; return Number.isInteger(n) ? n : +n.toFixed(2); }
 
 /* ---------- persistence ---------- */
 const configured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL;
-function save(){
+function saveRoadmap(){
   DATA.updated = todayStr();
-  if(db){
-    db.ref("roadmap").set(clean(DATA))
-      .catch(e => toast("Save failed: " + e.message));
-  } else {
-    renderAll();
-  }
+  if(db) db.ref("roadmap").set(clean(DATA)).catch(e=>toast("Save failed: "+e.message));
+  else renderAll();
+}
+function saveOkrs(){
+  OKRS.updated = todayStr();
+  if(db) db.ref("okrs").set(clean(OKRS)).catch(e=>toast("Save failed: "+e.message));
+  else renderAll();
 }
 function start(){
   if(configured){
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
       db = firebase.database();
-      $("live").textContent = "● live sync";
-      $("live").classList.remove("off");
       db.ref("roadmap").on("value", snap=>{
         const v = snap.val();
         if(!v){ db.ref("roadmap").set(clean(normalize(DEFAULT_ROADMAP))); return; }
-        DATA = normalize(v);
-        renderAll();
+        DATA = normalize(v); renderAll();
       }, err=>{
         showBanner("Couldn't reach the database ("+err.message+"). Showing built-in data; changes won't be saved.");
-        DATA = normalize(clean(DEFAULT_ROADMAP));
-        db = null; renderAll();
+        DATA = normalize(clean(DEFAULT_ROADMAP)); db = null; renderAll();
+      });
+      db && db.ref("okrs").on("value", snap=>{
+        const v = snap.val();
+        if(!v){ db.ref("okrs").set(clean(normalizeOkrs(DEFAULT_OKRS))); return; }
+        OKRS = normalizeOkrs(v); renderAll();
       });
     }catch(e){
       showBanner("Firebase setup problem: "+e.message);
       DATA = normalize(clean(DEFAULT_ROADMAP));
+      OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
       db = null; renderAll();
     }
   } else {
     DATA = normalize(clean(DEFAULT_ROADMAP));
-    showBanner("Live team editing is not connected yet — changes here stay only on your screen. Open index.html and follow the 5-minute setup at the top (or see the README).");
+    OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
+    showBanner("Live team editing is not connected yet — changes here stay only on your screen. See README.md for the 5-minute Firebase setup.");
     renderAll();
   }
+  updateLive();
 }
-function showBanner(msg){
-  $("banner").textContent = msg;
-  $("banner").classList.remove("hidden");
-}
+function updateLive(){}
+function showBanner(msg){ $("banner").textContent = msg; $("banner").classList.remove("hidden"); }
 
-/* ---------- filtering ---------- */
+/* ---------- filtering (roadmap) ---------- */
 function nodeMatches(node){
   const text = (node.title+" "+(node.owner||"")+" "+(node.note||"")).toLowerCase();
   const qOk = !query || text.includes(query);
@@ -397,24 +467,40 @@ function nodeMatches(node){
 
 /* ---------- dialog ---------- */
 let dlgOnSave = null;
-function openDialog(title, values, onSave){
+function openDialog(title, values, onSave, opts={}){
   $("dlg-title").textContent = title;
   $("f-title").value = values.title || "";
   $("f-owner").value = values.owner || "";
   $("f-note").value = values.note || "";
-  $("f-owner-wrap").style.display = values.hideExtras ? "none" : "";
-  $("f-note-wrap").style.display = values.hideExtras ? "none" : "";
+  $("f-current").value = values.current ?? "";
+  $("f-target").value = values.target ?? "";
+  $("f-unit").value = values.unit || "";
+  $("f-invert").checked = !!values.invert;
+  $("f-title-wrap").style.display = opts.hideTitle ? "none" : "";
+  $("f-owner-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
+  $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
+  $("f-metric-wrap").style.display = opts.metric ? "flex" : "none";
+  $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
   dlgOnSave = onSave;
   $("overlay").classList.add("show");
-  setTimeout(()=>$("f-title").focus(), 50);
+  setTimeout(()=>{ (opts.hideTitle ? $("f-current") : $("f-title")).focus(); }, 50);
 }
 $("dlg-cancel").onclick = ()=> $("overlay").classList.remove("show");
 $("overlay").addEventListener("click", e=>{ if(e.target===$("overlay")) $("overlay").classList.remove("show"); });
 $("dlg-save").onclick = ()=>{
+  const hideTitle = $("f-title-wrap").style.display === "none";
   const t = $("f-title").value.trim();
-  if(!t){ $("f-title").focus(); return; }
+  if(!hideTitle && !t){ $("f-title").focus(); return; }
   $("overlay").classList.remove("show");
-  dlgOnSave && dlgOnSave({title:t, owner:$("f-owner").value.trim(), note:$("f-note").value.trim()});
+  dlgOnSave && dlgOnSave({
+    title: t,
+    owner: $("f-owner").value.trim(),
+    note: $("f-note").value.trim(),
+    current: $("f-current").value,
+    target: $("f-target").value,
+    unit: $("f-unit").value.trim(),
+    invert: $("f-invert").checked,
+  });
 };
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") $("overlay").classList.remove("show");
@@ -436,7 +522,95 @@ function actBtn(icon, label, danger, fn){
   return b;
 }
 
-/* ---------- edit actions ---------- */
+/* ---------- shared header ---------- */
+function renderHeader(){
+  $("rm-title").textContent = view==="okr" ? "Team OKRs" : (DATA.title || "Product Roadmap");
+  $("rm-subtitle").textContent = view==="okr"
+    ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
+    : (DATA.subtitle||"");
+  document.title = $("rm-title").textContent;
+  const stats = $("stats");
+  stats.innerHTML = "";
+  const mkStat = (val,label)=>{
+    const d = document.createElement("div"); d.className="stat";
+    d.innerHTML = `<b></b><span></span>`;
+    d.querySelector("b").textContent = val;
+    d.querySelector("span").textContent = label;
+    return d;
+  };
+  let pct, updated;
+  if(view==="okr"){
+    const cyc = OKRS.cycles.find(c=>c.key===activeCycle) || OKRS.cycles[0];
+    const objs = cyc ? cyc.objectives : [];
+    const krs = objs.flatMap(o=>o.krs);
+    pct = objs.length ? Math.round(objs.reduce((a,o)=>a+objPct(o),0)/objs.length) : 0;
+    stats.append(
+      mkStat(objs.length,"Objectives"),
+      mkStat(krs.length,"Key results"),
+      mkStat(krs.filter(k=>krPct(k)>=70).length,"On track"),
+      mkStat(krs.filter(k=>krPct(k)<30).length,"Needs attention"),
+    );
+    updated = OKRS.updated || "—";
+  } else {
+    const leaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+    const c = counts(leaves);
+    pct = pctOf(leaves);
+    stats.append(mkStat(c.done,"Done"), mkStat(c.progress,"In progress"), mkStat(c.planned,"Planned"), mkStat(c.blocked,"Blocked"));
+    updated = DATA.updated || "—";
+  }
+  const ov = document.createElement("div");
+  ov.className = "overall";
+  ov.innerHTML = `<label>${view==="okr"?"Cycle score":"Overall completion"} — <b>${pct}%</b></label>
+    <div class="bar"><i style="width:${pct}%; background:${view==="okr"?scoreColor(pct):"var(--done)"}"></i></div>`;
+  stats.appendChild(ov);
+  const up = document.createElement("span");
+  up.className = "updated"; up.textContent = "Updated: "+updated;
+  stats.appendChild(up);
+  const live = document.createElement("span");
+  live.className = "live"+(db?"":" off");
+  live.textContent = db ? "● live sync" : "local only";
+  stats.appendChild(live);
+}
+
+/* ================================================================
+   ROADMAP VIEW
+   ================================================================ */
+function renderSidebarRoadmap(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Modules";
+  const allLeaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+  const all = document.createElement("button");
+  all.className = "mod"+(activeModule==="all"?" active":"");
+  all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules · ${allLeaves.length} tasks</span>`;
+  all.onclick = ()=>{activeModule="all"; renderAll();};
+  wrap.appendChild(all);
+  DATA.modules.forEach(m=>{
+    const lv = m.items.flatMap(leavesOf);
+    const p = pctOf(lv);
+    const b = document.createElement("button");
+    b.className = "mod"+(activeModule===m.key?" active":"");
+    b.innerHTML = `<span class="name"></span>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <span class="pct">${p}% · ${lv.length} tasks</span>`;
+    b.querySelector(".name").textContent = m.name;
+    b.onclick = ()=>{activeModule=m.key; renderAll();};
+    wrap.appendChild(b);
+  });
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "mod add";
+    add.textContent = "＋ Add module";
+    add.onclick = ()=> openDialog("New module (big level)", {}, v=>{
+      const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+      DATA.modules.push({name:v.title, key, items:[]});
+      activeModule = key;
+      saveRoadmap(); toast("Module added");
+    }, {hideExtras:true});
+    wrap.appendChild(add);
+  }
+}
+
 function applyFields(node, v){
   node.title = v.title;
   if(v.owner) node.owner = v.owner; else delete node.owner;
@@ -449,61 +623,9 @@ function addTaskTo(container, label){
     if(v.note) n.note = v.note;
     container.items = container.items || [];
     container.items.push(n);
-    if(container.status) delete container.status; // becomes a parent
-    save(); toast("Added");
+    if(container.status) delete container.status;
+    saveRoadmap(); toast("Added");
   });
-}
-
-/* ---------- render ---------- */
-function renderHeader(){
-  $("rm-title").textContent = DATA.title;
-  $("rm-subtitle").textContent = DATA.subtitle||"";
-  $("rm-updated").textContent = DATA.updated||"—";
-  document.title = DATA.title;
-  const leaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
-  const c = counts(leaves);
-  $("st-done").textContent = c.done;
-  $("st-progress").textContent = c.progress;
-  $("st-planned").textContent = c.planned;
-  $("st-blocked").textContent = c.blocked;
-  const p = pctOf(leaves);
-  $("st-pct").textContent = p+"%";
-  $("st-bar").style.width = p+"%";
-}
-
-function renderSidebar(){
-  const wrap = $("mods");
-  wrap.innerHTML = "";
-  const allLeaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
-  const all = document.createElement("button");
-  all.className = "mod"+(activeModule==="all"?" active":"");
-  all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules · ${allLeaves.length} tasks</span>`;
-  all.onclick = ()=>{activeModule="all"; renderSidebar(); renderContent();};
-  wrap.appendChild(all);
-  DATA.modules.forEach(m=>{
-    const lv = m.items.flatMap(leavesOf);
-    const p = pctOf(lv);
-    const b = document.createElement("button");
-    b.className = "mod"+(activeModule===m.key?" active":"");
-    b.innerHTML = `<span class="name"></span>
-      <div class="bar"><i style="width:${p}%"></i></div>
-      <span class="pct">${p}% · ${lv.length} tasks</span>`;
-    b.querySelector(".name").textContent = m.name;
-    b.onclick = ()=>{activeModule=m.key; renderSidebar(); renderContent();};
-    wrap.appendChild(b);
-  });
-  if(editMode){
-    const add = document.createElement("button");
-    add.className = "mod add";
-    add.textContent = "＋ Add module";
-    add.onclick = ()=> openDialog("New module (big level)", {hideExtras:true}, v=>{
-      const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
-      DATA.modules.push({name:v.title, key, items:[]});
-      activeModule = key;
-      save(); toast("Module added");
-    });
-    wrap.appendChild(add);
-  }
 }
 
 function nodeEl(node, parentArr, idx, numPath, modKey){
@@ -556,7 +678,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     pill.title = "Click to change status";
     pill.onclick = ()=>{
       node.status = STATUS_ORDER[(STATUS_ORDER.indexOf(node.status)+1)%STATUS_ORDER.length];
-      save();
+      saveRoadmap();
     };
     meta.appendChild(pill);
   }
@@ -566,11 +688,11 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     acts.className = "acts";
     acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
     acts.appendChild(actBtn("pencil","Edit",false, ()=>
-      openDialog("Edit task", node, v=>{ applyFields(node, v); save(); })));
+      openDialog("Edit task", node, v=>{ applyFields(node, v); saveRoadmap(); })));
     acts.appendChild(actBtn("trash","Delete",true, ()=>{
       const lv = isParent ? leavesOf(node).length : 0;
       const msg = isParent ? `Delete “${node.title}” and its ${lv} sub-task(s)?` : `Delete “${node.title}”?`;
-      if(confirm(msg)){ parentArr.splice(idx,1); save(); toast("Deleted"); }
+      if(confirm(msg)){ parentArr.splice(idx,1); saveRoadmap(); toast("Deleted"); }
     }));
     meta.appendChild(acts);
   }
@@ -595,7 +717,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
   return el;
 }
 
-function renderContent(){
+function renderContentRoadmap(){
   const wrap = $("content");
   wrap.innerHTML = "";
   const mods = DATA.modules.filter(m => activeModule==="all" || m.key===activeModule);
@@ -614,12 +736,12 @@ function renderContent(){
       const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
       const acts = document.createElement("div"); acts.className = "acts";
       acts.appendChild(actBtn("pencil","Rename module",false, ()=>
-        openDialog("Rename module", {title:m.name, hideExtras:true}, v=>{ m.name = v.title; save(); })));
+        openDialog("Rename module", {title:m.name}, v=>{ m.name = v.title; saveRoadmap(); }, {hideExtras:true})));
       acts.appendChild(actBtn("trash","Delete module",true, ()=>{
         if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
           DATA.modules.splice(DATA.modules.indexOf(m),1);
           if(activeModule===m.key) activeModule="all";
-          save(); toast("Module deleted");
+          saveRoadmap(); toast("Module deleted");
         }
       }));
       head.appendChild(acts);
@@ -636,7 +758,7 @@ function renderContent(){
     block.appendChild(tree);
     if(editMode){
       const add = document.createElement("button");
-      add.className = "addline";
+      add.className = "addline indent";
       add.textContent = "＋ Add task to "+m.name;
       add.onclick = ()=> addTaskTo(m, "New task in “"+m.name+"”");
       block.appendChild(add);
@@ -650,28 +772,218 @@ function renderContent(){
   }
 }
 
-function renderAll(){ renderHeader(); renderSidebar(); renderContent(); }
+/* ================================================================
+   OKR VIEW
+   ================================================================ */
+function renderSidebarOkr(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Cycles";
+  if(!OKRS.cycles.length && !editMode){
+    const d = document.createElement("div");
+    d.className = "empty"; d.textContent = "No cycles yet.";
+    wrap.appendChild(d);
+  }
+  if(activeCycle===null && OKRS.cycles.length) activeCycle = OKRS.cycles[0].key;
+  OKRS.cycles.forEach(c=>{
+    const score = c.objectives.length ? Math.round(c.objectives.reduce((a,o)=>a+objPct(o),0)/c.objectives.length) : 0;
+    const b = document.createElement("button");
+    b.className = "mod"+(activeCycle===c.key?" active":"");
+    b.innerHTML = `<span class="name"></span>
+      <div class="bar"><i style="width:${score}%; background:${scoreColor(score)}"></i></div>
+      <span class="pct">${score}% · ${c.objectives.length} objectives</span>`;
+    b.querySelector(".name").textContent = c.name;
+    b.onclick = ()=>{activeCycle=c.key; renderAll();};
+    wrap.appendChild(b);
+  });
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "mod add";
+    add.textContent = "＋ Add cycle (e.g. Q4 2026)";
+    add.onclick = ()=> openDialog("New cycle", {}, v=>{
+      const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+      OKRS.cycles.push({name:v.title, key, objectives:[]});
+      activeCycle = key;
+      saveOkrs(); toast("Cycle added");
+    }, {hideExtras:true});
+    wrap.appendChild(add);
+  }
+}
+
+function krEl(kr, ob, ki, oi){
+  const row = document.createElement("div");
+  row.className = "kr";
+  const num = document.createElement("span");
+  num.className = "num"; num.textContent = "KR"+(ki+1);
+  const body = document.createElement("div");
+  body.className = "body";
+  const t = document.createElement("div");
+  t.className = "title"; t.textContent = kr.title;
+  body.appendChild(t);
+  if(kr.note){
+    const n = document.createElement("div"); n.className="note"; n.textContent = kr.note;
+    body.appendChild(n);
+  }
+  const p = krPct(kr);
+  const bw = document.createElement("div");
+  bw.className = "bar-wrap";
+  bw.innerHTML = `<div class="bar"><i style="width:${p}%; background:${scoreColor(p)}"></i></div>
+    <span class="fig"><b>${fmt(kr.current)}</b> / ${fmt(kr.target)} ${kr.unit||""} · ${p}%</span>`;
+  body.appendChild(bw);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  if(kr.owner){
+    const o = document.createElement("span"); o.className="owner"; o.textContent = kr.owner;
+    meta.appendChild(o);
+  }
+  const upd = document.createElement("button");
+  upd.className = "upd"; upd.textContent = "Update";
+  upd.title = "Log the latest number for this key result";
+  upd.onclick = ()=> openDialog("Update: "+kr.title, kr, v=>{
+    if(kr.start===undefined) kr.start = Number(kr.current)||0;
+    kr.current = Number(v.current)||0;
+    saveOkrs(); toast("Updated");
+  }, {hideTitle:true, metric:true, simple:true});
+  meta.appendChild(upd);
+
+  if(editMode){
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    acts.appendChild(actBtn("pencil","Edit key result",false, ()=>
+      openDialog("Edit key result", kr, v=>{
+        applyFields(kr, v);
+        kr.current = Number(v.current)||0;
+        kr.target = Number(v.target)||0;
+        kr.unit = v.unit;
+        kr.invert = v.invert;
+        saveOkrs();
+      }, {metric:true})));
+    acts.appendChild(actBtn("trash","Delete key result",true, ()=>{
+      if(confirm(`Delete key result “${kr.title}”?`)){ ob.krs.splice(ki,1); saveOkrs(); toast("Deleted"); }
+    }));
+    meta.appendChild(acts);
+  }
+  row.append(num, body, meta);
+  return row;
+}
+
+function renderContentOkr(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const cyc = OKRS.cycles.find(c=>c.key===activeCycle);
+  if(!cyc){
+    wrap.innerHTML = '<div class="empty">No cycle selected. '+(editMode?'Add one from the left.':'Turn on Edit to add your first cycle (e.g. “Q3 2026”).')+'</div>';
+    return;
+  }
+  cyc.objectives.forEach((ob,oi)=>{
+    const card = document.createElement("section");
+    card.className = "obj-card";
+    const head = document.createElement("div");
+    head.className = "obj-head";
+    const tag = document.createElement("span");
+    tag.className = "obj-tag"; tag.textContent = "O"+(oi+1);
+    const title = document.createElement("div");
+    title.className = "obj-title"; title.textContent = ob.title;
+    head.append(tag, title);
+    if(ob.owner){
+      const o = document.createElement("span"); o.className="owner"; o.style.marginTop="6px"; o.textContent = ob.owner;
+      head.appendChild(o);
+    }
+    const p = objPct(ob);
+    const score = document.createElement("span");
+    score.className = "obj-score "+scoreClass(p);
+    score.textContent = p+"%";
+    head.appendChild(score);
+    if(editMode){
+      const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
+      acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
+        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); saveOkrs(); })));
+      acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
+        if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
+          cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
+        }
+      }));
+      head.appendChild(acts);
+    }
+    card.appendChild(head);
+    if(ob.note){
+      const n = document.createElement("div"); n.className="note"; n.style.marginTop="4px";
+      n.textContent = ob.note; card.appendChild(n);
+    }
+
+    const krs = document.createElement("div");
+    krs.className = "krs";
+    ob.krs.forEach((kr,ki)=> krs.appendChild(krEl(kr, ob, ki, oi)));
+    card.appendChild(krs);
+
+    if(editMode){
+      const add = document.createElement("button");
+      add.className = "addline";
+      add.textContent = "＋ Add key result";
+      add.onclick = ()=> openDialog("New key result", {current:0, target:100, unit:"%"}, v=>{
+        const kr = {title:v.title, current:Number(v.current)||0, target:Number(v.target)||0, unit:v.unit};
+        if(v.owner) kr.owner = v.owner;
+        if(v.note) kr.note = v.note;
+        if(v.invert){ kr.invert = true; kr.start = Number(v.current)||0; }
+        ob.krs.push(kr); saveOkrs(); toast("Key result added");
+      }, {metric:true});
+      card.appendChild(add);
+    }
+    wrap.appendChild(card);
+  });
+
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "addline";
+    add.style.padding = "12px";
+    add.textContent = "＋ Add objective to "+cyc.name;
+    add.onclick = ()=> openDialog("New objective", {}, v=>{
+      const ob = {title:v.title, krs:[]};
+      if(v.owner) ob.owner = v.owner;
+      if(v.note) ob.note = v.note;
+      cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
+    });
+    wrap.appendChild(add);
+  } else if(!cyc.objectives.length){
+    wrap.innerHTML += '<div class="empty">No objectives in this cycle yet. Turn on Edit to add some.</div>';
+  }
+}
+
+/* ---------- render dispatcher ---------- */
+function renderAll(){
+  if(!DATA || !OKRS) return;
+  renderHeader();
+  $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
+  $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
+  $("tab-roadmap").classList.toggle("active", view==="roadmap");
+  $("tab-okr").classList.toggle("active", view==="okr");
+  if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
+  else { renderSidebarOkr(); renderContentOkr(); }
+}
 
 /* ---------- controls ---------- */
+$("tab-roadmap").onclick = ()=>{ view="roadmap"; renderAll(); };
+$("tab-okr").onclick = ()=>{ view="okr"; renderAll(); };
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
     ch.classList.add("active");
     activeStatus = ch.dataset.status;
-    renderContent();
+    renderContentRoadmap();
   };
 });
 $("search").addEventListener("input", e=>{
   query = e.target.value.trim().toLowerCase();
-  renderContent();
+  renderContentRoadmap();
 });
-$("expand-all").onclick = ()=>{ collapsed.clear(); renderContent(); };
+$("expand-all").onclick = ()=>{ collapsed.clear(); renderContentRoadmap(); };
 $("collapse-all").onclick = ()=>{
   DATA.modules.forEach(m=>{
     const mark = (n, path)=>{ if(n.items && n.items.length){ collapsed.add(m.key+":"+path); n.items.forEach((c,i)=>mark(c, path+"."+(i+1))); } };
     m.items.forEach((n,i)=>mark(n, String(i+1)));
   });
-  renderContent();
+  renderContentRoadmap();
 };
 $("edit-toggle").onclick = ()=>{
   if(!editMode && EDIT_PASSCODE && sessionStorage.getItem("rm-ok")!=="1"){
