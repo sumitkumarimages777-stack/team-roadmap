@@ -132,7 +132,10 @@ input,textarea{font:inherit;color:var(--ink)}
 .banner{background:#FFF7E0;border-bottom:1px solid #EAD9A0;color:#6B5410;padding:9px 24px;font-size:13.5px;text-align:center}
 
 header{border-bottom:1px solid var(--line);background:var(--card)}
-.head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 0}
+.head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 22px;position:relative}
+.corner-nav{position:absolute;top:28px;right:24px;font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;background:var(--indigo);border-radius:99px;padding:9px 18px;box-shadow:0 2px 10px rgba(59,91,219,.25);transition:background .15s}
+.corner-nav:hover{background:#3350C4}
+@media(max-width:640px){.corner-nav{position:static;display:inline-block;margin-bottom:14px}}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em;margin-top:4px}
 .subtitle{color:var(--muted);max-width:640px;margin-top:6px}
@@ -147,10 +150,6 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter
 .updated{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .live{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;background:var(--done-bg);color:var(--done)}
 .live.off{background:var(--planned-bg);color:var(--planned)}
-.tabs{display:flex;gap:4px;margin-top:18px}
-.tab{font-family:var(--disp);font-weight:600;font-size:14.5px;padding:10px 18px;color:var(--muted);border-bottom:2.5px solid transparent}
-.tab:hover{color:var(--ink)}
-.tab.active{color:var(--indigo);border-bottom-color:var(--indigo)}
 
 .layout{max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:260px 1fr;gap:24px}
 @media(max-width:860px){.layout{grid-template-columns:1fr;padding:16px}}
@@ -276,14 +275,11 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 
 <header>
   <div class="head-inner">
+    <button class="corner-nav" id="nav-switch">OKRs →</button>
     <span class="eyebrow">Internal · Team Workspace</span>
     <h1 id="rm-title"></h1>
     <p class="subtitle" id="rm-subtitle"></p>
     <div class="head-meta" id="stats"></div>
-    <nav class="tabs">
-      <button class="tab active" id="tab-roadmap">Roadmap</button>
-      <button class="tab" id="tab-okr">OKRs</button>
-    </nav>
   </div>
 </header>
 
@@ -984,15 +980,14 @@ function renderAll(){
   renderHeader();
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
-  $("tab-roadmap").classList.toggle("active", view==="roadmap");
-  $("tab-okr").classList.toggle("active", view==="okr");
+  $("nav-switch").textContent = view==="roadmap" ? "OKRs →" : "← Workspace";
+  $("nav-switch").title = view==="roadmap" ? "See this cycle's objectives and key results" : "Back to the product roadmap";
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
   else { renderSidebarOkr(); renderContentOkr(); }
 }
 
 /* ---------- controls ---------- */
-$("tab-roadmap").onclick = ()=>{ view="roadmap"; renderAll(); };
-$("tab-okr").onclick = ()=>{ view="okr"; renderAll(); };
+$("nav-switch").onclick = ()=>{ view = view==="roadmap" ? "okr" : "roadmap"; renderAll(); };
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
