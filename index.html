@@ -310,6 +310,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <header>
   <div class="head-inner">
     <div class="corner-nav-wrap">
+      <button class="corner-nav ghost" id="nav-ideas">💡 Student Ideas</button>
       <button class="corner-nav ghost" id="nav-a"></button>
       <button class="corner-nav" id="nav-b"></button>
     </div>
@@ -1277,6 +1278,124 @@ function toast(msg){
 }
 
 start();
+</script>
+
+<!-- ============ DU BUDDY: STUDENT IDEAS -> PIPELINE ============ -->
+<script>
+(function(){
+  var IDEA_BIN_ID="6a477b27da38895dfe2784a1";
+  var IDEA_KEY="$2a$10$14W.Y/S.nR0QYK1BUINYcek1sKvDt6/fvkWXMBf3QBV8Aaj6NyNIW";
+  var MARK_PLANNED=true; // adding an idea also marks it "Planned" on the public ideas board
+
+  var css=document.createElement("style");
+  css.textContent=
+    "#duIdeasPanel{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:none;align-items:stretch;justify-content:flex-end;font-family:inherit}"+
+    "#duIdeasPanel.show{display:flex}"+
+    "#duIdeasPanel .dui-side{width:min(540px,100%);background:var(--card,#fff);display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.2)}"+
+    "#duIdeasPanel .dui-top{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line,#e5e7eb)}"+
+    "#duIdeasPanel .dui-top h3{margin:0;font-size:15px}"+
+    "#duIdeasPanel .dui-x{margin-left:auto;border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:8px;padding:7px 12px;font-weight:600;cursor:pointer}"+
+    "#duIdeasPanel .dui-bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line,#e5e7eb)}"+
+    "#duIdeasPanel .dui-chip{border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:16px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}"+
+    "#duIdeasPanel .dui-chip.on{background:#4263eb;color:#fff;border-color:#4263eb}"+
+    "#duIdeasPanel .dui-list{flex:1;overflow:auto;padding:14px 16px 22px}"+
+    "#duIdeasPanel .dui-card{border:1px solid var(--line,#e5e7eb);border-radius:12px;padding:12px 14px;margin-bottom:10px}"+
+    "#duIdeasPanel .dui-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}"+
+    "#duIdeasPanel .dui-v{font-weight:800;color:#4263eb;font-size:13px}"+
+    "#duIdeasPanel .dui-p{font-size:10.5px;font-weight:700;background:rgba(66,99,235,.1);color:#4263eb;border-radius:12px;padding:2px 8px}"+
+    "#duIdeasPanel .dui-s{font-size:10.5px;font-weight:700;border-radius:12px;padding:2px 8px;background:var(--planned-bg,#eef);color:var(--planned,#448)}"+
+    "#duIdeasPanel .dui-t{font-size:13.5px;font-weight:700;margin-top:6px}"+
+    "#duIdeasPanel .dui-d{font-size:12.5px;opacity:.75;margin-top:4px;line-height:1.5;white-space:pre-wrap}"+
+    "#duIdeasPanel .dui-add{margin-top:9px;border:1px solid #4263eb;background:rgba(66,99,235,.08);color:#4263eb;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}"+
+    "#duIdeasPanel .dui-add:disabled{opacity:.5;cursor:default}"+
+    "#duIdeasPanel .dui-empty{padding:40px 16px;text-align:center;opacity:.6;font-size:13.5px}"+
+    "#duiPick{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.5)}"+
+    "#duiPick.show{display:flex}"+
+    "#duiPick .dui-pk{background:var(--card,#fff);border-radius:14px;padding:18px;max-width:380px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)}"+
+    "#duiPick h4{margin:0 0 10px;font-size:14px}"+
+    "#duiPick button.mod{display:block;width:100%;text-align:left;border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:7px}"+
+    "#duiPick button.mod:hover{border-color:#4263eb;color:#4263eb}";
+  document.head.appendChild(css);
+
+  var panel=document.createElement("div");
+  panel.id="duIdeasPanel";
+  panel.innerHTML='<div class="dui-side">'+
+    '<div class="dui-top"><h3>💡 Student Ideas — live board</h3><button class="dui-x">Close</button></div>'+
+    '<div class="dui-bar" id="duiBar"></div>'+
+    '<div class="dui-list" id="duiList"><div class="dui-empty">Loading ideas…</div></div></div>';
+  document.body.appendChild(panel);
+  var pick=document.createElement("div");
+  pick.id="duiPick";
+  pick.innerHTML='<div class="dui-pk"><h4>Add to which module?</h4><div id="duiPickList"></div></div>';
+  document.body.appendChild(pick);
+
+  var IDEAS=[], PROD="all", PENDING=null;
+  var escp=function(x){return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
+  var STATUS={new:"In review",planned:"Planned",progress:"In progress",done:"Completed",later:"Not now"};
+
+  function loadIdeas(){
+    document.getElementById("duiList").innerHTML='<div class="dui-empty">Loading ideas…</div>';
+    fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Master-Key":IDEA_KEY}})
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ var rec=j.record||{};
+        IDEAS=(Array.isArray(rec.ideas)?rec.ideas:[]).map(function(x){ x=x||{}; x.votes=x.votes||0; x.status=x.status||"new"; x.product=x.product||"Preference Builder"; return x; });
+        renderIdeas(); })
+      .catch(function(){ document.getElementById("duiList").innerHTML='<div class="dui-empty">Couldn\'t load the ideas board.</div>'; });
+  }
+  function renderIdeas(){
+    var set={}; IDEAS.forEach(function(i){ set[i.product]=1; });
+    var prods=["all"].concat(Object.keys(set));
+    document.getElementById("duiBar").innerHTML=prods.map(function(p){ return '<button class="dui-chip'+(PROD===p?' on':'')+'" data-prod="'+escp(p)+'">'+(p==="all"?"All products":escp(p))+'</button>'; }).join("");
+    var list=IDEAS.filter(function(i){ return PROD==="all"||i.product===PROD; })
+      .sort(function(a,b){ return (b.votes-a.votes)||String(b.at||"").localeCompare(String(a.at||"")); });
+    var box=document.getElementById("duiList");
+    if(!list.length){ box.innerHTML='<div class="dui-empty">No ideas here yet.</div>'; return; }
+    box.innerHTML=list.map(function(i){
+      var added=(i.status==="planned"||i.status==="progress"||i.status==="done");
+      return '<div class="dui-card"><div class="dui-h"><span class="dui-v">▲ '+i.votes+'</span><span class="dui-p">'+escp(i.product)+'</span><span class="dui-s">'+escp(STATUS[i.status]||i.status)+'</span></div>'+
+        (i.title?'<div class="dui-t">'+escp(i.title)+'</div>':'')+
+        (i.text?'<div class="dui-d">'+escp(i.text)+'</div>':'')+
+        '<button class="dui-add" data-add="'+escp(i.id||"")+'"'+(added?" disabled":"")+'>'+(added?"✓ In pipeline":"➕ Add to pipeline")+'</button></div>';
+    }).join("");
+  }
+  function openPicker(idea){
+    if(!editMode){ toast("Turn on Edit (top right) to add ideas to the pipeline"); return; }
+    if(!DATA.modules.length){ toast("Create a module first"); return; }
+    PENDING=idea;
+    document.getElementById("duiPickList").innerHTML=DATA.modules.map(function(m,ix){ return '<button class="mod" data-mod="'+ix+'">'+escp(m.name)+'</button>'; }).join("");
+    pick.classList.add("show");
+  }
+  function addToModule(ix){
+    var m=DATA.modules[ix], i=PENDING; if(!m||!i) return;
+    var title=(i.title||"").trim()||((i.text||"").slice(0,70)+(((i.text||"").length>70)?"…":""));
+    var n={title:title, status:"planned", note:"💡 Student idea · "+i.product+" · "+i.votes+"▲"+((i.title&&i.text)?(" — "+i.text):"")};
+    m.items=m.items||[]; m.items.push(n);
+    saveRoadmap();
+    toast("Added to “"+m.name+"” pipeline");
+    pick.classList.remove("show"); PENDING=null;
+    if(MARK_PLANNED && i.status==="new"){
+      fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Master-Key":IDEA_KEY}})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ var rec=j.record||{}; rec.ideas=Array.isArray(rec.ideas)?rec.ideas:[];
+          var t=rec.ideas.find(function(x){ return x&&x.id===i.id; });
+          if(t){ t.status="planned";
+            return fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":IDEA_KEY},body:JSON.stringify(rec)});
+          } })
+        .then(function(){ i.status="planned"; renderIdeas(); }).catch(function(){});
+    } else { i.status=(i.status==="new")?"planned":i.status; renderIdeas(); }
+  }
+
+  document.getElementById("nav-ideas").onclick=function(){ panel.classList.add("show"); loadIdeas(); };
+  panel.addEventListener("click",function(e){
+    if(e.target.classList.contains("dui-x")||e.target===panel){ panel.classList.remove("show"); return; }
+    var p=e.target.closest("[data-prod]"); if(p){ PROD=p.getAttribute("data-prod"); renderIdeas(); return; }
+    var a=e.target.closest("[data-add]"); if(a){ var id=a.getAttribute("data-add"); var idea=IDEAS.find(function(x){return x.id===id;}); if(idea) openPicker(idea); return; }
+  });
+  pick.addEventListener("click",function(e){
+    if(e.target===pick){ pick.classList.remove("show"); PENDING=null; return; }
+    var m=e.target.closest("[data-mod]"); if(m){ addToModule(+m.getAttribute("data-mod")); }
+  });
+})();
 </script>
 </body>
 </html>
