@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+/* ============================================================
+   ONE-TIME SETUP (5 minutes) — after this, nobody ever edits
+   this file again. All editing happens on the website itself
+   and syncs live for the whole team.
+
+   1. Go to https://console.firebase.google.com → "Add project"
+      (any name, you can turn OFF Google Analytics)
+   2. In the left menu: Build → Realtime Database → Create database
+      → choose location → start in TEST MODE
+   3. Click the gear icon → Project settings → scroll to "Your apps"
+      → click the </> (Web) icon → register the app (any nickname)
+   4. Firebase shows you a firebaseConfig object. Copy the values
+      into the matching fields below.
+   5. Push this file to GitHub → Vercel redeploys → done.
+
+   Optional: set EDIT_PASSCODE to any word (e.g. "team2026") so
+   only people who know it can turn on Edit mode.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "",            // ← paste from Firebase
+  authDomain: "",        // ← paste from Firebase
+  databaseURL: "",       // ← paste from Firebase (starts with https:// and ends with firebasedatabase.app)
+  projectId: "",         // ← paste from Firebase
+};
+const EDIT_PASSCODE = "";   // optional, e.g. "team2026". Leave "" for no passcode.
+
+/* ---- Starting data: used only the very first time, to seed the
+   database. After that the website is the source of truth. ---- */
+const DEFAULT_ROADMAP = {
+  title: "Product Roadmap",
+  subtitle: "One place for the whole team to see what we're building, who owns it, and where it stands.",
+  updated: "4 July 2026",
+  modules: [
+    { name: "Test Series — User Side", key: "ts-user", items: [
+      { title: "Test attempt experience", items: [
+        { title: "Timer, palette & question navigation polish", status: "progress", owner: "Frontend" },
+        { title: "Resume interrupted test", status: "planned" },
+        { title: "Mobile-friendly attempt screen", status: "planned" },
+      ]},
+      { title: "Results & analytics for students", items: [
+        { title: "Score card with sectional breakup", status: "done" },
+        { title: "Percentile & rank among batch", status: "progress", owner: "Backend" },
+        { title: "Weak-topic suggestions", status: "planned" },
+      ]},
+      { title: "Solutions view after test", status: "planned", note: "Depends on AI paper solving in Panel" },
+    ]},
+    { name: "Test Series — Panel", key: "ts-panel", items: [
+      { title: "Teacher-ready reporting", note: "Make the panel usable by teachers directly, no tech help needed", items: [
+        { title: "Batch-wise performance report", items: [
+          { title: "Report template design", status: "progress", owner: "Design" },
+          { title: "Export to PDF / Excel", status: "planned" },
+        ]},
+        { title: "Per-student report card", status: "planned" },
+        { title: "Question-level analysis (most wrong, skipped)", status: "planned" },
+        { title: "Simple teacher login & roles", status: "progress", owner: "Backend" },
+      ]},
+      { title: "AI implementation for paper solving", items: [
+        { title: "Upload paper → AI generates solutions", items: [
+          { title: "PDF / image ingestion & OCR", status: "progress", owner: "AI team" },
+          { title: "Step-wise solution generation", status: "planned" },
+          { title: "Teacher review & approve flow", status: "planned" },
+        ]},
+        { title: "Auto-tag questions by topic & difficulty", status: "planned" },
+        { title: "Answer-key verification against AI", status: "planned" },
+      ]},
+      { title: "Question bank & paper builder improvements", status: "planned" },
+    ]},
+    { name: "Preference Sheet Maker", key: "pref-sheet", items: [
+      { title: "College & course master data update", status: "progress", owner: "Data team" },
+      { title: "Drag-and-drop preference ordering", status: "planned" },
+      { title: "Rank / marks based suggestions", status: "planned" },
+      { title: "Export sheet as PDF for counselling", status: "planned" },
+    ]},
+    { name: "Seniors — User Side", key: "seniors-user", items: [
+      { title: "Browse & book sessions with seniors", status: "progress", owner: "Frontend" },
+      { title: "Chat / Q&A with assigned senior", status: "planned" },
+      { title: "Ratings & feedback after session", status: "planned" },
+    ]},
+    { name: "Seniors — Panel", key: "seniors-panel", items: [
+      { title: "Senior onboarding & verification", status: "progress", owner: "Ops" },
+      { title: "Availability & session management", status: "planned" },
+      { title: "Payout / incentive tracking", status: "planned" },
+    ]},
+  ],
+};
+</script>
+
+<style>
+:root{
+  --paper:#F6F7F9; --card:#FFFFFF; --ink:#17233A; --muted:#5C6A82;
+  --line:#E4E8EF; --line-strong:#C9D1DE;
+  --indigo:#3B5BDB; --indigo-soft:#EBEFFC;
+  --planned:#64748B; --planned-bg:#EEF1F5;
+  --progress:#9A6A12; --progress-bg:#FBF1DC;
+  --done:#1F7A4D;   --done-bg:#E3F2EA;
+  --blocked:#B03A34;--blocked-bg:#FBE7E5;
+  --radius:10px;
+  --mono:"IBM Plex Mono",monospace;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --disp:"Space Grotesk",var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+input,textarea{font:inherit;color:var(--ink)}
+:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:4px}
+
+.banner{background:#FFF7E0;border-bottom:1px solid #EAD9A0;color:#6B5410;padding:9px 24px;font-size:13.5px;text-align:center}
+.banner b{font-weight:600}
+
+header{border-bottom:1px solid var(--line);background:var(--card)}
+.head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 20px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em;margin-top:4px}
+.subtitle{color:var(--muted);max-width:640px;margin-top:6px}
+.head-meta{display:flex;flex-wrap:wrap;gap:22px;margin-top:18px;align-items:center}
+.stat{display:flex;flex-direction:column}
+.stat b{font-family:var(--disp);font-size:22px;font-weight:600}
+.stat span{font-size:12px;color:var(--muted)}
+.overall{flex:1;min-width:220px;max-width:420px}
+.overall .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+.overall .bar i{display:block;height:100%;background:var(--done);border-radius:99px;transition:width .5s ease}
+.overall label{font-size:12px;color:var(--muted)}
+.updated{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.live{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;background:var(--done-bg);color:var(--done)}
+.live.off{background:var(--planned-bg);color:var(--planned)}
+
+.layout{max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:260px 1fr;gap:24px}
+@media(max-width:860px){.layout{grid-template-columns:1fr;padding:16px}}
+
+aside{position:sticky;top:16px;align-self:start}
+@media(max-width:860px){aside{position:static}}
+.side-title{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 10px 4px}
+.mods{display:flex;flex-direction:column;gap:6px}
+@media(max-width:860px){.mods{flex-direction:row;overflow-x:auto;padding-bottom:6px}}
+.mod{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;text-align:left;width:100%;transition:border-color .15s}
+@media(max-width:860px){.mod{min-width:210px}}
+.mod:hover{border-color:var(--line-strong)}
+.mod.active{border-color:var(--indigo);box-shadow:0 0 0 1px var(--indigo)}
+.mod .name{font-weight:600;font-size:14px}
+.mod .bar{height:5px;background:var(--line);border-radius:99px;margin-top:8px;overflow:hidden}
+.mod .bar i{display:block;height:100%;background:var(--done)}
+.mod .pct{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px;display:block}
+.mod.add{border-style:dashed;color:var(--muted);text-align:center;font-size:13.5px}
+.mod.add:hover{color:var(--indigo);border-color:var(--indigo)}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
+.search{flex:1;min-width:180px;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--muted)}
+.chip{padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--muted)}
+.chip.active{border-color:var(--ink);color:var(--ink);font-weight:600}
+.chip .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.tools{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.tool{font-size:13px;color:var(--muted);padding:7px 10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.tool:hover{color:var(--ink);border-color:var(--line-strong)}
+.tool.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
+.tool.primary:hover{background:#3350C4;color:#fff}
+.tool.editing{background:var(--done);border-color:var(--done);color:#fff;font-weight:600}
+
+.module-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px}
+.module-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.module-head h2{font-family:var(--disp);font-size:20px;font-weight:600}
+.module-head .pct{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.module-head .spacer{flex:1}
+.tree{margin-top:10px}
+.node .row{display:flex;align-items:flex-start;gap:10px;padding:7px 6px;border-radius:8px}
+.node .row:hover{background:var(--paper)}
+.num{font-family:var(--mono);font-size:12px;color:var(--indigo);min-width:52px;padding-top:3px;user-select:none}
+.caret{width:18px;height:18px;flex:none;margin-top:3px;display:flex;align-items:center;justify-content:center;border-radius:5px;color:var(--muted);transition:transform .15s}
+.caret:hover{background:var(--indigo-soft);color:var(--indigo)}
+.caret.open{transform:rotate(90deg)}
+.caret.leaf{visibility:hidden}
+.node .body{flex:1;min-width:0}
+.node .title{font-weight:500;overflow-wrap:anywhere}
+.node.parent > .row .title{font-weight:600}
+.note{font-size:12.5px;color:var(--muted);margin-top:2px}
+.meta{display:flex;gap:8px;align-items:center;flex:none;padding-top:2px;flex-wrap:wrap;justify-content:flex-end}
+.owner{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px dashed var(--line-strong);padding:2px 7px;border-radius:99px}
+.pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:99px;letter-spacing:.02em}
+.pill.planned{background:var(--planned-bg);color:var(--planned)}
+.pill.progress{background:var(--progress-bg);color:var(--progress)}
+.pill.done{background:var(--done-bg);color:var(--done)}
+.pill.blocked{background:var(--blocked-bg);color:var(--blocked)}
+.mini{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.children{margin-left:26px;border-left:1px solid var(--line);padding-left:14px}
+.hidden{display:none}
+.empty{color:var(--muted);text-align:center;padding:40px 0}
+
+.acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.node .row:hover .acts, .module-head:hover .acts{opacity:1}
+@media(hover:none){.acts{opacity:.6}}
+.act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
+.act:hover{background:var(--indigo-soft);color:var(--indigo)}
+.act.danger:hover{background:var(--blocked-bg);color:var(--blocked)}
+.act svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.addline{margin:4px 0 2px 70px;font-size:13px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:8px;padding:6px 12px}
+.addline:hover{color:var(--indigo);border-color:var(--indigo)}
+
+.overlay{position:fixed;inset:0;background:rgba(23,35,58,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:100}
+.overlay.show{display:flex}
+.dialog{background:var(--card);border-radius:14px;padding:22px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(23,35,58,.25)}
+.dialog h3{font-family:var(--disp);font-size:18px;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.field input,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.field textarea{resize:vertical;min-height:56px}
+.dialog .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--line);font-size:14px}
+.btn.save{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
+
+footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);font-size:12.5px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;transition:transform .25s;z-index:200;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="banner hidden" id="banner"></div>
+
+<header>
+  <div class="head-inner">
+    <span class="eyebrow">Internal · Team Roadmap</span>
+    <h1 id="rm-title"></h1>
+    <p class="subtitle" id="rm-subtitle"></p>
+    <div class="head-meta">
+      <div class="stat"><b id="st-done">0</b><span>Done</span></div>
+      <div class="stat"><b id="st-progress">0</b><span>In progress</span></div>
+      <div class="stat"><b id="st-planned">0</b><span>Planned</span></div>
+      <div class="stat"><b id="st-blocked">0</b><span>Blocked</span></div>
+      <div class="overall">
+        <label>Overall completion — <b id="st-pct">0%</b></label>
+        <div class="bar"><i id="st-bar" style="width:0%"></i></div>
+      </div>
+      <span class="updated">Updated: <span id="rm-updated"></span></span>
+      <span class="live off" id="live">local only</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="side-title">Modules</div>
+    <div class="mods" id="mods"></div>
+  </aside>
+
+  <main>
+    <div class="controls">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Search tasks, owners…" aria-label="Search roadmap">
+      </div>
+      <button class="chip active" data-status="all">All</button>
+      <button class="chip" data-status="progress"><span class="dot" style="background:var(--progress)"></span>In progress</button>
+      <button class="chip" data-status="planned"><span class="dot" style="background:var(--planned)"></span>Planned</button>
+      <button class="chip" data-status="done"><span class="dot" style="background:var(--done)"></span>Done</button>
+      <button class="chip" data-status="blocked"><span class="dot" style="background:var(--blocked)"></span>Blocked</button>
+      <div class="tools">
+        <button class="tool" id="expand-all">Expand all</button>
+        <button class="tool" id="collapse-all">Collapse all</button>
+        <button class="tool primary" id="edit-toggle">✎ Edit</button>
+      </div>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<footer id="foot">
+  Turn on <b>Edit</b> to add modules, tasks and sub-tasks, change statuses, or delete items. Click any status pill to cycle Planned → In progress → Done → Blocked.
+</footer>
+
+<div class="overlay" id="overlay">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <h3 id="dlg-title">Edit</h3>
+    <div class="field"><label for="f-title">Title</label><input id="f-title" placeholder="e.g. AI paper solving"></div>
+    <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
+    <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
+    <div class="btns">
+      <button class="btn" id="dlg-cancel">Cancel</button>
+      <button class="btn save" id="dlg-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STATUS_ORDER = ["planned","progress","done","blocked"];
+const STATUS_LABEL = {planned:"Planned", progress:"In progress", done:"Done", blocked:"Blocked"};
+const $ = id => document.getElementById(id);
+
+let DATA = null;
+let db = null;
+let editMode = false;
+let activeModule = "all";
+let activeStatus = "all";
+let query = "";
+const collapsed = new Set();
+
+/* ---------- helpers ---------- */
+function normalize(d){
+  d = d || {};
+  d.title = d.title || "Product Roadmap";
+  d.modules = d.modules || [];
+  const walk = n => { n.items = n.items || []; n.items.forEach(walk); };
+  d.modules.forEach(m => { m.items = m.items || []; m.items.forEach(walk); });
+  return d;
+}
+function leavesOf(node){
+  if(node.items && node.items.length) return node.items.flatMap(leavesOf);
+  node.status = node.status || "planned";
+  return [node];
+}
+function pctOf(leaves){
+  if(!leaves.length) return 0;
+  const s = leaves.reduce((a,l)=> a + (l.status==="done"?1: l.status==="progress"?0.5:0), 0);
+  return Math.round(s/leaves.length*100);
+}
+function counts(leaves){
+  const c = {planned:0,progress:0,done:0,blocked:0};
+  leaves.forEach(l=>c[l.status]++);
+  return c;
+}
+function clean(d){ return JSON.parse(JSON.stringify(d)); }
+function todayStr(){
+  return new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+}
+
+/* ---------- persistence ---------- */
+const configured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL;
+function save(){
+  DATA.updated = todayStr();
+  if(db){
+    db.ref("roadmap").set(clean(DATA))
+      .catch(e => toast("Save failed: " + e.message));
+  } else {
+    renderAll();
+  }
+}
+function start(){
+  if(configured){
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.database();
+      $("live").textContent = "● live sync";
+      $("live").classList.remove("off");
+      db.ref("roadmap").on("value", snap=>{
+        const v = snap.val();
+        if(!v){ db.ref("roadmap").set(clean(normalize(DEFAULT_ROADMAP))); return; }
+        DATA = normalize(v);
+        renderAll();
+      }, err=>{
+        showBanner("Couldn't reach the database ("+err.message+"). Showing built-in data; changes won't be saved.");
+        DATA = normalize(clean(DEFAULT_ROADMAP));
+        db = null; renderAll();
+      });
+    }catch(e){
+      showBanner("Firebase setup problem: "+e.message);
+      DATA = normalize(clean(DEFAULT_ROADMAP));
+      db = null; renderAll();
+    }
+  } else {
+    DATA = normalize(clean(DEFAULT_ROADMAP));
+    showBanner("Live team editing is not connected yet — changes here stay only on your screen. Open index.html and follow the 5-minute setup at the top (or see the README).");
+    renderAll();
+  }
+}
+function showBanner(msg){
+  $("banner").textContent = msg;
+  $("banner").classList.remove("hidden");
+}
+
+/* ---------- filtering ---------- */
+function nodeMatches(node){
+  const text = (node.title+" "+(node.owner||"")+" "+(node.note||"")).toLowerCase();
+  const qOk = !query || text.includes(query);
+  const lv = leavesOf(node);
+  if(node.items && node.items.length){
+    const childHit = node.items.some(nodeMatches);
+    return childHit || (qOk && (activeStatus==="all" || lv.some(l=>l.status===activeStatus)));
+  }
+  return qOk && (activeStatus==="all" || node.status===activeStatus);
+}
+
+/* ---------- dialog ---------- */
+let dlgOnSave = null;
+function openDialog(title, values, onSave){
+  $("dlg-title").textContent = title;
+  $("f-title").value = values.title || "";
+  $("f-owner").value = values.owner || "";
+  $("f-note").value = values.note || "";
+  $("f-owner-wrap").style.display = values.hideExtras ? "none" : "";
+  $("f-note-wrap").style.display = values.hideExtras ? "none" : "";
+  dlgOnSave = onSave;
+  $("overlay").classList.add("show");
+  setTimeout(()=>$("f-title").focus(), 50);
+}
+$("dlg-cancel").onclick = ()=> $("overlay").classList.remove("show");
+$("overlay").addEventListener("click", e=>{ if(e.target===$("overlay")) $("overlay").classList.remove("show"); });
+$("dlg-save").onclick = ()=>{
+  const t = $("f-title").value.trim();
+  if(!t){ $("f-title").focus(); return; }
+  $("overlay").classList.remove("show");
+  dlgOnSave && dlgOnSave({title:t, owner:$("f-owner").value.trim(), note:$("f-note").value.trim()});
+};
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") $("overlay").classList.remove("show");
+  if(e.key==="Enter" && $("overlay").classList.contains("show") && e.target.tagName!=="TEXTAREA") $("dlg-save").click();
+});
+
+/* ---------- icons ---------- */
+const ICONS = {
+  pencil:'<svg viewBox="0 0 24 24"><path d="M17 3l4 4L8 20l-5 1 1-5L17 3z"/></svg>',
+  plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+};
+function actBtn(icon, label, danger, fn){
+  const b = document.createElement("button");
+  b.className = "act" + (danger?" danger":"");
+  b.title = label; b.setAttribute("aria-label", label);
+  b.innerHTML = ICONS[icon];
+  b.onclick = e => { e.stopPropagation(); fn(); };
+  return b;
+}
+
+/* ---------- edit actions ---------- */
+function applyFields(node, v){
+  node.title = v.title;
+  if(v.owner) node.owner = v.owner; else delete node.owner;
+  if(v.note) node.note = v.note; else delete node.note;
+}
+function addTaskTo(container, label){
+  openDialog(label, {}, v=>{
+    const n = {title:v.title, status:"planned"};
+    if(v.owner) n.owner = v.owner;
+    if(v.note) n.note = v.note;
+    container.items = container.items || [];
+    container.items.push(n);
+    if(container.status) delete container.status; // becomes a parent
+    save(); toast("Added");
+  });
+}
+
+/* ---------- render ---------- */
+function renderHeader(){
+  $("rm-title").textContent = DATA.title;
+  $("rm-subtitle").textContent = DATA.subtitle||"";
+  $("rm-updated").textContent = DATA.updated||"—";
+  document.title = DATA.title;
+  const leaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+  const c = counts(leaves);
+  $("st-done").textContent = c.done;
+  $("st-progress").textContent = c.progress;
+  $("st-planned").textContent = c.planned;
+  $("st-blocked").textContent = c.blocked;
+  const p = pctOf(leaves);
+  $("st-pct").textContent = p+"%";
+  $("st-bar").style.width = p+"%";
+}
+
+function renderSidebar(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  const allLeaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+  const all = document.createElement("button");
+  all.className = "mod"+(activeModule==="all"?" active":"");
+  all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules · ${allLeaves.length} tasks</span>`;
+  all.onclick = ()=>{activeModule="all"; renderSidebar(); renderContent();};
+  wrap.appendChild(all);
+  DATA.modules.forEach(m=>{
+    const lv = m.items.flatMap(leavesOf);
+    const p = pctOf(lv);
+    const b = document.createElement("button");
+    b.className = "mod"+(activeModule===m.key?" active":"");
+    b.innerHTML = `<span class="name"></span>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <span class="pct">${p}% · ${lv.length} tasks</span>`;
+    b.querySelector(".name").textContent = m.name;
+    b.onclick = ()=>{activeModule=m.key; renderSidebar(); renderContent();};
+    wrap.appendChild(b);
+  });
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "mod add";
+    add.textContent = "＋ Add module";
+    add.onclick = ()=> openDialog("New module (big level)", {hideExtras:true}, v=>{
+      const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+      DATA.modules.push({name:v.title, key, items:[]});
+      activeModule = key;
+      save(); toast("Module added");
+    });
+    wrap.appendChild(add);
+  }
+}
+
+function nodeEl(node, parentArr, idx, numPath, modKey){
+  if(!nodeMatches(node)) return null;
+  const isParent = node.items && node.items.length;
+  const colKey = modKey+":"+numPath;
+  const isCollapsed = collapsed.has(colKey);
+
+  const el = document.createElement("div");
+  el.className = "node"+(isParent?" parent":"");
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const caret = document.createElement("button");
+  caret.className = "caret"+(isParent?(isCollapsed?"":" open"):" leaf");
+  caret.setAttribute("aria-label","Toggle sub-items");
+  caret.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg>';
+
+  const num = document.createElement("span");
+  num.className = "num"; num.textContent = numPath;
+
+  const body = document.createElement("div");
+  body.className = "body";
+  const titleEl = document.createElement("div");
+  titleEl.className = "title"; titleEl.textContent = node.title;
+  body.appendChild(titleEl);
+  if(node.note){
+    const noteEl = document.createElement("div");
+    noteEl.className = "note"; noteEl.textContent = node.note;
+    body.appendChild(noteEl);
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  if(node.owner){
+    const o = document.createElement("span");
+    o.className = "owner"; o.textContent = node.owner;
+    meta.appendChild(o);
+  }
+  if(isParent){
+    const lv = leavesOf(node);
+    const mini = document.createElement("span");
+    mini.className = "mini";
+    mini.textContent = `${counts(lv).done}/${lv.length} done · ${pctOf(lv)}%`;
+    meta.appendChild(mini);
+  } else {
+    const pill = document.createElement("button");
+    pill.className = "pill "+node.status;
+    pill.textContent = STATUS_LABEL[node.status];
+    pill.title = "Click to change status";
+    pill.onclick = ()=>{
+      node.status = STATUS_ORDER[(STATUS_ORDER.indexOf(node.status)+1)%STATUS_ORDER.length];
+      save();
+    };
+    meta.appendChild(pill);
+  }
+
+  if(editMode){
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
+    acts.appendChild(actBtn("pencil","Edit",false, ()=>
+      openDialog("Edit task", node, v=>{ applyFields(node, v); save(); })));
+    acts.appendChild(actBtn("trash","Delete",true, ()=>{
+      const lv = isParent ? leavesOf(node).length : 0;
+      const msg = isParent ? `Delete “${node.title}” and its ${lv} sub-task(s)?` : `Delete “${node.title}”?`;
+      if(confirm(msg)){ parentArr.splice(idx,1); save(); toast("Deleted"); }
+    }));
+    meta.appendChild(acts);
+  }
+
+  row.append(caret, num, body, meta);
+  el.appendChild(row);
+
+  if(isParent){
+    const kids = document.createElement("div");
+    kids.className = "children"+(isCollapsed?" hidden":"");
+    node.items.forEach((child,i)=>{
+      const c = nodeEl(child, node.items, i, numPath+"."+(i+1), modKey);
+      if(c) kids.appendChild(c);
+    });
+    el.appendChild(kids);
+    caret.onclick = ()=>{
+      kids.classList.toggle("hidden");
+      caret.classList.toggle("open");
+      if(collapsed.has(colKey)) collapsed.delete(colKey); else collapsed.add(colKey);
+    };
+  }
+  return el;
+}
+
+function renderContent(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const mods = DATA.modules.filter(m => activeModule==="all" || m.key===activeModule);
+  let shown = 0;
+  mods.forEach(m=>{
+    const lv = m.items.flatMap(leavesOf);
+    const block = document.createElement("section");
+    block.className = "module-block";
+    const head = document.createElement("div");
+    head.className = "module-head";
+    const h2 = document.createElement("h2"); h2.textContent = m.name;
+    const pct = document.createElement("span"); pct.className="pct";
+    pct.textContent = pctOf(lv)+"% complete";
+    head.append(h2, pct);
+    if(editMode){
+      const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
+      const acts = document.createElement("div"); acts.className = "acts";
+      acts.appendChild(actBtn("pencil","Rename module",false, ()=>
+        openDialog("Rename module", {title:m.name, hideExtras:true}, v=>{ m.name = v.title; save(); })));
+      acts.appendChild(actBtn("trash","Delete module",true, ()=>{
+        if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
+          DATA.modules.splice(DATA.modules.indexOf(m),1);
+          if(activeModule===m.key) activeModule="all";
+          save(); toast("Module deleted");
+        }
+      }));
+      head.appendChild(acts);
+    }
+    block.appendChild(head);
+
+    const tree = document.createElement("div");
+    tree.className = "tree";
+    let any = false;
+    m.items.forEach((item,i)=>{
+      const el = nodeEl(item, m.items, i, String(i+1), m.key);
+      if(el){ tree.appendChild(el); any = true; }
+    });
+    block.appendChild(tree);
+    if(editMode){
+      const add = document.createElement("button");
+      add.className = "addline";
+      add.textContent = "＋ Add task to "+m.name;
+      add.onclick = ()=> addTaskTo(m, "New task in “"+m.name+"”");
+      block.appendChild(add);
+      wrap.appendChild(block); shown++;
+    } else if(any){
+      wrap.appendChild(block); shown++;
+    }
+  });
+  if(!shown){
+    wrap.innerHTML = '<div class="empty">Nothing matches this filter. Clear the search or choose “All”.</div>';
+  }
+}
+
+function renderAll(){ renderHeader(); renderSidebar(); renderContent(); }
+
+/* ---------- controls ---------- */
+document.querySelectorAll(".chip").forEach(ch=>{
+  ch.onclick = ()=>{
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+    ch.classList.add("active");
+    activeStatus = ch.dataset.status;
+    renderContent();
+  };
+});
+$("search").addEventListener("input", e=>{
+  query = e.target.value.trim().toLowerCase();
+  renderContent();
+});
+$("expand-all").onclick = ()=>{ collapsed.clear(); renderContent(); };
+$("collapse-all").onclick = ()=>{
+  DATA.modules.forEach(m=>{
+    const mark = (n, path)=>{ if(n.items && n.items.length){ collapsed.add(m.key+":"+path); n.items.forEach((c,i)=>mark(c, path+"."+(i+1))); } };
+    m.items.forEach((n,i)=>mark(n, String(i+1)));
+  });
+  renderContent();
+};
+$("edit-toggle").onclick = ()=>{
+  if(!editMode && EDIT_PASSCODE && sessionStorage.getItem("rm-ok")!=="1"){
+    const p = prompt("Enter the edit passcode:");
+    if(p!==EDIT_PASSCODE){ toast("Wrong passcode"); return; }
+    sessionStorage.setItem("rm-ok","1");
+  }
+  editMode = !editMode;
+  const b = $("edit-toggle");
+  b.textContent = editMode ? "✓ Editing — click to finish" : "✎ Edit";
+  b.classList.toggle("editing", editMode);
+  b.classList.toggle("primary", !editMode);
+  renderAll();
+};
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove("show"), 3000);
+}
+
+start();
+</script>
+</body>
+</html>
