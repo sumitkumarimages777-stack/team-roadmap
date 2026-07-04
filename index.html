@@ -107,6 +107,29 @@ const DEFAULT_OKRS = {
     ]},
   ],
 };
+
+const DEFAULT_CONTENT = {
+  sections: [
+    { name: "CUET UG", key: "cuet-ug", budget: "₹2,00,000", tasks: [
+      { title: "Changes on reports (to be done by Pancham)", start: "2nd July", deadline: "3rd July", status: "progress", owner: "Pancham" },
+      { title: "Interviewing interns — batch 3", start: "4th July", deadline: "12th July", status: "planned" },
+      { title: "Meet with Sumit", start: "10th July", deadline: "10th July", status: "planned" },
+      { title: "CUET drafted (interns)", start: "13th July", deadline: "31st July", status: "planned" },
+      { title: "CUET verified by interns", deadline: "7th August", status: "planned" },
+      { title: "PYQs 2025 (error free)", start: "13th July", deadline: "7th August", status: "planned" },
+      { title: "PYQs 2026", deadline: "15th August", status: "planned" },
+    ]},
+    { name: "CUET PG", key: "cuet-pg", tasks: [
+      { title: "Upload all PYQs + mocks", status: "planned" },
+    ]},
+    { name: "NEET", key: "neet", tasks: [
+      { title: "Upload NEET PYQs", start: "4th July", deadline: "4th July", status: "progress" },
+      { title: "Rewrite solutions with AI", start: "6th July", deadline: "15th July", status: "planned" },
+      { title: "Update meet with Sumit", start: "10th July", deadline: "10th July", status: "planned" },
+      { title: "Final verification by Mannat", start: "7th July", deadline: "19th July", status: "planned", owner: "Mannat" },
+    ]},
+  ],
+};
 </script>
 
 <style>
@@ -133,9 +156,20 @@ input,textarea{font:inherit;color:var(--ink)}
 
 header{border-bottom:1px solid var(--line);background:var(--card)}
 .head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 22px;position:relative}
-.corner-nav{position:absolute;top:28px;right:24px;font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;background:var(--indigo);border-radius:99px;padding:9px 18px;box-shadow:0 2px 10px rgba(59,91,219,.25);transition:background .15s}
+.corner-nav-wrap{position:absolute;top:28px;right:24px;display:flex;gap:8px}
+.corner-nav{font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;background:var(--indigo);border-radius:99px;padding:9px 16px;box-shadow:0 2px 10px rgba(59,91,219,.25);transition:background .15s}
 .corner-nav:hover{background:#3350C4}
-@media(max-width:640px){.corner-nav{position:static;display:inline-block;margin-bottom:14px}}
+.corner-nav.ghost{background:var(--card);color:var(--indigo);border:1.5px solid var(--indigo);box-shadow:none}
+.corner-nav.ghost:hover{background:var(--indigo-soft)}
+@media(max-width:760px){.corner-nav-wrap{position:static;margin-bottom:14px}}
+
+/* content roadmap rows */
+.ct-row{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:8px}
+.ct-row:hover{background:var(--paper)}
+.ct-dates{display:flex;gap:16px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
+.ct-dates b{color:var(--ink);font-weight:500}
+.budget{font-family:var(--mono);font-size:12px;color:var(--done);background:var(--done-bg);padding:3px 10px;border-radius:99px}
+@media(max-width:600px){.ct-row{flex-wrap:wrap}.ct-row .meta{width:100%;justify-content:flex-start;padding-left:62px}}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em;margin-top:4px}
 .subtitle{color:var(--muted);max-width:640px;margin-top:6px}
@@ -275,7 +309,10 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 
 <header>
   <div class="head-inner">
-    <button class="corner-nav" id="nav-switch">OKRs →</button>
+    <div class="corner-nav-wrap">
+      <button class="corner-nav ghost" id="nav-a"></button>
+      <button class="corner-nav" id="nav-b"></button>
+    </div>
     <span class="eyebrow">Internal · Team Workspace</span>
     <h1 id="rm-title"></h1>
     <p class="subtitle" id="rm-subtitle"></p>
@@ -325,6 +362,11 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
+    <div class="field-row" id="f-dates-wrap">
+      <div class="field"><label for="f-start">Start (optional)</label><input id="f-start" placeholder="e.g. 4th July"></div>
+      <div class="field"><label for="f-deadline">Deadline (optional)</label><input id="f-deadline" placeholder="e.g. 12th July"></div>
+    </div>
+    <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. ₹2,00,000"></div>
     <div class="field-row" id="f-metric-wrap">
       <div class="field"><label for="f-current">Current</label><input id="f-current" type="number" step="any"></div>
       <div class="field"><label for="f-target">Target</label><input id="f-target" type="number" step="any"></div>
@@ -345,8 +387,8 @@ const STATUS_ORDER = ["planned","progress","done","blocked"];
 const STATUS_LABEL = {planned:"Planned", progress:"In progress", done:"Done", blocked:"Blocked"};
 const $ = id => document.getElementById(id);
 
-let DATA = null, OKRS = null, db = null;
-let view = "roadmap";           // "roadmap" | "okr"
+let DATA = null, OKRS = null, CONTENT = null, db = null;
+let view = "roadmap";           // "roadmap" | "okr" | "content"
 let editMode = false;
 let activeModule = "all";
 let activeCycle = null;
@@ -372,6 +414,16 @@ function normalizeOkrs(o){
   });
   return o;
 }
+function normalizeContent(c){
+  c = c || {};
+  c.sections = c.sections || [];
+  c.sections.forEach(s => {
+    s.tasks = s.tasks || [];
+    s.tasks.forEach(t => t.status = t.status || "planned");
+  });
+  return c;
+}
+let activeSection = "all";
 function leavesOf(node){
   if(node.items && node.items.length) return node.items.flatMap(leavesOf);
   node.status = node.status || "planned";
@@ -417,7 +469,7 @@ let lastSnapshot = "";
 
 async function pushAll(){
   if(!db) { renderAll(); return; }
-  const payload = { roadmap: clean(DATA), okrs: clean(OKRS) };
+  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT) };
   saving = true;
   try{
     const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(payload) });
@@ -428,6 +480,7 @@ async function pushAll(){
 }
 function saveRoadmap(){ DATA.updated = todayStr(); renderAll(); pushAll(); }
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
+function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
 
 async function fetchAll(){
   const r = await fetch(BIN_URL + "/latest", { headers: { "X-Access-Key": JSONBIN_CONFIG.apiKey, "X-Bin-Meta": "false" } });
@@ -439,11 +492,12 @@ async function refresh(showMsg){
   try{
     const rec = await fetchAll();
     if(rec && rec.roadmap){
-      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs });
+      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content });
       if(snap !== lastSnapshot){
         lastSnapshot = snap;
         DATA = normalize(rec.roadmap);
         OKRS = normalizeOkrs(rec.okrs);
+        CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
         renderAll();
         if(showMsg) toast("Refreshed — you're seeing the latest");
       } else if(showMsg) toast("Already up to date");
@@ -454,6 +508,7 @@ async function refresh(showMsg){
 async function start(){
   DATA = normalize(clean(DEFAULT_ROADMAP));
   OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
+  CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
   if(configured){
     try{
       const rec = await fetchAll();
@@ -461,7 +516,12 @@ async function start(){
       if(rec && rec.roadmap){
         DATA = normalize(rec.roadmap);
         OKRS = normalizeOkrs(rec.okrs);
-        lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS) });
+        if(rec.content){
+          CONTENT = normalizeContent(rec.content);
+          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT) });
+        } else {
+          await pushAll();   // existing bin from before: add the content section to it
+        }
       } else {
         await pushAll();   // first run: seed the bin with the defaults
       }
@@ -500,11 +560,16 @@ function openDialog(title, values, onSave, opts={}){
   $("f-target").value = values.target ?? "";
   $("f-unit").value = values.unit || "";
   $("f-invert").checked = !!values.invert;
+  $("f-start").value = values.start || "";
+  $("f-deadline").value = values.deadline || "";
+  $("f-budget").value = values.budget || "";
   $("f-title-wrap").style.display = opts.hideTitle ? "none" : "";
   $("f-owner-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-metric-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
+  $("f-dates-wrap").style.display = opts.dates ? "flex" : "none";
+  $("f-budget-wrap").style.display = opts.budget ? "" : "none";
   dlgOnSave = onSave;
   $("overlay").classList.add("show");
   setTimeout(()=>{ (opts.hideTitle ? $("f-current") : $("f-title")).focus(); }, 50);
@@ -524,6 +589,9 @@ $("dlg-save").onclick = ()=>{
     target: $("f-target").value,
     unit: $("f-unit").value.trim(),
     invert: $("f-invert").checked,
+    start: $("f-start").value.trim(),
+    deadline: $("f-deadline").value.trim(),
+    budget: $("f-budget").value.trim(),
   });
 };
 document.addEventListener("keydown", e=>{
@@ -548,9 +616,11 @@ function actBtn(icon, label, danger, fn){
 
 /* ---------- shared header ---------- */
 function renderHeader(){
-  $("rm-title").textContent = view==="okr" ? "Team OKRs" : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
+    : view==="content"
+    ? "Content work by exam — what's being made, who owns it, and when it's due."
     : (DATA.subtitle||"");
   document.title = $("rm-title").textContent;
   const stats = $("stats");
@@ -575,6 +645,12 @@ function renderHeader(){
       mkStat(krs.filter(k=>krPct(k)<30).length,"Needs attention"),
     );
     updated = OKRS.updated || "—";
+  } else if(view==="content"){
+    const tasks = CONTENT.sections.flatMap(s=>s.tasks);
+    const c = counts(tasks);
+    pct = pctOf(tasks);
+    stats.append(mkStat(c.done,"Done"), mkStat(c.progress,"In progress"), mkStat(c.planned,"Planned"), mkStat(c.blocked,"Blocked"));
+    updated = CONTENT.updated || "—";
   } else {
     const leaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
     const c = counts(leaves);
@@ -974,20 +1050,190 @@ function renderContentOkr(){
   }
 }
 
+/* ================================================================
+   EDUCATIONAL CONTENT VIEW
+   ================================================================ */
+function renderSidebarContent(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Exams";
+  const allTasks = CONTENT.sections.flatMap(s=>s.tasks);
+  const all = document.createElement("button");
+  all.className = "mod"+(activeSection==="all"?" active":"");
+  all.innerHTML = `<span class="name">All exams</span><span class="pct">${CONTENT.sections.length} sections · ${allTasks.length} tasks</span>`;
+  all.onclick = ()=>{activeSection="all"; renderAll();};
+  wrap.appendChild(all);
+  CONTENT.sections.forEach(s=>{
+    const p = pctOf(s.tasks);
+    const b = document.createElement("button");
+    b.className = "mod"+(activeSection===s.key?" active":"");
+    b.innerHTML = `<span class="name"></span>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <span class="pct">${p}% · ${s.tasks.length} tasks</span>`;
+    b.querySelector(".name").textContent = s.name;
+    b.onclick = ()=>{activeSection=s.key; renderAll();};
+    wrap.appendChild(b);
+  });
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "mod add";
+    add.textContent = "＋ Add exam / section";
+    add.onclick = ()=> openDialog("New section", {}, v=>{
+      const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+      const s = {name:v.title, key, tasks:[]};
+      if(v.budget) s.budget = v.budget;
+      CONTENT.sections.push(s);
+      activeSection = key;
+      saveContent(); toast("Section added");
+    }, {hideExtras:true, budget:true});
+    wrap.appendChild(add);
+  }
+}
+
+function ctTaskEl(task, sec, ti){
+  const row = document.createElement("div");
+  row.className = "ct-row";
+  const num = document.createElement("span");
+  num.className = "num"; num.textContent = ti+1;
+  const body = document.createElement("div");
+  body.className = "body";
+  const t = document.createElement("div");
+  t.className = "title"; t.textContent = task.title;
+  body.appendChild(t);
+  if(task.note){
+    const n = document.createElement("div"); n.className="note"; n.textContent = task.note;
+    body.appendChild(n);
+  }
+  if(task.start || task.deadline){
+    const d = document.createElement("div");
+    d.className = "ct-dates";
+    d.innerHTML = (task.start?`<span>Start: <b></b></span>`:"") + (task.deadline?`<span>Deadline: <b></b></span>`:"");
+    const bs = d.querySelectorAll("b");
+    let bi = 0;
+    if(task.start) bs[bi++].textContent = task.start;
+    if(task.deadline) bs[bi].textContent = task.deadline;
+    body.appendChild(d);
+  }
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  if(task.owner){
+    const o = document.createElement("span"); o.className="owner"; o.textContent = task.owner;
+    meta.appendChild(o);
+  }
+  const pill = document.createElement("button");
+  pill.className = "pill "+task.status;
+  pill.textContent = STATUS_LABEL[task.status];
+  pill.title = "Click to change status";
+  pill.onclick = ()=>{
+    task.status = STATUS_ORDER[(STATUS_ORDER.indexOf(task.status)+1)%STATUS_ORDER.length];
+    saveContent();
+  };
+  meta.appendChild(pill);
+  if(editMode){
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    acts.appendChild(actBtn("pencil","Edit task",false, ()=>
+      openDialog("Edit task", task, v=>{
+        applyFields(task, v);
+        if(v.start) task.start = v.start; else delete task.start;
+        if(v.deadline) task.deadline = v.deadline; else delete task.deadline;
+        saveContent();
+      }, {dates:true})));
+    acts.appendChild(actBtn("trash","Delete task",true, ()=>{
+      if(confirm(`Delete “${task.title}”?`)){ sec.tasks.splice(ti,1); saveContent(); toast("Deleted"); }
+    }));
+    meta.appendChild(acts);
+  }
+  row.append(num, body, meta);
+  return row;
+}
+
+function renderContentContent(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const secs = CONTENT.sections.filter(s => activeSection==="all" || s.key===activeSection);
+  if(!secs.length){
+    wrap.innerHTML = '<div class="empty">No sections yet. '+(editMode?'Add an exam from the left.':'Turn on Edit to add your first exam section.')+'</div>';
+    return;
+  }
+  secs.forEach(s=>{
+    const block = document.createElement("section");
+    block.className = "module-block";
+    const head = document.createElement("div");
+    head.className = "module-head";
+    const h2 = document.createElement("h2"); h2.textContent = s.name;
+    const pct = document.createElement("span"); pct.className="pct";
+    pct.textContent = pctOf(s.tasks)+"% complete";
+    head.append(h2, pct);
+    if(s.budget){
+      const b = document.createElement("span"); b.className="budget";
+      b.textContent = "Budget: "+s.budget;
+      head.appendChild(b);
+    }
+    if(editMode){
+      const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
+      const acts = document.createElement("div"); acts.className = "acts";
+      acts.appendChild(actBtn("pencil","Edit section name / budget",false, ()=>
+        openDialog("Edit section", {title:s.name, budget:s.budget}, v=>{
+          s.name = v.title;
+          if(v.budget) s.budget = v.budget; else delete s.budget;
+          saveContent();
+        }, {hideExtras:true, budget:true})));
+      acts.appendChild(actBtn("trash","Delete section",true, ()=>{
+        if(confirm(`Delete “${s.name}” and its ${s.tasks.length} task(s)?`)){
+          CONTENT.sections.splice(CONTENT.sections.indexOf(s),1);
+          if(activeSection===s.key) activeSection="all";
+          saveContent(); toast("Section deleted");
+        }
+      }));
+      head.appendChild(acts);
+    }
+    block.appendChild(head);
+
+    const list = document.createElement("div");
+    list.className = "tree";
+    s.tasks.forEach((t,ti)=> list.appendChild(ctTaskEl(t, s, ti)));
+    block.appendChild(list);
+
+    if(editMode){
+      const add = document.createElement("button");
+      add.className = "addline";
+      add.textContent = "＋ Add task to "+s.name;
+      add.onclick = ()=> openDialog("New task in “"+s.name+"”", {}, v=>{
+        const t = {title:v.title, status:"planned"};
+        if(v.owner) t.owner = v.owner;
+        if(v.note) t.note = v.note;
+        if(v.start) t.start = v.start;
+        if(v.deadline) t.deadline = v.deadline;
+        s.tasks.push(t); saveContent(); toast("Task added");
+      }, {dates:true});
+      block.appendChild(add);
+    }
+    wrap.appendChild(block);
+  });
+}
+
 /* ---------- render dispatcher ---------- */
 function renderAll(){
-  if(!DATA || !OKRS) return;
+  if(!DATA || !OKRS || !CONTENT) return;
   renderHeader();
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
-  $("nav-switch").textContent = view==="roadmap" ? "OKRs →" : "← Workspace";
-  $("nav-switch").title = view==="roadmap" ? "See this cycle's objectives and key results" : "Back to the product roadmap";
+  const nav = {
+    roadmap: [{label:"Content Roadmap →", to:"content"}, {label:"OKRs →", to:"okr"}],
+    content: [{label:"← Workspace", to:"roadmap"}, {label:"OKRs →", to:"okr"}],
+    okr:     [{label:"← Workspace", to:"roadmap"}, {label:"Content Roadmap →", to:"content"}],
+  }[view];
+  $("nav-a").textContent = nav[0].label; $("nav-a").dataset.to = nav[0].to;
+  $("nav-b").textContent = nav[1].label; $("nav-b").dataset.to = nav[1].to;
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
+  else if(view==="content"){ renderSidebarContent(); renderContentContent(); }
   else { renderSidebarOkr(); renderContentOkr(); }
 }
 
 /* ---------- controls ---------- */
-$("nav-switch").onclick = ()=>{ view = view==="roadmap" ? "okr" : "roadmap"; renderAll(); };
+$("nav-a").onclick = ()=>{ view = $("nav-a").dataset.to; renderAll(); };
+$("nav-b").onclick = ()=>{ view = $("nav-b").dataset.to; renderAll(); };
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
