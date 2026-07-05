@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report a Bug — DU Buddy</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+/* ============ SETUP ============
+   Paste the SAME two values used in your team tool:
+   - BUGS_BIN_ID: the bin you created with {"tickets": []}
+   - API_KEY: your JSONBin Access Key
+   Host this file anywhere (e.g. add it to the same Vercel repo —
+   it becomes yoursite.vercel.app/report-bug.html) and link to it
+   from the student website. */
+const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
+const API_KEY = "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";
+const PRODUCTS = ["Test Series", "Preference Sheet Maker", "Seniors / Mentorship", "PG Booking", "Website / App", "Other"];
+</script>
+<style>
+:root{
+  --paper:#F6F7F9; --card:#fff; --ink:#17233A; --muted:#5C6A82;
+  --line:#E4E8EF; --indigo:#3B5BDB; --indigo-soft:#EBEFFC;
+  --done:#1F7A4D; --done-bg:#E3F2EA; --err:#B03A34; --err-bg:#FBE7E5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.55;display:flex;justify-content:center;padding:28px 16px}
+.wrap{width:100%;max-width:520px}
+h1{font-family:"Space Grotesk",sans-serif;font-size:26px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:6px 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 5px;font-weight:600}
+label:first-child{margin-top:0}
+input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font:inherit;color:var(--ink)}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--indigo);outline-offset:1px}
+button{width:100%;margin-top:20px;padding:13px;border:none;border-radius:10px;background:var(--indigo);color:#fff;font:inherit;font-weight:600;font-size:15.5px;cursor:pointer}
+button:hover{background:#3350C4}
+button:disabled{opacity:.6;cursor:default}
+.msg{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:14px;display:none}
+.msg.ok{display:block;background:var(--done-bg);color:var(--done)}
+.msg.err{display:block;background:var(--err-bg);color:var(--err)}
+.foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐞 Report a bug or issue</h1>
+  <p class="sub">Found something broken or confusing? Tell us — it goes straight to the team's board.</p>
+  <div class="card">
+    <label for="f-title">What's the problem? *</label>
+    <input id="f-title" maxlength="120" placeholder="e.g. Test timer freezes on question 45">
+    <label for="f-product">Where did it happen?</label>
+    <select id="f-product"></select>
+    <label for="f-desc">Details (what did you do, what went wrong?)</label>
+    <textarea id="f-desc" maxlength="1000" placeholder="Steps to reproduce, what you expected, what happened instead…"></textarea>
+    <label for="f-name">Your name (optional)</label>
+    <input id="f-name" maxlength="60" placeholder="So we can follow up">
+    <button id="send">Submit report</button>
+    <div class="msg" id="msg"></div>
+  </div>
+  <p class="foot">DU Buddy · your report is shared only with our team</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+PRODUCTS.forEach(pd=>{
+  const o = document.createElement("option");
+  o.value = pd; o.textContent = pd;
+  $("f-product").appendChild(o);
+});
+const URL_B = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
+
+function show(kind, text){
+  const m = $("msg");
+  m.className = "msg " + kind;
+  m.textContent = text;
+}
+
+$("send").onclick = async ()=>{
+  const title = $("f-title").value.trim();
+  if(!title){ show("err","Please describe the problem in one line first."); $("f-title").focus(); return; }
+  if(!BUGS_BIN_ID){ show("err","This form isn't connected yet — the site admin needs to finish setup."); return; }
+  const btn = $("send");
+  btn.disabled = true; btn.textContent = "Sending…";
+  try{
+    // read current tickets, append ours, write back
+    const r1 = await fetch(URL_B + "/latest", { headers: { "X-Access-Key": API_KEY, "X-Bin-Meta": "false" } });
+    if(!r1.ok) throw new Error("HTTP "+r1.status);
+    const rec = await r1.json();
+    const tickets = Array.isArray(rec.tickets) ? rec.tickets : [];
+    tickets.push({
+      id: "bg-" + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      title: title,
+      note: $("f-desc").value.trim(),
+      area: $("f-product").value,
+      reporter: $("f-name").value.trim() || "Student",
+      source: "student",
+      col: "todo",
+      created: new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}),
+    });
+    const r2 = await fetch(URL_B, {
+      method: "PUT",
+      headers: { "Content-Type":"application/json", "X-Access-Key": API_KEY },
+      body: JSON.stringify({ tickets: tickets, updated: new Date().toISOString() }),
+    });
+    if(!r2.ok) throw new Error("HTTP "+r2.status);
+    show("ok","Thank you! Your report reached the team. 🙌");
+    $("f-title").value = ""; $("f-desc").value = ""; $("f-name").value = "";
+  }catch(e){
+    show("err","Couldn't send right now ("+e.message+"). Please try again in a minute.");
+  }
+  btn.disabled = false; btn.textContent = "Submit report";
+};
+</script>
+</body>
+</html>

@@ -36,6 +36,14 @@ const EDIT_PASSCODE = "dubuddy2026";   // change this to any word your team pref
       to ImgBB and only the link is saved in your data. */
 const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
 
+/* Bugs & student tickets (one-time, ~2 min):
+   Bugs live in their OWN bin so the public student report form can
+   never touch your roadmap/OKR data.
+   1. On jsonbin.io click "Create Bin", type   {"tickets": []}   and save
+   2. Copy that bin's ID from the URL and paste it below
+   3. Put the same ID into report-bug.html (the student form) too */
+const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
+
 /* ---- Seed data: used only the first time, to fill the database ---- */
 const DEFAULT_ROADMAP = {
   title: "Product Roadmap",
@@ -141,6 +149,13 @@ const DEFAULT_CONTENT = {
 const DEFAULT_TEAM_IDEAS = {
   items: [
     { id: "ti-sample", title: "Example: dark mode for the test attempt screen", note: "Students revise late at night; a dark theme would reduce eye strain. (Sample idea — delete me.)", area: "Test Series", owner: "Sample", stage: "new", votes: 0, created: "5 July 2026" },
+  ],
+};
+
+const DEFAULT_DEV = {
+  cards: [
+    { id: "dv-1", title: "Example: percentile & rank calculation", note: "Backend logic for batch-wise percentile. (Sample card - delete me.)", owner: "Backend", col: "progress" },
+    { id: "dv-2", title: "Example: report PDF export", owner: "Frontend", col: "todo" },
   ],
 };
 </script>
@@ -353,6 +368,29 @@ aside{position:sticky;top:16px;align-self:start}
 .photo-strip img{width:52px;height:52px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:zoom-in;display:block}
 .lightbox{position:fixed;inset:0;background:rgba(10,15,25,.82);display:flex;align-items:center;justify-content:center;z-index:300;cursor:zoom-out;padding:24px}
 .lightbox img{max-width:96%;max-height:96%;border-radius:10px;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+
+/* kanban (Development + Bugs) */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:1100px){.kanban{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.kanban{grid-template-columns:1fr}}
+.kcol{background:#EEF0F4;border-radius:12px;padding:10px;min-height:120px}
+.kcol-head{display:flex;align-items:center;gap:8px;padding:4px 6px 8px}
+.kcol-head b{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kcol-head .cnt{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+.kcol.kdone .kcol-head b{color:var(--done)}
+.kcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.kcard .title{font-weight:500;font-size:14px;overflow-wrap:anywhere}
+.kcard .note{margin-top:3px}
+.kcard-meta{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+.kmove{display:flex;gap:2px;margin-left:auto}
+.kmove button{width:24px;height:24px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center}
+.kmove button:hover:not(:disabled){border-color:var(--indigo);color:var(--indigo)}
+.kmove button:disabled{opacity:.3;cursor:default}
+.src{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:99px}
+.src.student{background:#FBEBDD;color:#A05A16}
+.src.team{background:var(--indigo-soft);color:var(--indigo)}
+.kadd{width:100%;font-size:12.5px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:8px;padding:6px}
+.kadd:hover{color:var(--indigo);border-color:var(--indigo)}
 .field-row{display:flex;gap:10px}
 .field-row .field{flex:1}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px}
@@ -460,7 +498,8 @@ const STATUS_ORDER = ["planned","progress","done","blocked"];
 const STATUS_LABEL = {planned:"Planned", progress:"In progress", done:"Done", blocked:"Blocked"};
 const $ = id => document.getElementById(id);
 
-let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, db = null;
+let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, DEV = null, BUGS = null, db = null, bugsDb = false;
+const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}, {key:"review",label:"In Review"}, {key:"done",label:"Done"} ];
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
@@ -555,6 +594,26 @@ function normalizeTeamIdeas(t){
   });
   return t;
 }
+function normalizeDev(d){
+  d = d || {};
+  d.cards = d.cards || [];
+  d.cards.forEach(c=>{
+    c.col = KCOLS.some(k=>k.key===c.col) ? c.col : "todo";
+    if(!c.id) c.id = "dv-" + Math.random().toString(36).slice(2,9);
+  });
+  return d;
+}
+function normalizeBugs(b){
+  b = b || {};
+  b.tickets = b.tickets || [];
+  b.tickets.forEach(t=>{
+    t.col = KCOLS.some(k=>k.key===t.col) ? t.col : "todo";
+    t.source = t.source || "team";
+    t.reporter = t.reporter || "Anonymous";
+    if(!t.id) t.id = "bg-" + Math.random().toString(36).slice(2,9);
+  });
+  return b;
+}
 function leavesOf(node){
   if(node.items && node.items.length) return node.items.flatMap(leavesOf);
   node.status = node.status || "planned";
@@ -600,7 +659,7 @@ let lastSnapshot = "";
 
 async function pushAll(){
   if(!db) { renderAll(); return; }
-  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS) };
+  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV) };
   saving = true;
   try{
     const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(payload) });
@@ -613,6 +672,31 @@ function saveRoadmap(){ DATA.updated = todayStr(); renderAll(); pushAll(); }
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
 function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
+function saveDev(){ DEV.updated = todayStr(); renderAll(); pushAll(); }
+
+const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
+const bugsConfigured = BUGS_BIN_ID && JSONBIN_CONFIG.apiKey;
+async function fetchBugs(){
+  const r = await fetch(BUGS_URL + "/latest", { headers: { "X-Access-Key": JSONBIN_CONFIG.apiKey, "X-Bin-Meta": "false" } });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+async function pushBugs(){
+  if(!bugsDb){ renderAll(); return; }
+  try{
+    const r = await fetch(BUGS_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(clean(BUGS)) });
+    if(!r.ok) throw new Error("HTTP "+r.status);
+  }catch(e){ toast("Bug save failed: "+e.message); }
+}
+function saveBugs(){ BUGS.updated = todayStr(); renderAll(); pushBugs(); }
+async function refreshBugs(){
+  if(!bugsConfigured) return;
+  try{
+    const rec = await fetchBugs();
+    BUGS = normalizeBugs(rec);
+    bugsDb = true;
+  }catch(e){ bugsDb = false; }
+}
 
 async function fetchAll(){
   const r = await fetch(BIN_URL + "/latest", { headers: { "X-Access-Key": JSONBIN_CONFIG.apiKey, "X-Bin-Meta": "false" } });
@@ -624,17 +708,20 @@ async function refresh(showMsg){
   try{
     const rec = await fetchAll();
     if(rec && rec.roadmap){
-      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas });
+      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas, dev: rec.dev });
       if(snap !== lastSnapshot){
         lastSnapshot = snap;
         DATA = normalize(rec.roadmap);
         OKRS = normalizeOkrs(rec.okrs);
         CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
         TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
+        DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
         renderAll();
         if(showMsg) toast("Refreshed — you're seeing the latest");
       } else if(showMsg) toast("Already up to date");
     }
+    await refreshBugs();
+    renderAll();
   }catch(e){ if(showMsg) toast("Couldn't refresh: "+e.message); }
 }
 
@@ -643,6 +730,8 @@ async function start(){
   OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
   CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
   TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
+  DEV = normalizeDev(clean(DEFAULT_DEV));
+  BUGS = normalizeBugs({tickets:[]});
   if(configured){
     try{
       const rec = await fetchAll();
@@ -652,14 +741,16 @@ async function start(){
         OKRS = normalizeOkrs(rec.okrs);
         if(rec.content) CONTENT = normalizeContent(rec.content);
         if(rec.teamIdeas) TIDEAS = normalizeTeamIdeas(rec.teamIdeas);
-        if(rec.content && rec.teamIdeas){
-          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS) });
+        if(rec.dev) DEV = normalizeDev(rec.dev);
+        if(rec.content && rec.teamIdeas && rec.dev){
+          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV) });
         } else {
           await pushAll();   // existing bin from an older version: add the new section(s) to it
         }
       } else {
         await pushAll();   // first run: seed the bin with the defaults
       }
+      await refreshBugs();
       // pick up teammates' changes when you come back to the tab
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(false); });
     }catch(e){
@@ -899,11 +990,15 @@ function cardActs(card, buttons){
 
 /* ---------- shared header ---------- */
 function renderHeader(){
-  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
     ? "Content work by exam — what's being made, who owns it, and when it's due."
+    : view==="dev"
+    ? "Sprint work moving left to right \u2014 pick a card, build it, get it reviewed, ship it."
+    : view==="bugs"
+    ? "Reported by the team and by students \u2014 triage, fix, verify, close."
     : view==="ideas"
     ? "Anyone on the team can pitch an idea \u2014 name on it, points for it, and a clear stage so nothing disappears."
     : (DATA.subtitle||"");
@@ -930,6 +1025,28 @@ function renderHeader(){
       mkStat(krs.filter(k=>krPct(k)<30).length,"Needs attention"),
     );
     updated = OKRS.updated || "—";
+  } else if(view==="dev"){
+    const total = DEV.cards.length;
+    const doneN = DEV.cards.filter(c=>c.col==="done").length;
+    pct = total ? Math.round(doneN/total*100) : 0;
+    stats.append(
+      mkStat(DEV.cards.filter(c=>c.col==="todo").length,"To do"),
+      mkStat(DEV.cards.filter(c=>c.col==="progress").length,"In progress"),
+      mkStat(DEV.cards.filter(c=>c.col==="review").length,"In review"),
+      mkStat(doneN,"Done"),
+    );
+    updated = DEV.updated || "\u2014";
+  } else if(view==="bugs"){
+    const T = BUGS.tickets;
+    const doneN = T.filter(t=>t.col==="done").length;
+    pct = T.length ? Math.round(doneN/T.length*100) : 0;
+    stats.append(
+      mkStat(T.filter(t=>t.col!=="done").length,"Open"),
+      mkStat(T.filter(t=>t.col==="progress"||t.col==="review").length,"Being fixed"),
+      mkStat(doneN,"Resolved"),
+      mkStat(T.filter(t=>t.source==="student").length,"From students"),
+    );
+    updated = BUGS.updated || "\u2014";
   } else if(view==="ideas"){
     const items = TIDEAS.items;
     const contributors = new Set(items.map(i=>i.owner)).size;
@@ -1826,6 +1943,191 @@ function renderContentIdeas(){
   wrap.appendChild(block);
 }
 
+/* ================================================================
+   DEVELOPMENT + BUGS (kanban)
+   ================================================================ */
+function kanbanBoard(items, opts){
+  // opts: {getCol, setCol, cardExtras(item)->nodes[], onEdit(item), onDelete(item), onAdd(colKey), canAdd}
+  const board = document.createElement("div");
+  board.className = "kanban";
+  KCOLS.forEach((col,ci)=>{
+    const kc = document.createElement("div");
+    kc.className = "kcol"+(col.key==="done"?" kdone":"");
+    const head = document.createElement("div");
+    head.className = "kcol-head";
+    head.innerHTML = "<b></b><span class='cnt'></span>";
+    head.querySelector("b").textContent = col.label + (col.key==="done" ? " \u2713" : "");
+    const inCol = items.filter(i=>i.col===col.key);
+    head.querySelector(".cnt").textContent = inCol.length;
+    kc.appendChild(head);
+    inCol.forEach(item=>{
+      const card = document.createElement("div");
+      card.className = "kcard";
+      const t = document.createElement("div");
+      t.className = "title"; t.textContent = item.title;
+      card.appendChild(t);
+      if(item.note){
+        const n = document.createElement("div"); n.className = "note"; n.textContent = item.note;
+        card.appendChild(n);
+      }
+      const ps = photoStrip(item.photos);
+      if(ps) card.appendChild(ps);
+      const meta = document.createElement("div");
+      meta.className = "kcard-meta";
+      (opts.cardExtras ? opts.cardExtras(item) : []).forEach(x=>x && meta.appendChild(x));
+      if(item.owner){
+        const o = document.createElement("span"); o.className = "owner"; o.textContent = item.owner;
+        meta.appendChild(o);
+      }
+      if(editMode){
+        const acts = document.createElement("div"); acts.className = "acts";
+        acts.style.opacity = ".55";
+        acts.appendChild(actBtn("pencil","Edit",false, ()=>opts.onEdit(item)));
+        acts.appendChild(actBtn("trash","Delete",true, ()=>opts.onDelete(item)));
+        meta.appendChild(acts);
+      }
+      const mv = document.createElement("div");
+      mv.className = "kmove";
+      const back = document.createElement("button");
+      back.textContent = "\u25C0"; back.title = "Move left";
+      back.disabled = ci===0;
+      back.onclick = ()=>{ item.col = KCOLS[ci-1].key; opts.onMove(); };
+      const fwd = document.createElement("button");
+      fwd.textContent = "\u25B6"; fwd.title = "Move right";
+      fwd.disabled = ci===KCOLS.length-1;
+      fwd.onclick = ()=>{ item.col = KCOLS[ci+1].key; opts.onMove(); };
+      mv.append(back, fwd);
+      meta.appendChild(mv);
+      card.appendChild(meta);
+      kc.appendChild(card);
+    });
+    if(editMode && opts.onAdd){
+      const add = document.createElement("button");
+      add.className = "kadd";
+      add.textContent = "\uFF0B Add";
+      add.onclick = ()=>opts.onAdd(col.key);
+      kc.appendChild(add);
+    }
+    board.appendChild(kc);
+  });
+  return board;
+}
+
+function renderSidebarDev(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Board";
+  KCOLS.forEach(col=>{
+    const n = DEV.cards.filter(c=>c.col===col.key).length;
+    const d = document.createElement("div");
+    d.className = "mod lb-card";
+    d.innerHTML = '<div style="min-width:0"><div class="name"></div></div><span class="lb-pts"></span>';
+    d.querySelector(".name").textContent = col.label;
+    d.querySelector(".lb-pts").textContent = n + (n===1 ? " card" : " cards");
+    wrap.appendChild(d);
+  });
+  const note = document.createElement("div");
+  note.className = "lb-note";
+  note.textContent = "Move cards with the \u25C0 \u25B6 arrows \u2014 anyone can move; adding and editing needs Edit mode.";
+  wrap.appendChild(note);
+}
+
+function renderContentDev(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  wrap.appendChild(kanbanBoard(DEV.cards, {
+    onMove: saveDev,
+    onEdit: c => openDialog("Edit card", c, v=>{
+      applyFields(c, v);
+      if(v.photos && v.photos.length) c.photos = v.photos; else delete c.photos;
+      saveDev();
+    }, {photos:true}),
+    onDelete: c => { if(confirm("Delete card \u201c"+c.title+"\u201d?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); } },
+    onAdd: colKey => openDialog("New card", {}, v=>{
+      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey };
+      if(v.owner) c.owner = v.owner;
+      if(v.note) c.note = v.note;
+      if(v.photos && v.photos.length) c.photos = v.photos;
+      DEV.cards.push(c); saveDev(); toast("Card added");
+    }, {photos:true}),
+  }));
+}
+
+function bugSrcChip(t){
+  const sp = document.createElement("span");
+  sp.className = "src "+(t.source==="student"?"student":"team");
+  sp.textContent = t.source==="student" ? "student" : "team";
+  return sp;
+}
+function bugAreaChip(t){
+  if(!t.area) return null;
+  const sp = document.createElement("span");
+  sp.className = "mini"; sp.textContent = t.area;
+  return sp;
+}
+
+function reportBugDialog(){
+  openDialog("Report a bug / issue", {}, v=>{
+    BUGS.tickets.push({
+      id: "bg-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      title: v.title,
+      note: v.note || "",
+      area: v.area,
+      reporter: v.owner || "Anonymous",
+      source: "team",
+      col: "todo",
+      created: todayStr(),
+      photos: (v.photos && v.photos.length) ? v.photos : undefined,
+    });
+    saveBugs(); toast("Reported \u2014 it's on the board");
+  }, {area:true, ownerLabel:"Your name", photos:true});
+}
+
+function renderSidebarBugs(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Tickets";
+  KCOLS.forEach(col=>{
+    const n = BUGS.tickets.filter(c=>c.col===col.key).length;
+    const d = document.createElement("div");
+    d.className = "mod lb-card";
+    d.innerHTML = '<div style="min-width:0"><div class="name"></div></div><span class="lb-pts"></span>';
+    d.querySelector(".name").textContent = col.label;
+    d.querySelector(".lb-pts").textContent = n;
+    wrap.appendChild(d);
+  });
+  const st = BUGS.tickets.filter(t=>t.source==="student").length;
+  const note = document.createElement("div");
+  note.className = "lb-note";
+  note.textContent = bugsConfigured
+    ? (bugsDb ? st+" ticket(s) came from students via the public report form." : "Couldn't reach the bugs bin \u2014 check BUGS_BIN_ID in index.html.")
+    : "Bugs bin not set up yet \u2014 tickets won't be saved. See the comment at the top of index.html (2 min).";
+  wrap.appendChild(note);
+}
+
+function renderContentBugs(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const report = document.createElement("button");
+  report.className = "submit-idea";
+  report.textContent = "\uD83D\uDC1E \uFF0B Report a bug or issue \u2014 no passcode needed";
+  report.onclick = reportBugDialog;
+  wrap.appendChild(report);
+  wrap.appendChild(kanbanBoard(BUGS.tickets, {
+    onMove: saveBugs,
+    cardExtras: t => [bugSrcChip(t), bugAreaChip(t)],
+    onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos}, v=>{
+      t.title = v.title;
+      t.note = v.note || "";
+      t.reporter = v.owner || t.reporter;
+      t.area = v.area;
+      if(v.photos && v.photos.length) t.photos = v.photos; else delete t.photos;
+      saveBugs();
+    }, {area:true, ownerLabel:"Reporter", photos:true}),
+    onDelete: t => { if(confirm("Delete ticket \u201c"+t.title+"\u201d?")){ BUGS.tickets.splice(BUGS.tickets.indexOf(t),1); saveBugs(); toast("Deleted"); } },
+  }));
+}
+
 /* ---------- render dispatcher ---------- */
 function renderAll(){
   if(!DATA || !OKRS || !CONTENT) return;
@@ -1834,12 +2136,20 @@ function renderAll(){
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
   /* Workspace areas — add future sections here (one line each).
      Each needs a renderSidebarX / renderContentX pair wired below. */
-  const WORKSPACE_VIEWS = [
-    {key:"roadmap", label:"Product Roadmap"},
-    {key:"content", label:"Educational Content"},
-    {key:"ideas", label:"Team Ideas"},
+  /* Workspace areas, grouped. Add future sections here. */
+  const WORKSPACE_GROUPS = [
+    {label:"Product", items:[
+      {key:"roadmap", label:"Roadmap"},
+      {key:"dev", label:"Development"},
+      {key:"bugs", label:"Bugs"},
+    ]},
+    {label:"Team", items:[
+      {key:"content", label:"Educational Content"},
+      {key:"ideas", label:"Team Ideas"},
+    ]},
   ];
   if(view!=="okr") lastWs = view;
+  const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
   $("nav-a").classList.toggle("ghost", view==="okr");
   $("nav-b").classList.toggle("ghost", view!=="okr");
@@ -1847,21 +2157,25 @@ function renderAll(){
   const ws = $("ws-switch");
   ws.innerHTML = "";
   if(view!=="okr"){
-    const lbl = document.createElement("div");
-    lbl.className = "ws-label"; lbl.textContent = "Workspace";
-    ws.appendChild(lbl);
-    WORKSPACE_VIEWS.forEach(w=>{
-      const b = document.createElement("button");
-      b.className = "ws-item"+(view===w.key?" active":"");
-      b.innerHTML = '<span class="dot"></span><span></span>';
-      b.querySelector("span:last-child").textContent = w.label;
-      b.onclick = ()=>{ view = w.key; renderAll(); };
-      ws.appendChild(b);
+    WORKSPACE_GROUPS.forEach(g=>{
+      const lbl = document.createElement("div");
+      lbl.className = "ws-label"; lbl.textContent = g.label;
+      ws.appendChild(lbl);
+      g.items.forEach(w=>{
+        const b = document.createElement("button");
+        b.className = "ws-item"+(view===w.key?" active":"");
+        b.innerHTML = '<span class="dot"></span><span></span>';
+        b.querySelector("span:last-child").textContent = w.label;
+        b.onclick = ()=>{ view = w.key; renderAll(); };
+        ws.appendChild(b);
+      });
     });
   }
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
   else if(view==="content"){ renderSidebarContent(); renderContentContent(); }
   else if(view==="ideas"){ renderSidebarIdeas(); renderContentIdeas(); }
+  else if(view==="dev"){ renderSidebarDev(); renderContentDev(); }
+  else if(view==="bugs"){ renderSidebarBugs(); renderContentBugs(); }
   else { renderSidebarOkr(); renderContentOkr(); }
 }
 
