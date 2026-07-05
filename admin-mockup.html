@@ -61,6 +61,43 @@ input.f,select.f,textarea.f{width:100%;font-size:13.5px;border:1px solid #d7dbe0
 .det td{background:#f8f9fb !important;white-space:normal !important}
 h1.pg{font-size:20px;font-weight:600;margin:0}
 .rowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* ---- dashboard-specific ---- */
+.etab{border:1px solid #d7dbe0;background:#fff;color:#374151;border-radius:16px;padding:6px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.etab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media(max-width:1180px){.grid{grid-template-columns:1fr}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:13px 15px}
+.kpi .kv{font-size:22px;font-weight:600;margin:2px 0}
+.kpi .kl{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.kpi .kd{font-size:11.5px}
+.up{color:var(--green)}.dn{color:var(--red)}.flat{color:var(--mut)}
+.hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+.ring{position:relative;width:118px;height:118px;flex-shrink:0}
+.ring .rn{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .rn b{font-size:30px;line-height:1}
+.ring .rn span{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+.hbarw{background:#f1f2f4;border-radius:6px;height:8px;width:86px;display:inline-block;vertical-align:middle;overflow:hidden}
+.hbar{height:100%;border-radius:6px}
+.chev{background:none;border:none;cursor:pointer;font-size:11px;color:var(--mut);width:20px;padding:0}
+.rname{cursor:pointer}
+tr.hlr td{background:#fffbe6 !important}
+.railh{font-size:13.5px;font-weight:600;margin:0 0 10px}
+.rrow{display:flex;align-items:center;gap:9px;margin:7px 0;font-size:12.5px}
+.rrow .rl{width:118px;flex-shrink:0;color:#374151}
+.rrow .rbw{flex:1;background:#f1f2f4;border-radius:5px;height:9px;overflow:hidden}
+.rrow .rb{height:100%;border-radius:5px}
+.rrow .rc{width:60px;text-align:right;font-weight:600;font-size:12px}
+.hot{border:1px solid #f1f2f4;border-radius:9px;padding:8px 10px;margin:7px 0;cursor:pointer}
+.hot:hover{background:#f9fafb}
+.hot .hp{font-size:11px;color:var(--mut)}
+.hot .hn{font-size:12.5px;font-weight:600;margin:2px 0}
+.banner{border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:12px}
+.banner.good{background:#d1fae5;color:#065f46}
+.banner.bad{background:#fef3c7;color:#92400e}
+.legend{font-size:11.5px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.pBad{background:#fee2e2;color:#991b1b}
 @media (max-width:760px){aside{display:none}}
 </style>
 </head>
@@ -75,13 +112,14 @@ h1.pg{font-size:20px;font-weight:600;margin:0}
   <a id="nav-tests" class="on" onclick="show('tests')">Exam Category Management</a>
   <a>Question Reports</a>
   <a id="nav-qr" onclick="show('qr')">Question Reports V2</a>
+  <a id="nav-health" onclick="show('health')">📊 Content Health</a>
   <div class="lbl">URL SHORTENER</div><a>URL Shortener Management</a>
   <div class="me"><span class="av" style="background:var(--blue);color:#fff">P</span> PANCHAM<br /></div>
 </aside>
 <main>
 <div class="tophead">🔔 <span style="cursor:pointer">⎋ Sign out</span></div>
 <div class="page">
-<div class="hnote" id="hnote"><span>Interactive mockup — everything works: <b>+</b> opens Create Exam (with Created&nbsp;by), <b>Assign to User</b> opens workflow-stage assignment, funnel icons filter every column in Question Reports V2, ✏️ opens the editor, 👥 opens the reporter list.</span><button class="btn gray sm" onclick="this.parentNode.style.display='none'">Dismiss</button></div>
+<div class="hnote" id="hnote"><span>Interactive mockup — everything works: <b>+</b> opens Create Exam (with Created&nbsp;by), <b>Assign to User</b> opens workflow-stage assignment, funnel icons filter every column in Question Reports V2, ✏️ opens the editor, 👥 opens the reporter list. New: <b>📊 Content Health</b> in the sidebar — the live health dashboard.</span><button class="btn gray sm" onclick="this.parentNode.style.display='none'">Dismiss</button></div>
 
 <!-- ============ TESTS VIEW ============ -->
 <section id="v-tests">
@@ -140,6 +178,97 @@ h1.pg{font-size:20px;font-weight:600;margin:0}
     <button class="btn gray" style="width:100%;margin:6px 0 14px" onclick="addAsg()">+ Add User Assignment</button>
     <button class="btn green" onclick="confirmAsg()">Confirm Assignment</button>
   </div>
+</section>
+
+<!-- ============ CONTENT HEALTH DASHBOARD ============ -->
+<section id="v-health" style="display:none">
+<div class="hnote"><span>Interactive mockup — filter by <b>exam</b> and <b>language</b>, expand the drill-down table (Exam → Subject → Type → Year/Chapter), click any <b>hotspot</b> on the right to jump straight to it, hover charts for values. Every number, chart and health score recomputes live from the filters.</span><button class="btn gray sm" onclick="this.parentNode.style.display='none'">Dismiss</button></div>
+
+<div class="rowline" style="justify-content:space-between;margin-bottom:14px">
+  <h1 class="pg">Content Health</h1>
+  <span class="rowline">
+    <span id="etabs"></span>
+    <select class="etab" id="langSel" onchange="LANGSET();" style="padding:6px 10px">
+      <option value="en,hi">Language: All</option>
+      <option value="en">English only</option>
+      <option value="hi">Hindi only</option>
+    </select>
+    <button class="btn gray sm" onclick="toast('Weekly health report exported (CSV) — share it in the team group ✅')">⬇ Export weekly report</button>
+  </span>
+</div>
+
+<!-- HERO -->
+<div class="card">
+  <div class="hero">
+    <div class="ring" id="ring"></div>
+    <div style="flex:1;min-width:230px">
+      <p style="margin:0 0 4px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em" id="heroScope"></p>
+      <p style="margin:0;font-size:15px" id="heroLine"></p>
+      <p style="margin:6px 0 0;font-size:12.5px;color:var(--mut)" id="heroSub"></p>
+    </div>
+    <div style="min-width:280px;flex:1">
+      <p style="margin:0 0 4px;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em">Health — last 8 weeks</p>
+      <div id="heroTrend"></div>
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpis" id="kpis"></div>
+
+<div class="grid">
+<div>
+  <!-- INFLOW vs RESOLVED -->
+  <div class="card">
+    <div class="rowline" style="justify-content:space-between">
+      <p class="railh" style="margin:0">Reports in vs fixes out — weekly</p>
+      <span class="legend"><span><span class="dot" style="background:#fca5a5"></span>New reports</span><span><span class="dot" style="background:#6ee7b7"></span>Resolved &amp; published</span></span>
+    </div>
+    <p style="font-size:12px;color:var(--mut);margin:4px 0 10px">The morale chart — when green beats red for the week, the backlog is shrinking and health goes up.</p>
+    <div id="flowChart"></div>
+  </div>
+
+  <!-- DRILL-DOWN -->
+  <div class="card">
+    <div class="rowline" style="justify-content:space-between;margin-bottom:4px">
+      <p class="railh" style="margin:0">Health drill-down</p>
+      <span class="rowline">
+        <button class="btn gray sm" onclick="EXP.clear();renderTable()">Collapse all</button>
+        <button class="btn gray sm" onclick="expandAll()">Expand all</button>
+      </span>
+    </div>
+    <p style="font-size:12px;color:var(--mut);margin:0 0 8px">Worst first at every level · ▸ to drill: Exam → Subject → Test type → Year / Chapter / Mock · scroll right for report reasons →</p>
+    <div class="twr"><table class="dt" id="tree"><thead><tr>
+      <th style="min-width:250px">Scope</th><th>Health</th><th>8-wk trend</th><th>Δ 7d</th><th>Live Qs</th><th>Open reports</th><th>❌ Wrong key</th><th>📝 Wrong solution</th><th>🙈 Not visible</th><th>Other</th><th>New 7d</th><th>Fixed 7d</th>
+    </tr></thead><tbody id="treeBody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- RAIL -->
+<div>
+  <div class="card">
+    <p class="railh">Why questions are reported</p>
+    <div id="reasons"></div>
+    <p style="font-size:11.5px;color:var(--mut);margin:10px 0 0">Weighted in health score: wrong key ×5 · wrong solution ×3 · not visible ×2 · other ×1</p>
+  </div>
+  <div class="card">
+    <p class="railh">Who is reporting</p>
+    <div id="sources"></div>
+    <p style="font-size:11.5px;color:var(--mut);margin:10px 0 0">A rising verifier share means the team is catching issues <b>before</b> students do — that protects the brand.</p>
+  </div>
+  <div class="card">
+    <p class="railh">🔥 Hotspots — fix these first</p>
+    <p style="font-size:11.5px;color:var(--mut);margin:0 0 4px">Ranked by weighted open issues. Click to locate in the drill-down.</p>
+    <div id="hotspots"></div>
+  </div>
+  <div class="card">
+    <div id="teamBanner"></div>
+    <p class="railh">Team impact — this week</p>
+    <div class="twr"><table class="dt" style="width:100%"><thead><tr><th>Member</th><th>Fixed</th><th>Health pts</th><th>Med. fix</th></tr></thead><tbody id="teamBody"></tbody></table></div>
+    <p style="font-size:11.5px;color:var(--mut);margin:10px 0 0">Health pts = severity-weighted issues cleared. Every fix moves the score — the team can watch it climb.</p>
+  </div>
+</div>
+</div>
 </section>
 
 <!-- ============ QUESTION REPORTS V2 (OPEN) ============ -->
@@ -202,9 +331,10 @@ h1.pg{font-size:20px;font-weight:600;margin:0}
 const $=i=>document.getElementById(i);
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3200)}
 function fmt(t){return t?new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'}
-function show(v){['tests','create','assign','qr','res','edit'].forEach(x=>$('v-'+x).style.display=x===v?'':'none');
+function show(v){['tests','create','assign','qr','res','edit','health'].forEach(x=>$('v-'+x).style.display=x===v?'':'none');
 $('nav-tests').className=(v==='tests'||v==='create'||v==='assign')?'on':'';
 $('nav-qr').className=(v==='qr'||v==='res'||v==='edit')?'on':'';
+$('nav-health').className=v==='health'?'on':'';
 $('fdrop').style.display='none';window.scrollTo({top:0})}
 
 /* ---------------- TESTS ---------------- */
@@ -372,6 +502,179 @@ const ix=QD.findIndex(x=>x.k===q.k);if(ix>-1){QD.splice(ix,1);RES.unshift(q)}
 T[cur]={};renderQ();renderR();toast('Published — moved to Resolved Questions');show('res')}
 /* init */
 buildHead('qtab');buildHead('rtab');renderTests();renderQ();renderR();
+
+/* ================= CONTENT HEALTH DASHBOARD ================= */
+/* ---------- seeded rng so the mockup is stable ---------- */
+function mul(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+
+/* ---------- catalogue ---------- */
+const SUBJ={
+ 'CUET UG':['Physics','Chemistry','Maths','Economics','History','English','Political Science','Business Studies'],
+ 'CUET PG':['Economics','Political Science','Commerce','Psychology','History'],
+ 'NEET':['Physics','Chemistry','Botany','Zoology']};
+const CH={
+ 'Physics':['Kinematics','Laws of Motion','Work & Energy','Optics','Current Electricity','Modern Physics'],
+ 'Chemistry':['Atomic Structure','Chemical Bonding','Equilibrium','Organic Basics','Coordination Compounds'],
+ 'Maths':['Relations & Functions','Matrices','Calculus','Probability','Vectors'],
+ 'Economics':['National Income','Money & Banking','Govt. Budget','Balance of Payments','Consumer Behaviour'],
+ 'History':['Harappan Civilisation','Mughal Court','Colonial Cities','Partition','Mahatma Gandhi & Movements'],
+ 'English':['Reading Comprehension','Grammar','Vocabulary','Rearranging Parts'],
+ 'Political Science':['Cold War Era','End of Bipolarity','Contemp. South Asia','Politics in India'],
+ 'Business Studies':['Nature of Management','Planning','Organising','Marketing'],
+ 'Commerce':['Accounting Standards','Company Law','Cost Accounting','Auditing'],
+ 'Psychology':['Intelligence','Self & Personality','Attitude','Therapies'],
+ 'Botany':['Plant Kingdom','Morphology','Photosynthesis','Genetics','Ecology'],
+ 'Zoology':['Animal Kingdom','Human Physiology','Reproduction','Evolution','Biotech']};
+const YEARS=['2025','2024','2023','2022','2021'];
+const MOCKS=['Mock T-01','Mock T-02','Mock T-03','Mock T-04','Mock T-05','Mock T-06'];
+
+/* deliberate trouble zones (declining, heavy wrong-key load) */
+const HOTPATHS={
+ 'CUET UG/Economics/PYQs/2023':3.6,'CUET UG/English/Mocks/Mock T-03':3.1,
+ 'NEET/Botany/PYQs/2024':2.8,'CUET PG/Commerce/Chapterwise/Auditing':2.5,
+ 'CUET UG/Physics/Chapterwise/Optics':2.2,'CUET UG/History/PYQs/2022':2.0,
+ 'NEET/Zoology/Mocks/Mock T-05':1.9,'CUET PG/Psychology/PYQs/2025':1.7};
+
+/* ---------- build tree with generated leaf data ---------- */
+function leaf(path){
+ const r=mul(hash(path)),hot=HOTPATHS[path]||0;
+ const q=140+Math.floor(r()*240);
+ const mk=(m)=>({wk:Math.floor(r()*3*m+(hot? hot*4:0)),ws:Math.floor(r()*2.4*m+(hot?hot*2:0)),nv:Math.floor(r()*2.6*m+(hot?hot*2.5:0)),ot:Math.floor(r()*2*m)});
+ const en=mk(1.15),hi=mk(1.0);
+ const drift=hot? -(0.5+r()*1.3) : (0.4+r()*1.6); // pts of health gained per week (negative = getting worse)
+ const wk8=(base)=>Array.from({length:8},(_,i)=>Math.max(0,Math.round(base*(0.6+r()*0.9))));
+ const wOpen=5*(en.wk+hi.wk)+3*(en.ws+hi.ws)+2*(en.nv+hi.nv)+(en.ot+hi.ot);
+ const inf=wk8(Math.max(1,wOpen*0.10)),res=inf.map(v=>Math.max(0,Math.round(v*(drift>0?1.15+r()*0.4:0.55+r()*0.3))));
+ const sla=Math.floor((en.wk+hi.wk+en.nv+hi.nv)*(hot?0.5:0.22));
+ const vfrac=0.18+r()*0.22; // share of open reports raised by internal verifiers
+ return {q,open:{en,hi},drift,inf,res,sla,vfrac};
+}
+const TREE=Object.keys(SUBJ).map(ex=>({name:ex,path:ex,depth:0,children:
+ SUBJ[ex].map(su=>({name:su,path:ex+'/'+su,depth:1,children:[
+  {name:'Mocks',path:ex+'/'+su+'/Mocks',depth:2,children:MOCKS.map(m=>({name:m,path:ex+'/'+su+'/Mocks/'+m,depth:3,leaf:leaf(ex+'/'+su+'/Mocks/'+m)}))},
+  {name:'PYQs',path:ex+'/'+su+'/PYQs',depth:2,children:YEARS.map(y=>({name:'Year '+y,path:ex+'/'+su+'/PYQs/'+y,depth:3,leaf:leaf(ex+'/'+su+'/PYQs/'+y)}))},
+  {name:'Chapterwise',path:ex+'/'+su+'/Chapterwise',depth:2,children:(CH[su]||['Ch 1','Ch 2','Ch 3','Ch 4']).map(c=>({name:c,path:ex+'/'+su+'/Chapterwise/'+c,depth:3,leaf:leaf(ex+'/'+su+'/Chapterwise/'+c)}))}
+ ]}))}));
+
+/* ---------- aggregation ---------- */
+let EXAM='All',LANGS=['en','hi'];const EXP=new Set(Object.keys(SUBJ).map(e=>e)); let HL=null;
+function LANGSET(){LANGS=$('langSel').value.split(',');renderAll()}
+const W={wk:5,ws:3,nv:2,ot:1};
+function agg(node){
+ if(node.leaf){const l=node.leaf;let a={q:l.q,wk:0,ws:0,nv:0,ot:0,sla:0,drift:l.drift*l.q,inf:l.inf.slice(),res:l.res.slice(),v:0};
+  LANGS.forEach(lg=>{const o=l.open[lg];a.wk+=o.wk;a.ws+=o.ws;a.nv+=o.nv;a.ot+=o.ot});
+  const sc=LANGS.length/2;a.inf=a.inf.map(v=>Math.round(v*sc));a.res=a.res.map(v=>Math.round(v*sc));a.sla=Math.round(l.sla*sc);
+  a.open=a.wk+a.ws+a.nv+a.ot;a.v=Math.round(a.open*l.vfrac);return a}
+ const kids=node.children.map(agg);
+ const a={q:0,wk:0,ws:0,nv:0,ot:0,open:0,sla:0,drift:0,v:0,inf:Array(8).fill(0),res:Array(8).fill(0)};
+ kids.forEach(k=>{a.q+=k.q;a.wk+=k.wk;a.ws+=k.ws;a.nv+=k.nv;a.ot+=k.ot;a.open+=k.open;a.sla+=k.sla;a.drift+=k.drift;a.v+=k.v;
+  k.inf.forEach((v,i)=>a.inf[i]+=v);k.res.forEach((v,i)=>a.res[i]+=v)});
+ return a}
+function health(a){if(!a.q)return 100;const w=W.wk*a.wk+W.ws*a.ws+W.nv*a.nv+W.ot*a.ot;
+ return Math.max(0,Math.min(100,Math.round(100-100*w/(1.15*a.q))))}
+function trend(a){const h=health(a),d=a.q?a.drift/a.q:0;const r=mul(hash('t'+h+a.q));
+ return Array.from({length:8},(_,i)=>Math.max(5,Math.min(100,Math.round(h-d*(7-i)+(i<7?(r()*3-1.5):0)))))}
+function hcol(h){return h>=90?'#16a34a':h>=75?'#eab308':h>=60?'#f97316':'#dc2626'}
+function hlabel(h){return h>=90?'Healthy':h>=75?'Watch':h>=60?'At risk':'Critical'}
+function roots(){return EXAM==='All'?TREE:TREE.filter(t=>t.name===EXAM)}
+function rootAgg(){const ks=roots().map(agg);const a={q:0,wk:0,ws:0,nv:0,ot:0,open:0,sla:0,drift:0,v:0,inf:Array(8).fill(0),res:Array(8).fill(0)};
+ ks.forEach(k=>{a.q+=k.q;a.wk+=k.wk;a.ws+=k.ws;a.nv+=k.nv;a.ot+=k.ot;a.open+=k.open;a.sla+=k.sla;a.drift+=k.drift;a.v+=k.v;k.inf.forEach((v,i)=>a.inf[i]+=v);k.res.forEach((v,i)=>a.res[i]+=v)});return a}
+
+/* ---------- tiny SVG helpers ---------- */
+function spark(t,w,h,col){const min=Math.min(...t)-2,max=Math.max(...t)+2;
+ const pts=t.map((v,i)=>[(i/(t.length-1))*(w-4)+2,h-2-((v-min)/(max-min))*(h-4)]);
+ return '<svg width="'+w+'" height="'+h+'" style="vertical-align:middle"><polyline fill="none" stroke="'+col+'" stroke-width="1.8" points="'+pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')+'"/><circle cx="'+pts[7][0].toFixed(1)+'" cy="'+pts[7][1].toFixed(1)+'" r="2.4" fill="'+col+'"/></svg>'}
+function bigTrend(t){const w=300,h=86,min=Math.min(...t)-4,max=Math.max(...t)+4;
+ const X=i=>8+(i/7)*(w-16),Y=v=>h-14-((v-min)/(max-min))*(h-26);
+ const pts=t.map((v,i)=>X(i)+','+Y(v)).join(' ');
+ return '<svg width="100%" viewBox="0 0 '+w+' '+h+'" style="max-width:340px">'
+ +'<polygon points="'+X(0)+','+(h-14)+' '+pts+' '+X(7)+','+(h-14)+'" fill="#2563eb15"/>'
+ +'<polyline fill="none" stroke="#2563eb" stroke-width="2" points="'+pts+'"/>'
+ +t.map((v,i)=>'<g><circle cx="'+X(i)+'" cy="'+Y(v)+'" r="2.6" fill="#2563eb"><title>W-'+(7-i)+': '+v+'</title></circle>'
+ +(i===0||i===7?'<text x="'+X(i)+'" y="'+(Y(v)-6)+'" font-size="9" text-anchor="middle" fill="#374151" font-weight="600">'+v+'</text>':'')
+ +'<text x="'+X(i)+'" y="'+(h-3)+'" font-size="8" text-anchor="middle" fill="#9ca3af">'+(i===7?'now':'W-'+(7-i))+'</text></g>').join('')+'</svg>'}
+function flow(inf,res){const w=560,h=150,n=8,max=Math.max(...inf,...res,1);
+ const gw=(w-40)/n;let s='<svg width="100%" viewBox="0 0 '+w+' '+h+'">';
+ for(let i=0;i<n;i++){const x=34+i*gw,bi=(inf[i]/max)*(h-40),br=(res[i]/max)*(h-40);
+  s+='<rect x="'+(x+4)+'" y="'+(h-24-bi)+'" width="'+(gw/2-8)+'" height="'+bi+'" rx="3" fill="#fca5a5"><title>W-'+(7-i)+' new: '+inf[i]+'</title></rect>';
+  s+='<rect x="'+(x+gw/2)+'" y="'+(h-24-br)+'" width="'+(gw/2-8)+'" height="'+br+'" rx="3" fill="#6ee7b7"><title>W-'+(7-i)+' resolved: '+res[i]+'</title></rect>';
+  s+='<text x="'+(x+gw/2-2)+'" y="'+(h-10)+'" font-size="9" text-anchor="middle" fill="#9ca3af">'+(i===7?'now':'W-'+(7-i))+'</text>';
+  if(res[i]>=inf[i])s+='<text x="'+(x+gw/2-2)+'" y="12" font-size="10" text-anchor="middle">✅</text>'}
+ return s+'</svg>'}
+function ring(h){const r=50,c=2*Math.PI*r,off=c*(1-h/100);
+ return '<svg width="118" height="118"><circle cx="59" cy="59" r="'+r+'" fill="none" stroke="#f1f2f4" stroke-width="10"/>'
+ +'<circle cx="59" cy="59" r="'+r+'" fill="none" stroke="'+hcol(h)+'" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" transform="rotate(-90 59 59)"/></svg>'
+ +'<div class="rn"><b style="color:'+hcol(h)+'">'+h+'</b><span>health</span></div>'}
+
+/* ---------- renders ---------- */
+function renderTabs(){$('etabs').innerHTML=['All','CUET UG','CUET PG','NEET'].map(e=>'<button class="etab'+(EXAM===e?' on':'')+'" onclick="EXAM=\''+e+'\';renderAll()">'+e+'</button>').join(' ')}
+function renderHero(a){const h=health(a),t=trend(a),d=t[7]-t[6];
+ $('ring').innerHTML=ring(h);
+ $('heroScope').textContent=(EXAM==='All'?'All exams':EXAM)+' · '+(LANGS.length===2?'English + Hindi':LANGS[0]==='en'?'English':'Hindi');
+ $('heroLine').innerHTML='<b style="color:'+hcol(h)+'">'+hlabel(h)+'</b> — '+(d>=0?'up <b class="up">+'+d+'</b>':'down <b class="dn">'+d+'</b>')+' pts vs last week. '
+ +(d>=0?'The fixes are landing — keep the streak going. 💪':'Inflow is beating fixes this week — check the hotspots list. ⚠️');
+ $('heroSub').textContent=a.open.toLocaleString()+' open reported questions across '+a.q.toLocaleString()+' live questions ('+(100*a.open/a.q).toFixed(1)+'% of the bank has an open flag).';
+ $('heroTrend').innerHTML=bigTrend(t)}
+function kpi(l,v,d,sub){return '<div class="kpi"><div class="kl">'+l+'</div><div class="kv">'+v+'</div><div class="kd '+(d===null?'flat':d>=0?'up':'dn')+'">'+(d===null?(sub||'&nbsp;'):((d>=0?'▲ +':'▼ ')+d+' vs last wk'))+'</div></div>'}
+function renderKpis(a){const n7=a.inf[7],n6=a.inf[6],r7=a.res[7],r6=a.res[6],nd=n7-n6;
+ const newSub='<span class="'+(nd<=0?'up':'dn')+'">'+(nd<=0?'▼ '+(-nd)+' fewer than last wk':'▲ '+nd+' more than last wk')+'</span>';
+ $('kpis').innerHTML=
+  kpi('Live questions',a.q.toLocaleString(),null,'across scope')
+ +kpi('Open reported Qs',a.open.toLocaleString(),null,(100*a.open/a.q).toFixed(1)+'% of bank')
+ +kpi('New reports · 7d',n7,null,newSub)
+ +kpi('Fixed &amp; published · 7d',r7,r7-r6)
+ +kpi('Median fix time','31h',null,'target &lt; 48h')
+ +kpi('SLA breaches (&gt;7d)',a.sla,null,'open past deadline')}
+function renderReasons(a){const items=[['❌ Wrong answer key',a.wk,'#dc2626'],['📝 Incorrect solution',a.ws,'#f97316'],['🙈 Question not visible',a.nv,'#eab308'],['Other',a.ot,'#9ca3af']];
+ const max=Math.max(...items.map(x=>x[1]),1);
+ $('reasons').innerHTML=items.map(x=>'<div class="rrow"><span class="rl">'+x[0]+'</span><span class="rbw"><span class="rb" style="width:'+(100*x[1]/max)+'%;background:'+x[2]+'"></span></span><span class="rc">'+x[1]+'</span></div>').join('')}
+function renderSources(a){const v=a.v,s=a.open-a.v,max=Math.max(v,s,1);
+ $('sources').innerHTML=
+  '<div class="rrow"><span class="rl">🎓 Students</span><span class="rbw"><span class="rb" style="width:'+(100*s/max)+'%;background:#60a5fa"></span></span><span class="rc">'+s+'</span></div>'
+ +'<div class="rrow"><span class="rl">🛡 Verifier team</span><span class="rbw"><span class="rb" style="width:'+(100*v/max)+'%;background:#a78bfa"></span></span><span class="rc">'+v+'</span></div>'}
+function leaves(){const out=[];function walk(n){n.leaf?out.push(n):n.children.forEach(walk)}roots().forEach(walk);return out}
+function renderHot(){const ls=leaves().map(n=>{const a=agg(n);return{n,a,h:health(a),w:W.wk*a.wk+W.ws*a.ws+W.nv*a.nv+W.ot*a.ot}})
+ .sort((x,y)=>y.w-x.w).slice(0,6);
+ $('hotspots').innerHTML=ls.map(x=>'<div class="hot" onclick="jump(\''+x.n.path+'\')"><div class="hp">'+x.n.path.split('/').slice(0,-1).join(' › ')+'</div><div class="hn">'+x.n.name+' <span class="pill '+(x.h<60?'pBad':'pUnp')+'" style="float:right">'+x.h+' · '+hlabel(x.h)+'</span></div><div class="hp">'+x.a.open+' open · '+x.a.wk+' wrong-key · '+x.a.sla+' past SLA</div></div>').join('')}
+function renderTeam(a){const r7=a.res[7],n7=a.inf[7],good=r7>=n7;
+ $('teamBanner').innerHTML='<div class="banner '+(good?'good':'bad')+'">'+(good?'🏆 <b>Winning week:</b> '+r7+' fixed vs '+n7+' new — backlog shrank and health rose. Share this with the team!':'⚠️ '+n7+' new vs '+r7+' fixed this week — backlog grew. Rally around the hotspots.')+'</div>';
+ const share=[0.27,0.24,0.20,0.16,0.13],names=[['Aarav','A','#2563eb'],['Priya','P','#7c3aed'],['Rohan','R','#059669'],['Tanzil','T','#d97706'],['Priyanshi','P','#db2777']];
+ $('teamBody').innerHTML=names.map((m,i)=>{const f=Math.round(r7*share[i]),pts=Math.round(f*2.9);
+  return '<tr><td><span class="av" style="background:'+m[2]+';color:#fff">'+m[1]+'</span> '+m[0]+'</td><td style="font-weight:600">'+f+'</td><td class="up">+'+pts+'</td><td>'+(22+i*6)+'h</td></tr>'}).join('')}
+
+/* drill-down table */
+function row(n){const a=agg(n),h=health(a),t=trend(a),d=t[7]-t[6],open=EXP.has(n.path);
+ const pad=14+n.depth*22,kids=!n.leaf;
+ let html='<tr id="row-'+cssId(n.path)+'"'+(HL===n.path?' class="hlr"':'')+'>'
+ +'<td style="padding-left:'+pad+'px">'+(kids?'<button class="chev" onclick="tog(\''+n.path+'\')">'+(open?'▾':'▸')+'</button>':'<span style="display:inline-block;width:20px"></span>')
+ +'<span class="rname" '+(kids?'onclick="tog(\''+n.path+'\')"':'')+' style="font-weight:'+(n.depth<2?'600':'400')+'">'+n.name+'</span></td>'
+ +'<td><span class="hbarw"><span class="hbar" style="width:'+h+'%;background:'+hcol(h)+'"></span></span> <b style="color:'+hcol(h)+'">'+h+'</b></td>'
+ +'<td>'+spark(t,86,22,hcol(h))+'</td>'
+ +'<td class="'+(d>=0?'up':'dn')+'" style="font-weight:600">'+(d>=0?'+':'')+d+'</td>'
+ +'<td>'+a.q.toLocaleString()+'</td><td style="font-weight:600">'+a.open+'</td>'
+ +'<td>'+a.wk+'</td><td>'+a.ws+'</td><td>'+a.nv+'</td><td>'+a.ot+'</td>'
+ +'<td>'+a.inf[7]+'</td><td class="up">'+a.res[7]+'</td></tr>';
+ if(kids&&open){const ks=n.children.map(c=>({c,h:health(agg(c))})).sort((x,y)=>x.h-y.h);
+  html+=ks.map(k=>row(k.c)).join('')}
+ return html}
+function cssId(p){return p.replace(/[^a-z0-9]/gi,'_')}
+function renderTable(){const rs=roots().map(n=>({n,h:health(agg(n))})).sort((x,y)=>x.h-y.h);
+ $('treeBody').innerHTML=rs.map(r=>row(r.n)).join('')}
+function tog(p){EXP.has(p)?EXP.delete(p):EXP.add(p);renderTable()}
+function expandAll(){function walk(n){if(!n.leaf){EXP.add(n.path);n.children.forEach(walk)}}roots().forEach(walk);renderTable()}
+function jump(path){const parts=path.split('/');const ex=parts[0];
+ if(EXAM!=='All'&&EXAM!==ex){EXAM=ex;renderTabs()}
+ for(let i=1;i<=parts.length-1;i++)EXP.add(parts.slice(0,i).join('/'));
+ HL=path;renderAll();
+ const el=$('row-'+cssId(path));if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+ toast('Located: '+path.replaceAll('/',' › ')+' — assign it from Question Reports V2');
+ setTimeout(()=>{HL=null;renderTable()},3500)}
+
+function renderAll(){renderTabs();const a=rootAgg();renderHero(a);renderKpis(a);
+ $('flowChart').innerHTML=flow(a.inf,a.res);
+ renderReasons(a);renderSources(a);renderHot();renderTeam(a);renderTable()}
+renderAll();
 </script>
 </body>
 </html>
