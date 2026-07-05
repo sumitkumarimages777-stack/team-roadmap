@@ -34,7 +34,7 @@ const EDIT_PASSCODE = "dubuddy2026";   // change this to any word your team pref
    2. Go to https://api.imgbb.com and click "Get API key"
    3. Paste the key below. Photos attached to tasks/ideas get uploaded
       to ImgBB and only the link is saved in your data. */
-const IMGBB_KEY = "";   // ← paste your ImgBB API key to enable photo uploads
+const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
 
 /* ---- Seed data: used only the first time, to fill the database ---- */
 const DEFAULT_ROADMAP = {
@@ -273,7 +273,7 @@ aside{position:sticky;top:16px;align-self:start}
 .empty{color:var(--muted);text-align:center;padding:40px 0}
 
 .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
-.node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts{opacity:1}
+.node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
 .act:hover{background:var(--indigo-soft);color:var(--indigo)}
