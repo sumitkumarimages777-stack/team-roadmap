@@ -153,9 +153,12 @@ const DEFAULT_TEAM_IDEAS = {
 };
 
 const DEFAULT_DEV = {
+  sprints: [
+    { id: "sp-1", name: "Sprint 1", start: "6 July", end: "19 July" },
+  ],
   cards: [
-    { id: "dv-1", title: "Example: percentile & rank calculation", note: "Backend logic for batch-wise percentile. (Sample card - delete me.)", owner: "Backend", col: "progress" },
-    { id: "dv-2", title: "Example: report PDF export", owner: "Frontend", col: "todo" },
+    { id: "dv-1", title: "Example: percentile & rank calculation", note: "Backend logic for batch-wise percentile. (Sample card - delete me.)", owner: "Backend", col: "progress", sprint: "sp-1" },
+    { id: "dv-2", title: "Example: report PDF export", owner: "Frontend", col: "todo", sprint: null },
   ],
 };
 </script>
@@ -596,13 +599,17 @@ function normalizeTeamIdeas(t){
 }
 function normalizeDev(d){
   d = d || {};
+  d.sprints = d.sprints || [];
+  d.sprints.forEach(sp=>{ if(!sp.id) sp.id = "sp-" + Math.random().toString(36).slice(2,9); });
   d.cards = d.cards || [];
   d.cards.forEach(c=>{
     c.col = KCOLS.some(k=>k.key===c.col) ? c.col : "todo";
+    if(c.sprint===undefined || (c.sprint && !d.sprints.some(sp=>sp.id===c.sprint))) c.sprint = null;
     if(!c.id) c.id = "dv-" + Math.random().toString(36).slice(2,9);
   });
   return d;
 }
+let devSprint = null;   // sprint currently shown on the board
 function normalizeBugs(b){
   b = b || {};
   b.tickets = b.tickets || [];
@@ -961,6 +968,7 @@ function showPhoto(url){
 /* ---------- icons ---------- */
 const ICONS = {
   pencil:'<svg viewBox="0 0 24 24"><path d="M17 3l4 4L8 20l-5 1 1-5L17 3z"/></svg>',
+  board:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="7" rx="1"/></svg>',
   plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
 };
@@ -1026,13 +1034,14 @@ function renderHeader(){
     );
     updated = OKRS.updated || "—";
   } else if(view==="dev"){
-    const total = DEV.cards.length;
-    const doneN = DEV.cards.filter(c=>c.col==="done").length;
-    pct = total ? Math.round(doneN/total*100) : 0;
+    const sp = currentSprint();
+    const inSp = sp ? DEV.cards.filter(c=>c.sprint===sp.id) : [];
+    const doneN = inSp.filter(c=>c.col==="done").length;
+    pct = inSp.length ? Math.round(doneN/inSp.length*100) : 0;
     stats.append(
-      mkStat(DEV.cards.filter(c=>c.col==="todo").length,"To do"),
-      mkStat(DEV.cards.filter(c=>c.col==="progress").length,"In progress"),
-      mkStat(DEV.cards.filter(c=>c.col==="review").length,"In review"),
+      mkStat(DEV.cards.filter(c=>!c.sprint).length,"Backlog"),
+      mkStat(inSp.length,"In sprint"),
+      mkStat(inSp.filter(c=>c.col==="progress"||c.col==="review").length,"In flight"),
       mkStat(doneN,"Done"),
     );
     updated = DEV.updated || "\u2014";
@@ -1223,6 +1232,9 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
   if(editMode){
     const acts = document.createElement("div");
     acts.className = "acts";
+    acts.appendChild(actBtn("board","Send to Development backlog",false, ()=>{
+      sendToBacklog(node.title, node.note || "", "roadmap", node.owner);
+    }));
     acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
     acts.appendChild(actBtn("pencil","Edit",false, ()=>
       openDialog("Edit task", node, v=>{
@@ -1982,6 +1994,7 @@ function kanbanBoard(items, opts){
       if(editMode){
         const acts = document.createElement("div"); acts.className = "acts";
         acts.style.opacity = ".55";
+        (opts.extraActs ? opts.extraActs(item) : []).forEach(b=>b && acts.appendChild(b));
         acts.appendChild(actBtn("pencil","Edit",false, ()=>opts.onEdit(item)));
         acts.appendChild(actBtn("trash","Delete",true, ()=>opts.onDelete(item)));
         meta.appendChild(acts);
@@ -2013,44 +2026,230 @@ function kanbanBoard(items, opts){
   return board;
 }
 
+function sendToBacklog(title, note, from, owner){
+  DEV.cards.push({
+    id: "dv-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    title: title,
+    note: note || "",
+    owner: owner || undefined,
+    from: from,
+    col: "todo",
+    sprint: null,
+  });
+  saveDev();
+  toast("Added to Development backlog");
+}
+function originChip(c){
+  if(!c.from) return null;
+  const sp = document.createElement("span");
+  sp.className = "src "+(c.from==="bug"?"student":"team");
+  sp.textContent = c.from==="bug" ? "\uD83D\uDC1E bug" : "\uD83D\uDDFA roadmap";
+  return sp;
+}
+function currentSprint(){
+  if(devSprint){
+    const sp = DEV.sprints.find(x=>x.id===devSprint);
+    if(sp) return sp;
+  }
+  return DEV.sprints.find(x=>!x.completed) || null;
+}
+
 function renderSidebarDev(){
   const wrap = $("mods");
   wrap.innerHTML = "";
-  $("side-title").textContent = "Board";
-  KCOLS.forEach(col=>{
-    const n = DEV.cards.filter(c=>c.col===col.key).length;
-    const d = document.createElement("div");
-    d.className = "mod lb-card";
-    d.innerHTML = '<div style="min-width:0"><div class="name"></div></div><span class="lb-pts"></span>';
-    d.querySelector(".name").textContent = col.label;
-    d.querySelector(".lb-pts").textContent = n + (n===1 ? " card" : " cards");
-    wrap.appendChild(d);
+  $("side-title").textContent = "Sprints";
+  const cur = currentSprint();
+  DEV.sprints.forEach(sp=>{
+    const n = DEV.cards.filter(c=>c.sprint===sp.id).length;
+    const doneN = DEV.cards.filter(c=>c.sprint===sp.id && c.col==="done").length;
+    const b = mkSideCard(cur && cur.id===sp.id, ()=>{ devSprint = sp.id; renderAll(); });
+    b.innerHTML = '<span class="name"></span><span class="pct"></span>';
+    b.querySelector(".name").textContent = (sp.completed ? "\u2713 " : "") + sp.name;
+    b.querySelector(".pct").textContent = (sp.start||sp.end ? (sp.start||"?")+" \u2192 "+(sp.end||"?")+" \u00b7 " : "") + doneN+"/"+n+" done";
+    if(sp.completed) b.style.opacity = ".6";
+    if(editMode){
+      cardActs(b, [
+        actBtn("pencil","Edit sprint name / dates",false, ()=>
+          openDialog("Edit sprint", {title:sp.name, start:sp.start, deadline:sp.end}, v=>{
+            sp.name = v.title;
+            if(v.start) sp.start = v.start; else delete sp.start;
+            if(v.deadline) sp.end = v.deadline; else delete sp.end;
+            saveDev();
+          }, {hideExtras:true, dates:true})),
+        actBtn("trash","Delete sprint",true, ()=>{
+          const n2 = DEV.cards.filter(c=>c.sprint===sp.id).length;
+          if(confirm("Delete "+sp.name+"? Its "+n2+" card(s) move back to the backlog.")){
+            DEV.cards.forEach(c=>{ if(c.sprint===sp.id) c.sprint = null; });
+            DEV.sprints.splice(DEV.sprints.indexOf(sp),1);
+            if(devSprint===sp.id) devSprint = null;
+            saveDev(); toast("Sprint deleted");
+          }
+        }),
+      ]);
+    }
+    wrap.appendChild(b);
   });
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "mod add";
+    add.textContent = "\uFF0B New sprint";
+    add.onclick = ()=> openDialog("New sprint", {title:"Sprint "+(DEV.sprints.length+1)}, v=>{
+      const sp = { id:"sp-"+Date.now().toString(36), name:v.title };
+      if(v.start) sp.start = v.start;
+      if(v.deadline) sp.end = v.deadline;
+      DEV.sprints.push(sp);
+      devSprint = sp.id;
+      saveDev(); toast("Sprint created \u2014 pull cards in from the backlog");
+    }, {hideExtras:true, dates:true});
+    wrap.appendChild(add);
+  }
+  const backlogN = DEV.cards.filter(c=>!c.sprint).length;
   const note = document.createElement("div");
   note.className = "lb-note";
-  note.textContent = "Move cards with the \u25C0 \u25B6 arrows \u2014 anyone can move; adding and editing needs Edit mode.";
+  note.textContent = backlogN+" item(s) in the backlog below the board. Anyone can move cards; adding, sprints and editing need Edit mode.";
   wrap.appendChild(note);
 }
 
-function renderContentDev(){
-  const wrap = $("content");
-  wrap.innerHTML = "";
-  wrap.appendChild(kanbanBoard(DEV.cards, {
+function devCardOpts(sprintId){
+  return {
     onMove: saveDev,
+    cardExtras: c => [originChip(c)],
     onEdit: c => openDialog("Edit card", c, v=>{
       applyFields(c, v);
       if(v.photos && v.photos.length) c.photos = v.photos; else delete c.photos;
       saveDev();
     }, {photos:true}),
-    onDelete: c => { if(confirm("Delete card \u201c"+c.title+"\u201d?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); } },
+    onDelete: c => { if(confirm("Delete this card?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); } },
     onAdd: colKey => openDialog("New card", {}, v=>{
-      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey };
+      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey, sprint:sprintId };
       if(v.owner) c.owner = v.owner;
       if(v.note) c.note = v.note;
       if(v.photos && v.photos.length) c.photos = v.photos;
       DEV.cards.push(c); saveDev(); toast("Card added");
     }, {photos:true}),
-  }));
+  };
+}
+
+function renderContentDev(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const sp = currentSprint();
+
+  if(sp){
+    const head = document.createElement("section");
+    head.className = "module-block";
+    head.style.marginBottom = "12px";
+    const row = document.createElement("div");
+    row.className = "module-head";
+    const h2 = document.createElement("h2");
+    h2.textContent = sp.name + (sp.completed ? " (completed)" : "");
+    row.appendChild(h2);
+    if(sp.start || sp.end){
+      const d = document.createElement("span"); d.className = "pct";
+      d.textContent = (sp.start||"?") + " \u2192 " + (sp.end||"?");
+      row.appendChild(d);
+    }
+    const spCards = DEV.cards.filter(c=>c.sprint===sp.id);
+    const cnt = document.createElement("span"); cnt.className = "pct";
+    cnt.textContent = spCards.filter(c=>c.col==="done").length + "/" + spCards.length + " done";
+    row.appendChild(cnt);
+    if(editMode && !sp.completed){
+      const spx = document.createElement("span"); spx.className = "spacer"; row.appendChild(spx);
+      const btn = document.createElement("button");
+      btn.className = "tool";
+      btn.textContent = "\u2713 Complete sprint";
+      btn.onclick = ()=>{
+        const unfinished = spCards.filter(c=>c.col!=="done").length;
+        if(confirm("Complete "+sp.name+"? "+unfinished+" unfinished card(s) will move back to the backlog.")){
+          DEV.cards.forEach(c=>{ if(c.sprint===sp.id && c.col!=="done") c.sprint = null; });
+          sp.completed = true;
+          devSprint = null;
+          saveDev(); toast("Sprint completed \uD83C\uDF89");
+        }
+      };
+      row.appendChild(btn);
+    }
+    head.appendChild(row);
+    wrap.appendChild(head);
+    wrap.appendChild(kanbanBoard(spCards, devCardOpts(sp.id)));
+  } else {
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = DEV.sprints.length
+      ? "All sprints completed. " + (editMode ? "Create the next one from the left." : "Turn on Edit to start the next sprint.")
+      : (editMode ? "No sprint yet \u2014 create one from the left, then pull backlog items in." : "No sprint yet \u2014 turn on Edit to create Sprint 1.");
+    wrap.appendChild(d);
+  }
+
+  const backlog = DEV.cards.filter(c=>!c.sprint);
+  const block = document.createElement("section");
+  block.className = "module-block";
+  block.style.marginTop = "16px";
+  const bh = document.createElement("div");
+  bh.className = "module-head";
+  const h2b = document.createElement("h2"); h2b.textContent = "Backlog";
+  const pctb = document.createElement("span"); pctb.className = "pct";
+  pctb.textContent = backlog.length + " item(s)";
+  bh.append(h2b, pctb);
+  block.appendChild(bh);
+
+  backlog.forEach(c=>{
+    const row = document.createElement("div");
+    row.className = "ct-row";
+    const body = document.createElement("div");
+    body.className = "body";
+    const t = document.createElement("div"); t.className = "title"; t.textContent = c.title;
+    body.appendChild(t);
+    if(c.note){ const n = document.createElement("div"); n.className = "note"; n.textContent = c.note; body.appendChild(n); }
+    const ps = photoStrip(c.photos);
+    if(ps) body.appendChild(ps);
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const oc = originChip(c);
+    if(oc) meta.appendChild(oc);
+    if(c.owner){ const o = document.createElement("span"); o.className = "owner"; o.textContent = c.owner; meta.appendChild(o); }
+    if(sp && !sp.completed){
+      const mv = document.createElement("button");
+      mv.className = "upd";
+      mv.textContent = "\u2192 " + sp.name;
+      mv.title = "Pull into the current sprint";
+      mv.onclick = ()=>{ c.sprint = sp.id; c.col = "todo"; saveDev(); toast("Pulled into "+sp.name); };
+      meta.appendChild(mv);
+    }
+    if(editMode){
+      const acts = document.createElement("div"); acts.className = "acts";
+      acts.appendChild(actBtn("pencil","Edit",false, ()=> openDialog("Edit backlog item", c, v=>{
+        applyFields(c, v);
+        if(v.photos && v.photos.length) c.photos = v.photos; else delete c.photos;
+        saveDev();
+      }, {photos:true})));
+      acts.appendChild(actBtn("trash","Delete",true, ()=>{
+        if(confirm("Delete this backlog item?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); }
+      }));
+      meta.appendChild(acts);
+    }
+    row.append(body, meta);
+    block.appendChild(row);
+  });
+  if(!backlog.length){
+    const e = document.createElement("div"); e.className = "empty";
+    e.textContent = "Backlog is empty \u2014 send items here from the Roadmap or Bugs (board icon in Edit mode), or add one below.";
+    block.appendChild(e);
+  }
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "addline";
+    add.textContent = "\uFF0B Add to backlog";
+    add.onclick = ()=> openDialog("New backlog item", {}, v=>{
+      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:"todo", sprint:null };
+      if(v.owner) c.owner = v.owner;
+      if(v.note) c.note = v.note;
+      if(v.photos && v.photos.length) c.photos = v.photos;
+      DEV.cards.push(c); saveDev(); toast("Added to backlog");
+    }, {photos:true});
+    block.appendChild(add);
+  }
+  wrap.appendChild(block);
 }
 
 function bugSrcChip(t){
@@ -2116,6 +2315,9 @@ function renderContentBugs(){
   wrap.appendChild(kanbanBoard(BUGS.tickets, {
     onMove: saveBugs,
     cardExtras: t => [bugSrcChip(t), bugAreaChip(t)],
+    extraActs: t => [actBtn("board","Send to Development backlog",false, ()=>{
+      sendToBacklog("Fix: "+t.title, (t.note?t.note+" \u00b7 ":"")+"Reported by "+t.reporter+(t.area?" \u00b7 "+t.area:""), "bug");
+    })],
     onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos}, v=>{
       t.title = v.title;
       t.note = v.note || "";
