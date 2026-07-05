@@ -29,6 +29,13 @@ const JSONBIN_CONFIG = {
 };
 const EDIT_PASSCODE = "dubuddy2026";   // change this to any word your team prefers
 
+/* Photo uploads (optional, ~2 min setup):
+   1. Go to https://imgbb.com and sign up (free)
+   2. Go to https://api.imgbb.com and click "Get API key"
+   3. Paste the key below. Photos attached to tasks/ideas get uploaded
+      to ImgBB and only the link is saved in your data. */
+const IMGBB_KEY = "";   // ← paste your ImgBB API key to enable photo uploads
+
 /* ---- Seed data: used only the first time, to fill the database ---- */
 const DEFAULT_ROADMAP = {
   title: "Product Roadmap",
@@ -128,6 +135,12 @@ const DEFAULT_CONTENT = {
       { title: "Update meet with Sumit", start: "10th July", deadline: "10th July", status: "planned" },
       { title: "Final verification by Mannat", start: "7th July", deadline: "19th July", status: "planned", owner: "Mannat" },
     ]},
+  ],
+};
+
+const DEFAULT_TEAM_IDEAS = {
+  items: [
+    { id: "ti-sample", title: "Example: dark mode for the test attempt screen", note: "Students revise late at night; a dark theme would reduce eye strain. (Sample idea — delete me.)", area: "Test Series", owner: "Sample", stage: "new", votes: 0, created: "5 July 2026" },
   ],
 };
 </script>
@@ -299,8 +312,47 @@ aside{position:sticky;top:16px;align-self:start}
 .dialog h3{font-family:var(--disp);font-size:18px;margin-bottom:14px}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
-.field input,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.field input,.field textarea,.field select{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;color:var(--ink)}
 .field textarea{resize:vertical;min-height:56px}
+.okr-chip{font-family:var(--mono);font-size:11px;color:var(--indigo);background:var(--indigo-soft);padding:3px 8px;border-radius:99px;cursor:pointer;border:none;white-space:nowrap}
+.okr-chip:hover{background:#DDE4FA}
+.lw{margin-top:14px;border-top:1px dashed var(--line-strong);padding-top:10px}
+.lw-head{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.lw-row{display:flex;align-items:center;gap:10px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13.5px;width:100%;text-align:left}
+.lw-row:hover{background:var(--paper)}
+.lw-row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lw-where{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* team ideas */
+.st-new{background:var(--indigo-soft);color:var(--indigo)}
+.st-review{background:var(--progress-bg);color:var(--progress)}
+.st-pipeline{background:#E4F0FB;color:#1D5FA8}
+.st-shipped{background:var(--done-bg);color:var(--done)}
+.st-notnow{background:var(--planned-bg);color:var(--planned)}
+.vote{display:flex;flex-direction:column;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-family:var(--mono);color:var(--muted);flex:none}
+.vote:hover{border-color:var(--indigo);color:var(--indigo)}
+.vote.voted{border-color:var(--indigo);background:var(--indigo-soft);color:var(--indigo)}
+.vote b{font-size:14px}
+.vote span{font-size:10px}
+.lb-rank{font-family:var(--disp);font-size:18px;width:30px;flex:none;text-align:center}
+.lb-card{display:flex;align-items:center;gap:10px}
+.lb-pts{font-family:var(--mono);font-size:12px;color:var(--indigo);margin-left:auto;white-space:nowrap}
+.lb-note{font-size:11.5px;color:var(--muted);padding:8px 12px;border:1px dashed var(--line-strong);border-radius:10px;line-height:1.5}
+.submit-idea{width:100%;padding:13px;border:1.5px dashed var(--indigo);border-radius:var(--radius);color:var(--indigo);font-family:var(--disp);font-weight:600;font-size:15px;background:var(--card);margin-bottom:16px}
+.submit-idea:hover{background:var(--indigo-soft)}
+.stage-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
+/* photos */
+.photo-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.photo-list:empty{display:none}
+.photo-item{position:relative}
+.photo-item img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
+.photo-item .rm{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;line-height:20px;text-align:center}
+.photo-item.up{opacity:.5}
+.photo-strip{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.photo-strip img{width:52px;height:52px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:zoom-in;display:block}
+.lightbox{position:fixed;inset:0;background:rgba(10,15,25,.82);display:flex;align-items:center;justify-content:center;z-index:300;cursor:zoom-out;padding:24px}
+.lightbox img{max-width:96%;max-height:96%;border-radius:10px;box-shadow:0 20px 80px rgba(0,0,0,.5)}
 .field-row{display:flex;gap:10px}
 .field-row .field{flex:1}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px}
@@ -381,6 +433,13 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
       <div class="field"><label for="f-deadline">Deadline (optional)</label><input id="f-deadline" placeholder="e.g. 12th July"></div>
     </div>
     <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. ₹2,00,000"></div>
+    <div class="field" id="f-okr-wrap"><label for="f-okr">Link to OKR objective (optional)</label><select id="f-okr"></select></div>
+    <div class="field" id="f-area-wrap"><label for="f-area">Product area</label><select id="f-area"></select></div>
+    <div class="field" id="f-photos-wrap">
+      <label for="f-photos">Photos (optional)</label>
+      <input type="file" id="f-photos" accept="image/*" multiple>
+      <div id="f-photo-list" class="photo-list"></div>
+    </div>
     <div class="field-row" id="f-metric-wrap">
       <div class="field"><label for="f-current">Current</label><input id="f-current" type="number" step="any"></div>
       <div class="field"><label for="f-target">Target</label><input id="f-target" type="number" step="any"></div>
@@ -401,7 +460,10 @@ const STATUS_ORDER = ["planned","progress","done","blocked"];
 const STATUS_LABEL = {planned:"Planned", progress:"In progress", done:"Done", blocked:"Blocked"};
 const $ = id => document.getElementById(id);
 
-let DATA = null, OKRS = null, CONTENT = null, db = null;
+let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, db = null;
+const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
+const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
+const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
 let view = "roadmap";           // "roadmap" | "okr" | "content"
 let editMode = false;
 let activeModule = "all";
@@ -424,9 +486,52 @@ function normalizeOkrs(o){
   o.cycles = o.cycles || [];
   o.cycles.forEach(c => {
     c.objectives = c.objectives || [];
-    c.objectives.forEach(ob => ob.krs = ob.krs || []);
+    c.objectives.forEach((ob,i) => {
+      ob.krs = ob.krs || [];
+      if(!ob.id) ob.id = "ob-" + c.key + "-" + i;   // deterministic so all teammates derive the same id
+    });
   });
   return o;
+}
+function findObjective(id){
+  for(const c of OKRS.cycles){
+    const i = c.objectives.findIndex(ob=>ob.id===id);
+    if(i>=0) return {ob:c.objectives[i], cyc:c, num:i+1};
+  }
+  return null;
+}
+function okrChip(id){
+  const f = findObjective(id);
+  if(!f) return null;
+  const b = document.createElement("button");
+  b.className = "okr-chip";
+  b.textContent = "🎯 O"+f.num;
+  b.title = f.ob.title+" · "+f.cyc.name;
+  b.onclick = e => { e.stopPropagation(); activeCycle = f.cyc.key; view = "okr"; renderAll(); };
+  return b;
+}
+function linkedWork(obId){
+  const out = [];
+  DATA.modules.forEach(m=>{
+    if(m.okr===obId){
+      const lv = m.items.flatMap(leavesOf);
+      out.push({title:m.name, where:"Module", pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+    }
+    const walk = n => {
+      if(n.okr===obId){
+        const lv = leavesOf(n);
+        out.push({title:n.title, where:m.name, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+      }
+      (n.items||[]).forEach(walk);
+    };
+    m.items.forEach(walk);
+  });
+  CONTENT.sections.forEach(s=>{
+    s.tasks.forEach(t=>{
+      if(t.okr===obId) out.push({title:t.title, where:"Content · "+s.name, status:t.status, pct:t.status==="done"?100:t.status==="progress"?50:0, nav:()=>{view="content"; activeSection=s.key;}});
+    });
+  });
+  return out;
 }
 function normalizeContent(c){
   c = c || {};
@@ -438,6 +543,18 @@ function normalizeContent(c){
   return c;
 }
 let activeSection = "all";
+let activeStage = "all";
+function normalizeTeamIdeas(t){
+  t = t || {};
+  t.items = t.items || [];
+  t.items.forEach(i=>{
+    i.stage = i.stage || "new";
+    i.votes = i.votes || 0;
+    i.owner = i.owner || "Anonymous";
+    if(!i.id) i.id = "ti-" + Math.random().toString(36).slice(2,9);
+  });
+  return t;
+}
 function leavesOf(node){
   if(node.items && node.items.length) return node.items.flatMap(leavesOf);
   node.status = node.status || "planned";
@@ -483,7 +600,7 @@ let lastSnapshot = "";
 
 async function pushAll(){
   if(!db) { renderAll(); return; }
-  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT) };
+  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS) };
   saving = true;
   try{
     const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(payload) });
@@ -495,6 +612,7 @@ async function pushAll(){
 function saveRoadmap(){ DATA.updated = todayStr(); renderAll(); pushAll(); }
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
 function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
+function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 
 async function fetchAll(){
   const r = await fetch(BIN_URL + "/latest", { headers: { "X-Access-Key": JSONBIN_CONFIG.apiKey, "X-Bin-Meta": "false" } });
@@ -506,12 +624,13 @@ async function refresh(showMsg){
   try{
     const rec = await fetchAll();
     if(rec && rec.roadmap){
-      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content });
+      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas });
       if(snap !== lastSnapshot){
         lastSnapshot = snap;
         DATA = normalize(rec.roadmap);
         OKRS = normalizeOkrs(rec.okrs);
         CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
+        TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
         renderAll();
         if(showMsg) toast("Refreshed — you're seeing the latest");
       } else if(showMsg) toast("Already up to date");
@@ -523,6 +642,7 @@ async function start(){
   DATA = normalize(clean(DEFAULT_ROADMAP));
   OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
   CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
+  TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
   if(configured){
     try{
       const rec = await fetchAll();
@@ -530,11 +650,12 @@ async function start(){
       if(rec && rec.roadmap){
         DATA = normalize(rec.roadmap);
         OKRS = normalizeOkrs(rec.okrs);
-        if(rec.content){
-          CONTENT = normalizeContent(rec.content);
-          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT) });
+        if(rec.content) CONTENT = normalizeContent(rec.content);
+        if(rec.teamIdeas) TIDEAS = normalizeTeamIdeas(rec.teamIdeas);
+        if(rec.content && rec.teamIdeas){
+          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS) });
         } else {
-          await pushAll();   // existing bin from before: add the content section to it
+          await pushAll();   // existing bin from an older version: add the new section(s) to it
         }
       } else {
         await pushAll();   // first run: seed the bin with the defaults
@@ -584,16 +705,74 @@ function openDialog(title, values, onSave, opts={}){
   $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-dates-wrap").style.display = opts.dates ? "flex" : "none";
   $("f-budget-wrap").style.display = opts.budget ? "" : "none";
+  $("f-okr-wrap").style.display = opts.okrLink ? "" : "none";
+  $("f-area-wrap").style.display = opts.area ? "" : "none";
+  $("f-photos-wrap").style.display = opts.photos ? "" : "none";
+  dlgPhotos = (opts.photos && Array.isArray(values.photos)) ? values.photos.slice() : [];
+  $("f-photos").value = "";
+  if(opts.photos) renderDlgPhotos();
+  $("f-owner-wrap").querySelector("label").textContent = opts.ownerLabel || "Owner (optional)";
+  if(opts.area){
+    const sel = $("f-area");
+    sel.innerHTML = "";
+    const names = [...new Set([...DATA.modules.map(m=>m.name), ...CONTENT.sections.map(x=>"Content · "+x.name), "Other"])];
+    names.forEach(n=>{
+      const o = document.createElement("option");
+      o.value = n; o.textContent = n;
+      sel.appendChild(o);
+    });
+    sel.value = values.area && names.includes(values.area) ? values.area : names[0];
+  }
+  if(opts.okrLink){
+    const sel = $("f-okr");
+    sel.innerHTML = "";
+    const none = document.createElement("option");
+    none.value = ""; none.textContent = "— No link —";
+    sel.appendChild(none);
+    OKRS.cycles.forEach(c=>{
+      const g = document.createElement("optgroup");
+      g.label = c.name;
+      c.objectives.forEach((ob,i)=>{
+        const opt = document.createElement("option");
+        opt.value = ob.id; opt.textContent = "O"+(i+1)+" · "+ob.title;
+        g.appendChild(opt);
+      });
+      sel.appendChild(g);
+    });
+    sel.value = values.okr || "";
+  }
   dlgOnSave = onSave;
   $("overlay").classList.add("show");
   setTimeout(()=>{ (opts.hideTitle ? $("f-current") : $("f-title")).focus(); }, 50);
 }
+$("f-photos").addEventListener("change", async e=>{
+  const files = [...e.target.files];
+  e.target.value = "";
+  if(!files.length) return;
+  if(!IMGBB_KEY){
+    toast("Photo uploads aren't set up yet \u2014 add a free ImgBB key at the top of index.html (see comment)");
+    return;
+  }
+  for(const f of files){
+    photoUploadsInFlight++;
+    renderDlgPhotos();
+    try{
+      const url = await uploadPhoto(f);
+      dlgPhotos.push(url);
+    }catch(err){
+      toast("Couldn't upload "+f.name+": "+err.message);
+    }
+    photoUploadsInFlight--;
+    renderDlgPhotos();
+  }
+});
 $("dlg-cancel").onclick = ()=> $("overlay").classList.remove("show");
 $("overlay").addEventListener("click", e=>{ if(e.target===$("overlay")) $("overlay").classList.remove("show"); });
 $("dlg-save").onclick = ()=>{
   const hideTitle = $("f-title-wrap").style.display === "none";
   const t = $("f-title").value.trim();
   if(!hideTitle && !t){ $("f-title").focus(); return; }
+  if(photoUploadsInFlight > 0){ toast("Photos are still uploading \u2014 one second\u2026"); return; }
   $("overlay").classList.remove("show");
   dlgOnSave && dlgOnSave({
     title: t,
@@ -606,12 +785,87 @@ $("dlg-save").onclick = ()=>{
     start: $("f-start").value.trim(),
     deadline: $("f-deadline").value.trim(),
     budget: $("f-budget").value.trim(),
+    okr: $("f-okr").value,
+    area: $("f-area").value,
+    photos: dlgPhotos.slice(),
   });
 };
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") $("overlay").classList.remove("show");
   if(e.key==="Enter" && $("overlay").classList.contains("show") && e.target.tagName!=="TEXTAREA") $("dlg-save").click();
 });
+
+/* ---------- photos ---------- */
+let dlgPhotos = [], photoUploadsInFlight = 0;
+function renderDlgPhotos(){
+  const list = $("f-photo-list");
+  list.innerHTML = "";
+  dlgPhotos.forEach((url,i)=>{
+    const it = document.createElement("div");
+    it.className = "photo-item";
+    const img = document.createElement("img");
+    img.src = url; img.alt = "photo";
+    const rm = document.createElement("button");
+    rm.className = "rm"; rm.textContent = "\u00d7"; rm.title = "Remove";
+    rm.onclick = ()=>{ dlgPhotos.splice(i,1); renderDlgPhotos(); };
+    it.append(img, rm);
+    list.appendChild(it);
+  });
+  if(photoUploadsInFlight>0){
+    const up = document.createElement("div");
+    up.className = "photo-item up";
+    up.innerHTML = '<img alt="">';
+    up.title = "Uploading\u2026";
+    list.appendChild(up);
+  }
+}
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const MAX = 1400;
+      let w = img.width, h = img.height;
+      if(Math.max(w,h) > MAX){ const k = MAX/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img,0,0,w,h);
+      res(cv.toDataURL("image/jpeg",0.82).split(",")[1]);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function uploadPhoto(file){
+  const base64 = await compressImage(file);
+  const fd = new FormData();
+  fd.append("image", base64);
+  const r = await fetch("https://api.imgbb.com/1/upload?key="+IMGBB_KEY, {method:"POST", body:fd});
+  const j = await r.json();
+  if(!j || !j.success) throw new Error((j && j.error && j.error.message) || "upload failed");
+  return j.data.url;
+}
+function photoStrip(urls){
+  if(!urls || !urls.length) return null;
+  const strip = document.createElement("div");
+  strip.className = "photo-strip";
+  urls.forEach(u=>{
+    const img = document.createElement("img");
+    img.src = u; img.alt = "attachment"; img.loading = "lazy";
+    img.onclick = e=>{ e.stopPropagation(); showPhoto(u); };
+    strip.appendChild(img);
+  });
+  return strip;
+}
+function showPhoto(url){
+  const lb = document.createElement("div");
+  lb.className = "lightbox";
+  const img = document.createElement("img");
+  img.src = url;
+  lb.appendChild(img);
+  lb.onclick = ()=> document.body.removeChild(lb);
+  document.body.appendChild(lb);
+}
 
 /* ---------- icons ---------- */
 const ICONS = {
@@ -645,11 +899,13 @@ function cardActs(card, buttons){
 
 /* ---------- shared header ---------- */
 function renderHeader(){
-  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
     ? "Content work by exam — what's being made, who owns it, and when it's due."
+    : view==="ideas"
+    ? "Anyone on the team can pitch an idea \u2014 name on it, points for it, and a clear stage so nothing disappears."
     : (DATA.subtitle||"");
   document.title = $("rm-title").textContent;
   const stats = $("stats");
@@ -674,6 +930,18 @@ function renderHeader(){
       mkStat(krs.filter(k=>krPct(k)<30).length,"Needs attention"),
     );
     updated = OKRS.updated || "—";
+  } else if(view==="ideas"){
+    const items = TIDEAS.items;
+    const contributors = new Set(items.map(i=>i.owner)).size;
+    const advanced = items.filter(i=>i.stage==="pipeline"||i.stage==="shipped").length;
+    pct = items.length ? Math.round(advanced/items.length*100) : 0;
+    stats.append(
+      mkStat(items.length,"Ideas"),
+      mkStat(items.filter(i=>i.stage==="pipeline").length,"In pipeline"),
+      mkStat(items.filter(i=>i.stage==="shipped").length,"Shipped"),
+      mkStat(contributors,"Contributors"),
+    );
+    updated = TIDEAS.updated || "\u2014";
   } else if(view==="content"){
     const tasks = CONTENT.sections.flatMap(s=>s.tasks);
     const c = counts(tasks);
@@ -725,7 +993,11 @@ function renderSidebarRoadmap(){
     if(editMode){
       cardActs(b, [
         actBtn("pencil","Rename module",false, ()=>
-          openDialog("Rename module", {title:m.name}, v=>{ m.name = v.title; saveRoadmap(); }, {hideExtras:true})),
+          openDialog("Rename module", {title:m.name, okr:m.okr}, v=>{
+            m.name = v.title;
+            if(v.okr) m.okr = v.okr; else delete m.okr;
+            saveRoadmap();
+          }, {hideExtras:true, okrLink:true})),
         actBtn("trash","Delete module",true, ()=>{
           if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
             DATA.modules.splice(DATA.modules.indexOf(m),1);
@@ -761,11 +1033,13 @@ function addTaskTo(container, label){
     const n = {title:v.title, status:"planned"};
     if(v.owner) n.owner = v.owner;
     if(v.note) n.note = v.note;
+    if(v.okr) n.okr = v.okr;
+    if(v.photos && v.photos.length) n.photos = v.photos;
     container.items = container.items || [];
     container.items.push(n);
     if(container.status) delete container.status;
     saveRoadmap(); toast("Added");
-  });
+  }, {okrLink:true, photos:true});
 }
 
 function nodeEl(node, parentArr, idx, numPath, modKey){
@@ -797,9 +1071,15 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     noteEl.className = "note"; noteEl.textContent = node.note;
     body.appendChild(noteEl);
   }
+  const nps = photoStrip(node.photos);
+  if(nps) body.appendChild(nps);
 
   const meta = document.createElement("div");
   meta.className = "meta";
+  if(node.okr){
+    const ch = okrChip(node.okr);
+    if(ch) meta.appendChild(ch);
+  }
   if(node.owner){
     const o = document.createElement("span");
     o.className = "owner"; o.textContent = node.owner;
@@ -828,7 +1108,12 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     acts.className = "acts";
     acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
     acts.appendChild(actBtn("pencil","Edit",false, ()=>
-      openDialog("Edit task", node, v=>{ applyFields(node, v); saveRoadmap(); })));
+      openDialog("Edit task", node, v=>{
+        applyFields(node, v);
+        if(v.okr) node.okr = v.okr; else delete node.okr;
+        if(v.photos && v.photos.length) node.photos = v.photos; else delete node.photos;
+        saveRoadmap();
+      }, {okrLink:true, photos:true})));
     acts.appendChild(actBtn("trash","Delete",true, ()=>{
       const lv = isParent ? leavesOf(node).length : 0;
       const msg = isParent ? `Delete “${node.title}” and its ${lv} sub-task(s)?` : `Delete “${node.title}”?`;
@@ -872,11 +1157,19 @@ function renderContentRoadmap(){
     const pct = document.createElement("span"); pct.className="pct";
     pct.textContent = pctOf(lv)+"% complete";
     head.append(h2, pct);
+    if(m.okr){
+      const ch = okrChip(m.okr);
+      if(ch) head.appendChild(ch);
+    }
     if(editMode){
       const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
       const acts = document.createElement("div"); acts.className = "acts";
       acts.appendChild(actBtn("pencil","Rename module",false, ()=>
-        openDialog("Rename module", {title:m.name}, v=>{ m.name = v.title; saveRoadmap(); }, {hideExtras:true})));
+        openDialog("Rename module", {title:m.name, okr:m.okr}, v=>{
+          m.name = v.title;
+          if(v.okr) m.okr = v.okr; else delete m.okr;
+          saveRoadmap();
+        }, {hideExtras:true, okrLink:true})));
       acts.appendChild(actBtn("trash","Delete module",true, ()=>{
         if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
           DATA.modules.splice(DATA.modules.indexOf(m),1);
@@ -1069,6 +1362,37 @@ function renderContentOkr(){
     ob.krs.forEach((kr,ki)=> krs.appendChild(krEl(kr, ob, ki, oi)));
     card.appendChild(krs);
 
+    const lw = linkedWork(ob.id);
+    if(lw.length){
+      const box = document.createElement("div");
+      box.className = "lw";
+      const doneCount = lw.filter(x=>x.pct>=100).length;
+      const h = document.createElement("div");
+      h.className = "lw-head";
+      h.textContent = "Linked work · "+doneCount+"/"+lw.length+" done";
+      box.appendChild(h);
+      lw.forEach(item=>{
+        const r = document.createElement("button");
+        r.className = "lw-row";
+        const pill = document.createElement("span");
+        if(item.status){
+          pill.className = "pill "+item.status;
+          pill.textContent = STATUS_LABEL[item.status];
+        } else {
+          pill.className = "mini";
+          pill.textContent = item.pct+"%";
+        }
+        const t = document.createElement("span");
+        t.className = "t"; t.textContent = item.title;
+        const w = document.createElement("span");
+        w.className = "lw-where"; w.textContent = item.where;
+        r.append(pill, t, w);
+        r.onclick = ()=>{ item.nav(); renderAll(); };
+        box.appendChild(r);
+      });
+      card.appendChild(box);
+    }
+
     if(editMode){
       const add = document.createElement("button");
       add.className = "addline";
@@ -1181,8 +1505,14 @@ function ctTaskEl(task, sec, ti){
     if(task.deadline) bs[bi].textContent = task.deadline;
     body.appendChild(d);
   }
+  const tps = photoStrip(task.photos);
+  if(tps) body.appendChild(tps);
   const meta = document.createElement("div");
   meta.className = "meta";
+  if(task.okr){
+    const ch = okrChip(task.okr);
+    if(ch) meta.appendChild(ch);
+  }
   if(task.owner){
     const o = document.createElement("span"); o.className="owner"; o.textContent = task.owner;
     meta.appendChild(o);
@@ -1204,8 +1534,10 @@ function ctTaskEl(task, sec, ti){
         applyFields(task, v);
         if(v.start) task.start = v.start; else delete task.start;
         if(v.deadline) task.deadline = v.deadline; else delete task.deadline;
+        if(v.okr) task.okr = v.okr; else delete task.okr;
+        if(v.photos && v.photos.length) task.photos = v.photos; else delete task.photos;
         saveContent();
-      }, {dates:true})));
+      }, {dates:true, okrLink:true, photos:true})));
     acts.appendChild(actBtn("trash","Delete task",true, ()=>{
       if(confirm(`Delete “${task.title}”?`)){ sec.tasks.splice(ti,1); saveContent(); toast("Deleted"); }
     }));
@@ -1272,12 +1604,226 @@ function renderContentContent(){
         if(v.note) t.note = v.note;
         if(v.start) t.start = v.start;
         if(v.deadline) t.deadline = v.deadline;
+        if(v.okr) t.okr = v.okr;
+        if(v.photos && v.photos.length) t.photos = v.photos;
         s.tasks.push(t); saveContent(); toast("Task added");
-      }, {dates:true});
+      }, {dates:true, okrLink:true, photos:true});
       block.appendChild(add);
     }
     wrap.appendChild(block);
   });
+}
+
+/* ================================================================
+   TEAM IDEAS VIEW
+   ================================================================ */
+function ideaPts(i){ return STAGE_PTS[i.stage] || 1; }
+
+function renderSidebarIdeas(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").textContent = "Leaderboard";
+  const byOwner = {};
+  TIDEAS.items.forEach(i=>{
+    const o = byOwner[i.owner] = byOwner[i.owner] || {name:i.owner, pts:0, n:0, pipe:0, ship:0};
+    o.pts += ideaPts(i); o.n++;
+    if(i.stage==="pipeline") o.pipe++;
+    if(i.stage==="shipped") o.ship++;
+  });
+  const rows = Object.values(byOwner).sort((a,b)=>b.pts-a.pts || b.n-a.n);
+  const medals = ["\u{1F947}","\u{1F948}","\u{1F949}"];
+  rows.forEach((r,i)=>{
+    const card = document.createElement("div");
+    card.className = "mod lb-card";
+    const rank = document.createElement("span");
+    rank.className = "lb-rank";
+    rank.textContent = medals[i] || (i+1);
+    const body = document.createElement("div");
+    body.style.minWidth = "0";
+    body.innerHTML = '<div class="name"></div><span class="pct"></span>';
+    body.querySelector(".name").textContent = r.name;
+    body.querySelector(".pct").textContent = r.n+" idea"+(r.n!==1?"s":"")+(r.pipe?" \u00b7 "+r.pipe+" in pipeline":"")+(r.ship?" \u00b7 "+r.ship+" shipped":"");
+    const pts = document.createElement("span");
+    pts.className = "lb-pts"; pts.textContent = r.pts+" pts";
+    card.append(rank, body, pts);
+    wrap.appendChild(card);
+  });
+  if(!rows.length){
+    const d = document.createElement("div");
+    d.className = "empty"; d.textContent = "No ideas yet \u2014 be the first on the board!";
+    wrap.appendChild(d);
+  }
+  const note = document.createElement("div");
+  note.className = "lb-note";
+  note.textContent = "Scoring: 1 pt per idea \u00b7 3 pts when it reaches the pipeline \u00b7 5 pts when it ships. Quality beats quantity.";
+  wrap.appendChild(note);
+}
+
+function pickModule(onPick){
+  const ov = document.createElement("div");
+  ov.className = "overlay show";
+  const dg = document.createElement("div");
+  dg.className = "dialog";
+  dg.innerHTML = '<h3>Add to which module?</h3>';
+  DATA.modules.forEach(m=>{
+    const b = document.createElement("button");
+    b.className = "addline";
+    b.style.marginBottom = "8px";
+    b.textContent = m.name;
+    b.onclick = ()=>{ document.body.removeChild(ov); onPick(m); };
+    dg.appendChild(b);
+  });
+  const cancel = document.createElement("button");
+  cancel.className = "btn"; cancel.textContent = "Cancel";
+  cancel.style.marginTop = "6px";
+  cancel.onclick = ()=> document.body.removeChild(ov);
+  dg.appendChild(cancel);
+  ov.onclick = e=>{ if(e.target===ov) document.body.removeChild(ov); };
+  ov.appendChild(dg);
+  document.body.appendChild(ov);
+}
+
+function submitIdeaDialog(){
+  openDialog("Submit an idea", {}, v=>{
+    TIDEAS.items.push({
+      id: "ti-" + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      title: v.title,
+      note: v.note || "",
+      area: v.area,
+      owner: v.owner || "Anonymous",
+      stage: "new",
+      votes: 0,
+      created: todayStr(),
+      photos: (v.photos && v.photos.length) ? v.photos : undefined,
+    });
+    saveTeamIdeas(); toast("Idea submitted \u2014 it's on the board!");
+  }, {area:true, ownerLabel:"Your name (for the leaderboard)", photos:true});
+}
+
+function renderContentIdeas(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+
+  const submit = document.createElement("button");
+  submit.className = "submit-idea";
+  submit.textContent = "\uD83D\uDCA1 \uFF0B Submit an idea \u2014 no passcode needed";
+  submit.onclick = submitIdeaDialog;
+  wrap.appendChild(submit);
+
+  const chips = document.createElement("div");
+  chips.className = "stage-chips";
+  const mk = (key,label)=>{
+    const c = document.createElement("button");
+    c.className = "chip"+(activeStage===key?" active":"");
+    c.textContent = label;
+    c.onclick = ()=>{ activeStage = key; renderContentIdeas(); };
+    return c;
+  };
+  chips.appendChild(mk("all","All"));
+  STAGE_ORDER.forEach(st=> chips.appendChild(mk(st, STAGE_LABEL[st])));
+  wrap.appendChild(chips);
+
+  const items = TIDEAS.items
+    .filter(i => activeStage==="all" || i.stage===activeStage)
+    .slice()
+    .sort((a,b)=> (b.votes-a.votes) || String(b.id).localeCompare(String(a.id)));
+
+  if(!items.length){
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = activeStage==="all" ? "No ideas yet \u2014 submit the first one!" : "No ideas in this stage.";
+    wrap.appendChild(d);
+    return;
+  }
+
+  const block = document.createElement("section");
+  block.className = "module-block";
+  items.forEach(idea=>{
+    const row = document.createElement("div");
+    row.className = "ct-row";
+
+    const vote = document.createElement("button");
+    const votedKey = "ti-voted-"+idea.id;
+    let voted = false;
+    try{ voted = localStorage.getItem(votedKey)==="1"; }catch(e){}
+    vote.className = "vote"+(voted?" voted":"");
+    vote.innerHTML = "<b>\u25B2</b><span></span>";
+    vote.querySelector("span").textContent = idea.votes;
+    vote.title = voted ? "You upvoted this" : "Upvote";
+    vote.onclick = ()=>{
+      if(voted){ toast("You already voted for this one"); return; }
+      idea.votes++;
+      try{ localStorage.setItem(votedKey,"1"); }catch(e){}
+      saveTeamIdeas();
+    };
+
+    const body = document.createElement("div");
+    body.className = "body";
+    const t = document.createElement("div");
+    t.className = "title"; t.textContent = idea.title;
+    body.appendChild(t);
+    if(idea.note){
+      const n = document.createElement("div"); n.className = "note"; n.textContent = idea.note;
+      body.appendChild(n);
+    }
+    const d = document.createElement("div");
+    d.className = "ct-dates";
+    d.textContent = (idea.area||"") + (idea.created ? " \u00b7 " + idea.created : "");
+    body.appendChild(d);
+    const ips = photoStrip(idea.photos);
+    if(ips) body.appendChild(ips);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const o = document.createElement("span");
+    o.className = "owner"; o.textContent = idea.owner;
+    meta.appendChild(o);
+    const pill = document.createElement("button");
+    pill.className = "pill st-"+idea.stage;
+    pill.textContent = STAGE_LABEL[idea.stage];
+    pill.title = editMode ? "Click to change stage" : "Stage (turn on Edit to change)";
+    pill.onclick = ()=>{
+      if(!editMode){ toast("Turn on Edit (passcode) to change stages"); return; }
+      idea.stage = STAGE_ORDER[(STAGE_ORDER.indexOf(idea.stage)+1)%STAGE_ORDER.length];
+      saveTeamIdeas();
+    };
+    meta.appendChild(pill);
+
+    if(editMode){
+      const acts = document.createElement("div");
+      acts.className = "acts";
+      if(idea.stage!=="pipeline" && idea.stage!=="shipped"){
+        acts.appendChild(actBtn("plus","Add to roadmap pipeline",false, ()=>{
+          pickModule(m=>{
+            m.items.push({ title: idea.title, status: "planned", note: "\uD83D\uDCA1 Team idea by "+idea.owner+(idea.note?" \u2014 "+idea.note:"") });
+            idea.stage = "pipeline";
+            saveTeamIdeas();
+            toast("Added to \u201c"+m.name+"\u201d \u2014 +3 pts for "+idea.owner+"!");
+          });
+        }));
+      }
+      acts.appendChild(actBtn("pencil","Edit idea",false, ()=>
+        openDialog("Edit idea", idea, v=>{
+          idea.title = v.title;
+          idea.note = v.note || "";
+          idea.owner = v.owner || idea.owner;
+          idea.area = v.area;
+          if(v.photos && v.photos.length) idea.photos = v.photos; else delete idea.photos;
+          saveTeamIdeas();
+        }, {area:true, ownerLabel:"Owner name", photos:true})));
+      acts.appendChild(actBtn("trash","Delete idea",true, ()=>{
+        if(confirm("Delete idea \u201c"+idea.title+"\u201d?")){
+          TIDEAS.items.splice(TIDEAS.items.indexOf(idea),1);
+          saveTeamIdeas(); toast("Deleted");
+        }
+      }));
+      meta.appendChild(acts);
+    }
+
+    row.append(vote, body, meta);
+    block.appendChild(row);
+  });
+  wrap.appendChild(block);
 }
 
 /* ---------- render dispatcher ---------- */
@@ -1291,6 +1837,7 @@ function renderAll(){
   const WORKSPACE_VIEWS = [
     {key:"roadmap", label:"Product Roadmap"},
     {key:"content", label:"Educational Content"},
+    {key:"ideas", label:"Team Ideas"},
   ];
   if(view!=="okr") lastWs = view;
   // top-right: Workspace vs OKRs, active one filled
@@ -1314,6 +1861,7 @@ function renderAll(){
   }
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
   else if(view==="content"){ renderSidebarContent(); renderContentContent(); }
+  else if(view==="ideas"){ renderSidebarIdeas(); renderContentIdeas(); }
   else { renderSidebarOkr(); renderContentOkr(); }
 }
 
