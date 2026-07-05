@@ -161,6 +161,16 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 .corner-nav:hover{background:#3350C4}
 .corner-nav.ghost{background:var(--card);color:var(--indigo);border:1.5px solid var(--indigo);box-shadow:none}
 .corner-nav.ghost:hover{background:var(--indigo-soft)}
+
+/* workspace area switcher (sidebar) */
+#ws-switch{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+#ws-switch:empty{display:none}
+.ws-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 4px 4px}
+.ws-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-family:var(--disp);font-weight:600;font-size:14px;color:var(--muted);text-align:left;width:100%}
+.ws-item:hover{border-color:var(--line-strong);color:var(--ink)}
+.ws-item.active{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft);box-shadow:0 0 0 1px var(--indigo)}
+.ws-item .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+@media(max-width:860px){#ws-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}}
 @media(max-width:760px){.corner-nav-wrap{position:static;margin-bottom:14px}}
 
 /* content roadmap rows */
@@ -193,7 +203,9 @@ aside{position:sticky;top:16px;align-self:start}
 .side-title{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 10px 4px}
 .mods{display:flex;flex-direction:column;gap:6px}
 @media(max-width:860px){.mods{flex-direction:row;overflow-x:auto;padding-bottom:6px}}
-.mod{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;text-align:left;width:100%;transition:border-color .15s}
+.mod{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;text-align:left;width:100%;transition:border-color .15s;position:relative;cursor:pointer}
+.mod .card-acts{position:absolute;top:8px;right:8px;background:var(--card);border-radius:6px}
+.mod:hover .card-acts,.mod:focus-within .card-acts{opacity:1}
 @media(max-width:860px){.mod{min-width:210px}}
 .mod:hover{border-color:var(--line-strong)}
 .mod.active{border-color:var(--indigo);box-shadow:0 0 0 1px var(--indigo)}
@@ -310,9 +322,8 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <header>
   <div class="head-inner">
     <div class="corner-nav-wrap">
-      <button class="corner-nav ghost" id="nav-ideas">💡 Student Ideas</button>
-      <button class="corner-nav ghost" id="nav-a"></button>
-      <button class="corner-nav" id="nav-b"></button>
+      <button class="corner-nav ghost" id="nav-a">Workspace</button>
+      <button class="corner-nav" id="nav-b">OKRs</button>
     </div>
     <span class="eyebrow">Internal · Team Workspace</span>
     <h1 id="rm-title"></h1>
@@ -323,6 +334,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 
 <div class="layout">
   <aside>
+    <div id="ws-switch"></div>
     <div class="side-title" id="side-title">Modules</div>
     <div class="mods" id="mods"></div>
   </aside>
@@ -345,6 +357,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="expand-all">Expand all</button>
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
+        <button class="tool" id="nav-ideas">💡 Student Ideas</button>
         <button class="tool" id="refresh-btn" title="Fetch the latest changes made by teammates">⟳ Refresh</button>
         <button class="tool primary" id="edit-toggle">✎ Edit</button>
       </div>
@@ -614,6 +627,21 @@ function actBtn(icon, label, danger, fn){
   b.onclick = e => { e.stopPropagation(); fn(); };
   return b;
 }
+function mkSideCard(isActive, onSelect){
+  const d = document.createElement("div");
+  d.className = "mod"+(isActive?" active":"");
+  d.setAttribute("role","button");
+  d.tabIndex = 0;
+  d.onclick = onSelect;
+  d.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); onSelect(); } };
+  return d;
+}
+function cardActs(card, buttons){
+  const acts = document.createElement("div");
+  acts.className = "acts card-acts";
+  buttons.forEach(b=>acts.appendChild(b));
+  card.appendChild(acts);
+}
 
 /* ---------- shared header ---------- */
 function renderHeader(){
@@ -689,13 +717,24 @@ function renderSidebarRoadmap(){
   DATA.modules.forEach(m=>{
     const lv = m.items.flatMap(leavesOf);
     const p = pctOf(lv);
-    const b = document.createElement("button");
-    b.className = "mod"+(activeModule===m.key?" active":"");
+    const b = mkSideCard(activeModule===m.key, ()=>{activeModule=m.key; renderAll();});
     b.innerHTML = `<span class="name"></span>
       <div class="bar"><i style="width:${p}%"></i></div>
       <span class="pct">${p}% · ${lv.length} tasks</span>`;
     b.querySelector(".name").textContent = m.name;
-    b.onclick = ()=>{activeModule=m.key; renderAll();};
+    if(editMode){
+      cardActs(b, [
+        actBtn("pencil","Rename module",false, ()=>
+          openDialog("Rename module", {title:m.name}, v=>{ m.name = v.title; saveRoadmap(); }, {hideExtras:true})),
+        actBtn("trash","Delete module",true, ()=>{
+          if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
+            DATA.modules.splice(DATA.modules.indexOf(m),1);
+            if(activeModule===m.key) activeModule="all";
+            saveRoadmap(); toast("Module deleted");
+          }
+        }),
+      ]);
+    }
     wrap.appendChild(b);
   });
   if(editMode){
@@ -888,13 +927,25 @@ function renderSidebarOkr(){
   if(activeCycle===null && OKRS.cycles.length) activeCycle = OKRS.cycles[0].key;
   OKRS.cycles.forEach(c=>{
     const score = c.objectives.length ? Math.round(c.objectives.reduce((a,o)=>a+objPct(o),0)/c.objectives.length) : 0;
-    const b = document.createElement("button");
-    b.className = "mod"+(activeCycle===c.key?" active":"");
+    const b = mkSideCard(activeCycle===c.key, ()=>{activeCycle=c.key; renderAll();});
     b.innerHTML = `<span class="name"></span>
       <div class="bar"><i style="width:${score}%; background:${scoreColor(score)}"></i></div>
       <span class="pct">${score}% · ${c.objectives.length} objectives</span>`;
     b.querySelector(".name").textContent = c.name;
-    b.onclick = ()=>{activeCycle=c.key; renderAll();};
+    if(editMode){
+      cardActs(b, [
+        actBtn("pencil","Rename cycle",false, ()=>
+          openDialog("Rename cycle", {title:c.name}, v=>{ c.name = v.title; saveOkrs(); }, {hideExtras:true})),
+        actBtn("trash","Delete cycle",true, ()=>{
+          const krCount = c.objectives.reduce((a,o)=>a+o.krs.length,0);
+          if(confirm(`Delete cycle “${c.name}” with ${c.objectives.length} objective(s) and ${krCount} key result(s)?`)){
+            OKRS.cycles.splice(OKRS.cycles.indexOf(c),1);
+            if(activeCycle===c.key) activeCycle = OKRS.cycles.length ? OKRS.cycles[0].key : null;
+            saveOkrs(); toast("Cycle deleted");
+          }
+        }),
+      ]);
+    }
     wrap.appendChild(b);
   });
   if(editMode){
@@ -1066,13 +1117,28 @@ function renderSidebarContent(){
   wrap.appendChild(all);
   CONTENT.sections.forEach(s=>{
     const p = pctOf(s.tasks);
-    const b = document.createElement("button");
-    b.className = "mod"+(activeSection===s.key?" active":"");
+    const b = mkSideCard(activeSection===s.key, ()=>{activeSection=s.key; renderAll();});
     b.innerHTML = `<span class="name"></span>
       <div class="bar"><i style="width:${p}%"></i></div>
       <span class="pct">${p}% · ${s.tasks.length} tasks</span>`;
     b.querySelector(".name").textContent = s.name;
-    b.onclick = ()=>{activeSection=s.key; renderAll();};
+    if(editMode){
+      cardActs(b, [
+        actBtn("pencil","Edit name / budget",false, ()=>
+          openDialog("Edit section", {title:s.name, budget:s.budget}, v=>{
+            s.name = v.title;
+            if(v.budget) s.budget = v.budget; else delete s.budget;
+            saveContent();
+          }, {hideExtras:true, budget:true})),
+        actBtn("trash","Delete section",true, ()=>{
+          if(confirm(`Delete “${s.name}” and its ${s.tasks.length} task(s)?`)){
+            CONTENT.sections.splice(CONTENT.sections.indexOf(s),1);
+            if(activeSection===s.key) activeSection="all";
+            saveContent(); toast("Section deleted");
+          }
+        }),
+      ]);
+    }
     wrap.appendChild(b);
   });
   if(editMode){
@@ -1220,21 +1286,41 @@ function renderAll(){
   renderHeader();
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
-  const nav = {
-    roadmap: [{label:"Content Roadmap →", to:"content"}, {label:"OKRs →", to:"okr"}],
-    content: [{label:"← Workspace", to:"roadmap"}, {label:"OKRs →", to:"okr"}],
-    okr:     [{label:"← Workspace", to:"roadmap"}, {label:"Content Roadmap →", to:"content"}],
-  }[view];
-  $("nav-a").textContent = nav[0].label; $("nav-a").dataset.to = nav[0].to;
-  $("nav-b").textContent = nav[1].label; $("nav-b").dataset.to = nav[1].to;
+  /* Workspace areas — add future sections here (one line each).
+     Each needs a renderSidebarX / renderContentX pair wired below. */
+  const WORKSPACE_VIEWS = [
+    {key:"roadmap", label:"Product Roadmap"},
+    {key:"content", label:"Educational Content"},
+  ];
+  if(view!=="okr") lastWs = view;
+  // top-right: Workspace vs OKRs, active one filled
+  $("nav-a").classList.toggle("ghost", view==="okr");
+  $("nav-b").classList.toggle("ghost", view!=="okr");
+  // sidebar workspace switcher (hidden on OKRs)
+  const ws = $("ws-switch");
+  ws.innerHTML = "";
+  if(view!=="okr"){
+    const lbl = document.createElement("div");
+    lbl.className = "ws-label"; lbl.textContent = "Workspace";
+    ws.appendChild(lbl);
+    WORKSPACE_VIEWS.forEach(w=>{
+      const b = document.createElement("button");
+      b.className = "ws-item"+(view===w.key?" active":"");
+      b.innerHTML = '<span class="dot"></span><span></span>';
+      b.querySelector("span:last-child").textContent = w.label;
+      b.onclick = ()=>{ view = w.key; renderAll(); };
+      ws.appendChild(b);
+    });
+  }
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
   else if(view==="content"){ renderSidebarContent(); renderContentContent(); }
   else { renderSidebarOkr(); renderContentOkr(); }
 }
 
 /* ---------- controls ---------- */
-$("nav-a").onclick = ()=>{ view = $("nav-a").dataset.to; renderAll(); };
-$("nav-b").onclick = ()=>{ view = $("nav-b").dataset.to; renderAll(); };
+let lastWs = "roadmap";
+$("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
+$("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
@@ -1284,7 +1370,7 @@ start();
 <script>
 (function(){
   var IDEA_BIN_ID="6a477b27da38895dfe2784a1";
-  var IDEA_KEY="$2a$10$14W.Y/S.nR0QYK1BUINYcek1sKvDt6/fvkWXMBf3QBV8Aaj6NyNIW";
+  var IDEA_KEY="$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";  // scoped access key (Read+Update) — never put the Master Key in a web page
   var MARK_PLANNED=true; // adding an idea also marks it "Planned" on the public ideas board
 
   var css=document.createElement("style");
@@ -1335,7 +1421,7 @@ start();
 
   function loadIdeas(){
     document.getElementById("duiList").innerHTML='<div class="dui-empty">Loading ideas…</div>';
-    fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Master-Key":IDEA_KEY}})
+    fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Access-Key":IDEA_KEY}})
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(j){ var rec=j.record||{};
         IDEAS=(Array.isArray(rec.ideas)?rec.ideas:[]).map(function(x){ x=x||{}; x.votes=x.votes||0; x.status=x.status||"new"; x.product=x.product||"Preference Builder"; return x; });
@@ -1374,12 +1460,12 @@ start();
     toast("Added to “"+m.name+"” pipeline");
     pick.classList.remove("show"); PENDING=null;
     if(MARK_PLANNED && i.status==="new"){
-      fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Master-Key":IDEA_KEY}})
+      fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Access-Key":IDEA_KEY}})
         .then(function(r){ return r.json(); })
         .then(function(j){ var rec=j.record||{}; rec.ideas=Array.isArray(rec.ideas)?rec.ideas:[];
           var t=rec.ideas.find(function(x){ return x&&x.id===i.id; });
           if(t){ t.status="planned";
-            return fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":IDEA_KEY},body:JSON.stringify(rec)});
+            return fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID,{method:"PUT",headers:{"Content-Type":"application/json","X-Access-Key":IDEA_KEY},body:JSON.stringify(rec)});
           } })
         .then(function(){ i.status="planned"; renderIdeas(); }).catch(function(){});
     } else { i.status=(i.status==="new")?"planned":i.status; renderIdeas(); }
