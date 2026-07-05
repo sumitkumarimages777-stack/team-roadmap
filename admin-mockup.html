@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DuBuddy AdminPanel — Interactive Mockup</title>
+<style>
+:root{--navy:#111c29;--blue:#2563eb;--green:#16a34a;--red:#dc2626;--yellow:#eab308;--bd:#e5e7eb;--tx:#1f2937;--mut:#6b7280}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#eef0f3;color:var(--tx);font-size:14px}
+.app{display:flex;min-height:100vh}
+aside{width:230px;flex-shrink:0;background:var(--navy);padding:16px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+aside .logo{color:#fff;font-size:19px;font-weight:600;padding:0 16px 14px}
+aside .logo b{color:#4d9fff;font-weight:600}
+aside a{display:block;color:#c3cbd6;font-size:13px;padding:9px 14px;text-decoration:none;border-radius:9px;margin:1px 8px;cursor:pointer}
+aside a:hover{background:#1b2a3d}
+aside a.on{background:var(--blue);color:#fff}
+aside .lbl{color:#7a8595;font-size:10px;letter-spacing:.08em;padding:14px 16px 4px}
+aside .me{margin-top:auto;padding:12px 16px 4px;color:#c3cbd6;font-size:11.5px;display:flex;align-items:center;gap:8px}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tophead{display:flex;justify-content:flex-end;align-items:center;gap:18px;padding:14px 22px;background:#fff;border-bottom:1px solid var(--bd);color:var(--mut);font-size:13px}
+.page{padding:18px 22px;flex:1}
+.card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.btn{border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.btn.blue{background:var(--blue);color:#fff}
+.btn.green{background:var(--green);color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.btn.yellow{background:var(--yellow);color:#fff;padding:8px 10px}
+.btn.gray{background:#fff;border:1px solid #d7dbe0;color:#374151}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.pill{display:inline-block;font-size:11.5px;padding:3px 10px;border-radius:11px;white-space:nowrap}
+.pOpen{background:#f3f4f6;color:#374151}.pUnp{background:#fef3c7;color:#92400e}.pPub{background:#d1fae5;color:#065f46}
+.pFree{background:#d1fae5;color:#065f46}.pPaid{background:#f3f4f6;color:#374151}.pNot{background:#fef3c7;color:#92400e}.pCfg{background:#d1fae5;color:#065f46}
+.av{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:600;vertical-align:middle}
+.twr{overflow-x:auto;position:relative}
+table.dt{border-collapse:collapse;font-size:12.5px;width:max-content;min-width:100%}
+table.dt th{text-align:left;padding:11px 10px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--bd);white-space:nowrap;background:#fff}
+table.dt td{padding:11px 10px;border-bottom:1px solid #f1f2f4;vertical-align:middle;white-space:nowrap}
+table.dt tbody tr:nth-child(even):not(.det){background:#f9fafb}
+.fbtn{background:none;border:none;cursor:pointer;color:#9ca3af;font-size:10px;padding:0 2px}
+.fbtn.act{color:var(--blue)}
+.ic{background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.qid{color:var(--blue);cursor:pointer}
+label.f{display:block;font-size:13px;margin:14px 0 6px;color:var(--tx)}
+label.f em{color:var(--red);font-style:normal}
+input.f,select.f,textarea.f{width:100%;font-size:13.5px;border:1px solid #d7dbe0;border-radius:8px;padding:9px 11px;background:#fff;color:var(--tx);font-family:inherit}
+.chip{display:inline-block;background:#e6f1fb;color:#0c447c;font-size:12px;padding:3px 10px;border-radius:8px;margin:2px 4px 2px 0}
+.stg{display:inline-flex;align-items:center;gap:5px;border:1px solid #d7dbe0;border-radius:16px;padding:5px 12px;font-size:12px;margin:3px 5px 3px 0;cursor:pointer;background:#fff;color:#374151}
+.stg.sel{background:#e6f1fb;border-color:#93c5fd;color:#0c447c}
+.aichip{background:#f5f3ff;color:#5b21b6;border:1px solid #ddd6fe;border-radius:14px;padding:5px 11px;font-size:12px;cursor:pointer}
+.tbtn{background:none;border:none;color:#4b5563;font-size:13px;padding:4px 6px;cursor:pointer;border-radius:5px}
+.tbar{display:inline-flex;gap:2px;border:1px solid var(--bd);border-radius:8px;padding:3px 6px;background:#fff;margin-bottom:6px}
+#toast{position:fixed;bottom:22px;right:22px;background:#111c29;color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;display:none;z-index:50;max-width:340px}
+#fdrop{position:absolute;background:#fff;border:1px solid #d7dbe0;border-radius:9px;padding:8px;z-index:20;min-width:170px;max-height:230px;overflow-y:auto;display:none;font-size:12.5px}
+#fdrop label{display:flex;gap:7px;align-items:center;padding:4px 4px;cursor:pointer}
+#spop{position:fixed;background:#fff;border:1px solid #d7dbe0;border-radius:9px;padding:10px 13px;font-size:12px;color:#374151;z-index:40;max-width:300px;display:none}
+.overlay{position:fixed;inset:0;background:rgba(17,28,41,.45);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 16px;overflow-y:auto}
+.modal{background:#fff;border-radius:14px;max-width:880px;width:100%;padding:20px 22px}
+.hnote{background:#e6f1fb;color:#0c447c;font-size:12.5px;padding:9px 14px;border-radius:9px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.det td{background:#f8f9fb !important;white-space:normal !important}
+h1.pg{font-size:20px;font-weight:600;margin:0}
+.rowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media (max-width:760px){aside{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="logo">Admin<b>Panel</b></div>
+  <a onclick="show('tests')">Dashboard</a>
+  <div class="lbl">AI</div><a>AI Prompt Templates</a><a>AI Providers</a>
+  <div class="lbl">IAM</div><a>Permission Management</a><a>Role Management</a><a>User Management</a>
+  <div class="lbl">TESTSERIES</div>
+  <a id="nav-tests" class="on" onclick="show('tests')">Exam Category Management</a>
+  <a>Question Reports</a>
+  <a id="nav-qr" onclick="show('qr')">Question Reports V2</a>
+  <div class="lbl">URL SHORTENER</div><a>URL Shortener Management</a>
+  <div class="me"><span class="av" style="background:var(--blue);color:#fff">P</span> PANCHAM<br /></div>
+</aside>
+<main>
+<div class="tophead">🔔 <span style="cursor:pointer">⎋ Sign out</span></div>
+<div class="page">
+<div class="hnote" id="hnote"><span>Interactive mockup — everything works: <b>+</b> opens Create Exam (with Created&nbsp;by), <b>Assign to User</b> opens workflow-stage assignment, funnel icons filter every column in Question Reports V2, ✏️ opens the editor, 👥 opens the reporter list.</span><button class="btn gray sm" onclick="this.parentNode.style.display='none'">Dismiss</button></div>
+
+<!-- ============ TESTS VIEW ============ -->
+<section id="v-tests">
+  <div class="card" style="color:var(--mut);font-size:13px">
+    <span class="pill" style="background:#e6f1fb;color:#0c447c">AND</span> <span class="pill pOpen">OR</span>
+    <span style="float:right"><button class="btn gray sm">+ Rule</button> <button class="btn gray sm">Group</button></span>
+    <p style="text-align:center;margin:22px 0;font-style:italic">No rules defined. Add a rule to start filtering.</p>
+    <div style="text-align:right"><button class="btn blue">🔍 Apply Query</button></div>
+  </div>
+  <div class="card">
+    <div class="rowline" style="justify-content:space-between;margin-bottom:12px">
+      <h1 class="pg">Tests</h1>
+      <span class="rowline">
+        <button class="btn gray sm">☰ Columns</button>
+        <button class="btn gray sm">⚙ Bulk config (subcategory)</button>
+        <button class="btn gray sm">⚙ Bulk config (selected)</button>
+        <button class="btn gray sm">🗂 View archived</button>
+        <button class="btn blue sm" title="Create exam" onclick="show('create')">+</button>
+      </span>
+    </div>
+    <p style="font-size:12.5px;color:var(--mut);margin:0 0 8px" id="tcount"></p>
+    <div class="twr"><table class="dt" id="ttab"><thead><tr>
+      <th></th><th>S.No</th><th>Title</th><th>Status</th><th>Languages</th><th>Assigned Users</th><th>Duration (min)</th><th>Marks</th><th>Access</th><th>Config</th><th>Publish State</th><th>Created By</th><th>Actions</th>
+    </tr></thead><tbody id="tbody"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ============ CREATE EXAM VIEW ============ -->
+<section id="v-create" style="display:none">
+  <div class="card" style="max-width:900px">
+    <div class="rowline" style="margin-bottom:4px"><button class="btn gray sm" onclick="show('tests')">← Back</button><h1 class="pg">Create Exam</h1></div>
+    <label class="f">Title <em>*</em></label><input class="f" id="cTitle" placeholder="e.g. Shift 05/07/2026 8:30 AM - 11:30 AM" />
+    <label class="f">Description</label><input class="f" id="cDesc" />
+    <label class="f">Status <em>*</em></label>
+    <select class="f" id="cStatus"><option>DRAFT</option><option>PUBLISHED</option></select>
+    <label class="f">Languages <em>*</em></label>
+    <div style="border:1px solid #d7dbe0;border-radius:8px;padding:7px 10px;background:#fff"><span class="chip">English ✕</span></div>
+    <label class="f">Source of creation <em>*</em></label>
+    <select class="f" id="cSource" onchange="srcChange()">
+      <option value="manual">Manual entry</option>
+      <option value="rsc">Imported — Response Sheet Checker (tool)</option>
+      <option value="uts">Imported — Universal Test Scrapper (tool)</option>
+    </select>
+    <label class="f">Created by <em>*</em></label>
+    <input class="f" id="cBy" value="PANCHAM" />
+    <p id="cByNote" style="font-size:12px;color:var(--mut);margin:6px 0 0">Manual creation — logged-in user is pre-filled and editable.</p>
+    <div style="margin-top:18px"><button class="btn green" onclick="createExam()">Create Exam</button></div>
+  </div>
+</section>
+
+<!-- ============ ASSIGN USER VIEW ============ -->
+<section id="v-assign" style="display:none">
+  <div class="card" style="max-width:980px">
+    <div class="rowline" style="margin-bottom:10px"><button class="btn gray sm" onclick="show('tests')">← Back</button><h1 class="pg" style="font-size:16px">User Assignments — <span id="asgTitle" style="font-weight:400"></span></h1></div>
+    <div id="asgList"></div>
+    <button class="btn gray" style="width:100%;margin:6px 0 14px" onclick="addAsg()">+ Add User Assignment</button>
+    <button class="btn green" onclick="confirmAsg()">Confirm Assignment</button>
+  </div>
+</section>
+
+<!-- ============ QUESTION REPORTS V2 (OPEN) ============ -->
+<section id="v-qr" style="display:none">
+  <div class="card">
+    <div class="rowline" style="justify-content:space-between;margin-bottom:12px">
+      <h1 class="pg">Question Reports V2</h1>
+      <span class="rowline">
+        <button class="btn blue">🔍 Apply Query</button>
+        <button class="btn blue" onclick="show('res')">✔ Resolved Questions · <span id="resN">1</span></button>
+        <button class="btn gray sm">☰ Columns</button>
+      </span>
+    </div>
+    <p style="font-size:12.5px;color:var(--mut);margin:0 0 8px"><span id="qrN"></span> &nbsp;·&nbsp; click ⏷ on any column to filter (Google-Sheets style) &nbsp;·&nbsp; scroll right for more columns →</p>
+    <div class="twr"><table class="dt" id="qtab"><thead></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ============ RESOLVED QUESTIONS ============ -->
+<section id="v-res" style="display:none">
+  <div class="card">
+    <div class="rowline" style="justify-content:space-between;margin-bottom:12px">
+      <span class="rowline"><button class="btn gray sm" onclick="show('qr')">← Back to open reports</button><h1 class="pg">Resolved Questions</h1></span>
+      <span style="font-size:12.5px;color:var(--mut)" id="resN2"></span>
+    </div>
+    <div class="twr"><table class="dt" id="rtab"><thead></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ============ EDITOR ============ -->
+<section id="v-edit" style="display:none"></section>
+
+</div>
+</main>
+</div>
+
+<div id="fdrop"></div>
+<div id="spop"></div>
+<div id="toast"></div>
+
+<!-- ============ REPORTER MODAL ============ -->
+<div class="overlay" id="rovl" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <div class="rowline" style="justify-content:space-between;margin-bottom:10px">
+      <h1 class="pg" style="font-size:17px">Question Reports V2 — <span id="rmQ" class="mono" style="font-weight:400"></span></h1>
+      <span class="rowline">
+        <select class="f" id="rmFil" style="width:auto;padding:6px 9px;font-size:12.5px" onchange="renderReps()">
+          <option value="All">Reporter type: All</option><option value="Internal team">Internal team</option><option value="End user">End user</option>
+        </select>
+        <button class="btn gray sm">☰ Columns</button>
+        <button class="btn gray sm" onclick="document.getElementById('rovl').style.display='none'">✕ Close</button>
+      </span>
+    </div>
+    <div class="twr"><table class="dt" style="width:100%"><thead><tr><th>S.No</th><th>Status</th><th>Reporter</th><th>Reporter Kind</th><th>Reporter Type</th><th>Reported At</th></tr></thead><tbody id="rmBody"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- shared ---------------- */
+const $=i=>document.getElementById(i);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3200)}
+function fmt(t){return t?new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'}
+function show(v){['tests','create','assign','qr','res','edit'].forEach(x=>$('v-'+x).style.display=x===v?'':'none');
+$('nav-tests').className=(v==='tests'||v==='create'||v==='assign')?'on':'';
+$('nav-qr').className=(v==='qr'||v==='res'||v==='edit')?'on':'';
+$('fdrop').style.display='none';window.scrollTo({top:0})}
+
+/* ---------------- TESTS ---------------- */
+let TESTS=[
+{t:'Shift 02/06/2023 8:30 AM - 11:30 AM',st:'PUBLISHED',acc:'Free',cfg:'Configured',pub:'Published',by:'Universal Test Scrapper · DuBuddy Tech (tool)',dur:60},
+{t:'abhishek test',st:'DRAFT',acc:'Paid',cfg:'Not set',pub:'Unpublished changes',by:'Abhishek (manual)',dur:'-'},
+{t:'Shift 21/05/2023 8:30 AM - 10:30 AM',st:'PUBLISHED',acc:'Paid',cfg:'Configured',pub:'Published',by:'Universal Test Scrapper · DuBuddy Tech (tool)',dur:60},
+{t:'Shift 21/05/2023 12:00 PM - 2:00 PM',st:'PUBLISHED',acc:'Paid',cfg:'Configured',pub:'Published',by:'Response Sheet Checker · DuBuddy Tech (tool)',dur:60},
+{t:'Shift 22/05/2023 8:30 AM - 10:30 AM',st:'PUBLISHED',acc:'Paid',cfg:'Configured',pub:'Published',by:'PANCHAM (manual)',dur:60}];
+function renderTests(){
+$('tbody').innerHTML=TESTS.map((x,i)=>'<tr><td><input type="checkbox" /></td><td>'+(i+1)+'</td><td>'+x.t+'</td><td>'+x.st+'</td><td>en-English</td><td>-</td><td>'+x.dur+'</td><td>+5 / −1</td>'
++'<td><span class="pill '+(x.acc==='Free'?'pFree':'pPaid')+'">'+x.acc+'</span></td>'
++'<td><span class="pill '+(x.cfg==='Configured'?'pCfg':'pNot')+'">'+x.cfg+'</span></td>'
++'<td><span class="pill '+(x.pub==='Published'?'pPub':'pUnp')+'">'+x.pub+'</span></td>'
++'<td style="font-size:12px">'+x.by+'</td>'
++'<td><button class="btn yellow sm" title="Edit">✏️</button> <button class="btn red sm">🗑 Delete</button> <button class="btn blue sm">☰ Structure</button> <button class="btn gray sm">⚙ Configure</button> <button class="btn gray sm">🕐 History</button> <button class="btn gray sm" onclick="toast(\'Website preview link copied: panel.dubuddy.in/preview/exam-'+(i+1)+'\')">👁 Preview (Web)</button> <button class="btn gray sm" onclick="toast(\'App preview link copied: dubuddy://exam/preview/'+(i+1)+' — opens in the DuBuddy app\')">📱 Preview (App)</button> '
++(x.st==='DRAFT'?'<button class="btn green sm">✈ Review &amp; publish</button> ':'')
++'<button class="btn gray sm" onclick="openAsg('+i+')">👤 Assign to User</button></td></tr>').join('');
+$('tcount').textContent='Showing 1 to '+TESTS.length+' of 56 results';}
+function srcChange(){const v=$('cSource').value,b=$('cBy'),n=$('cByNote');
+if(v==='rsc'){b.value='Response Sheet Checker · DuBuddy Tech Team';b.readOnly=true;n.textContent='Imported by a tool — Created by is pre-filled with the tool name and locked.'}
+else if(v==='uts'){b.value='Universal Test Scrapper · DuBuddy Tech Team';b.readOnly=true;n.textContent='Imported by a tool — Created by is pre-filled with the tool name and locked.'}
+else{b.value='PANCHAM';b.readOnly=false;n.textContent='Manual creation — logged-in user is pre-filled and editable.'}}
+function createExam(){const t=$('cTitle').value.trim();if(!t){toast('Title is required');return}
+const st=$('cStatus').value,tool=$('cSource').value!=='manual';
+TESTS.unshift({t:t,st:st,acc:'Paid',cfg:'Not set',pub:st==='DRAFT'?'Unpublished changes':'Published',by:$('cBy').value+(tool?' (tool)':' (manual)'),dur:'-'});
+renderTests();toast('Exam created — Created by: '+$('cBy').value);$('cTitle').value='';show('tests')}
+
+/* ---------------- ASSIGN ---------------- */
+const STAGES=['Drafting questions','Drafting solution','Chapter tagging','Verification stage 1','Verification by Head','Verification by end user'];
+let ASG=[];
+function openAsg(i){ASG=[{user:'Priyanshi Sabharwal',stg:['Drafting questions'],ph:'',em:'',pa:false},{user:'Tanzil',stg:['Verification stage 1'],ph:'',em:'',pa:false}];
+$('asgTitle').textContent=TESTS[i].t;renderAsg();show('assign')}
+function renderAsg(){
+$('asgList').innerHTML=ASG.map((a,i)=>'<div class="card" style="background:#fafbfc">'
++'<p style="font-size:11px;color:var(--mut);letter-spacing:.06em;margin:0 0 8px">⠿ ITEM '+(i+1)+'<span style="float:right;cursor:pointer" onclick="ASG.splice('+i+',1);renderAsg()">✕</span></p>'
++'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
++'<div><label class="f" style="margin-top:0">Select User</label><select class="f" onchange="ASG['+i+'].user=this.value">'+['Priyanshi Sabharwal','Tanzil','Aarav','Priya','Rohan'].map(u=>'<option'+(u===a.user?' selected':'')+'>'+u+'</option>').join('')+'</select>'
++'<label class="f">No Expiry</label><input type="checkbox" checked style="width:18px;height:18px" /></div>'
++'<div><label class="f" style="margin-top:0">Number of assigned user</label><input class="f" placeholder="+91 ·········" value="'+a.ph+'" oninput="phChange('+i+',this.value)" />'
++'<label class="f">Email of assigned user</label><input class="f" placeholder="name@dubuddy.in" value="'+a.em+'" oninput="ASG['+i+'].em=this.value" /></div></div>'
++'<label class="f">Select workflow stage <span style="color:var(--mut);font-weight:400">(select multiple)</span></label>'
++'<div>'+STAGES.map(s=>'<span class="stg'+(a.stg.includes(s)?' sel':'')+'" onclick="togStg('+i+',\''+s+'\')">'+(a.stg.includes(s)?'✓ ':'')+s+'</span>').join('')
++'<span class="stg" style="border-style:dashed" onclick="addStage('+i+')">＋ Add another stage</span></div>'
++'<label class="f" style="display:flex;gap:9px;align-items:center;margin-top:14px"><input type="checkbox" style="width:17px;height:17px" '+(a.pa?'checked':'')+' onchange="ASG['+i+'].pa=this.checked" /><span>Give product access to <b id="pan'+i+'">'+(a.ph||'the number entered above')+'</b></span></label>'
++'</div>').join('')}
+function phChange(i,v){ASG[i].ph=v;const el=$('pan'+i);if(el)el.textContent=v||'the number entered above'}
+function togStg(i,s){const g=ASG[i].stg,x=g.indexOf(s);x<0?g.push(s):g.splice(x,1);renderAsg()}
+function addStage(i){const s=prompt('Name of the new workflow stage:');if(s&&s.trim()){if(!STAGES.includes(s.trim()))STAGES.push(s.trim());ASG[i].stg.push(s.trim());renderAsg()}}
+function addAsg(){ASG.push({user:'Aarav',stg:[],ph:'',em:'',pa:false});renderAsg()}
+function confirmAsg(){toast('Assignment confirmed — '+ASG.map(a=>a.user+' ('+(a.stg.join(', ')||'no stage')+')').join(' · '));show('tests')}
+
+/* ---------------- QUESTION REPORTS ---------------- */
+const COLS=['S.No','Ques ID','Category','Reports','Last Reported At','Status','Assigned To','Subject','Type','Shift Name','Ques No','Preview Ques','Source','Edit Ques','Reported By','History'];
+const FILTERABLE=[false,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false];
+function reps(base,names){return names.map((n,j)=>({num:''+(8922290752+j*137),kind:'REGISTERED_ID',name:n[0],type:n[1],at:base+'T0'+(9-j)+':0'+j+':55.399Z'}))}
+let QD=[
+{k:'r1',id:'01KJCNXT1YN3H15D45HW04HYF3',exam:'CUET UG',cat:'WRONG_ANSWER',rpts:112,last:'2026-05-23',status:'Open',asg:'Aarav',fix:'Aarav',subj:'Grammar',type:'PYQ',shift:'CUET-25 S2',qno:47,tag:'WRONG_ANSWER · 112 reports',hint:'84 of 112 reporters chose B · key says C',para:'India has stood like a Rock of Ages, weathering many fierce storms, because her foundations are the eternal values of philosophy and religion…',qt:'According to the passage, India has endured many storms because her foundations rest on — (A) art and politics (B) philosophy and religion (C) wealth and pleasure (D) secular governance. Answer key: C',prev:'Read the passage and answer: India has stood like a Rock of Ages…',src:'Created by: Vendor batch B-112 (import) · 12 Jan 2026<br />Solution by: R. Sharma · 12 Jan 2026<br />Last edited: —',rp:reps('2026-05-23',[['Sahil M.','End user'],['Aarav (content intern)','Internal team'],['Riya K.','End user'],['Tanzil (QC)','Internal team'],['Mohit S.','End user']]),hist:['30 Apr · first student report received','23 May · report count reached 112','1 Jul · assigned to Aarav by Pancham (head)']},
+{k:'r2',id:'01KJCNXTP37DT1323MFHT7XKZM',exam:'CUET PG',cat:'BAD_IMAGE',rpts:77,last:'2026-05-09',status:'Open',asg:'Priya',fix:'Priya',subj:'Contemp. World Politics',type:'Mock',shift:'Mock T-14',qno:41,tag:'BAD_IMAGE · 77 reports',hint:'Map of EU renders blurred on mobile',para:'',qt:'Identify the organisation whose member states are shown in the map above. (A) ASEAN (B) European Union (C) NATO (D) SAARC. Answer key: B',prev:'[Image: EU member map] Identify the organisation…',src:'Created by: Vendor batch B-098 (import) · 3 Feb 2026<br />Solution by: M. Iyer · 3 Feb 2026<br />Last edited: —',rp:reps('2026-05-09',[['Karan P.','End user'],['Anya D.','End user'],['Priyanshi (ops)','Internal team'],['Leah T.','End user']]),hist:['9 May · report count reached 77','1 Jul · assigned to Priya by Pancham (head)']},
+{k:'r3',id:'01KJCR9D362TMTT6KBH7AECHZ1',exam:'CUET UG',cat:'WRONG_ANSWER',rpts:71,last:'2026-05-10',status:'Open',asg:'Rohan',fix:'Rohan',subj:'Principles of Mgmt',type:'Ch. PYQ',shift:'—',qno:6,tag:'WRONG_ANSWER · 71 reports',hint:'Reporters cite NCERT ch. 7 definition',para:'',qt:'Which function of management bridges planning and controlling? (A) Staffing (B) Directing (C) Organising (D) Coordinating. Answer key: A',prev:'Which function of management bridges planning and controlling?…',src:'Created by: Data entry · Deepak · 20 Dec 2025<br />Solution by: Deepak · 20 Dec 2025<br />Last edited: Rohan · 28 Jun 2026',rp:reps('2026-05-10',[['Manav J.','End user'],['Tara B.','End user'],['Rohan (content intern)','Internal team']]),hist:['10 May · report count reached 71','1 Jul · assigned to Rohan by Pancham (head)']},
+{k:'r4',id:'01KJCNXTAE421SD9QE21JTQZ80',exam:'CUET UG',cat:'WRONG_ANSWER',rpts:52,last:'2026-05-15',status:'Unpublished changes',asg:'Pancham (head)',fix:'Priya',subj:'Politics in India',type:'PYQ',shift:'CUET-24 S1',qno:16,tag:'WRONG_ANSWER · 52 reports · submitted by Priya, awaiting your publish',hint:'Fix already submitted — review the diff and publish',para:'',qt:'The Policy of Non-Alignment implied — (A) neutrality in all wars (B) independent foreign policy free of bloc politics (C) isolationism (D) alliance with USSR. Answer key: B (corrected from A)',prev:'The Policy of Non-Alignment implied…',src:'Created by: Vendor batch B-112 (import) · 12 Jan 2026<br />Solution by: R. Sharma · 12 Jan 2026<br />Last edited: Priya · today · AI assist',rp:reps('2026-05-15',[['Dev A.','End user'],['Jiya R.','End user'],['Priya (content intern)','Internal team']]),hist:['15 May · report count reached 52','1 Jul · assigned to Priya by Pancham (head)','today · report opened by Priya','today · edit started · AI assist used','today · submitted for review — reassigned to Pancham (head)']},
+{k:'r5',id:'01KJCR7YVB6JQ5NNNWGT5QTGF8',exam:'CUET UG',cat:'WRONG_ANSWER',rpts:49,last:'2026-05-26',status:'Open',asg:'Aarav',fix:'Aarav',subj:'Grammar',type:'Mock',shift:'Mock T-09',qno:41,tag:'WRONG_ANSWER · 49 reports',hint:'Two options grammatically identical',para:'',qt:'Choose the correct passive form: "She writes a letter." (A) A letter is written by her (B) A letter was written by her (C) A letter is being written (D) A letter has written. Answer key: A',prev:'Choose the correct passive form: "She writes a letter."…',src:'Created by: Data entry · Deepak · 18 Dec 2025<br />Solution by: Deepak · 18 Dec 2025<br />Last edited: —',rp:reps('2026-05-26',[['Pia N.','End user'],['Noor F.','End user']]),hist:['26 May · report count reached 49','1 Jul · assigned to Aarav by Pancham (head)']},
+{k:'r6',id:'01KJCR7MNMX4815YTPT0R6C1QM',exam:'NEET',cat:'BAD_IMAGE',rpts:43,last:'2026-05-25',status:'Open',asg:'Priya',fix:'Priya',subj:'Biology',type:'PYQ',shift:'NEET-25',qno:124,tag:'BAD_IMAGE · 43 reports',hint:'Diagram cropped on app',para:'',qt:'Refer to the diagram of the nephron above. The part labelled X is — (A) Glomerulus (B) Loop of Henle (C) Bowman’s capsule (D) Collecting duct. Answer key: C',prev:'[Image: nephron diagram] The part labelled X is…',src:'Created by: Vendor batch B-104 (import) · 9 Jan 2026<br />Solution by: R. Sharma · 9 Jan 2026<br />Last edited: —',rp:reps('2026-05-25',[['Vihaan S.','End user'],['Sana Q.','End user'],['Tanzil (QC)','Internal team']]),hist:['25 May · report count reached 43','1 Jul · assigned to Priya by Pancham (head)']}];
+let RES=[
+{k:'r0',id:'01KJCNXTPKJ5400ZJJ8T1V3J4D',exam:'CUET UG',cat:'BAD_IMAGE',rpts:38,last:'2026-05-08',status:'Published',asg:'Priya',fix:'Priya',subj:'Contemp. World Politics',type:'Mock',shift:'Mock T-11',qno:42,tag:'BAD_IMAGE · 38 reports · already published',hint:'Re-editing creates new unpublished changes',para:'',qt:'Identify the treaty that established the European Union. (A) Treaty of Rome (B) Maastricht Treaty (C) Lisbon Treaty (D) Treaty of Paris. Answer key: B',prev:'[Image: EU treaty timeline] Identify the treaty…',src:'Created by: Vendor batch B-098 (import) · 3 Feb 2026<br />Solution by: M. Iyer · 3 Feb 2026<br />Last edited: Priya · 2 Jul 2026',rp:reps('2026-05-08',[['Harsh V.','End user'],['Lina G.','End user']]),hist:['8 May · report count reached 38','1 Jul · assigned to Priya','2 Jul, 6:02 PM · report opened by Priya','2 Jul, 6:09 PM · edit started (first keystroke)','2 Jul, 6:27 PM · submitted for review — Unpublished changes','2 Jul, 6:41 PM · published by Pancham (head) — Published']}];
+const T={};QD.concat(RES).forEach(q=>T[q.k]={});
+T.r4={open:Date.now()-1500000,edit:Date.now()-1320000,sub:Date.now()-300000,ai:true};
+const FIL={qtab:{},rtab:{}};
+function pillFor(s){return '<span class="pill '+(s==='Published'?'pPub':s==='Unpublished changes'?'pUnp':'pOpen')+'">'+s+'</span>'}
+function buildHead(tid){document.querySelector('#'+tid+' thead').innerHTML='<tr>'+COLS.map((c,i)=>'<th>'+c+(FILTERABLE[i]?' <button class="fbtn" id="'+tid+'f'+i+'" onclick="openFil(\''+tid+'\','+i+',this)">⏷</button>':'')+'</th>').join('')+'</tr>'}
+function qRow(q,i){return '<tr id="tr-'+q.k+'"><td>'+(i+1)+'</td><td class="mono qid" onclick="openEdit(\''+q.k+'\')">'+q.id.slice(0,11)+'…'+q.id.slice(-5)+'</td><td>'+q.cat+'</td><td style="font-weight:600">'+q.rpts+'</td><td>'+q.last+'</td><td>'+pillFor(q.status)+'</td><td>'+q.asg+'</td><td>'+q.subj+'</td><td>'+q.type+'</td><td>'+q.shift+'</td><td>'+q.qno+'</td>'
++'<td style="text-align:center"><button class="btn blue sm" onclick="togDet(\''+q.k+'\',\'prev\')">👁</button></td>'
++'<td><span class="mono" style="color:var(--blue);cursor:pointer;border:1px solid #bfdbfe;border-radius:10px;padding:2px 8px;font-size:11px" onmouseenter="srcIn(event,\''+q.k+'\')" onmouseleave="srcOut()">C·E·S</span></td>'
++'<td style="text-align:center"><button class="ic" title="Edit question" onclick="openEdit(\''+q.k+'\')">✏️</button></td>'
++'<td style="text-align:center"><button class="ic" title="See reporters" onclick="openReps(\''+q.k+'\')">👥</button></td>'
++'<td style="text-align:center"><button class="ic" title="Full history" onclick="togDet(\''+q.k+'\',\'hist\')">🕐</button></td></tr>'}
+function renderQ(){document.querySelector('#qtab tbody').innerHTML=QD.map(qRow).join('');applyFil('qtab');
+$('qrN').textContent='Showing 1 to '+QD.length+' of 3,359 results'}
+function renderR(){document.querySelector('#rtab tbody').innerHTML=RES.map(qRow).join('');applyFil('rtab');
+$('resN').textContent=RES.length;$('resN2').textContent=RES.length+' resolved'}
+function findQ(k){return QD.find(q=>q.k===k)||RES.find(q=>q.k===k)}
+/* column filters */
+function openFil(tid,ci,btn){const d=$('fdrop');if(d.style.display==='block'&&d._ctx===tid+ci){d.style.display='none';return}
+const vals=[...new Set([...document.querySelectorAll('#'+tid+' tbody tr:not(.det)')].map(r=>r.cells[ci].textContent.trim()))];
+const cur=FIL[tid][ci];
+d.innerHTML='<div style="font-weight:600;padding:2px 4px 6px">Filter: '+COLS[ci]+'</div>'
++vals.map(v=>'<label><input type="checkbox" value="'+v.replace(/"/g,'&quot;')+'" '+(!cur||cur.has(v)?'checked':'')+' /> '+v+'</label>').join('')
++'<div style="display:flex;gap:6px;margin-top:8px"><button class="btn blue sm" onclick="setFil(\''+tid+'\','+ci+')">Apply</button><button class="btn gray sm" onclick="clrFil(\''+tid+'\','+ci+')">Clear</button></div>';
+d._ctx=tid+ci;const w=btn.closest('.twr');w.appendChild(d);
+const b=btn.getBoundingClientRect(),wr=w.getBoundingClientRect();
+d.style.left=Math.max(4,b.left-wr.left+w.scrollLeft-20)+'px';d.style.top=(b.bottom-wr.top+6)+'px';d.style.display='block'}
+function setFil(tid,ci){const d=$('fdrop'),sel=new Set([...d.querySelectorAll('input:checked')].map(x=>x.value));
+FIL[tid][ci]=sel;d.style.display='none';applyFil(tid)}
+function clrFil(tid,ci){delete FIL[tid][ci];$('fdrop').style.display='none';applyFil(tid)}
+function applyFil(tid){const f=FIL[tid];
+document.querySelectorAll('#'+tid+' tbody tr:not(.det)').forEach(r=>{let ok=true;
+for(const ci in f){if(!f[ci].has(r.cells[ci].textContent.trim()))ok=false}
+r.style.display=ok?'':'none';
+const nx=r.nextElementSibling;if(nx&&nx.classList.contains('det'))nx.style.display=ok?'':'none'});
+for(const ci in {...FIL.qtab,...{}}){}
+COLS.forEach((c,i)=>{const b=$(tid+'f'+i);if(b)b.className='fbtn'+(FIL[tid][i]?' act':'')})}
+document.addEventListener('click',e=>{if(!e.target.closest('#fdrop')&&!e.target.closest('.fbtn'))$('fdrop').style.display='none'});
+/* detail rows */
+function togDet(k,type){const row=$('tr-'+k),nx=row.nextElementSibling,q=findQ(k);
+if(nx&&nx.classList.contains('det')&&nx.dataset.t===type){nx.remove();return}
+if(nx&&nx.classList.contains('det'))nx.remove();
+let html='';
+if(type==='prev')html='<div style="border:1px solid var(--bd);border-radius:8px;background:#fff;padding:10px 13px;font-size:12.5px;max-width:680px">'+q.prev+'<br /><span style="font-size:11.5px;color:var(--blue)">Open full preview ↗</span></div>';
+if(type==='hist')html='<div style="font-size:12px;max-width:620px"><b>Question history</b>'+q.hist.map(e=>'<div style="padding:3px 0"><span style="color:var(--blue)">●</span> '+e+'</div>').join('')+'</div>';
+row.insertAdjacentHTML('afterend','<tr class="det" data-t="'+type+'"><td colspan="16">'+html+'</td></tr>')}
+/* source hover */
+function srcIn(e,k){const p=$('spop');p.innerHTML=findQ(k).src+'<br /><span style="color:var(--blue)">Full version history</span>';
+const b=e.target.getBoundingClientRect();p.style.left=Math.max(6,b.left-160)+'px';
+p.style.top=(b.top>170?b.top-100:b.bottom+8)+'px';p.style.display='block'}
+function srcOut(){setTimeout(()=>$('spop').style.display='none',200)}
+/* reporters modal */
+let RQ=null;
+function openReps(k){RQ=findQ(k);$('rmQ').textContent=RQ.id;$('rmFil').value='All';renderReps();$('rovl').style.display='flex'}
+function renderReps(){const f=$('rmFil').value;
+$('rmBody').innerHTML=RQ.rp.filter(r=>f==='All'||r.type===f).map((r,i)=>'<tr><td>'+(i+1)+'</td><td><span class="pill '+(RQ.status==='Published'?'pPub':'pOpen')+'">'+(RQ.status==='Published'?'Published':'Open')+'</span></td><td>'+r.num+'</td><td>'+r.kind+'</td><td>'+r.name+' &nbsp;<span class="pill '+(r.type==='Internal team'?'pUnp':'pOpen')+'">'+r.type+'</span></td><td>'+r.at+'</td></tr>').join('')
+||'<tr><td colspan="6" style="color:var(--mut)">No reporters of this type for this question.</td></tr>'}
+/* editor */
+let cur=null;
+const TBAR='<div class="tbar"><button class="tbtn"><b>B</b></button><button class="tbtn"><i>I</i></button><button class="tbtn"><s>S</s></button><button class="tbtn">H₁</button><button class="tbtn">H₂</button><button class="tbtn">≔</button><button class="tbtn">⒈</button><button class="tbtn">⯇</button><button class="tbtn">≡</button><button class="tbtn">🖼</button><button class="tbtn">Σ</button><button class="tbtn">▦</button><button class="tbtn">↶</button><button class="tbtn">↷</button></div>';
+function openEdit(k){cur=k;const q=findQ(k);
+if(!T[k].open){T[k].open=Date.now();q.hist.push(fmt(T[k].open)+' · report opened by Pancham')}
+$('v-edit').innerHTML='<div class="card" style="max-width:1000px">'
++'<div class="rowline" style="margin-bottom:12px"><button class="btn gray sm" onclick="show(\'qr\')">← Back to reports</button><h1 class="pg">Exam Questions</h1><button class="btn blue sm">+</button><button class="btn gray sm">👁 Preview</button></div>'
++'<div class="rowline" style="margin-bottom:12px"><span class="pill" style="background:#fee2e2;color:#991b1b">⚠ Editing because: '+q.tag+'</span><span class="pill pUnp">'+q.hint+'</span></div>'
++'<div style="border:1px solid var(--bd);border-radius:10px;padding:15px 17px">'
++'<p style="font-weight:600;margin:0 0 10px">Question: 1 &nbsp;Id: <span class="mono" style="font-weight:400">'+q.id+'</span> 🕐</p>'
++'<span class="pill pPub">● PUBLISHED</span>'
++'<label class="f">View version</label><select class="f" style="max-width:340px"><option>Current draft</option><option>Unpublished changes</option><option>Published · 12 Jan 2026</option></select>'
++'<p style="font-size:12.5px;margin:8px 0 12px;color:var(--blue);cursor:pointer">▸ Compare versions</p>'
++'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
++'<span><label class="f" style="margin-top:0">Type</label><select class="f"><option>MCQ (Single Correct)</option></select></span>'
++'<span><label class="f" style="margin-top:0">groupingKey</label><input class="f" value="81025" style="width:100px" /></span>'
++'<span><label class="f" style="margin-top:0">Reference Type</label><select class="f"><option>Book Chapter Topic</option></select></span>'
++'<span><label class="f" style="margin-top:0">bookName</label><select class="f"><option>Reading Comprehension</option></select></span>'
++'<span><label class="f" style="margin-top:0">chapterName</label><select class="f"><option>Unseen Passage</option></select></span></div>'
++'<div style="background:#f8f9fb;border:1px solid #eef0f2;border-radius:8px;padding:9px 13px;margin-bottom:12px;font-size:13px">▾ en &nbsp;<span style="color:var(--mut);font-size:12px">Language: English</span></div>'
++'<label class="f" style="margin-top:0">Question Para</label>'+TBAR
++'<textarea class="f" id="edPara" rows="3">'+q.para+'</textarea>'
++'<label class="f">Question Text</label>'+TBAR
++'<textarea class="f" id="edText" rows="3">'+q.qt+'</textarea>'
++'<div class="rowline" style="margin:13px 0"><button class="aichip" onclick="aiNote()">✨ Verify answer key</button><button class="aichip" onclick="aiNote()">✨ Regenerate solution</button><button class="aichip" onclick="aiNote()">✨ Fix formatting</button><span id="aiLog" style="font-size:11.5px;color:#5b21b6"></span></div>'
++'<div class="rowline"><button class="btn gray" onclick="submitRev()">📤 Submit for review</button><button class="btn blue" onclick="publishQ()">⇧ Publish and resolve</button><span id="edMsg" style="font-size:12px;color:var(--mut)"></span></div>'
++'</div></div>';
+const f=()=>{if(!T[cur].edit){T[cur].edit=Date.now();findQ(cur).hist.push(fmt(T[cur].edit)+' · edit started (first keystroke)');$('edMsg').textContent='Edit started at '+fmt(T[cur].edit)+' (logged on first keystroke)'}};
+$('edText').addEventListener('input',f);$('edPara').addEventListener('input',f);
+$('edMsg').textContent=T[k].sub?'Submitted at '+fmt(T[k].sub)+' — ready to publish':'Report opened at '+fmt(T[k].open)+' (logged)';
+show('edit')}
+function aiNote(){T[cur].ai=true;const q=findQ(cur);if(!q.hist.some(h=>h.includes('AI assist')))q.hist.push(fmt(Date.now())+' · AI assist used in editor');$('aiLog').textContent='AI assist logged in version history'}
+function submitRev(){if(!T[cur].edit){$('edMsg').textContent='Make an edit first — edit-start timestamp is required';return}
+const q=findQ(cur);T[cur].sub=Date.now();
+q.status='Unpublished changes';q.asg='Pancham (head)';
+q.hist.push(fmt(T[cur].sub)+' · submitted for review — Unpublished changes, reassigned to Pancham (head)');
+renderQ();renderR();
+$('edMsg').textContent='Submitted at '+fmt(T[cur].sub)+' — status: Unpublished changes, reassigned to head'}
+function publishQ(){if(!T[cur].sub){$('edMsg').textContent='Submit for review first — publish needs a reviewed draft';return}
+const q=findQ(cur),pub=Date.now();
+q.status='Published';q.asg=q.fix;
+q.hist.push(fmt(pub)+' · published by Pancham (head) — Published');
+const ix=QD.findIndex(x=>x.k===q.k);if(ix>-1){QD.splice(ix,1);RES.unshift(q)}
+T[cur]={};renderQ();renderR();toast('Published — moved to Resolved Questions');show('res')}
+/* init */
+buildHead('qtab');buildHead('rtab');renderTests();renderQ();renderR();
+</script>
+</body>
+</html>
