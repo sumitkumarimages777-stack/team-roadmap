@@ -679,7 +679,7 @@ function saveRoadmap(){ DATA.updated = todayStr(); renderAll(); pushAll(); }
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
 function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
-function saveDev(){ DEV.updated = todayStr(); renderAll(); pushAll(); }
+function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
 const bugsConfigured = BUGS_BIN_ID && JSONBIN_CONFIG.apiKey;
@@ -728,6 +728,7 @@ async function refresh(showMsg){
       } else if(showMsg) toast("Already up to date");
     }
     await refreshBugs();
+    syncLinkedBugs();
     renderAll();
   }catch(e){ if(showMsg) toast("Couldn't refresh: "+e.message); }
 }
@@ -758,6 +759,7 @@ async function start(){
         await pushAll();   // first run: seed the bin with the defaults
       }
       await refreshBugs();
+      syncLinkedBugs();
       // pick up teammates' changes when you come back to the tab
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(false); });
     }catch(e){
@@ -2026,18 +2028,39 @@ function kanbanBoard(items, opts){
   return board;
 }
 
-function sendToBacklog(title, note, from, owner){
+function sendToBacklog(title, note, from, owner, bugId){
+  const id = "dv-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   DEV.cards.push({
-    id: "dv-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    id: id,
     title: title,
     note: note || "",
     owner: owner || undefined,
     from: from,
+    bugId: bugId || undefined,
     col: "todo",
     sprint: null,
   });
   saveDev();
-  toast("Added to Development backlog");
+  toast(bugId ? "Escalated to Development \u2014 the bug will now follow the dev card's status" : "Added to Development backlog");
+  return id;
+}
+
+/* Linked bugs mirror their dev card's column. Dev is the source of truth. */
+function syncLinkedBugs(){
+  let changed = false;
+  DEV.cards.forEach(c=>{
+    if(!c.bugId) return;
+    const t = BUGS.tickets.find(x=>x.id===c.bugId);
+    if(t && t.col !== c.col){ t.col = c.col; changed = true; }
+  });
+  if(changed){
+    BUGS.updated = todayStr();
+    if(bugsDb) pushBugs();
+  }
+  return changed;
+}
+function bugIsInDev(t){
+  return !!(t.devId && DEV.cards.some(c=>c.id===t.devId));
 }
 function originChip(c){
   if(!c.from) return null;
@@ -2314,9 +2337,22 @@ function renderContentBugs(){
   wrap.appendChild(report);
   wrap.appendChild(kanbanBoard(BUGS.tickets, {
     onMove: saveBugs,
-    cardExtras: t => [bugSrcChip(t), bugAreaChip(t)],
-    extraActs: t => [actBtn("board","Send to Development backlog",false, ()=>{
-      sendToBacklog("Fix: "+t.title, (t.note?t.note+" \u00b7 ":"")+"Reported by "+t.reporter+(t.area?" \u00b7 "+t.area:""), "bug");
+    cardExtras: t => {
+      const chips = [bugSrcChip(t), bugAreaChip(t)];
+      if(bugIsInDev(t)){
+        const b = document.createElement("button");
+        b.className = "okr-chip";
+        b.textContent = "\uD83D\uDEE0 in dev";
+        b.title = "Escalated \u2014 this bug follows its Development card's status. Click to open the board.";
+        b.onclick = e => { e.stopPropagation(); view = "dev"; renderAll(); };
+        chips.push(b);
+      }
+      return chips;
+    },
+    extraActs: t => bugIsInDev(t) ? [] : [actBtn("board","Escalate to Development backlog",false, ()=>{
+      const cardId = sendToBacklog("Fix: "+t.title, (t.note?t.note+" \u00b7 ":"")+"Reported by "+t.reporter+(t.area?" \u00b7 "+t.area:""), "bug", undefined, t.id);
+      t.devId = cardId;
+      saveBugs();
     })],
     onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos}, v=>{
       t.title = v.title;
