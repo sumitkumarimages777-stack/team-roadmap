@@ -451,6 +451,9 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
+        <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
+        <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
+        <input type="file" id="import-file" accept=".json,application/json" style="display:none">
         <button class="tool" id="refresh-btn" title="Fetch the latest changes made by teammates">⟳ Refresh</button>
         <button class="tool primary" id="edit-toggle">✎ Edit</button>
       </div>
@@ -554,6 +557,7 @@ function okrChip(id){
 }
 function linkedWork(obId){
   const out = [];
+  if(!obId) return out;   // a brand-new objective has no id yet — nothing can be linked to it
   DATA.modules.forEach(m=>{
     if(m.okr===obId){
       const lv = m.items.flatMap(leavesOf);
@@ -1546,7 +1550,7 @@ function renderContentOkr(){
     add.style.padding = "12px";
     add.textContent = "＋ Add objective to "+cyc.name;
     add.onclick = ()=> openDialog("New objective", {}, v=>{
-      const ob = {title:v.title, krs:[]};
+      const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[]};
       if(v.owner) ob.owner = v.owner;
       if(v.note) ob.note = v.note;
       cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
@@ -2442,6 +2446,71 @@ $("collapse-all").onclick = ()=>{
   renderContentRoadmap();
 };
 $("refresh-btn").onclick = ()=> refresh(true);
+
+/* ---------- backup (export / import) ---------- */
+$("backup-btn").onclick = ()=>{
+  const payload = {
+    app: "team-roadmap-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    roadmap: clean(DATA),
+    okrs: clean(OKRS),
+    content: clean(CONTENT),
+    teamIdeas: clean(TIDEAS),
+    dev: clean(DEV),
+    bugs: clean(BUGS),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const d = new Date(), pad = n=>String(n).padStart(2,"0");
+  a.download = "roadmap-backup-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".json";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast("Backup downloaded — keep it somewhere safe");
+};
+
+$("import-btn").onclick = ()=>{
+  if(!editMode){ toast("Turn on Edit first — importing replaces all data"); return; }
+  $("import-file").click();
+};
+$("import-file").addEventListener("change", async e=>{
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  let rec;
+  try{ rec = JSON.parse(await f.text()); }
+  catch(err){ toast("That file isn't valid JSON"); return; }
+  if(!rec || typeof rec!=="object" || !rec.roadmap || !Array.isArray(rec.roadmap.modules)){
+    toast("This doesn't look like a backup from this tool"); return;
+  }
+  const parts = [(rec.roadmap.modules||[]).length+" module(s)"];
+  if(rec.okrs) parts.push((rec.okrs.cycles||[]).length+" OKR cycle(s)");
+  if(rec.content) parts.push((rec.content.sections||[]).length+" content section(s)");
+  if(rec.teamIdeas) parts.push((rec.teamIdeas.items||[]).length+" idea(s)");
+  if(rec.dev) parts.push((rec.dev.cards||[]).length+" dev card(s)");
+  if(rec.bugs) parts.push((rec.bugs.tickets||[]).length+" bug ticket(s)");
+  const when = rec.exportedAt ? "\nBackup taken: "+new Date(rec.exportedAt).toLocaleString() : "";
+  if(!confirm("Restore this backup? It will REPLACE the current data for the whole team.\n\nContains: "+parts.join(", ")+when+"\n\nTip: click Backup first if you want a copy of what's there now.")) return;
+  DATA = normalize(rec.roadmap);
+  OKRS = normalizeOkrs(rec.okrs || clean(DEFAULT_OKRS));
+  CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
+  TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
+  DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
+  DATA.updated = todayStr();
+  activeModule = "all"; activeSection = "all"; activeCycle = null; devSprint = null; collapsed.clear();
+  renderAll();
+  await pushAll();
+  if(rec.bugs && Array.isArray(rec.bugs.tickets)){
+    BUGS = normalizeBugs(clean(rec.bugs));
+    BUGS.updated = todayStr();
+    renderAll();
+    if(bugsDb) await pushBugs();
+  }
+  toast("Backup restored"+(db ? " and synced to the team" : " (local only — JSONBin not connected)"));
+});
+
 $("edit-toggle").onclick = ()=>{
   if(!editMode && EDIT_PASSCODE && sessionStorage.getItem("rm-ok")!=="1"){
     const p = prompt("Enter the edit passcode:");
