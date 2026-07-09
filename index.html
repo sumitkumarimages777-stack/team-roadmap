@@ -196,12 +196,14 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 /* workspace area switcher (sidebar) */
 #ws-switch{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
 #ws-switch:empty{display:none}
+#edu-switch{display:flex;flex-direction:column;gap:6px;margin-top:20px}
+#edu-switch:empty{display:none}
 .ws-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 4px 4px}
 .ws-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-family:var(--disp);font-weight:600;font-size:14px;color:var(--muted);text-align:left;width:100%}
 .ws-item:hover{border-color:var(--line-strong);color:var(--ink)}
 .ws-item.active{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft);box-shadow:0 0 0 1px var(--indigo)}
 .ws-item .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
-@media(max-width:860px){#ws-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}}
+@media(max-width:860px){#ws-switch,#edu-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}}
 @media(max-width:760px){.corner-nav-wrap{position:static;margin-bottom:14px}}
 
 /* content roadmap rows */
@@ -430,6 +432,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div id="ws-switch"></div>
     <div class="side-title" id="side-title">Modules</div>
     <div class="mods" id="mods"></div>
+    <div id="edu-switch"></div>
   </aside>
 
   <main>
@@ -2410,7 +2413,25 @@ function renderAll(){
         ws.appendChild(b);
       });
     });
-    renderSidebarExams(ws);
+  }
+  // Educational Content section: expanded (exam cards) on the content view,
+  // collapsed (single summary card) everywhere else. Sits below the active view's sub-tabs.
+  const edu = $("edu-switch");
+  edu.innerHTML = "";
+  if(view!=="okr"){
+    if(view==="content"){
+      renderSidebarExams(edu);
+    } else {
+      const lbl = document.createElement("div");
+      lbl.className = "ws-label"; lbl.textContent = "Educational Content";
+      edu.appendChild(lbl);
+      const allTasks = CONTENT.sections.flatMap(s=>s.tasks);
+      const b = mkSideCard(false, ()=>{ view = "content"; activeSection = "all"; renderAll(); });
+      b.innerHTML = `<span class="name">All exams</span>
+        <div class="bar"><i style="width:${pctOf(allTasks)}%"></i></div>
+        <span class="pct">${pctOf(allTasks)}% · ${CONTENT.sections.length} sections · ${allTasks.length} tasks</span>`;
+      edu.appendChild(b);
+    }
   }
   $("side-title").style.display = "";
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
