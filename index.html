@@ -450,6 +450,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="expand-all">Expand all</button>
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
+        <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
         <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
         <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
@@ -1564,19 +1565,19 @@ function renderContentOkr(){
 /* ================================================================
    EDUCATIONAL CONTENT VIEW
    ================================================================ */
-function renderSidebarContent(){
-  const wrap = $("mods");
-  wrap.innerHTML = "";
-  $("side-title").textContent = "Exams";
+function renderSidebarExams(ws){
+  const lbl = document.createElement("div");
+  lbl.className = "ws-label"; lbl.textContent = "Educational Content";
+  ws.appendChild(lbl);
   const allTasks = CONTENT.sections.flatMap(s=>s.tasks);
   const all = document.createElement("button");
-  all.className = "mod"+(activeSection==="all"?" active":"");
+  all.className = "mod"+((view==="content" && activeSection==="all")?" active":"");
   all.innerHTML = `<span class="name">All exams</span><span class="pct">${CONTENT.sections.length} sections · ${allTasks.length} tasks</span>`;
-  all.onclick = ()=>{activeSection="all"; renderAll();};
-  wrap.appendChild(all);
+  all.onclick = ()=>{ view = "content"; activeSection = "all"; renderAll(); };
+  ws.appendChild(all);
   CONTENT.sections.forEach(s=>{
     const p = pctOf(s.tasks);
-    const b = mkSideCard(activeSection===s.key, ()=>{activeSection=s.key; renderAll();});
+    const b = mkSideCard(view==="content" && activeSection===s.key, ()=>{ view = "content"; activeSection = s.key; renderAll(); });
     b.innerHTML = `<span class="name"></span>
       <div class="bar"><i style="width:${p}%"></i></div>
       <span class="pct">${p}% · ${s.tasks.length} tasks</span>`;
@@ -1598,7 +1599,7 @@ function renderSidebarContent(){
         }),
       ]);
     }
-    wrap.appendChild(b);
+    ws.appendChild(b);
   });
   if(editMode){
     const add = document.createElement("button");
@@ -1609,10 +1610,10 @@ function renderSidebarContent(){
       const s = {name:v.title, key, tasks:[]};
       if(v.budget) s.budget = v.budget;
       CONTENT.sections.push(s);
-      activeSection = key;
+      view = "content"; activeSection = key;
       saveContent(); toast("Section added");
     }, {hideExtras:true, budget:true});
-    wrap.appendChild(add);
+    ws.appendChild(add);
   }
 }
 
@@ -2385,12 +2386,9 @@ function renderAll(){
       {key:"dev", label:"Development"},
       {key:"bugs", label:"Bugs"},
     ]},
-    {label:"Team", items:[
-      {key:"content", label:"Educational Content"},
-      {key:"ideas", label:"Team Ideas"},
-    ]},
   ];
-  if(view!=="okr") lastWs = view;
+  if(view!=="okr" && view!=="ideas") lastWs = view;
+  $("nav-team-ideas").classList.toggle("primary", view==="ideas");
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
   $("nav-a").classList.toggle("ghost", view==="okr");
@@ -2412,9 +2410,15 @@ function renderAll(){
         ws.appendChild(b);
       });
     });
+    renderSidebarExams(ws);
   }
+  $("side-title").style.display = "";
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
-  else if(view==="content"){ renderSidebarContent(); renderContentContent(); }
+  else if(view==="content"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    renderContentContent();
+  }
   else if(view==="ideas"){ renderSidebarIdeas(); renderContentIdeas(); }
   else if(view==="dev"){ renderSidebarDev(); renderContentDev(); }
   else if(view==="bugs"){ renderSidebarBugs(); renderContentBugs(); }
@@ -2425,6 +2429,7 @@ function renderAll(){
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
+$("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
