@@ -1,0 +1,560 @@
+{
+  "app": "team-roadmap-backup",
+  "version": 1,
+  "exportedAt": "2026-07-10T05:47:44.200Z",
+  "roadmap": {
+    "title": "Product Roadmap",
+    "subtitle": "One place for the whole team to see what we're building, who owns it, and where it stands.",
+    "updated": "10 July 2026",
+    "modules": [
+      {
+        "name": "Dubuddy",
+        "key": "panel-e4i",
+        "items": [
+          {
+            "title": "Report Panel Question not able to see and Change",
+            "status": "progress",
+            "photos": [
+              "https://i.ibb.co/B2dcPSgh/858d4b046f99.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "\"Created by\" option to be added in \"create test\" option",
+            "status": "blocked",
+            "note": "When someone creates a test, a \"created by\" option should be visible so that we can make sure to hold the right person accountable\nnote: If its imported or uploaded by a tool then the option will be pre filled with the name of the tool eg response sheet checker or universal test scrapper made by dubuddy tech team",
+            "photos": [
+              "https://i.ibb.co/h5dFBtC/46c0944e0649.jpg",
+              "https://i.ibb.co/vxhmsCKp/19548678c5b6.jpg",
+              "https://i.ibb.co/MxLLDrSQ/a85712110625.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "New options to be added to assign user section",
+            "status": "blocked",
+            "note": "When someone clicks on \"assign user\" following boxes should be visible:\n1. Select User \n2. Select workflow stage (drafting questions, drafting solution, chapter tagging, verification stage 1, verification by Head, verification by end user, add another stage i.e we are able to add a stage on our own) [give option to select multiple workflow stages]\n3. Add number of assigned user \n4. Add email of assigned user\n5. An option to give product access to the user jiska number upar select kiya hua hai \n\nAssign user option can only be used by the head",
+            "photos": [
+              "https://i.ibb.co/Gvc8QHfS/480cde32dbfb.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "Preview link of app needed in the panel (just like the website)",
+            "status": "progress",
+            "items": []
+          },
+          {
+            "title": "A test can be unpublished or published by clicking on the published button",
+            "status": "progress",
+            "note": "Refer to this interactive mockup (exam category section): https://team-roadmap-eight.vercel.app/admin-mockup.html",
+            "items": []
+          },
+          {
+            "title": "Question Report V2 Column Changes",
+            "status": "progress",
+            "note": "Add the following columns:\n1. a row of check boxes just like the exam category section (to select number of reported ques)\n2. assigned to \n3. subject \n4. type (pyq, mock, chapterwise)\n5. chapter name \n6. shift name \n7. question number \n8. preview ques option (app + website)\n9. Source\n10. Edit Question\n11. reported by \n12. history \n13. device \n14. language medium \n\nreference: https://team-roadmap-eight.vercel.app/admin-mockup.html",
+            "photos": [
+              "https://i.ibb.co/vK9qG0K/70597dbf02eb.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "A filter should be added to every column",
+            "status": "progress",
+            "note": "In Exam Category Mgt: \n1. status\n2. published state\n3. user \n4. created by \n\nIn Question Reports V2\n1. category \n2. last reported at \n3. status\n4. assigned to \n5. subject\n6. chapter name \n7. type\n8. shift name \n9. device\n10 language medium \n\n\nReference: https://team-roadmap-eight.vercel.app/admin-mockup.html",
+            "items": []
+          },
+          {
+            "title": "Reported by sub section of question reports v2 section changes",
+            "status": "progress",
+            "note": "Under this sub section a list should open of all uniques users who reported, on top of it there should be a button to filter out whether it was reported by our internal team or end user \nrefer:https://team-roadmap-eight.vercel.app/admin-mockup.html",
+            "photos": [
+              "https://i.ibb.co/FqN6gsQX/07e6bde2a338.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "On top of ques reports v2 section following buttons are needed",
+            "status": "progress",
+            "note": "1. exam type ( a dropdown to select exam wise reports), first attached image \n2. publish all changes (this button would publish all the the status marked as \"unpublished change\" though if we use and select 6 out of 10 then only 6 will be published \n3. Resolved questions:  all the ques published will be transferred to this list and mot be a part of our other reported ques\n4. Analytics (to be discussed in another task)",
+            "photos": [
+              "https://i.ibb.co/PvV0SXfZ/1e610e14a730.jpg",
+              "https://i.ibb.co/S4C7xmsd/afc09b4e98fe.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "Analytics Button on Ques Reports V2",
+            "status": "progress",
+            "note": "After clicking this button, we will be able to see an overall report of all reported ques \nfilters will be mentioned above to select only those exams or tests or subjects we want to get the summary of \n\nnote: there is also a button of view ques on this screen, when clicked it will transfer us to the first screen with set filters \n\nonly 2 more filters to be added apart from subject, type, exam and category \ni,e language medium and device used to report \n\nrefer: https://team-roadmap-eight.vercel.app/admin-mockup.html",
+            "photos": [
+              "https://i.ibb.co/0jcZSft2/a8f83722da54.jpg"
+            ],
+            "items": []
+          },
+          {
+            "title": "CUET UG  2026 PYQs  K Papers solving k lyk bnjaye means Panel me dekhe and Haam solve kree.  With dubuddy ka logo",
+            "status": "planned",
+            "items": []
+          },
+          {
+            "title": "SEO Admin Panel m Add Krna with New Slug system",
+            "status": "planned",
+            "items": []
+          },
+          {
+            "title": "Influencer marketing System",
+            "status": "planned",
+            "items": []
+          },
+          {
+            "title": "Report a Bug /issue (Open Ticket )Ko integrate krwa h",
+            "status": "planned",
+            "owner": "https://team-roadmap-eight.vercel.app/report-bug.html",
+            "items": []
+          },
+          {
+            "title": "Submit an Idea ko Jgh Jgh lagana h",
+            "status": "planned",
+            "items": []
+          },
+          {
+            "title": "Change Phone Number",
+            "status": "planned",
+            "photos": [
+              "https://i.ibb.co/QjkLkcxk/585d4d2b95b9.jpg"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "DYNG",
+        "key": "dyng-nki",
+        "items": [
+          {
+            "title": "Make APP Live",
+            "status": "planned",
+            "items": []
+          }
+        ]
+      }
+    ]
+  },
+  "okrs": {
+    "cycles": [
+      {
+        "name": "July -September",
+        "key": "get-ready-for-2027-15c",
+        "objectives": [
+          {
+            "title": "Get Ready for CUET UG for 2027",
+            "krs": [
+              {
+                "title": "Get All subjects  CUET UG Papers solved of 2026",
+                "current": 0,
+                "target": 100,
+                "unit": "%",
+                "invert": false
+              },
+              {
+                "title": "Get corrected all  reported questions from 2022-2025",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Optimise Admin Panel with AI",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Update Admin panel to setup proper Work accountability among different stake holders working on Panel",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Make Dubuddy Independent of Sumit",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              }
+            ],
+            "id": "ob-get-ready-for-2027-15c-0"
+          },
+          {
+            "title": "Launch in 2 new Exams",
+            "krs": [
+              {
+                "title": "Upload CUET PG PYQs",
+                "current": 0,
+                "target": 10,
+                "unit": "",
+                "invert": true,
+                "start": 0
+              },
+              {
+                "title": "Upload CUET PG Mocks",
+                "current": 0,
+                "target": 10,
+                "unit": "%"
+              },
+              {
+                "title": "Upload & Redraft Neet PYQs with AI",
+                "current": 0,
+                "target": 10,
+                "unit": "%",
+                "invert": false
+              },
+              {
+                "title": "Optimise SEO for CUET PG and NEET",
+                "current": 0,
+                "target": 0,
+                "unit": ""
+              }
+            ],
+            "id": "ob-get-ready-for-2027-15c-1"
+          },
+          {
+            "title": "Experiment New things in Product, internal Processes, Internal systems",
+            "krs": [
+              {
+                "title": "Make Internal Systems setup so as to increase our deplyment speed faster and even non tech Persons can code according to our Architecture",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Solve Preference sheet Poblem with Tool",
+                "current": 100,
+                "target": 100,
+                "unit": "%",
+                "start": 0
+              },
+              {
+                "title": "Internal Paper solving k Panel ko Optimise krna h for Better and Accountable workflow",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Influencer marketing ka Automatic Sytem bnana h",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Place where Anyone can Submit idea",
+                "current": 1,
+                "target": 1,
+                "unit": "%",
+                "invert": false
+              }
+            ],
+            "id": "ob-get-ready-for-2027-15c-2"
+          },
+          {
+            "id": "ob-get-ready-for-2027-15c-mrdo0s0j",
+            "title": "Launch DYNG as a SuperApp and get its Tech made",
+            "krs": [
+              {
+                "title": "laucnh  SEO Optimised Website for user side with PG Profiling",
+                "current": 0,
+                "target": 100,
+                "unit": "%",
+                "invert": false
+              },
+              {
+                "title": "Launch USer App with PG profiling",
+                "current": 0,
+                "target": 100,
+                "unit": "%",
+                "invert": false
+              },
+              {
+                "title": "Make 7 lakhs froms Video and Related Activities of Youtube and Instagram",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Try adding one More Feature other than PG on dyng",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              },
+              {
+                "title": "Launch PG booking for Owner",
+                "current": 0,
+                "target": 100,
+                "unit": "%"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "updated": "9 July 2026"
+  },
+  "content": {
+    "sections": [
+      {
+        "name": "CUET UG",
+        "key": "cuet-ug",
+        "budget": "₹2,00,000",
+        "tasks": [
+          {
+            "title": "Changes on reports (to be done by Pancham)",
+            "start": "2nd July",
+            "deadline": "3rd July",
+            "status": "progress",
+            "owner": "Pancham"
+          },
+          {
+            "title": "Interviewing interns — batch 3",
+            "start": "4th July",
+            "deadline": "12th July",
+            "status": "planned"
+          },
+          {
+            "title": "Meet with Sumit",
+            "start": "10th July",
+            "deadline": "10th July",
+            "status": "planned"
+          },
+          {
+            "title": "CUET drafted (interns)",
+            "start": "13th July",
+            "deadline": "31st July",
+            "status": "planned"
+          },
+          {
+            "title": "CUET verified by interns",
+            "deadline": "7th August",
+            "status": "planned"
+          },
+          {
+            "title": "PYQs 2025 (error free)",
+            "start": "13th July",
+            "deadline": "7th August",
+            "status": "planned"
+          },
+          {
+            "title": "PYQs 2026",
+            "deadline": "15th August",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "name": "CUET PG",
+        "key": "cuet-pg",
+        "tasks": [
+          {
+            "title": "Upload all PYQs + mocks",
+            "status": "progress"
+          }
+        ]
+      },
+      {
+        "name": "NEET",
+        "key": "neet",
+        "tasks": [
+          {
+            "title": "Upload NEET PYQs",
+            "start": "4th July",
+            "deadline": "4th July",
+            "status": "progress"
+          },
+          {
+            "title": "Rewrite solutions with AI",
+            "start": "6th July",
+            "deadline": "15th July",
+            "status": "planned"
+          },
+          {
+            "title": "Update meet with Sumit",
+            "start": "10th July",
+            "deadline": "10th July",
+            "status": "planned"
+          },
+          {
+            "title": "Final verification by Mannat",
+            "start": "7th July",
+            "deadline": "19th July",
+            "status": "planned",
+            "owner": "Mannat"
+          }
+        ]
+      },
+      {
+        "name": "Jee",
+        "key": "jee-jaa",
+        "tasks": []
+      }
+    ],
+    "updated": "9 July 2026"
+  },
+  "teamIdeas": {
+    "items": [],
+    "updated": "9 July 2026"
+  },
+  "dev": {
+    "cards": [
+      {
+        "id": "dv-mrbxe3p8q5w",
+        "title": "Fix: MORE THAN 4 OPTIONS VISIBLE IN TEST PAPERS",
+        "note": "Reported by Anonymous · Perfernce sheet Testing",
+        "from": "bug",
+        "bugId": "bg-mr7trikygl1",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mrcz6gpk0s8",
+        "title": "Report Panel Question not able to see and Change",
+        "note": "",
+        "from": "roadmap",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mrcz8b5p8rn",
+        "title": "Preview link of app needed in the panel (just like the website)",
+        "note": "",
+        "from": "roadmap",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mrcz9syqaor",
+        "title": "A test can be unpublished or published by clicking on the published button",
+        "note": "Refer to this interactive mockup (exam category section): https://team-roadmap-eight.vercel.app/admin-mockup.html",
+        "from": "roadmap",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mrcz9xexcct",
+        "title": "Question Report V2 Column Changes",
+        "note": "Add the following columns:\n1. a row of check boxes just like the exam category section (to select number of reported ques)\n2. assigned to \n3. subject \n4. type (pyq, mock, chapterwise)\n5. chapter name \n6. shift name \n7. question number \n8. preview ques option (app + website)\n9. Source\n10. Edit Question\n11. reported by \n12. history \n13. device \n14. language medium \n\nreference: https://team-roadmap-eight.vercel.app/admin-mockup.html",
+        "from": "roadmap",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mrcz9zh0u70",
+        "title": "A filter should be added to every column",
+        "note": "In Exam Category Mgt: \n1. status\n2. published state\n3. user \n4. created by \n\nIn Question Reports V2\n1. category \n2. last reported at \n3. status\n4. assigned to \n5. subject\n6. chapter name \n7. type\n8. shift name \n9. device\n10 language medium \n\n\nReference: https://team-roadmap-eight.vercel.app/admin-mockup.html",
+        "from": "roadmap",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mreh2o6focs",
+        "title": "Fix: Test Series not Opening",
+        "note": "Details of user in Screenshot · Reported by Sumit · Dubuddy",
+        "from": "bug",
+        "bugId": "bg-mreh2fitfs6",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      },
+      {
+        "id": "dv-mreh6gooo77",
+        "title": "Fix: Test Series not Opening",
+        "note": "Reported by Sumit · Dubuddy",
+        "from": "bug",
+        "bugId": "bg-mreh696us1e",
+        "col": "todo",
+        "sprint": "sp-mr7qv2q9"
+      }
+    ],
+    "updated": "10 July 2026",
+    "sprints": [
+      {
+        "id": "sp-mr7qv2q9",
+        "name": "Sprint 1",
+        "start": "9",
+        "end": "12"
+      },
+      {
+        "id": "sp-mr7qv6xg",
+        "name": "Sprint 2"
+      },
+      {
+        "id": "sp-mr7qv8gq",
+        "name": "Sprint 3"
+      }
+    ]
+  },
+  "bugs": {
+    "tickets": [
+      {
+        "id": "bg-mr7qjk770oq",
+        "title": "hey Panel Not Openinging",
+        "note": "",
+        "area": "Perfernce sheet Testing",
+        "reporter": "Anonymous",
+        "source": "team",
+        "col": "todo",
+        "created": "5 July 2026",
+        "devId": "dv-mrbv6r70886"
+      },
+      {
+        "id": "bg-mr7trikygl1",
+        "title": "MORE THAN 4 OPTIONS VISIBLE IN TEST PAPERS",
+        "note": "",
+        "area": "Perfernce sheet Testing",
+        "reporter": "Anonymous",
+        "source": "team",
+        "col": "todo",
+        "created": "5 July 2026",
+        "photos": [
+          "https://i.ibb.co/vvVjynqK/2fb091480e5b.jpg"
+        ],
+        "devId": "dv-mrbxe3p8q5w"
+      },
+      {
+        "id": "bg-mrap8338oer",
+        "title": "Retrieve Data blocked by google",
+        "note": "",
+        "area": "Other",
+        "reporter": "Anonymous",
+        "source": "team",
+        "col": "todo",
+        "created": "7 July 2026"
+      },
+      {
+        "id": "bg-mreh2fitfs6",
+        "title": "Test Series not Opening",
+        "note": "Details of user in Screenshot",
+        "area": "Dubuddy",
+        "reporter": "Sumit",
+        "source": "team",
+        "col": "todo",
+        "created": "10 July 2026",
+        "photos": [
+          "https://i.ibb.co/N23PrstV/6665278b4206.jpg"
+        ],
+        "devId": "dv-mreh2o6focs"
+      },
+      {
+        "id": "bg-mreh696us1e",
+        "title": "Test Series not Opening",
+        "note": "",
+        "area": "Dubuddy",
+        "reporter": "Sumit",
+        "source": "team",
+        "col": "todo",
+        "created": "10 July 2026",
+        "photos": [
+          "https://i.ibb.co/G49XzTwn/2bb8301f2e7c.jpg"
+        ],
+        "devId": "dv-mreh6gooo77"
+      }
+    ],
+    "updated": "10 July 2026"
+  }
+}
