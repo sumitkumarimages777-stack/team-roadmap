@@ -364,6 +364,52 @@ aside{position:sticky;top:16px;align-self:start}
 .an-sel.prev.must, .an-pill.prev.must{background:var(--indigo-soft);color:var(--indigo)}
 .an-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .an-bar .addline{flex:1;min-width:200px}
+
+/* problem validation */
+.pv-qs{margin-top:14px;display:flex;flex-direction:column;gap:16px}
+.pv-q{border-left:2px solid var(--line);padding-left:14px}
+.pv-label{font-family:var(--disp);font-size:14px;font-weight:600;color:var(--ink)}
+.pv-hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin:3px 0 7px;line-height:1.5}
+.pv-input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--sans);font-size:14px;color:var(--ink);line-height:1.6;resize:vertical;background:var(--card)}
+.pv-input:focus{outline:none;border-color:var(--indigo)}
+.pv-answer{font-size:14px;line-height:1.6;color:var(--ink);white-space:pre-wrap}
+.pv-answer.empty{color:var(--muted);font-family:var(--mono);font-size:12px}
+.pv-rate{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pv-rate-l{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.pv-rate-sel,.pv-rate-pill{font-family:var(--mono);font-size:11px;border-radius:99px;padding:4px 10px;border:1px solid transparent;cursor:pointer;appearance:none;-webkit-appearance:none}
+.pv-rate-sel.none,.pv-rate-pill.none,.pv-rate-sel.nice,.pv-rate-pill.nice{background:var(--planned-bg);color:var(--planned)}
+.pv-rate-sel.anecdote,.pv-rate-pill.anecdote,.pv-rate-sel.annoying,.pv-rate-pill.annoying{background:var(--progress-bg);color:var(--progress)}
+.pv-rate-sel.signal,.pv-rate-pill.signal,.pv-rate-sel.painful,.pv-rate-pill.painful{background:var(--indigo-soft);color:var(--indigo)}
+.pv-rate-sel.data,.pv-rate-pill.data,.pv-rate-sel.blocking,.pv-rate-pill.blocking{background:var(--done-bg);color:var(--done)}
+.pv-market{margin-top:22px;border-top:1px dashed var(--line);padding-top:16px}
+.pv-mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:8px}
+.pv-mfield label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+.pv-mfield input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:14px;background:var(--card);color:var(--ink)}
+.pv-mfield input:focus{outline:none;border-color:var(--indigo)}
+.pv-mval{font-family:var(--mono);font-size:15px;font-weight:600}
+.pv-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.pv-stat{border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:3px;background:var(--paper)}
+.pv-stat.hero{border-color:var(--done);background:var(--done-bg)}
+.pv-sk{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.pv-stat.hero .pv-sk{color:var(--done)}
+.pv-sv{font-family:var(--disp);font-size:20px;font-weight:600}
+.pv-stat.hero .pv-sv{color:var(--done)}
+.pv-ss{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.pv-gate{margin-top:22px;border:1.5px solid var(--line-strong);border-radius:var(--radius);padding:14px;background:var(--paper);display:flex;flex-direction:column;gap:9px}
+.pv-gate.v-worth{border-color:var(--done);background:var(--done-bg)}
+.pv-gate.v-no{border-color:var(--blocked);background:var(--blocked-bg)}
+.pv-gate.v-more{border-color:var(--progress);background:var(--progress-bg)}
+.pv-verdict,.pv-verdict-pill{font-family:var(--mono);font-size:13px;border-radius:99px;padding:7px 14px;border:1px solid transparent;align-self:flex-start;cursor:pointer;appearance:none;-webkit-appearance:none;background:var(--card)}
+.pv-verdict.worth,.pv-verdict-pill.worth{background:var(--done);color:#fff}
+.pv-verdict.no,.pv-verdict-pill.no{background:var(--blocked);color:#fff}
+.pv-verdict.more,.pv-verdict-pill.more{background:var(--progress);color:#fff}
+.pv-next{font-family:var(--mono);font-size:12px;color:var(--ink);opacity:.85}
+.pv-note{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--paper);border:1px dashed var(--line-strong);border-radius:8px;padding:9px 12px;margin-bottom:10px;line-height:1.6}
+.pv-note.bad{color:var(--blocked);border-color:#F0C7C3;background:var(--blocked-bg)}
+.pv-badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;border-radius:5px;padding:2px 7px;align-self:flex-start;background:var(--planned-bg);color:var(--planned)}
+.pv-badge.worth{background:var(--done-bg);color:var(--done)}
+.pv-badge.no{background:var(--blocked-bg);color:var(--blocked)}
+.pv-badge.more{background:var(--progress-bg);color:var(--progress)}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -1982,12 +2028,42 @@ const PREV = [
   {k:"common",   label:"Common feature"},
   {k:"uncommon", label:"Uncommon feature"},
 ];
+/* problem validation — run BEFORE competitor analysis */
+const EVID = [
+  {k:"none",     label:"Just a hunch"},
+  {k:"anecdote", label:"A few conversations"},
+  {k:"signal",   label:"Repeated complaints / tickets"},
+  {k:"data",     label:"Hard data"},
+];
+const PAIN = [
+  {k:"nice",     label:"Nice to have"},
+  {k:"annoying", label:"Annoying"},
+  {k:"painful",  label:"Painful"},
+  {k:"blocking", label:"Blocking their work"},
+];
+const VERDICT = [
+  {k:"open",  label:"Not decided yet"},
+  {k:"worth", label:"Worth solving \u2014 proceed"},
+  {k:"more",  label:"Need more evidence"},
+  {k:"no",    label:"Not worth solving"},
+];
+const PROBLEM_Q = [
+  {k:"problem",  label:"1. What exactly is the problem?",         hint:"One sentence, in the user's words \u2014 not the solution."},
+  {k:"who",      label:"2. Whose problem is it?",                 hint:"Which student / teacher / owner, doing what. \u201cUsers\u201d is not an answer."},
+  {k:"evidence", label:"3. How do we know? (the evidence)",       hint:"Tickets, the ideas board, conversations, data. Be honest if it\u2019s a guess."},
+  {k:"today",    label:"4. What do they do today instead?",       hint:"If the answer is \u201cnothing, they live with it\u201d \u2014 the pain may be too small."},
+  {k:"cost",     label:"5. What happens if we DON'T build it?",   hint:"If the honest answer is \u201cnot much\u201d, you have your answer."},
+  {k:"metric",   label:"6. How will we know it worked?",          hint:"One number, decided BEFORE building. e.g. \u201c30% of users book a PG in week 1\u201d."},
+  {k:"smallest", label:"7. What's the smallest test of this?",    hint:"The 20% of scope that proves 80% of the bet. Often not code at all."},
+  {k:"risk",     label:"8. What would make us wrong?",            hint:"Name the assumption that, if false, kills this. Then go check it."},
+];
 let activeAnalysis = null;   // {path, id} while an analysis table is open
 
 function normalizeAnalyses(node){
   node.analyses = node.analyses || [];
   node.analyses.forEach(a=>{
     if(!a.id) a.id = "an" + Math.random().toString(36).slice(2,9);
+    if(a.type === "problem"){ a.f = a.f || {}; a.market = a.market || {}; a.verdict = a.verdict || "open"; return; }
     a.comps = a.comps || [];
     if(a.type === "product"){
       a.feats = a.feats || [];
@@ -2007,14 +2083,21 @@ function analysisCoverage(a){
   return Math.round(have / a.feats.length * 100);
 }
 function newAnalysis(node, path, type){
-  openDialog(type==="product" ? "New product-level analysis" : "New feature-level analysis", {}, v=>{
+  const dlgTitle = type==="problem" ? "Is this problem worth solving?"
+                 : type==="product" ? "New product-level analysis"
+                 : "New feature-level analysis";
+  openDialog(dlgTitle, {}, v=>{
     normalizeAnalyses(node);
     const a = {
       id: "an" + Math.random().toString(36).slice(2,9),
       type, title: v.title,
       comps: [{name:"Us"}, {name:"Competitor 1"}],
     };
-    if(type==="product"){
+    if(type==="problem"){
+      a.f = {}; a.market = {}; a.verdict = "open";
+      a.evidenceStrength = "none"; a.pain = "nice";
+      delete a.comps;
+    } else if(type==="product"){
       a.feats = [{name:"First feature", prev:"must", cells:["na","na"]}];
     } else {
       a.comps.forEach(c=>{ c.pricing=""; c.has="no"; c.how=""; c.types=""; c.comments=""; c.winlose=""; });
@@ -2022,10 +2105,212 @@ function newAnalysis(node, path, type){
     node.analyses.push(a);
     activeAnalysis = {path, id:a.id};
     saveRoadmap(); toast("Analysis created");
-  }, {hideExtras:true, titleLabel: type==="product" ? "What are you comparing? (e.g. Dubuddy vs competitors)" : "Which feature? (e.g. Incident reporting)"});
+  }, {hideExtras:true, titleLabel: type==="problem" ? "What problem are you validating? (e.g. Students can't find verified PGs)"
+      : type==="product" ? "What are you comparing? (e.g. Dubuddy vs competitors)"
+      : "Which feature? (e.g. Incident reporting)"});
 }
 
 /* ---------- the analysis table ---------- */
+function problemPane(node, path, a){
+  const wrap = $("content");
+  const box = document.createElement("section");
+  box.className = "module-block";
+
+  const bc = document.createElement("div");
+  bc.className = "crumbs";
+  const back = document.createElement("button");
+  back.className = "crumb";
+  back.textContent = "\u2190 Back to " + node.name;
+  back.onclick = ()=>{ activeAnalysis = null; renderAll(); };
+  bc.appendChild(back);
+  box.appendChild(bc);
+
+  const head = document.createElement("div");
+  head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = a.title;
+  const tag = document.createElement("span"); tag.className = "sub-tag";
+  tag.textContent = "IS IT WORTH SOLVING?";
+  head.append(h2, tag);
+  if(editMode){
+    const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
+    const acts = document.createElement("div"); acts.className="acts";
+    acts.appendChild(actBtn("pencil","Rename",false, ()=>
+      openDialog("Rename", {title:a.title}, v=>{ a.title = v.title; saveRoadmap(); }, {hideExtras:true})));
+    acts.appendChild(actBtn("trash","Delete",true, ()=>{
+      if(confirm("Delete \u201C"+a.title+"\u201D?")){
+        node.analyses.splice(node.analyses.indexOf(a),1);
+        activeAnalysis = null; saveRoadmap(); toast("Deleted");
+      }
+    }));
+    head.appendChild(acts);
+  }
+  box.appendChild(head);
+
+  a.f = a.f || {};
+  a.market = a.market || {};
+
+  // --- the eight questions ---
+  const qs = document.createElement("div");
+  qs.className = "pv-qs";
+  PROBLEM_Q.forEach(q=>{
+    const f = document.createElement("div");
+    f.className = "pv-q";
+    const l = document.createElement("div"); l.className = "pv-label"; l.textContent = q.label;
+    const h = document.createElement("div"); h.className = "pv-hint"; h.textContent = q.hint;
+    f.append(l, h);
+    if(editMode){
+      const ta = document.createElement("textarea");
+      ta.className = "pv-input";
+      ta.rows = 2;
+      ta.value = a.f[q.k] || "";
+      ta.placeholder = "\u2026";
+      ta.onchange = ()=>{ a.f[q.k] = ta.value.trim(); saveRoadmap(); };
+      f.appendChild(ta);
+    } else {
+      const p = document.createElement("div");
+      p.className = "pv-answer" + (a.f[q.k] ? "" : " empty");
+      p.textContent = a.f[q.k] || "\u2014 not answered yet \u2014";
+      f.appendChild(p);
+    }
+    // the two rating chips sit next to their own questions
+    if(q.k === "evidence") f.appendChild(pvRating(a, "evidenceStrength", EVID, "How strong is that evidence?"));
+    if(q.k === "cost")     f.appendChild(pvRating(a, "pain", PAIN, "How much does it hurt them?"));
+    qs.appendChild(f);
+  });
+  box.appendChild(qs);
+
+  // --- market sizing ---
+  const ms = document.createElement("div");
+  ms.className = "pv-market";
+  const mh = document.createElement("div");
+  mh.className = "pv-label"; mh.textContent = "9. How big is this, really? (market sizing)";
+  ms.appendChild(mh);
+  const mhint = document.createElement("div");
+  mhint.className = "pv-hint";
+  mhint.textContent = "Rough numbers beat no numbers. If SOM looks tiny, that's a finding, not a failure.";
+  ms.appendChild(mhint);
+
+  const grid = document.createElement("div");
+  grid.className = "pv-mgrid";
+  const MF = [
+    {k:"people", label:"People with this problem", ph:"e.g. 1500000"},
+    {k:"price",  label:"\u20b9 they'd pay per year", ph:"e.g. 499"},
+    {k:"sam",    label:"% we can realistically serve", ph:"e.g. 20"},
+    {k:"som",    label:"% of that we can reach in 3 yrs", ph:"e.g. 5"},
+  ];
+  MF.forEach(m=>{
+    const c = document.createElement("div");
+    c.className = "pv-mfield";
+    const l = document.createElement("label"); l.textContent = m.label;
+    c.appendChild(l);
+    if(editMode){
+      const i = document.createElement("input");
+      i.type = "number"; i.value = a.market[m.k] ?? ""; i.placeholder = m.ph;
+      i.onchange = ()=>{ a.market[m.k] = money(i.value); saveRoadmap(); };
+      c.appendChild(i);
+    } else {
+      const v = document.createElement("div");
+      v.className = "pv-mval";
+      v.textContent = a.market[m.k] ? Number(a.market[m.k]).toLocaleString("en-IN") : "\u2014";
+      c.appendChild(v);
+    }
+    grid.appendChild(c);
+  });
+  ms.appendChild(grid);
+
+  const tam = money(a.market.people) * money(a.market.price);
+  const sam = tam * (money(a.market.sam)/100);
+  const som = sam * (money(a.market.som)/100);
+  const stats = document.createElement("div");
+  stats.className = "pv-stats";
+  [["TAM", tam, "everyone with the problem"],
+   ["SAM", sam, "who we could serve"],
+   ["SOM / yr", som, "what we'd realistically earn"]].forEach(([k,v,sub],i)=>{
+    const c = document.createElement("div");
+    c.className = "pv-stat" + (i===2 ? " hero" : "");
+    c.innerHTML = `<span class="pv-sk">${k}</span><span class="pv-sv">${v ? inr(v) : "\u20b9\u2014"}</span><span class="pv-ss">${sub}</span>`;
+    stats.appendChild(c);
+  });
+  ms.appendChild(stats);
+  box.appendChild(ms);
+
+  // --- the verdict gate ---
+  const cur = VERDICT.find(v=>v.k===(a.verdict||"open")) || VERDICT[0];
+  const gate = document.createElement("div");
+  gate.className = "pv-gate v-" + cur.k;
+  const gl = document.createElement("div");
+  gl.className = "pv-label";
+  gl.textContent = "\u25c6 The gate \u2014 decide, and write down why";
+  gate.appendChild(gl);
+  if(editMode){
+    const sel = document.createElement("select");
+    sel.className = "pv-verdict " + cur.k;
+    VERDICT.forEach(v=>{
+      const o = document.createElement("option");
+      o.value = v.k; o.textContent = v.label;
+      sel.appendChild(o);
+    });
+    sel.value = cur.k;
+    sel.onchange = ()=>{ a.verdict = sel.value; saveRoadmap(); };
+    gate.appendChild(sel);
+    const ta = document.createElement("textarea");
+    ta.className = "pv-input";
+    ta.rows = 2;
+    ta.placeholder = "Why? One or two lines. Future-you will want to know.";
+    ta.value = a.why || "";
+    ta.onchange = ()=>{ a.why = ta.value.trim(); saveRoadmap(); };
+    gate.appendChild(ta);
+  } else {
+    const p = document.createElement("span");
+    p.className = "pv-verdict-pill " + cur.k;
+    p.textContent = cur.label;
+    gate.appendChild(p);
+    if(a.why){
+      const w = document.createElement("div");
+      w.className = "pv-answer"; w.textContent = a.why;
+      gate.appendChild(w);
+    }
+  }
+  if(cur.k === "worth"){
+    const nx = document.createElement("div");
+    nx.className = "pv-next";
+    nx.textContent = "\u2713 Cleared. Now run a competitor analysis \u2014 the problem is real, so ask whether we can win it.";
+    gate.appendChild(nx);
+  } else if(cur.k === "no"){
+    const nx = document.createElement("div");
+    nx.className = "pv-next";
+    nx.textContent = "Stop here. Don't spend a competitor analysis (or a sprint) on this.";
+    gate.appendChild(nx);
+  }
+  box.appendChild(gate);
+  wrap.appendChild(box);
+  return true;
+}
+function pvRating(a, key, opts, label){
+  const cur = opts.find(o=>o.k===a[key]) || opts[0];
+  const row = document.createElement("div");
+  row.className = "pv-rate";
+  const l = document.createElement("span"); l.className = "pv-rate-l"; l.textContent = label;
+  row.appendChild(l);
+  if(editMode){
+    const sel = document.createElement("select");
+    sel.className = "pv-rate-sel " + cur.k;
+    opts.forEach(o=>{
+      const op = document.createElement("option");
+      op.value = o.k; op.textContent = o.label;
+      sel.appendChild(op);
+    });
+    sel.value = cur.k;
+    sel.onchange = ()=>{ a[key] = sel.value; saveRoadmap(); };
+    row.appendChild(sel);
+  } else {
+    const p = document.createElement("span");
+    p.className = "pv-rate-pill " + cur.k;
+    p.textContent = cur.label;
+    row.appendChild(p);
+  }
+  return row;
+}
 function analysisPane(node, path, a){
   const wrap = $("content");
   const box = document.createElement("section");
@@ -2261,40 +2546,95 @@ function featureTable(a){
 /* ---------- the "Competitor analysis" section shown on a node ---------- */
 function analysisSection(node, path){
   const list = normalizeAnalyses(node);
+  const probs = list.filter(a=>a.type==="problem");
+  const comps = list.filter(a=>a.type!=="problem");
   if(!list.length && !editMode) return null;
-  const sec = document.createElement("div");
-  sec.className = "sub-nav";
-  const lab = document.createElement("div");
-  lab.className = "sub-nav-label";
-  lab.textContent = "COMPETITOR ANALYSIS";
-  sec.appendChild(lab);
-  const grid = document.createElement("div");
-  grid.className = "sub-grid";
-  list.forEach(a=>{
-    const c = document.createElement("button");
-    c.className = "sub-card an-card";
-    const cov = analysisCoverage(a);
-    const meta = a.type==="product"
-      ? `${a.comps.length} competitors \u00b7 ${a.feats.length} features` + (cov!==null ? ` \u00b7 we have ${cov}%` : "")
-      : `${a.comps.length} competitors \u00b7 feature deep-dive`;
-    c.innerHTML = `<span class="an-type">${a.type==="product" ? "PRODUCT LEVEL" : "FEATURE LEVEL"}</span>
-      <span class="name"></span>
-      <span class="pct">${meta}</span>`;
-    c.querySelector(".name").textContent = a.title;
-    c.onclick = ()=>{ activeAnalysis = {path, id:a.id}; renderAll(); };
-    grid.appendChild(c);
-  });
-  if(editMode){
-    [["product","\uFF0B Product-level template"], ["feature","\uFF0B Feature-level template"]].forEach(([type,label])=>{
+  const frag = document.createDocumentFragment();
+
+  /* --- 1. problem validation --- */
+  if(probs.length || editMode){
+    const sec = document.createElement("div");
+    sec.className = "sub-nav";
+    const lab = document.createElement("div");
+    lab.className = "sub-nav-label";
+    lab.textContent = "STEP 1 \u00b7 IS IT WORTH SOLVING?";
+    sec.appendChild(lab);
+    const grid = document.createElement("div");
+    grid.className = "sub-grid";
+    probs.forEach(a=>{
+      const v = VERDICT.find(x=>x.k===(a.verdict||"open")) || VERDICT[0];
+      const answered = PROBLEM_Q.filter(q=> (a.f||{})[q.k]).length;
+      const c = document.createElement("button");
+      c.className = "sub-card an-card";
+      c.innerHTML = `<span class="pv-badge ${v.k}">${v.label}</span>
+        <span class="name"></span>
+        <span class="pct">${answered}/${PROBLEM_Q.length} questions answered</span>`;
+      c.querySelector(".name").textContent = a.title;
+      c.onclick = ()=>{ activeAnalysis = {path, id:a.id}; renderAll(); };
+      grid.appendChild(c);
+    });
+    if(editMode){
       const b = document.createElement("button");
       b.className = "sub-card add";
-      b.textContent = label;
-      b.onclick = ()=> newAnalysis(node, path, type);
+      b.textContent = "\uFF0B Validate a problem";
+      b.onclick = ()=> newAnalysis(node, path, "problem");
       grid.appendChild(b);
-    });
+    }
+    sec.appendChild(grid);
+    frag.appendChild(sec);
   }
-  sec.appendChild(grid);
-  return sec;
+
+  /* --- 2. competitor analysis (only makes sense once the problem is real) --- */
+  if(comps.length || editMode){
+    const sec = document.createElement("div");
+    sec.className = "sub-nav";
+    const lab = document.createElement("div");
+    lab.className = "sub-nav-label";
+    lab.textContent = "STEP 2 \u00b7 CAN WE WIN IT? (COMPETITOR ANALYSIS)";
+    sec.appendChild(lab);
+
+    const cleared = probs.some(a=>a.verdict==="worth");
+    const killed  = probs.length && probs.every(a=>a.verdict==="no");
+    if(!comps.length && editMode && !cleared){
+      const note = document.createElement("div");
+      note.className = "pv-note" + (killed ? " bad" : "");
+      note.textContent = killed
+        ? "A problem here was judged not worth solving. Think twice before spending time on competitors."
+        : (probs.length
+            ? "Tip: no problem has cleared the gate yet. Competitor analysis answers \u201Ccan we win?\u201D \u2014 worth doing only once you know the problem is real."
+            : "Tip: validate the problem first (Step 1). Knowing you can beat a competitor doesn\u2019t matter if nobody needs the thing.");
+      sec.appendChild(note);
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "sub-grid";
+    comps.forEach(a=>{
+      const c = document.createElement("button");
+      c.className = "sub-card an-card";
+      const cov = analysisCoverage(a);
+      const meta = a.type==="product"
+        ? `${a.comps.length} competitors \u00b7 ${a.feats.length} features` + (cov!==null ? ` \u00b7 we have ${cov}%` : "")
+        : `${a.comps.length} competitors \u00b7 feature deep-dive`;
+      c.innerHTML = `<span class="an-type">${a.type==="product" ? "PRODUCT LEVEL" : "FEATURE LEVEL"}</span>
+        <span class="name"></span>
+        <span class="pct">${meta}</span>`;
+      c.querySelector(".name").textContent = a.title;
+      c.onclick = ()=>{ activeAnalysis = {path, id:a.id}; renderAll(); };
+      grid.appendChild(c);
+    });
+    if(editMode){
+      [["product","\uFF0B Product-level template"], ["feature","\uFF0B Feature-level template"]].forEach(([type,label])=>{
+        const b = document.createElement("button");
+        b.className = "sub-card add";
+        b.textContent = label;
+        b.onclick = ()=> newAnalysis(node, path, type);
+        grid.appendChild(b);
+      });
+    }
+    sec.appendChild(grid);
+    frag.appendChild(sec);
+  }
+  return frag;
 }
 
 function nodePane(node, path, chain){
@@ -2481,7 +2821,7 @@ function renderContentRoadmap(){
     if(!found){ activeModule = "all"; activeAnalysis = null; shown = overviewPane(); }
     else if(activeAnalysis && activeAnalysis.path === activeModule){
       const a = normalizeAnalyses(found.node).find(x=>x.id===activeAnalysis.id);
-      if(a) shown = analysisPane(found.node, activeModule, a) ? 1 : 0;
+      if(a) shown = (a.type==="problem" ? problemPane(found.node, activeModule, a) : analysisPane(found.node, activeModule, a)) ? 1 : 0;
       else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
     }
     else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
