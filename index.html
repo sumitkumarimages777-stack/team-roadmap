@@ -363,9 +363,32 @@ aside{position:sticky;top:16px;align-self:start}
 .lockchip.ready:hover{border-color:var(--done)}
 .row.locked > .body > .title, .ct-row.locked > .body > .title{opacity:.6}
 .row.locked, .ct-row.locked{background:repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(176,58,52,.035) 8px,rgba(176,58,52,.035) 16px)}
-#f-deps{min-height:120px;font-family:var(--sans);font-size:13px}
-#f-deps optgroup{font-family:var(--mono);font-size:11px;color:var(--muted)}
-.field .hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
+.field .hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin:-2px 0 8px}
+.dep-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
+.dep-none{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.dep-none.pad{padding:14px;text-align:center}
+.dep-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blocked-bg);color:var(--blocked);border:1px solid #F0C7C3;border-radius:99px;padding:4px 6px 4px 11px;font-size:12px;max-width:100%}
+.dep-chip.done{background:var(--done-bg);color:var(--done);border-color:#BFE0CD}
+.dep-chip .dc-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.dep-chip .dc-where{font-family:var(--mono);font-size:10px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.dep-chip .dc-x{background:rgba(0,0,0,.06);border:none;color:inherit;width:17px;height:17px;line-height:1;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+.dep-chip .dc-x:hover{background:rgba(0,0,0,.16)}
+.dep-clear{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:2px 4px}
+.dep-clear:hover{color:var(--ink)}
+.dep-box{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card)}
+.dep-search{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
+.dep-search input{flex:1;border:none;outline:none;background:none;font-family:var(--sans);font-size:13px;color:var(--ink);padding:0}
+.dep-list{max-height:220px;overflow-y:auto}
+.dep-group{position:sticky;top:0;background:var(--paper);font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);padding:6px 12px;border-bottom:1px solid var(--line);z-index:1}
+.dep-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #F3F5F8}
+.dep-item:hover{background:var(--indigo-soft)}
+.dep-item input{width:15px;height:15px;accent-color:var(--indigo);cursor:pointer;flex:none;margin:0}
+.dep-item .di-title{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-item.is-done .di-title{color:var(--muted);text-decoration:line-through}
+.dep-item .di-status{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:99px;background:var(--planned-bg);color:var(--planned);white-space:nowrap;flex:none}
+.dep-item .di-status.done{background:var(--done-bg);color:var(--done)}
+.dep-item .di-status.progress{background:var(--progress-bg);color:var(--progress)}
+.dep-item .di-status.blocked{background:var(--blocked-bg);color:var(--blocked)}
 .node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts, .vision:hover .acts, .vision:focus-within .acts, .sub-head:hover .acts, .sub-head:focus-within .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
@@ -557,9 +580,16 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. ₹2,00,000"></div>
     <div class="field" id="f-okr-wrap"><label for="f-okr">Link to OKR objective (optional)</label><select id="f-okr"></select></div>
     <div class="field" id="f-deps-wrap">
-      <label for="f-deps">Blocked by (optional) — this task stays locked until these are done</label>
-      <select id="f-deps" multiple size="6"></select>
-      <div class="hint">Ctrl / ⌘ + click to pick several. Click again to unpick.</div>
+      <label>Blocked by (optional)</label>
+      <div class="hint">This task stays locked until every item below is done.</div>
+      <div id="dep-chips" class="dep-chips"></div>
+      <div class="dep-box">
+        <div class="dep-search">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="dep-search" type="text" placeholder="Search tasks, dev cards, bugs…" autocomplete="off">
+        </div>
+        <div id="dep-list" class="dep-list"></div>
+      </div>
     </div>
     <div class="field" id="f-area-wrap"><label for="f-area">Product area</label><select id="f-area"></select></div>
     <div class="field" id="f-photos-wrap">
@@ -928,6 +958,93 @@ function nodeMatches(node){
 
 /* ---------- dialog ---------- */
 let dlgOnSave = null;
+/* ---------- "Blocked by" picker: searchable, grouped, chip-based ---------- */
+let dlgDeps = new Set();     // tids chosen in the open dialog
+let depPool = [];            // selectable items (everything minus self/descendants)
+
+function depChipEl(entry){
+  const c = document.createElement("span");
+  c.className = "dep-chip" + (effStatus(entry.task)==="done" ? " done" : "");
+  const t = document.createElement("span");
+  t.className = "dc-title";
+  t.textContent = entry.task.title || "(untitled)";
+  const w = document.createElement("span");
+  w.className = "dc-where";
+  w.textContent = entry.path;
+  const x = document.createElement("button");
+  x.className = "dc-x"; x.type = "button";
+  x.setAttribute("aria-label", "Remove blocker");
+  x.textContent = "\u00d7";
+  x.onclick = ()=>{ dlgDeps.delete(entry.tid); renderDepPicker(); };
+  c.append(t, w, x);
+  return c;
+}
+
+function renderDepPicker(){
+  const chips = $("dep-chips");
+  const list  = $("dep-list");
+  const term  = $("dep-search").value.trim().toLowerCase();
+
+  // 1. chips for what's already chosen
+  chips.innerHTML = "";
+  const chosen = [...dlgDeps].map(tid=> depPool.find(x=>x.tid===tid) || taskByTid(tid)).filter(Boolean);
+  if(!chosen.length){
+    const none = document.createElement("span");
+    none.className = "dep-none";
+    none.textContent = "Nothing selected \u2014 this task isn\u2019t blocked.";
+    chips.appendChild(none);
+  } else {
+    chosen.forEach(e=> chips.appendChild(depChipEl(e)));
+    const clear = document.createElement("button");
+    clear.className = "dep-clear"; clear.type = "button";
+    clear.textContent = "Clear all";
+    clear.onclick = ()=>{ dlgDeps.clear(); renderDepPicker(); };
+    chips.appendChild(clear);
+  }
+
+  // 2. the searchable, grouped list
+  list.innerHTML = "";
+  const hits = depPool.filter(x=>{
+    if(!term) return true;
+    return ((x.task.title||"")+" "+x.path).toLowerCase().includes(term);
+  });
+  if(!hits.length){
+    const e = document.createElement("div");
+    e.className = "dep-none pad";
+    e.textContent = "No matches for \u201C" + $("dep-search").value.trim() + "\u201D";
+    list.appendChild(e);
+    return;
+  }
+  const groups = {};
+  hits.forEach(x=> (groups[x.path] = groups[x.path] || []).push(x));
+  Object.keys(groups).forEach(path=>{
+    const h = document.createElement("div");
+    h.className = "dep-group";
+    h.textContent = path;
+    list.appendChild(h);
+    groups[path].forEach(x=>{
+      const done = effStatus(x.task)==="done";
+      const row = document.createElement("label");
+      row.className = "dep-item" + (done ? " is-done" : "");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = dlgDeps.has(x.tid);
+      cb.onchange = ()=>{
+        if(cb.checked) dlgDeps.add(x.tid); else dlgDeps.delete(x.tid);
+        renderDepPicker();
+      };
+      const t = document.createElement("span");
+      t.className = "di-title";
+      t.textContent = x.task.title || "(untitled)";
+      const st = document.createElement("span");
+      st.className = "di-status " + (done ? "done" : effStatus(x.task));
+      st.textContent = blockerLabel(x);
+      row.append(cb, t, st);
+      list.appendChild(row);
+    });
+  });
+}
+
 function openDialog(title, values, onSave, opts={}){
   $("dlg-title").textContent = title;
   $("f-title").value = values.title || "";
@@ -951,36 +1068,17 @@ function openDialog(title, values, onSave, opts={}){
   $("f-okr-wrap").style.display = opts.okrLink ? "" : "none";
   $("f-deps-wrap").style.display = opts.deps ? "" : "none";
   if(opts.deps){
-    const sel = $("f-deps");
-    sel.innerHTML = "";
-    const groups = {};
-    allTasks().forEach(x=>{
-      if(values.tid && x.tid===values.tid) return;                       // can't block itself
-      if(values.tid && x.path.includes(values.title)) { /* keep: descendants filtered below */ }
-      (groups[x.path] = groups[x.path] || []).push(x);
-    });
-    const selfDesc = new Set();
+    dlgDeps = new Set(values.blockedBy || []);
+    // everything except this task and its own descendants (no circular locks)
+    const excluded = new Set();
     if(values.tid){
-      const collect = t => { selfDesc.add(t.tid); (t.items||[]).forEach(collect); };
+      const collect = t => { excluded.add(t.tid); (t.items||[]).forEach(collect); };
       const me = taskByTid(values.tid);
       if(me) collect(me.task);
     }
-    Object.keys(groups).forEach(path=>{
-      const g = document.createElement("optgroup");
-      g.label = path;
-      groups[path].forEach(x=>{
-        if(selfDesc.has(x.tid)) return;                                  // no self / descendant loops
-        const o = document.createElement("option");
-        o.value = x.tid;
-        const done = effStatus(x.task)==="done";
-        const board = (x.kind==="dev" || x.kind==="bug") ? "  \u2014 " + blockerLabel(x) : "";
-        o.textContent = (done ? "\u2713 " : "") + (x.task.title || "(untitled)") + board;
-        g.appendChild(o);
-      });
-      if(g.children.length) sel.appendChild(g);
-    });
-    const chosen = new Set(values.blockedBy || []);
-    [...sel.options].forEach(o=>{ o.selected = chosen.has(o.value); });
+    depPool = allTasks().filter(x=> !excluded.has(x.tid));
+    $("dep-search").value = "";
+    renderDepPicker();
   }
   $("f-area-wrap").style.display = opts.area ? "" : "none";
   $("f-photos-wrap").style.display = opts.photos ? "" : "none";
@@ -1021,6 +1119,7 @@ function openDialog(title, values, onSave, opts={}){
   $("overlay").classList.add("show");
   setTimeout(()=>{ (opts.hideTitle ? $("f-current") : $("f-title")).focus(); }, 50);
 }
+$("dep-search").addEventListener("input", ()=> renderDepPicker());
 $("f-photos").addEventListener("change", async e=>{
   const files = [...e.target.files];
   e.target.value = "";
@@ -1063,7 +1162,7 @@ $("dlg-save").onclick = ()=>{
     budget: $("f-budget").value.trim(),
     okr: $("f-okr").value,
     area: $("f-area").value,
-    blockedBy: [...$("f-deps").selectedOptions].map(o=>o.value),
+    blockedBy: [...dlgDeps],
     photos: dlgPhotos.slice(),
   });
 };
