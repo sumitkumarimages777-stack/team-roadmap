@@ -266,6 +266,14 @@ aside{position:sticky;top:16px;align-self:start}
 
 .module-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px}
 .module-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.submodule{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
+.sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
+.submodule .submodule .sub-head h3{font-size:14px}
+.sub-head .sub-tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--indigo);background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none}
+.sub-head .pct{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.sub-head .spacer{flex:1}
 .vision{background:var(--indigo-soft);border-radius:var(--radius);padding:12px 16px;margin:4px 0 14px}
 .vision .v-eyebrow{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--indigo);margin-bottom:4px}
 .vision .v-eyebrow .acts{margin-left:auto}
@@ -302,7 +310,7 @@ aside{position:sticky;top:16px;align-self:start}
 .empty{color:var(--muted);text-align:center;padding:40px 0}
 
 .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
-.node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts, .vision:hover .acts, .vision:focus-within .acts{opacity:1}
+.node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts, .vision:hover .acts, .vision:focus-within .acts, .sub-head:hover .acts, .sub-head:focus-within .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
 .act:hover{background:var(--indigo-soft);color:var(--indigo)}
@@ -547,7 +555,18 @@ function normalize(d){
   d.title = d.title || "Product Roadmap";
   d.modules = d.modules || [];
   const walk = n => { n.items = n.items || []; n.items.forEach(walk); };
-  d.modules.forEach(m => { m.items = m.items || []; m.items.forEach(walk); });
+  const walkSub = s => {
+    s.items = s.items || [];
+    s.items.forEach(walk);
+    s.subs = s.subs || [];
+    s.subs.forEach(walkSub);          // submodules can nest to any depth
+  };
+  d.modules.forEach(m => {
+    m.items = m.items || [];
+    m.items.forEach(walk);
+    m.subs = m.subs || [];
+    m.subs.forEach(walkSub);
+  });
   return d;
 }
 function normalizeOkrs(o){
@@ -584,7 +603,7 @@ function linkedWork(obId){
   if(!obId) return out;   // a brand-new objective has no id yet — nothing can be linked to it
   DATA.modules.forEach(m=>{
     if(m.okr===obId){
-      const lv = m.items.flatMap(leavesOf);
+      const lv = moduleLeaves(m);
       out.push({title:m.name, where:"Module", pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
     }
     const walk = n => {
@@ -595,6 +614,25 @@ function linkedWork(obId){
       (n.items||[]).forEach(walk);
     };
     m.items.forEach(walk);
+    const walkSubs = (subs, path) => {
+      (subs||[]).forEach(sub=>{
+        const here = path + " · " + sub.name;
+        if(sub.okr===obId){
+          const lv = moduleLeaves(sub);
+          out.push({title:sub.name, where:"Submodule · "+path, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+        }
+        const walkSub = n => {
+          if(n.okr===obId){
+            const lv = leavesOf(n);
+            out.push({title:n.title, where:here, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+          }
+          (n.items||[]).forEach(walkSub);
+        };
+        (sub.items||[]).forEach(walkSub);
+        walkSubs(sub.subs, here);
+      });
+    };
+    walkSubs(m.subs, m.name);
   });
   CONTENT.sections.forEach(s=>{
     s.tasks.forEach(t=>{
@@ -658,6 +696,11 @@ function pctOf(leaves){
   if(!leaves.length) return 0;
   const s = leaves.reduce((a,l)=> a + (l.status==="done"?1: l.status==="progress"?0.5:0), 0);
   return Math.round(s/leaves.length*100);
+}
+function moduleLeaves(m){
+  // every leaf task in a module or submodule: its own tree plus all nested submodule trees, any depth
+  return (m.items||[]).flatMap(leavesOf)
+    .concat((m.subs||[]).flatMap(moduleLeaves));
 }
 function counts(leaves){
   const c = {planned:0,progress:0,done:0,blocked:0};
@@ -1106,7 +1149,7 @@ function renderHeader(){
     stats.append(mkStat(c.done,"Done"), mkStat(c.progress,"In progress"), mkStat(c.planned,"Planned"), mkStat(c.blocked,"Blocked"));
     updated = CONTENT.updated || "—";
   } else {
-    const leaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+    const leaves = DATA.modules.flatMap(moduleLeaves);
     const c = counts(leaves);
     pct = pctOf(leaves);
     stats.append(mkStat(c.done,"Done"), mkStat(c.progress,"In progress"), mkStat(c.planned,"Planned"), mkStat(c.blocked,"Blocked"));
@@ -1133,14 +1176,14 @@ function renderSidebarRoadmap(){
   const wrap = $("mods");
   wrap.innerHTML = "";
   $("side-title").textContent = "Modules";
-  const allLeaves = DATA.modules.flatMap(m=>m.items.flatMap(leavesOf));
+  const allLeaves = DATA.modules.flatMap(moduleLeaves);
   const all = document.createElement("button");
   all.className = "mod"+(activeModule==="all"?" active":"");
   all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules · ${allLeaves.length} tasks</span>`;
   all.onclick = ()=>{activeModule="all"; renderAll();};
   wrap.appendChild(all);
   DATA.modules.forEach(m=>{
-    const lv = m.items.flatMap(leavesOf);
+    const lv = moduleLeaves(m);
     const p = pctOf(lv);
     const b = mkSideCard(activeModule===m.key, ()=>{activeModule=m.key; renderAll();});
     b.innerHTML = `<span class="name"></span>
@@ -1414,13 +1457,92 @@ function visionBanner(m){
   });
   return box;
 }
+const MAX_SUB_DEPTH = 6;   // guard rail: keeps the UI readable and prevents runaway nesting
+function subModuleEl(parent, s, colPath, depth){
+  const lv = moduleLeaves(s);                       // includes this sub's own nested subs
+  const box = document.createElement("div");
+  box.className = "submodule";
+  box.style.marginLeft = Math.min(depth-1, 3) * 14 + "px";   // indent, capped so deep trees stay readable
+  const head = document.createElement("div");
+  head.className = "sub-head";
+  const tag = document.createElement("span"); tag.className = "sub-tag";
+  tag.textContent = depth === 1 ? "SUBMODULE" : "L" + depth;
+  tag.title = "Nesting level " + depth;
+  const h3 = document.createElement("h3"); h3.textContent = s.name;
+  const pct = document.createElement("span"); pct.className = "pct";
+  pct.textContent = pctOf(lv)+"% · "+lv.length+" tasks";
+  head.append(tag, h3, pct);
+  if(s.okr){
+    const ch = okrChip(s.okr);
+    if(ch) head.appendChild(ch);
+  }
+  if(editMode){
+    const sp = document.createElement("span"); sp.className = "spacer"; head.appendChild(sp);
+    const acts = document.createElement("div"); acts.className = "acts";
+    acts.appendChild(actBtn("pencil","Rename submodule",false, ()=>
+      openDialog("Rename submodule", {title:s.name, okr:s.okr}, v=>{
+        s.name = v.title;
+        if(v.okr) s.okr = v.okr; else delete s.okr;
+        saveRoadmap();
+      }, {hideExtras:true, okrLink:true})));
+    acts.appendChild(actBtn("trash","Delete submodule",true, ()=>{
+      const nSubs = (s.subs||[]).length;
+      const extra = nSubs ? ` and its ${nSubs} nested submodule(s)` : "";
+      if(confirm(`Delete the submodule “${s.name}” (${lv.length} tasks)${extra}?`)){
+        parent.subs.splice(parent.subs.indexOf(s),1);
+        saveRoadmap(); toast("Submodule deleted");
+      }
+    }));
+    head.appendChild(acts);
+  }
+  box.appendChild(head);
+
+  const tree = document.createElement("div");
+  tree.className = "tree";
+  let any = false;
+  (s.items||[]).forEach((item,i)=>{
+    const el = nodeEl(item, s.items, i, String(i+1), colPath);
+    if(el){ tree.appendChild(el); any = true; }
+  });
+  box.appendChild(tree);
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "addline indent";
+    add.textContent = "＋ Add task to "+s.name;
+    add.onclick = ()=> addTaskTo(s, "New task in “"+s.name+"”");
+    box.appendChild(add);
+  }
+
+  // nested submodules, any depth
+  (s.subs||[]).forEach(child=>{
+    const r = subModuleEl(s, child, colPath+"::"+child.key, depth+1);
+    if(r.el){ box.appendChild(r.el); if(r.any) any = true; }
+  });
+  if(editMode && depth < MAX_SUB_DEPTH){
+    const addSub = document.createElement("button");
+    addSub.className = "addline";
+    addSub.textContent = "＋ Add submodule inside "+s.name;
+    addSub.onclick = ()=> addSubmoduleTo(s, "New submodule in “"+s.name+"”");
+    box.appendChild(addSub);
+  }
+  if(!editMode && !any) return {el:null, any:false};
+  return {el:box, any};
+}
+function addSubmoduleTo(parent, label){
+  openDialog(label, {}, v=>{
+    const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+    parent.subs = parent.subs || [];
+    parent.subs.push({name:v.title, key, items:[], subs:[]});
+    saveRoadmap(); toast("Submodule added");
+  }, {hideExtras:true});
+}
 function renderContentRoadmap(){
   const wrap = $("content");
   wrap.innerHTML = "";
   const mods = DATA.modules.filter(m => activeModule==="all" || m.key===activeModule);
   let shown = 0;
   mods.forEach(m=>{
-    const lv = m.items.flatMap(leavesOf);
+    const lv = moduleLeaves(m);
     const block = document.createElement("section");
     block.className = "module-block";
     const head = document.createElement("div");
@@ -1468,8 +1590,20 @@ function renderContentRoadmap(){
       add.textContent = "＋ Add task to "+m.name;
       add.onclick = ()=> addTaskTo(m, "New task in “"+m.name+"”");
       block.appendChild(add);
+    }
+    let subAny = false;
+    (m.subs||[]).forEach(s=>{
+      const r = subModuleEl(m, s, m.key+"::"+s.key, 1);
+      if(r.el){ block.appendChild(r.el); if(r.any) subAny = true; }
+    });
+    if(editMode){
+      const addSub = document.createElement("button");
+      addSub.className = "addline";
+      addSub.textContent = "＋ Add submodule to "+m.name+" (e.g. Bike Booking, PG Booking)";
+      addSub.onclick = ()=> addSubmoduleTo(m, "New submodule in “"+m.name+"”");
+      block.appendChild(addSub);
       wrap.appendChild(block); shown++;
-    } else if(any){
+    } else if(any || subAny){
       wrap.appendChild(block); shown++;
     }
   });
@@ -2616,8 +2750,14 @@ $("search").addEventListener("input", e=>{
 $("expand-all").onclick = ()=>{ collapsed.clear(); renderContentRoadmap(); };
 $("collapse-all").onclick = ()=>{
   DATA.modules.forEach(m=>{
-    const mark = (n, path)=>{ if(n.items && n.items.length){ collapsed.add(m.key+":"+path); n.items.forEach((c,i)=>mark(c, path+"."+(i+1))); } };
-    m.items.forEach((n,i)=>mark(n, String(i+1)));
+    const mark = (n, path, mk)=>{ if(n.items && n.items.length){ collapsed.add(mk+":"+path); n.items.forEach((c,i)=>mark(c, path+"."+(i+1), mk)); } };
+    m.items.forEach((n,i)=>mark(n, String(i+1), m.key));
+    const markSubs = (subs, path) => (subs||[]).forEach(s=>{
+      const p = path+"::"+s.key;
+      (s.items||[]).forEach((n,i)=>mark(n, String(i+1), p));
+      markSubs(s.subs, p);
+    });
+    markSubs(m.subs, m.key);
   });
   renderContentRoadmap();
 };
