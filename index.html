@@ -209,6 +209,13 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 
 /* content roadmap rows */
 .ct-row{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:8px}
+.ct-row .title{display:flex;align-items:center;gap:6px}
+.ct-row .caret{background:none;border:none;padding:0;color:var(--muted);cursor:pointer;display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;border-radius:4px;flex:none}
+.ct-row .caret:hover{background:var(--indigo-soft);color:var(--indigo)}
+.ct-row .caret svg{transition:transform .15s}
+.ct-row .caret.open svg{transform:rotate(90deg)}
+.ct-row .kidpct{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.node > .kids{margin-left:22px;padding-left:12px;border-left:1px solid var(--line)}
 .ct-row:hover{background:var(--paper)}
 .ct-dates{display:flex;gap:16px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
 .ct-dates b{color:var(--ink);font-weight:500}
@@ -348,6 +355,7 @@ aside{position:sticky;top:16px;align-self:start}
 .empty{color:var(--muted);text-align:center;padding:40px 0}
 
 .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.act.off{opacity:.25;cursor:default;pointer-events:none}
 .node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts, .vision:hover .acts, .vision:focus-within .acts, .sub-head:hover .acts, .sub-head:focus-within .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
@@ -684,9 +692,14 @@ function linkedWork(obId){
 function normalizeContent(c){
   c = c || {};
   c.sections = c.sections || [];
+  const walk = t => {
+    t.status = t.status || "planned";
+    t.items = t.items || [];      // subtasks, nestable to any depth
+    t.items.forEach(walk);
+  };
   c.sections.forEach(s => {
     s.tasks = s.tasks || [];
-    s.tasks.forEach(t => t.status = t.status || "planned");
+    s.tasks.forEach(walk);
   });
   return c;
 }
@@ -1085,7 +1098,29 @@ const ICONS = {
   board:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="7" rx="1"/></svg>',
   plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  up:'<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  down:'<svg viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
 };
+/* Move an item up/down within its own list. Returns the two buttons, each
+   disabled (dimmed, unclickable) at the ends so nothing can fall off the list. */
+function moveBtns(arr, idx, save, what){
+  const mk = (dir, icon, label) => {
+    const b = actBtn(icon, label, false, ()=>{
+      const j = idx + dir;
+      if(j < 0 || j >= arr.length) return;
+      const [it] = arr.splice(idx, 1);
+      arr.splice(j, 0, it);
+      save();
+    });
+    const atEnd = dir < 0 ? idx === 0 : idx === arr.length - 1;
+    if(atEnd){ b.disabled = true; b.classList.add("off"); }
+    return b;
+  };
+  return [
+    mk(-1, "up",   "Move "+what+" up"),
+    mk( 1, "down", "Move "+what+" down"),
+  ];
+}
 function actBtn(icon, label, danger, fn){
   const b = document.createElement("button");
   b.className = "act" + (danger?" danger":"");
@@ -1183,7 +1218,7 @@ function renderHeader(){
     );
     updated = TIDEAS.updated || "\u2014";
   } else if(view==="content"){
-    const tasks = CONTENT.sections.flatMap(s=>s.tasks);
+    const tasks = CONTENT.sections.flatMap(s=>s.tasks.flatMap(leavesOf));
     const c = counts(tasks);
     pct = pctOf(tasks);
     stats.append(mkStat(c.done,"Done"), mkStat(c.progress,"In progress"), mkStat(c.planned,"Planned"), mkStat(c.blocked,"Blocked"));
@@ -1269,6 +1304,7 @@ function navRow(node, path, depth, parentArr){
   }
   if(editMode){
     cardActs(b, [
+      ...moveBtns(parentArr, parentArr.indexOf(node), ()=>saveRoadmap(), depth?"submodule":"module"),
       actBtn("pencil", depth?"Rename submodule":"Rename module", false, ()=>
         openDialog(depth?"Rename submodule":"Rename module", {title:node.name, okr:node.okr}, v=>{
           node.name = v.title;
@@ -1411,6 +1447,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     acts.appendChild(actBtn("board","Send to Development backlog",false, ()=>{
       sendToBacklog(node.title, node.note || "", "roadmap", node.owner);
     }));
+    moveBtns(parentArr, idx, ()=>saveRoadmap(), "task").forEach(b=>acts.appendChild(b));
     acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
     acts.appendChild(actBtn("pencil","Edit",false, ()=>
       openDialog("Edit task", node, v=>{
@@ -1991,21 +2028,23 @@ function renderSidebarExams(ws){
   const lbl = document.createElement("div");
   lbl.className = "ws-label"; lbl.textContent = "Educational Content";
   ws.appendChild(lbl);
-  const allTasks = CONTENT.sections.flatMap(s=>s.tasks);
+  const allTasks = CONTENT.sections.flatMap(s=>s.tasks.flatMap(leavesOf));
   const all = document.createElement("button");
   all.className = "mod"+((view==="content" && activeSection==="all")?" active":"");
   all.innerHTML = `<span class="name">All exams</span><span class="pct">${CONTENT.sections.length} sections · ${allTasks.length} tasks</span>`;
   all.onclick = ()=>{ view = "content"; activeSection = "all"; renderAll(); };
   ws.appendChild(all);
   CONTENT.sections.forEach(s=>{
-    const p = pctOf(s.tasks);
+    const slv = s.tasks.flatMap(leavesOf);
+    const p = pctOf(slv);
     const b = mkSideCard(view==="content" && activeSection===s.key, ()=>{ view = "content"; activeSection = s.key; renderAll(); });
     b.innerHTML = `<span class="name"></span>
       <div class="bar"><i style="width:${p}%"></i></div>
-      <span class="pct">${p}% · ${s.tasks.length} tasks</span>`;
+      <span class="pct">${p}% · ${slv.length} tasks</span>`;
     b.querySelector(".name").textContent = s.name;
     if(editMode){
       cardActs(b, [
+        ...moveBtns(CONTENT.sections, CONTENT.sections.indexOf(s), ()=>saveContent(), "exam"),
         actBtn("pencil","Edit name / budget",false, ()=>
           openDialog("Edit section", {title:s.name, budget:s.budget}, v=>{
             s.name = v.title;
@@ -2039,16 +2078,42 @@ function renderSidebarExams(ws){
   }
 }
 
-function ctTaskEl(task, sec, ti){
+function ctTaskEl(task, parentArr, ti, numPath, secKey){
+  const kids = task.items || [];
+  const hasKids = kids.length > 0;
+  const lv = leavesOf(task);                       // own leaves (or itself when childless)
+  const colKey = secKey + ":" + numPath;
+  const isCollapsed = collapsed.has(colKey);
+
+  const node = document.createElement("div");
+  node.className = "node";
+
   const row = document.createElement("div");
   row.className = "ct-row";
   const num = document.createElement("span");
-  num.className = "num"; num.textContent = ti+1;
+  num.className = "num"; num.textContent = numPath;
   const body = document.createElement("div");
   body.className = "body";
+
   const t = document.createElement("div");
-  t.className = "title"; t.textContent = task.title;
+  t.className = "title";
+  if(hasKids){
+    const car = document.createElement("button");
+    car.className = "caret" + (isCollapsed ? "" : " open");
+    car.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m9 6 6 6-6 6"/></svg>';
+    car.title = isCollapsed ? "Show subtasks" : "Hide subtasks";
+    car.onclick = e => {
+      e.stopPropagation();
+      if(isCollapsed) collapsed.delete(colKey); else collapsed.add(colKey);
+      renderContentContent();
+    };
+    t.appendChild(car);
+  }
+  const tt = document.createElement("span");
+  tt.textContent = task.title;
+  t.appendChild(tt);
   body.appendChild(t);
+
   if(task.note){
     const n = document.createElement("div"); n.className="note"; n.textContent = task.note;
     body.appendChild(n);
@@ -2065,6 +2130,7 @@ function ctTaskEl(task, sec, ti){
   }
   const tps = photoStrip(task.photos);
   if(tps) body.appendChild(tps);
+
   const meta = document.createElement("div");
   meta.className = "meta";
   if(task.okr){
@@ -2075,18 +2141,28 @@ function ctTaskEl(task, sec, ti){
     const o = document.createElement("span"); o.className="owner"; o.textContent = task.owner;
     meta.appendChild(o);
   }
-  const pill = document.createElement("button");
-  pill.className = "pill "+task.status;
-  pill.textContent = STATUS_LABEL[task.status];
-  pill.title = "Click to change status";
-  pill.onclick = ()=>{
-    task.status = STATUS_ORDER[(STATUS_ORDER.indexOf(task.status)+1)%STATUS_ORDER.length];
-    saveContent();
-  };
-  meta.appendChild(pill);
+  if(hasKids){
+    // parent: progress is derived from its subtasks, so no clickable status pill
+    const p = pctOf(lv);
+    const prog = document.createElement("span");
+    prog.className = "kidpct";
+    prog.textContent = p + "% · " + lv.filter(l=>l.status==="done").length + "/" + lv.length + " done";
+    meta.appendChild(prog);
+  } else {
+    const pill = document.createElement("button");
+    pill.className = "pill "+task.status;
+    pill.textContent = STATUS_LABEL[task.status];
+    pill.title = "Click to change status";
+    pill.onclick = ()=>{
+      task.status = STATUS_ORDER[(STATUS_ORDER.indexOf(task.status)+1)%STATUS_ORDER.length];
+      saveContent();
+    };
+    meta.appendChild(pill);
+  }
   if(editMode){
     const acts = document.createElement("div");
     acts.className = "acts";
+    moveBtns(parentArr, ti, ()=>saveContent(), "task").forEach(b=>acts.appendChild(b));
     acts.appendChild(actBtn("pencil","Edit task",false, ()=>
       openDialog("Edit task", task, v=>{
         applyFields(task, v);
@@ -2096,13 +2172,58 @@ function ctTaskEl(task, sec, ti){
         if(v.photos && v.photos.length) task.photos = v.photos; else delete task.photos;
         saveContent();
       }, {dates:true, okrLink:true, photos:true})));
+    acts.appendChild(actBtn("plus","Add subtask under this",false, ()=>
+      openDialog("New subtask under \u201C"+task.title+"\u201D", {}, v=>{
+        const st = {title:v.title, status:"planned", items:[]};
+        if(v.owner) st.owner = v.owner;
+        if(v.note) st.note = v.note;
+        if(v.start) st.start = v.start;
+        if(v.deadline) st.deadline = v.deadline;
+        if(v.okr) st.okr = v.okr;
+        if(v.photos && v.photos.length) st.photos = v.photos;
+        task.items = task.items || [];
+        task.items.push(st);
+        collapsed.delete(colKey);           // reveal the new subtask
+        saveContent(); toast("Subtask added");
+      }, {dates:true, okrLink:true, photos:true})));
     acts.appendChild(actBtn("trash","Delete task",true, ()=>{
-      if(confirm(`Delete “${task.title}”?`)){ sec.tasks.splice(ti,1); saveContent(); toast("Deleted"); }
+      const n = lv.length;
+      const extra = hasKids ? ` and its ${n} subtask(s)` : "";
+      if(confirm(`Delete \u201C${task.title}\u201D${extra}?`)){
+        parentArr.splice(ti,1); saveContent(); toast("Deleted");
+      }
     }));
     meta.appendChild(acts);
   }
   row.append(num, body, meta);
-  return row;
+  node.appendChild(row);
+
+  if(hasKids && !isCollapsed){
+    const sub = document.createElement("div");
+    sub.className = "kids";
+    kids.forEach((k,i)=> sub.appendChild(ctTaskEl(k, kids, i, numPath+"."+(i+1), secKey)));
+    node.appendChild(sub);
+  }
+  if(editMode && hasKids && !isCollapsed){
+    const add = document.createElement("button");
+    add.className = "addline indent";
+    add.textContent = "\uFF0B Add subtask under "+task.title;
+    add.onclick = ()=> {
+      openDialog("New subtask under \u201C"+task.title+"\u201D", {}, v=>{
+        const st = {title:v.title, status:"planned", items:[]};
+        if(v.owner) st.owner = v.owner;
+        if(v.note) st.note = v.note;
+        if(v.start) st.start = v.start;
+        if(v.deadline) st.deadline = v.deadline;
+        if(v.okr) st.okr = v.okr;
+        if(v.photos && v.photos.length) st.photos = v.photos;
+        task.items.push(st);
+        saveContent(); toast("Subtask added");
+      }, {dates:true, okrLink:true, photos:true});
+    };
+    node.appendChild(add);
+  }
+  return node;
 }
 
 function renderContentContent(){
@@ -2120,7 +2241,7 @@ function renderContentContent(){
     head.className = "module-head";
     const h2 = document.createElement("h2"); h2.textContent = s.name;
     const pct = document.createElement("span"); pct.className="pct";
-    pct.textContent = pctOf(s.tasks)+"% complete";
+    pct.textContent = pctOf(s.tasks.flatMap(leavesOf))+"% complete";
     head.append(h2, pct);
     if(s.budget){
       const b = document.createElement("span"); b.className="budget";
@@ -2149,7 +2270,7 @@ function renderContentContent(){
 
     const list = document.createElement("div");
     list.className = "tree";
-    s.tasks.forEach((t,ti)=> list.appendChild(ctTaskEl(t, s, ti)));
+    s.tasks.forEach((t,ti)=> list.appendChild(ctTaskEl(t, s.tasks, ti, String(ti+1), s.key)));
     block.appendChild(list);
 
     if(editMode){
@@ -2157,7 +2278,7 @@ function renderContentContent(){
       add.className = "addline";
       add.textContent = "＋ Add task to "+s.name;
       add.onclick = ()=> openDialog("New task in “"+s.name+"”", {}, v=>{
-        const t = {title:v.title, status:"planned"};
+        const t = {title:v.title, status:"planned", items:[]};
         if(v.owner) t.owner = v.owner;
         if(v.note) t.note = v.note;
         if(v.start) t.start = v.start;
@@ -2845,7 +2966,7 @@ function renderAll(){
       const lbl = document.createElement("div");
       lbl.className = "ws-label"; lbl.textContent = "Educational Content";
       edu.appendChild(lbl);
-      const allTasks = CONTENT.sections.flatMap(s=>s.tasks);
+      const allTasks = CONTENT.sections.flatMap(s=>s.tasks.flatMap(leavesOf));
       const b = mkSideCard(false, ()=>{ view = "content"; activeSection = "all"; renderAll(); });
       b.innerHTML = `<span class="name">All exams</span>
         <div class="bar"><i style="width:${pctOf(allTasks)}%"></i></div>
