@@ -336,6 +336,34 @@ aside{position:sticky;top:16px;align-self:start}
 .mod-card .bar i{display:block;height:100%;background:var(--done)}
 .mod-card .mc-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
 .mod-card .mc-vision{font-size:13px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* competitor analysis */
+.an-card .an-type{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--indigo);background:var(--indigo-soft);border-radius:5px;padding:2px 7px;align-self:flex-start}
+.an-scroll{overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.an-table{border-collapse:collapse;width:100%;min-width:640px}
+.an-table th, .an-table td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+.an-table thead th{background:var(--paper);font-family:var(--disp);font-size:13px;font-weight:600;position:relative;white-space:nowrap}
+.an-table .an-corner{background:var(--paper);min-width:170px}
+.an-rowhead{background:#FAFBFC;font-size:13px;font-weight:600;min-width:170px;max-width:230px;position:relative}
+.an-meta-row .an-rowhead{font-weight:500;color:var(--muted);font-size:12px}
+.an-comp{display:inline-block}
+.an-us{font-family:var(--mono);font-size:9px;background:var(--indigo);color:#fff;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+.an-table th .acts, .an-table .an-rowhead .acts{position:absolute;top:4px;right:4px;background:var(--card);border-radius:6px}
+.an-table th:hover .acts, .an-rowhead:hover .acts{opacity:1}
+.an-input{width:100%;min-width:130px;border:1px solid transparent;background:transparent;border-radius:6px;padding:4px 6px;font-family:var(--sans);font-size:13px;color:var(--ink);resize:vertical;line-height:1.5;overflow:hidden}
+.an-input:hover{border-color:var(--line)}
+.an-input:focus{outline:none;border-color:var(--indigo);background:#fff}
+.an-text{font-size:13px;color:var(--ink);white-space:pre-wrap;min-width:130px}
+.an-sel{width:100%;min-width:130px;border-radius:99px;border:1px solid transparent;padding:5px 8px;font-family:var(--mono);font-size:12px;cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center}
+.an-pill{display:inline-block;border-radius:99px;padding:4px 10px;font-family:var(--mono);font-size:12px;white-space:nowrap}
+.an-sel.cell.have, .an-pill.cell.have, .an-sel.has.yes, .an-pill.has.yes{background:var(--done-bg);color:var(--done)}
+.an-sel.cell.dont, .an-pill.cell.dont, .an-sel.has.no, .an-pill.has.no{background:var(--blocked-bg);color:var(--blocked)}
+.an-sel.cell.dev, .an-pill.cell.dev, .an-sel.has.partial, .an-pill.has.partial{background:var(--progress-bg);color:var(--progress)}
+.an-sel.cell.na, .an-pill.cell.na{background:var(--planned-bg);color:var(--planned)}
+.an-sel.prev, .an-pill.prev{background:var(--planned-bg);color:var(--planned);border-radius:8px;text-align:left}
+.an-sel.prev.must, .an-pill.prev.must{background:var(--indigo-soft);color:var(--indigo)}
+.an-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.an-bar .addline{flex:1;min-width:200px}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -679,12 +707,14 @@ function normalize(d){
   const walkSub = s => {
     s.items = s.items || [];
     s.items.forEach(walk);
+    s.analyses = s.analyses || [];    // competitor analyses live on any module/submodule
     s.subs = s.subs || [];
     s.subs.forEach(walkSub);          // submodules can nest to any depth
   };
   d.modules.forEach(m => {
     m.items = m.items || [];
     m.items.forEach(walk);
+    m.analyses = m.analyses || [];
     m.subs = m.subs || [];
     m.subs.forEach(walkSub);
   });
@@ -1102,6 +1132,7 @@ function openDialog(title, values, onSave, opts={}){
   $("f-deadline").value = values.deadline || "";
   $("f-budget").value = values.budget || "";
   $("f-title-wrap").style.display = opts.hideTitle ? "none" : "";
+  $("f-title-wrap").querySelector("label").textContent = opts.titleLabel || "Title";
   $("f-owner-wrap").style.display = opts.simple||opts.hideExtras||opts.noteOnly ? "none" : "";
   $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-note-wrap").querySelector("label").textContent = opts.noteLabel || "Note (optional)";
@@ -1935,6 +1966,337 @@ function addSubmoduleTo(parent, label, parentPath){
 function depthOfPath(path){ return path.split("::").length - 1; }
 
 // One node (module or submodule) rendered on its own: breadcrumb, vision, tasks, child links.
+/* ================================================================
+   COMPETITOR ANALYSIS  — two templates, attachable to any module/submodule
+     product : features x competitors grid  (Have it / Don't have it / In development)
+     feature : one feature, deep-dive per competitor (pricing, how, types, win/lose)
+   ================================================================ */
+const CELL = [
+  {k:"have",  label:"Have it"},
+  {k:"dont",  label:"Don't have it"},
+  {k:"dev",   label:"In development"},
+  {k:"na",    label:"N/A"},
+];
+const PREV = [
+  {k:"must",     label:"Must-have feature"},
+  {k:"common",   label:"Common feature"},
+  {k:"uncommon", label:"Uncommon feature"},
+];
+let activeAnalysis = null;   // {path, id} while an analysis table is open
+
+function normalizeAnalyses(node){
+  node.analyses = node.analyses || [];
+  node.analyses.forEach(a=>{
+    if(!a.id) a.id = "an" + Math.random().toString(36).slice(2,9);
+    a.comps = a.comps || [];
+    if(a.type === "product"){
+      a.feats = a.feats || [];
+      a.feats.forEach(f=>{
+        f.cells = f.cells || [];
+        while(f.cells.length < a.comps.length) f.cells.push("na");
+        f.cells.length = a.comps.length;
+      });
+    }
+  });
+  return node.analyses;
+}
+function analysisCoverage(a){
+  if(a.type !== "product" || !a.feats.length || !a.comps.length) return null;
+  const us = 0;                                  // first competitor column is "us" by convention
+  const have = a.feats.filter(f=> f.cells[us]==="have").length;
+  return Math.round(have / a.feats.length * 100);
+}
+function newAnalysis(node, path, type){
+  openDialog(type==="product" ? "New product-level analysis" : "New feature-level analysis", {}, v=>{
+    normalizeAnalyses(node);
+    const a = {
+      id: "an" + Math.random().toString(36).slice(2,9),
+      type, title: v.title,
+      comps: [{name:"Us"}, {name:"Competitor 1"}],
+    };
+    if(type==="product"){
+      a.feats = [{name:"First feature", prev:"must", cells:["na","na"]}];
+    } else {
+      a.comps.forEach(c=>{ c.pricing=""; c.has="no"; c.how=""; c.types=""; c.comments=""; c.winlose=""; });
+    }
+    node.analyses.push(a);
+    activeAnalysis = {path, id:a.id};
+    saveRoadmap(); toast("Analysis created");
+  }, {hideExtras:true, titleLabel: type==="product" ? "What are you comparing? (e.g. Dubuddy vs competitors)" : "Which feature? (e.g. Incident reporting)"});
+}
+
+/* ---------- the analysis table ---------- */
+function analysisPane(node, path, a){
+  const wrap = $("content");
+  const box = document.createElement("section");
+  box.className = "module-block";
+
+  const bc = document.createElement("div");
+  bc.className = "crumbs";
+  const back = document.createElement("button");
+  back.className = "crumb";
+  back.textContent = "\u2190 Back to " + node.name;
+  back.onclick = ()=>{ activeAnalysis = null; renderAll(); };
+  bc.appendChild(back);
+  box.appendChild(bc);
+
+  const head = document.createElement("div");
+  head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = a.title;
+  const tag = document.createElement("span"); tag.className = "sub-tag";
+  tag.textContent = a.type==="product" ? "PRODUCT LEVEL" : "FEATURE LEVEL";
+  head.append(h2, tag);
+  const cov = analysisCoverage(a);
+  if(cov !== null){
+    const c = document.createElement("span"); c.className = "pct";
+    c.textContent = "We have " + cov + "% of the listed features";
+    head.appendChild(c);
+  }
+  if(editMode){
+    const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
+    const acts = document.createElement("div"); acts.className="acts";
+    acts.appendChild(actBtn("pencil","Rename analysis",false, ()=>
+      openDialog("Rename analysis", {title:a.title}, v=>{ a.title = v.title; saveRoadmap(); }, {hideExtras:true})));
+    acts.appendChild(actBtn("trash","Delete analysis",true, ()=>{
+      if(confirm("Delete the analysis \u201C"+a.title+"\u201D?")){
+        node.analyses.splice(node.analyses.indexOf(a),1);
+        activeAnalysis = null;
+        saveRoadmap(); toast("Analysis deleted");
+      }
+    }));
+    head.appendChild(acts);
+  }
+  box.appendChild(head);
+
+  const scroll = document.createElement("div");
+  scroll.className = "an-scroll";
+  scroll.appendChild(a.type==="product" ? productTable(a) : featureTable(a));
+  box.appendChild(scroll);
+
+  if(editMode){
+    const bar = document.createElement("div");
+    bar.className = "an-bar";
+    const addC = document.createElement("button");
+    addC.className = "addline";
+    addC.textContent = "\uFF0B Add competitor column";
+    addC.onclick = ()=> openDialog("New competitor", {}, v=>{
+      a.comps.push(a.type==="product" ? {name:v.title} : {name:v.title, pricing:"", has:"no", how:"", types:"", comments:"", winlose:""});
+      if(a.type==="product") a.feats.forEach(f=> f.cells.push("na"));
+      saveRoadmap();
+    }, {hideExtras:true, titleLabel:"Competitor name"});
+    bar.appendChild(addC);
+    if(a.type==="product"){
+      const addF = document.createElement("button");
+      addF.className = "addline";
+      addF.textContent = "\uFF0B Add feature row";
+      addF.onclick = ()=> openDialog("New feature", {}, v=>{
+        a.feats.push({name:v.title, prev:"common", cells:a.comps.map(()=> "na")});
+        saveRoadmap();
+      }, {hideExtras:true, titleLabel:"Feature name"});
+      bar.appendChild(addF);
+    }
+    box.appendChild(bar);
+  }
+  wrap.appendChild(box);
+  return true;
+}
+
+function compHeaderCell(a, c, i){
+  const th = document.createElement("th");
+  const n = document.createElement("span");
+  n.className = "an-comp";
+  n.textContent = c.name;
+  th.appendChild(n);
+  if(i===0){
+    const us = document.createElement("span");
+    us.className = "an-us"; us.textContent = "US";
+    th.appendChild(us);
+  }
+  if(editMode){
+    const acts = document.createElement("div"); acts.className="acts";
+    acts.appendChild(actBtn("pencil","Rename competitor",false, ()=>
+      openDialog("Rename competitor", {title:c.name}, v=>{ c.name = v.title; saveRoadmap(); }, {hideExtras:true, titleLabel:"Competitor name"})));
+    acts.appendChild(actBtn("trash","Remove competitor",true, ()=>{
+      if(confirm("Remove the column \u201C"+c.name+"\u201D?")){
+        const idx = a.comps.indexOf(c);
+        a.comps.splice(idx,1);
+        if(a.type==="product") a.feats.forEach(f=> f.cells.splice(idx,1));
+        saveRoadmap();
+      }
+    }));
+    th.appendChild(acts);
+  }
+  return th;
+}
+function txtCell(obj, key, placeholder, save){
+  const td = document.createElement("td");
+  if(editMode){
+    const ta = document.createElement("textarea");
+    ta.className = "an-input";
+    ta.rows = 1;
+    ta.value = obj[key] || "";
+    ta.placeholder = placeholder || "\u2014";
+    ta.oninput = ()=>{ ta.style.height="auto"; ta.style.height = ta.scrollHeight+"px"; };
+    ta.onchange = ()=>{ obj[key] = ta.value.trim(); save(); };
+    td.appendChild(ta);
+    setTimeout(()=>{ ta.style.height="auto"; ta.style.height = Math.max(28, ta.scrollHeight)+"px"; }, 0);
+  } else {
+    td.className = "an-text";
+    td.textContent = obj[key] || "\u2014";
+  }
+  return td;
+}
+function selCell(obj, key, options, save, cls){
+  const td = document.createElement("td");
+  const cur = options.find(o=>o.k===obj[key]) || options[options.length-1];
+  if(editMode){
+    const sel = document.createElement("select");
+    sel.className = "an-sel " + cls + " " + cur.k;
+    options.forEach(o=>{
+      const op = document.createElement("option");
+      op.value = o.k; op.textContent = o.label;
+      sel.appendChild(op);
+    });
+    sel.value = cur.k;
+    sel.onchange = ()=>{ obj[key] = sel.value; save(); };
+    td.appendChild(sel);
+  } else {
+    const p = document.createElement("span");
+    p.className = "an-pill " + cls + " " + cur.k;
+    p.textContent = cur.label;
+    td.appendChild(p);
+  }
+  return td;
+}
+
+function productTable(a){
+  const t = document.createElement("table");
+  t.className = "an-table";
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  hr.appendChild(Object.assign(document.createElement("th"), {textContent:"", className:"an-corner"}));
+  hr.appendChild(Object.assign(document.createElement("th"), {textContent:"Prevalence"}));
+  a.comps.forEach((c,i)=> hr.appendChild(compHeaderCell(a, c, i)));
+  thead.appendChild(hr);
+  t.appendChild(thead);
+
+  const tb = document.createElement("tbody");
+  // pricing + description meta rows, per competitor
+  [["pricing","Pricing","Free / \u20b9299 mo"], ["desc","Description (key marketing terms)","How they pitch it"]].forEach(([k,label,ph])=>{
+    const tr = document.createElement("tr");
+    tr.className = "an-meta-row";
+    const th = document.createElement("th"); th.className="an-rowhead"; th.textContent = label;
+    tr.appendChild(th);
+    tr.appendChild(document.createElement("td"));
+    a.comps.forEach(c=> tr.appendChild(txtCell(c, k, ph, saveRoadmap)));
+    tb.appendChild(tr);
+  });
+  // feature rows
+  a.feats.forEach((f,fi)=>{
+    const tr = document.createElement("tr");
+    const th = document.createElement("th");
+    th.className = "an-rowhead";
+    const nm = document.createElement("span");
+    nm.textContent = f.name;
+    th.appendChild(nm);
+    if(editMode){
+      const acts = document.createElement("div"); acts.className="acts";
+      moveBtns(a.feats, fi, ()=>saveRoadmap(), "feature").forEach(b=>acts.appendChild(b));
+      acts.appendChild(actBtn("pencil","Rename feature",false, ()=>
+        openDialog("Rename feature", {title:f.name}, v=>{ f.name = v.title; saveRoadmap(); }, {hideExtras:true, titleLabel:"Feature name"})));
+      acts.appendChild(actBtn("trash","Delete feature row",true, ()=>{
+        if(confirm("Delete the row \u201C"+f.name+"\u201D?")){ a.feats.splice(fi,1); saveRoadmap(); }
+      }));
+      th.appendChild(acts);
+    }
+    tr.appendChild(th);
+    tr.appendChild(selCell(f, "prev", PREV, saveRoadmap, "prev"));
+    a.comps.forEach((c,ci)=>{
+      const holder = { get v(){ return f.cells[ci]; }, set v(x){ f.cells[ci] = x; } };
+      tr.appendChild(selCell(holder, "v", CELL, saveRoadmap, "cell"));
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  return t;
+}
+
+function featureTable(a){
+  const t = document.createElement("table");
+  t.className = "an-table";
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  const corner = document.createElement("th");
+  corner.className = "an-corner";
+  corner.textContent = "Feature: " + a.title;
+  hr.appendChild(corner);
+  a.comps.forEach((c,i)=> hr.appendChild(compHeaderCell(a, c, i)));
+  thead.appendChild(hr);
+  t.appendChild(thead);
+
+  const tb = document.createElement("tbody");
+  const rows = [
+    {k:"pricing",  label:"Feature pricing",         ph:"Free / paid add-on"},
+    {k:"has",      label:"Do they have the feature?", sel:[{k:"yes",label:"Yes"},{k:"no",label:"No"},{k:"partial",label:"Partly"}]},
+    {k:"how",      label:"How users use it",         ph:"- In-app\n- Tap the + icon\u2026"},
+    {k:"types",    label:"What's available",         ph:"- Accidents\n- Speed traps\u2026"},
+    {k:"comments", label:"Additional comments",      ph:"Anything notable"},
+    {k:"winlose",  label:"Where we win / lose",      ph:"Win:\n- \u2026\n\nLose:\n- \u2026"},
+  ];
+  rows.forEach(r=>{
+    const tr = document.createElement("tr");
+    const th = document.createElement("th");
+    th.className = "an-rowhead"; th.textContent = r.label;
+    tr.appendChild(th);
+    a.comps.forEach(c=>{
+      if(r.sel) tr.appendChild(selCell(c, r.k, r.sel, saveRoadmap, "has"));
+      else tr.appendChild(txtCell(c, r.k, r.ph, saveRoadmap));
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  return t;
+}
+
+/* ---------- the "Competitor analysis" section shown on a node ---------- */
+function analysisSection(node, path){
+  const list = normalizeAnalyses(node);
+  if(!list.length && !editMode) return null;
+  const sec = document.createElement("div");
+  sec.className = "sub-nav";
+  const lab = document.createElement("div");
+  lab.className = "sub-nav-label";
+  lab.textContent = "COMPETITOR ANALYSIS";
+  sec.appendChild(lab);
+  const grid = document.createElement("div");
+  grid.className = "sub-grid";
+  list.forEach(a=>{
+    const c = document.createElement("button");
+    c.className = "sub-card an-card";
+    const cov = analysisCoverage(a);
+    const meta = a.type==="product"
+      ? `${a.comps.length} competitors \u00b7 ${a.feats.length} features` + (cov!==null ? ` \u00b7 we have ${cov}%` : "")
+      : `${a.comps.length} competitors \u00b7 feature deep-dive`;
+    c.innerHTML = `<span class="an-type">${a.type==="product" ? "PRODUCT LEVEL" : "FEATURE LEVEL"}</span>
+      <span class="name"></span>
+      <span class="pct">${meta}</span>`;
+    c.querySelector(".name").textContent = a.title;
+    c.onclick = ()=>{ activeAnalysis = {path, id:a.id}; renderAll(); };
+    grid.appendChild(c);
+  });
+  if(editMode){
+    [["product","\uFF0B Product-level template"], ["feature","\uFF0B Feature-level template"]].forEach(([type,label])=>{
+      const b = document.createElement("button");
+      b.className = "sub-card add";
+      b.textContent = label;
+      b.onclick = ()=> newAnalysis(node, path, type);
+      grid.appendChild(b);
+    });
+  }
+  sec.appendChild(grid);
+  return sec;
+}
+
 function nodePane(node, path, chain){
   const wrap = $("content");
   const lv = moduleLeaves(node);
@@ -2034,7 +2396,10 @@ function nodePane(node, path, chain){
     block.appendChild(sec);
   }
 
-  if(editMode || any || kids.length){ wrap.appendChild(block); return true; }
+  const anSec = analysisSection(node, path);
+  if(anSec) block.appendChild(anSec);
+
+  if(editMode || any || kids.length || (node.analyses||[]).length){ wrap.appendChild(block); return true; }
   return false;
 }
 
@@ -2113,8 +2478,13 @@ function renderContentRoadmap(){
     shown = overviewPane();
   } else {
     const found = findByPath(activeModule);
-    if(!found){ activeModule = "all"; shown = overviewPane(); }
-    else shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0;
+    if(!found){ activeModule = "all"; activeAnalysis = null; shown = overviewPane(); }
+    else if(activeAnalysis && activeAnalysis.path === activeModule){
+      const a = normalizeAnalyses(found.node).find(x=>x.id===activeAnalysis.id);
+      if(a) shown = analysisPane(found.node, activeModule, a) ? 1 : 0;
+      else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
+    }
+    else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
   }
   if(!shown){
     wrap.innerHTML = '<div class="empty">Nothing matches this filter. Clear the search or choose \u201CAll\u201D.</div>';
