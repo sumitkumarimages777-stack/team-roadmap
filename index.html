@@ -220,6 +220,30 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 .ct-dates{display:flex;gap:16px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
 .ct-dates b{color:var(--ink);font-weight:500}
 .budget{font-family:var(--mono);font-size:12px;color:var(--done);background:var(--done-bg);padding:3px 10px;border-radius:99px}
+.budget.over{color:var(--blocked);background:var(--blocked-bg)}
+.budget-panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin:10px 0 16px}
+.budget-panel.over{border-color:#F0C7C3;background:#FDF4F3}
+.bp-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bp-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.bp-nums{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.bp-nums b{color:var(--ink);font-weight:600}
+.bp-left{color:var(--done)}
+.bp-over{color:var(--blocked);font-weight:600}
+.bp-head .spacer{flex:1}
+.bp-bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:9px}
+.bp-bar i{display:block;height:100%;background:var(--done)}
+.budget-panel.over .bp-bar i{background:var(--blocked)}
+.bp-list{margin-top:10px;border-top:1px dashed var(--line)}
+.bp-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #EEF1F5}
+.bp-row:last-child{border-bottom:none}
+.bp-what{font-size:13px;font-weight:500;flex:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bp-meta{font-family:var(--mono);font-size:11px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bp-share{font-family:var(--mono);font-size:11px;color:var(--muted);flex:none}
+.bp-amt{font-family:var(--mono);font-size:13px;font-weight:600;flex:none;min-width:74px;text-align:right}
+.bp-row:hover .acts, .bp-row:focus-within .acts, .bp-head:hover .acts{opacity:1}
+.bp-add{width:100%;margin-top:10px;background:none;border:1.5px dashed var(--line-strong);border-radius:8px;padding:8px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer}
+.bp-add:hover{border-color:var(--indigo);color:var(--indigo)}
+@media(max-width:600px){.bp-row{flex-wrap:wrap}.bp-what{max-width:100%}.bp-meta{width:100%;flex:none}}
 @media(max-width:600px){.ct-row{flex-wrap:wrap}.ct-row .meta{width:100%;justify-content:flex-start;padding-left:62px}}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em;margin-top:4px}
@@ -378,12 +402,12 @@ aside{position:sticky;top:16px;align-self:start}
 .dep-box{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card)}
 .dep-search{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
 .dep-search input{flex:1;border:none;outline:none;background:none;font-family:var(--sans);font-size:13px;color:var(--ink);padding:0}
-.dep-list{max-height:220px;overflow-y:auto}
-.dep-group{position:sticky;top:0;background:var(--paper);font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);padding:6px 12px;border-bottom:1px solid var(--line);z-index:1}
-.dep-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #F3F5F8}
+.dep-list{max-height:200px;overflow-y:auto;overflow-x:hidden}
+.dep-group{position:sticky;top:0;background:var(--paper);font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);padding:6px 12px;border-bottom:1px solid var(--line);z-index:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #F3F5F8;min-width:0}
 .dep-item:hover{background:var(--indigo-soft)}
 .dep-item input{width:15px;height:15px;accent-color:var(--indigo);cursor:pointer;flex:none;margin:0}
-.dep-item .di-title{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-item .di-title{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dep-item.is-done .di-title{color:var(--muted);text-decoration:line-through}
 .dep-item .di-status{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:99px;background:var(--planned-bg);color:var(--planned);white-space:nowrap;flex:none}
 .dep-item .di-status.done{background:var(--done-bg);color:var(--done)}
@@ -424,8 +448,9 @@ aside{position:sticky;top:16px;align-self:start}
 
 .overlay{position:fixed;inset:0;background:rgba(23,35,58,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:100}
 .overlay.show{display:flex}
-.dialog{background:var(--card);border-radius:14px;padding:22px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(23,35,58,.25)}
-.dialog h3{font-family:var(--disp);font-size:18px;margin-bottom:14px}
+.dialog{background:var(--card);border-radius:14px;padding:22px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(23,35,58,.25);display:flex;flex-direction:column;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px)}
+.dialog h3{font-family:var(--disp);font-size:18px;margin-bottom:14px;flex:none}
+.dlg-body{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;margin:0 -22px;padding:2px 22px}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
 .field input,.field textarea,.field select{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;color:var(--ink)}
@@ -496,7 +521,7 @@ aside{position:sticky;top:16px;align-self:start}
 .field-row .field{flex:1}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px}
 .check input{width:auto}
-.dialog .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.dialog .btns{display:flex;gap:8px;justify-content:flex-end;margin:0 -22px;padding:14px 22px 0;border-top:1px solid var(--line);flex:none}
 .btn{padding:8px 16px;border-radius:8px;border:1px solid var(--line);font-size:14px}
 .btn.save{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
 
@@ -570,6 +595,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <div class="overlay" id="overlay">
   <div class="dialog" role="dialog" aria-modal="true">
     <h3 id="dlg-title">Edit</h3>
+    <div class="dlg-body">
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
@@ -577,7 +603,8 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
       <div class="field"><label for="f-start">Start (optional)</label><input id="f-start" placeholder="e.g. 4th July"></div>
       <div class="field"><label for="f-deadline">Deadline (optional)</label><input id="f-deadline" placeholder="e.g. 12th July"></div>
     </div>
-    <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. ₹2,00,000"></div>
+    <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. 200000"></div>
+    <div class="field" id="f-spendtask-wrap"><label for="f-spendtask">Used for which task? (optional)</label><select id="f-spendtask"></select></div>
     <div class="field" id="f-okr-wrap"><label for="f-okr">Link to OKR objective (optional)</label><select id="f-okr"></select></div>
     <div class="field" id="f-deps-wrap">
       <label>Blocked by (optional)</label>
@@ -603,6 +630,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
       <div class="field"><label for="f-unit">Unit</label><input id="f-unit" placeholder="%, users, min…"></div>
     </div>
     <label class="check" id="f-invert-wrap"><input type="checkbox" id="f-invert"> Lower is better (e.g. reducing time, cost, errors)</label>
+    </div>
     <div class="btns">
       <button class="btn" id="dlg-cancel">Cancel</button>
       <button class="btn save" id="dlg-save">Save</button>
@@ -748,9 +776,25 @@ function normalizeContent(c){
   c.sections.forEach(s => {
     s.tasks = s.tasks || [];
     s.tasks.forEach(walk);
+    s.spends = s.spends || [];                       // itemised ledger of what was actually spent
+    s.spends.forEach(sp=>{
+      if(!sp.id) sp.id = "sp" + Math.random().toString(36).slice(2,9);
+      sp.amount = money(sp.amount);
+    });
   });
   return c;
 }
+/* ---------- money helpers (Indian formatting) ---------- */
+function money(v){
+  if(typeof v === "number") return isFinite(v) ? v : 0;
+  const n = parseFloat(String(v==null?"":v).replace(/[^0-9.\-]/g, ""));
+  return isFinite(n) ? n : 0;
+}
+function inr(n){
+  return "\u20b9" + Math.round(n).toLocaleString("en-IN");
+}
+function budgetOf(sec){ return money(sec.budget); }
+function spentOf(sec){ return (sec.spends||[]).reduce((a,sp)=> a + money(sp.amount), 0); }
 let activeSection = "all";
 let activeStage = "all";
 function normalizeTeamIdeas(t){
@@ -1063,8 +1107,25 @@ function openDialog(title, values, onSave, opts={}){
   $("f-note-wrap").querySelector("label").textContent = opts.noteLabel || "Note (optional)";
   $("f-metric-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
-  $("f-dates-wrap").style.display = opts.dates ? "flex" : "none";
+  $("f-dates-wrap").style.display = (opts.dates || opts.dateOne) ? "flex" : "none";
+  $("f-dates-wrap").children[1].style.display = opts.dateOne ? "none" : "";
+  $("f-dates-wrap").children[0].querySelector("label").textContent = opts.startLabel || "Start (optional)";
   $("f-budget-wrap").style.display = opts.budget ? "" : "none";
+  $("f-budget-wrap").querySelector("label").textContent = opts.budgetLabel || "Budget (optional)";
+  $("f-spendtask-wrap").style.display = opts.spendTask ? "" : "none";
+  if(opts.spendTask){
+    const sel = $("f-spendtask");
+    sel.innerHTML = "";
+    const none = document.createElement("option");
+    none.value = ""; none.textContent = "\u2014 Not tied to one task \u2014";
+    sel.appendChild(none);
+    (opts.spendTaskOptions||[]).forEach(x=>{
+      const o = document.createElement("option");
+      o.value = x.label; o.textContent = x.label;
+      sel.appendChild(o);
+    });
+    sel.value = values.spendTask || "";
+  }
   $("f-okr-wrap").style.display = opts.okrLink ? "" : "none";
   $("f-deps-wrap").style.display = opts.deps ? "" : "none";
   if(opts.deps){
@@ -1163,6 +1224,7 @@ $("dlg-save").onclick = ()=>{
     okr: $("f-okr").value,
     area: $("f-area").value,
     blockedBy: [...dlgDeps],
+    spendTask: $("f-spendtask").value,
     photos: dlgPhotos.slice(),
   });
 };
@@ -2305,11 +2367,11 @@ function renderSidebarExams(ws){
       cardActs(b, [
         ...moveBtns(CONTENT.sections, CONTENT.sections.indexOf(s), ()=>saveContent(), "exam"),
         actBtn("pencil","Edit name / budget",false, ()=>
-          openDialog("Edit section", {title:s.name, budget:s.budget}, v=>{
+          openDialog("Edit section", {title:s.name, budget: budgetOf(s) ? String(budgetOf(s)) : ""}, v=>{
             s.name = v.title;
-            if(v.budget) s.budget = v.budget; else delete s.budget;
+            if(money(v.budget)) s.budget = money(v.budget); else delete s.budget;
             saveContent();
-          }, {hideExtras:true, budget:true})),
+          }, {hideExtras:true, budget:true, budgetLabel:"Allocated budget (\u20b9, optional)"})),
         actBtn("trash","Delete section",true, ()=>{
           if(confirm(`Delete “${s.name}” and its ${s.tasks.length} task(s)?`)){
             CONTENT.sections.splice(CONTENT.sections.indexOf(s),1);
@@ -2327,12 +2389,12 @@ function renderSidebarExams(ws){
     add.textContent = "＋ Add exam / section";
     add.onclick = ()=> openDialog("New section", {}, v=>{
       const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
-      const s = {name:v.title, key, tasks:[]};
-      if(v.budget) s.budget = v.budget;
+      const s = {name:v.title, key, tasks:[], spends:[]};
+      if(money(v.budget)) s.budget = money(v.budget);
       CONTENT.sections.push(s);
       view = "content"; activeSection = key;
       saveContent(); toast("Section added");
-    }, {hideExtras:true, budget:true});
+    }, {hideExtras:true, budget:true, budgetLabel:"Allocated budget (\u20b9, optional)"});
     ws.appendChild(add);
   }
 }
@@ -2499,6 +2561,139 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
   return node;
 }
 
+/* ---------- budget panel for an exam / content section ---------- */
+function sectionTaskList(sec){
+  const out = [];
+  const walk = (t, path) => {
+    out.push({t, label: path ? path+" / "+t.title : t.title});
+    (t.items||[]).forEach(c=> walk(c, path ? path+" / "+t.title : t.title));
+  };
+  (sec.tasks||[]).forEach(t=> walk(t, ""));
+  return out;
+}
+function spendDialog(sec, sp){
+  const isNew = !sp;
+  openDialog(isNew ? "Add spend \u2014 "+sec.name : "Edit spend", {
+    title: sp ? sp.title : "",
+    budget: sp ? String(sp.amount) : "",
+    owner: sp ? (sp.vendor||"") : "",
+    note: sp ? (sp.note||"") : "",
+    start: sp ? (sp.date||"") : "",
+    spendTask: sp ? (sp.task||"") : "",
+  }, v=>{
+    const amt = money(v.budget);
+    if(!amt){ toast("Enter an amount, e.g. 25000"); return; }
+    const rec = sp || {id:"sp"+Math.random().toString(36).slice(2,9)};
+    rec.title  = v.title;
+    rec.amount = amt;
+    if(v.owner) rec.vendor = v.owner; else delete rec.vendor;
+    if(v.note) rec.note = v.note; else delete rec.note;
+    if(v.start) rec.date = v.start; else delete rec.date;
+    if(v.spendTask) rec.task = v.spendTask; else delete rec.task;
+    if(isNew){ sec.spends = sec.spends || []; sec.spends.push(rec); }
+    saveContent();
+    toast(isNew ? "Spend added" : "Spend updated");
+  }, {budget:true, budgetLabel:"Amount spent (\u20b9)", ownerLabel:"Paid to / vendor (optional)",
+      spendTask:true, spendTaskOptions:sectionTaskList(sec), dateOne:true, startLabel:"Date (optional)"});
+}
+function budgetPanel(sec){
+  const total = budgetOf(sec);
+  const used  = spentOf(sec);
+  const left  = total - used;
+  const pct   = total ? Math.min(100, Math.round(used/total*100)) : 0;
+  const over  = total && used > total;
+  const spends = (sec.spends||[]).slice();
+
+  if(!total && !spends.length && !editMode) return null;
+
+  const box = document.createElement("div");
+  box.className = "budget-panel" + (over ? " over" : "");
+
+  const head = document.createElement("div");
+  head.className = "bp-head";
+  const eye = document.createElement("span");
+  eye.className = "bp-eyebrow";
+  eye.textContent = "BUDGET";
+  head.appendChild(eye);
+  if(total){
+    const nums = document.createElement("span");
+    nums.className = "bp-nums";
+    nums.innerHTML = `<b>${inr(used)}</b> used of ${inr(total)} \u00b7 <span class="${over?"bp-over":"bp-left"}">${over ? inr(used-total)+" over" : inr(left)+" left"}</span>`;
+    head.appendChild(nums);
+  } else {
+    const nums = document.createElement("span");
+    nums.className = "bp-nums";
+    nums.innerHTML = `<b>${inr(used)}</b> spent \u00b7 no budget set`;
+    head.appendChild(nums);
+  }
+  if(editMode){
+    const sp2 = document.createElement("span"); sp2.className="spacer"; head.appendChild(sp2);
+    const acts = document.createElement("div"); acts.className="acts";
+    acts.appendChild(actBtn("pencil","Set / change the allocated budget",false, ()=>
+      openDialog("Budget for "+sec.name, {budget: total ? String(total) : ""}, v=>{
+        if(money(v.budget)) sec.budget = money(v.budget); else delete sec.budget;
+        saveContent(); toast("Budget updated");
+      }, {hideTitle:true, hideExtras:true, budget:true, budgetLabel:"Total allocated budget (\u20b9)"})));
+    head.appendChild(acts);
+  }
+  box.appendChild(head);
+
+  if(total){
+    const bar = document.createElement("div");
+    bar.className = "bp-bar";
+    bar.innerHTML = `<i style="width:${pct}%"></i>`;
+    box.appendChild(bar);
+  }
+
+  if(spends.length){
+    const list = document.createElement("div");
+    list.className = "bp-list";
+    spends.forEach(sp=>{
+      const r = document.createElement("div");
+      r.className = "bp-row";
+      const t = document.createElement("span");
+      t.className = "bp-what";
+      t.textContent = sp.title || "(unlabelled)";
+      const meta = document.createElement("span");
+      meta.className = "bp-meta";
+      const bits = [];
+      if(sp.vendor) bits.push(sp.vendor);
+      if(sp.date) bits.push(sp.date);
+      if(sp.task) bits.push("\u2192 "+sp.task);
+      meta.textContent = bits.join(" \u00b7 ");
+      const amt = document.createElement("span");
+      amt.className = "bp-amt";
+      amt.textContent = inr(money(sp.amount));
+      const share = document.createElement("span");
+      share.className = "bp-share";
+      share.textContent = total ? Math.round(money(sp.amount)/total*100)+"%" : "";
+      r.append(t, meta, share, amt);
+      if(editMode){
+        const acts = document.createElement("div"); acts.className="acts";
+        acts.appendChild(actBtn("pencil","Edit spend",false, ()=> spendDialog(sec, sp)));
+        acts.appendChild(actBtn("trash","Delete spend",true, ()=>{
+          if(confirm("Delete the spend \u201C"+(sp.title||"unlabelled")+"\u201D ("+inr(money(sp.amount))+")?")){
+            sec.spends.splice(sec.spends.indexOf(sp),1);
+            saveContent(); toast("Spend deleted");
+          }
+        }));
+        r.appendChild(acts);
+      }
+      list.appendChild(r);
+    });
+    box.appendChild(list);
+  }
+
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "bp-add";
+    add.textContent = "\uFF0B Add spend \u2014 what was the money used on?";
+    add.onclick = ()=> spendDialog(sec, null);
+    box.appendChild(add);
+  }
+  return box;
+}
+
 function renderContentContent(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -2516,9 +2711,11 @@ function renderContentContent(){
     const pct = document.createElement("span"); pct.className="pct";
     pct.textContent = pctOf(s.tasks.flatMap(leavesOf))+"% complete";
     head.append(h2, pct);
-    if(s.budget){
+    if(budgetOf(s) || (s.spends||[]).length){
       const b = document.createElement("span"); b.className="budget";
-      b.textContent = "Budget: "+s.budget;
+      const used = spentOf(s), tot = budgetOf(s);
+      b.textContent = tot ? "Budget: "+inr(used)+" / "+inr(tot) : "Spent: "+inr(used);
+      if(tot && used > tot) b.classList.add("over");
       head.appendChild(b);
     }
     if(editMode){
@@ -2540,6 +2737,8 @@ function renderContentContent(){
       head.appendChild(acts);
     }
     block.appendChild(head);
+    const bp = budgetPanel(s);
+    if(bp) block.appendChild(bp);
 
     const list = document.createElement("div");
     list.className = "tree";
