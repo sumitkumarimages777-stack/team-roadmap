@@ -267,6 +267,44 @@ aside{position:sticky;top:16px;align-self:start}
 .module-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:18px}
 .module-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
 .submodule{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+
+/* sidebar tree */
+.mod.nav-row .name-line{display:flex;align-items:center;gap:6px}
+.mod.nav-row .twisty{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);flex:none;border-radius:4px}
+.mod.nav-row .twisty.has-kids{cursor:pointer}
+.mod.nav-row .twisty.has-kids:hover{background:var(--indigo-soft);color:var(--indigo)}
+.mod.nav-row .twisty svg{transition:transform .15s}
+.mod.nav-row .twisty.open svg{transform:rotate(90deg)}
+
+/* breadcrumbs */
+.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--mono);font-size:12px}
+.crumb{background:none;border:none;padding:2px 4px;border-radius:6px;color:var(--indigo);cursor:pointer;font-family:var(--mono);font-size:12px}
+.crumb:hover{background:var(--indigo-soft)}
+.crumb.current{color:var(--muted);cursor:default}
+.crumb-sep{color:var(--line-strong)}
+
+/* child submodule cards inside a node */
+.sub-nav{margin-top:20px;border-top:1px dashed var(--line);padding-top:14px}
+.sub-nav-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+.sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.sub-card{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:border-color .12s,box-shadow .12s;display:flex;flex-direction:column;gap:8px}
+.sub-card:hover{border-color:var(--indigo);box-shadow:0 2px 8px rgba(59,91,219,.10)}
+.sub-card .name{font-family:var(--disp);font-weight:600;font-size:14px}
+.sub-card .bar{height:4px;background:var(--line);border-radius:99px;overflow:hidden}
+.sub-card .bar i{display:block;height:100%;background:var(--done)}
+.sub-card .pct{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.sub-card.add{border-style:dashed;color:var(--muted);font-family:var(--mono);font-size:12px;align-items:center;justify-content:center;min-height:64px}
+.sub-card.add:hover{color:var(--indigo)}
+
+/* all-modules overview grid */
+.mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.mod-card{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;cursor:pointer;transition:border-color .12s,box-shadow .12s;display:flex;flex-direction:column;gap:10px}
+.mod-card:hover{border-color:var(--indigo);box-shadow:0 3px 12px rgba(59,91,219,.10)}
+.mod-card .mc-name{font-family:var(--disp);font-weight:600;font-size:18px}
+.mod-card .bar{height:5px;background:var(--line);border-radius:99px;overflow:hidden}
+.mod-card .bar i{display:block;height:100%;background:var(--done)}
+.mod-card .mc-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.mod-card .mc-vision{font-size:13px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -609,30 +647,32 @@ function linkedWork(obId){
     const walk = n => {
       if(n.okr===obId){
         const lv = leavesOf(n);
-        out.push({title:n.title, where:m.name, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+        out.push({title:n.title, where:m.name, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key; query=""; activeStatus="all";}});
       }
       (n.items||[]).forEach(walk);
     };
     m.items.forEach(walk);
-    const walkSubs = (subs, path) => {
+    const walkSubs = (subs, label, keyPath) => {
       (subs||[]).forEach(sub=>{
-        const here = path + " · " + sub.name;
+        const here = label + " · " + sub.name;
+        const subPath = keyPath + "::" + sub.key;
+        const go = ()=>{ view="roadmap"; activeModule=subPath; query=""; activeStatus="all"; };
         if(sub.okr===obId){
           const lv = moduleLeaves(sub);
-          out.push({title:sub.name, where:"Submodule · "+path, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+          out.push({title:sub.name, where:"Submodule · "+label, pct:pctOf(lv), nav:go});
         }
         const walkSub = n => {
           if(n.okr===obId){
             const lv = leavesOf(n);
-            out.push({title:n.title, where:here, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:()=>{view="roadmap"; activeModule=m.key;}});
+            out.push({title:n.title, where:here, status:(n.items&&n.items.length)?null:n.status, pct:pctOf(lv), nav:go});
           }
           (n.items||[]).forEach(walkSub);
         };
         (sub.items||[]).forEach(walkSub);
-        walkSubs(sub.subs, here);
+        walkSubs(sub.subs, here, subPath);
       });
     };
-    walkSubs(m.subs, m.name);
+    walkSubs(m.subs, m.name, m.key);
   });
   CONTENT.sections.forEach(s=>{
     s.tasks.forEach(t=>{
@@ -1172,6 +1212,84 @@ function renderHeader(){
 /* ================================================================
    ROADMAP VIEW
    ================================================================ */
+/* ---------- roadmap tree navigation ----------
+   activeModule is a PATH: "all", "dyng", or "dyng::pg-booking::kyc-flow".
+   The sidebar shows the tree; the content pane shows ONLY the selected node.   */
+const expandedNav = new Set();   // paths whose children are shown in the sidebar
+
+function findByPath(path){
+  if(!path || path==="all") return null;
+  const parts = path.split("::");
+  let node = DATA.modules.find(m=>m.key===parts[0]);
+  if(!node) return null;
+  const chain = [node];
+  for(let i=1;i<parts.length;i++){
+    const parent = node;
+    node = (node.subs||[]).find(s=>s.key===parts[i]);
+    if(!node) return null;
+    node.__parent = parent;
+    chain.push(node);
+  }
+  return {node, chain, parts};
+}
+function parentOfPath(path){
+  const parts = path.split("::");
+  return parts.length>1 ? parts.slice(0,-1).join("::") : "all";
+}
+function navTo(path){ activeModule = path; renderAll(); }
+
+function navRow(node, path, depth, parentArr){
+  const lv = moduleLeaves(node);
+  const p = pctOf(lv);
+  const kids = node.subs || [];
+  const isActive = activeModule===path;
+  const onPath = activeModule!=="all" && (activeModule===path || activeModule.startsWith(path+"::"));
+  const b = mkSideCard(isActive, ()=> navTo(path));
+  b.classList.add("nav-row");
+  b.style.marginLeft = Math.min(depth,4)*12 + "px";
+  b.innerHTML = `<span class="name-line">
+      <span class="twisty"></span><span class="name"></span>
+    </span>
+    <div class="bar"><i style="width:${p}%"></i></div>
+    <span class="pct">${p}% · ${lv.length} tasks${kids.length?" · "+kids.length+" sub":""}</span>`;
+  b.querySelector(".name").textContent = node.name;
+
+  const tw = b.querySelector(".twisty");
+  if(kids.length){
+    const open = expandedNav.has(path) || onPath;
+    tw.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m9 6 6 6-6 6"/></svg>';
+    tw.classList.add("has-kids");
+    tw.classList.toggle("open", open);
+    tw.title = open ? "Hide submodules" : "Show submodules";
+    tw.onclick = e => {
+      e.stopPropagation();
+      if(expandedNav.has(path) || onPath) expandedNav.delete(path); else expandedNav.add(path);
+      renderAll();
+    };
+  }
+  if(editMode){
+    cardActs(b, [
+      actBtn("pencil", depth?"Rename submodule":"Rename module", false, ()=>
+        openDialog(depth?"Rename submodule":"Rename module", {title:node.name, okr:node.okr}, v=>{
+          node.name = v.title;
+          if(v.okr) node.okr = v.okr; else delete node.okr;
+          saveRoadmap();
+        }, {hideExtras:true, okrLink:true})),
+      actBtn("plus", "Add submodule inside "+node.name, false, ()=> addSubmoduleTo(node, "New submodule in \u201C"+node.name+"\u201D", path)),
+      actBtn("trash", depth?"Delete submodule":"Delete module", true, ()=>{
+        const nSubs = kids.length;
+        const extra = nSubs ? ` and its ${nSubs} nested submodule(s)` : "";
+        if(confirm(`Delete \u201C${node.name}\u201D (${lv.length} tasks)${extra}?`)){
+          parentArr.splice(parentArr.indexOf(node),1);
+          if(activeModule===path || activeModule.startsWith(path+"::")) activeModule = parentOfPath(path);
+          saveRoadmap(); toast(depth?"Submodule deleted":"Module deleted");
+        }
+      }),
+    ]);
+  }
+  return {el:b, kids, open: expandedNav.has(path) || onPath};
+}
+
 function renderSidebarRoadmap(){
   const wrap = $("mods");
   wrap.innerHTML = "";
@@ -1179,43 +1297,27 @@ function renderSidebarRoadmap(){
   const allLeaves = DATA.modules.flatMap(moduleLeaves);
   const all = document.createElement("button");
   all.className = "mod"+(activeModule==="all"?" active":"");
-  all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules · ${allLeaves.length} tasks</span>`;
-  all.onclick = ()=>{activeModule="all"; renderAll();};
+  all.innerHTML = `<span class="name">All modules</span><span class="pct">${DATA.modules.length} modules \u00b7 ${allLeaves.length} tasks</span>`;
+  all.onclick = ()=> navTo("all");
   wrap.appendChild(all);
-  DATA.modules.forEach(m=>{
-    const lv = moduleLeaves(m);
-    const p = pctOf(lv);
-    const b = mkSideCard(activeModule===m.key, ()=>{activeModule=m.key; renderAll();});
-    b.innerHTML = `<span class="name"></span>
-      <div class="bar"><i style="width:${p}%"></i></div>
-      <span class="pct">${p}% · ${lv.length} tasks</span>`;
-    b.querySelector(".name").textContent = m.name;
-    if(editMode){
-      cardActs(b, [
-        actBtn("pencil","Rename module",false, ()=>
-          openDialog("Rename module", {title:m.name, okr:m.okr}, v=>{
-            m.name = v.title;
-            if(v.okr) m.okr = v.okr; else delete m.okr;
-            saveRoadmap();
-          }, {hideExtras:true, okrLink:true})),
-        actBtn("trash","Delete module",true, ()=>{
-          if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
-            DATA.modules.splice(DATA.modules.indexOf(m),1);
-            if(activeModule===m.key) activeModule="all";
-            saveRoadmap(); toast("Module deleted");
-          }
-        }),
-      ]);
-    }
-    wrap.appendChild(b);
-  });
+
+  const walk = (arr, parentPath, depth) => {
+    arr.forEach(node=>{
+      const path = parentPath ? parentPath+"::"+node.key : node.key;
+      const r = navRow(node, path, depth, arr);
+      wrap.appendChild(r.el);
+      if(r.kids.length && r.open) walk(r.kids, path, depth+1);
+    });
+  };
+  walk(DATA.modules, "", 0);
+
   if(editMode){
     const add = document.createElement("button");
     add.className = "mod add";
-    add.textContent = "＋ Add module";
+    add.textContent = "\uFF0B Add module";
     add.onclick = ()=> openDialog("New module (big level)", {}, v=>{
       const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
-      DATA.modules.push({name:v.title, key, items:[]});
+      DATA.modules.push({name:v.title, key, items:[], subs:[]});
       activeModule = key;
       saveRoadmap(); toast("Module added");
     }, {hideExtras:true});
@@ -1457,158 +1559,207 @@ function visionBanner(m){
   });
   return box;
 }
-const MAX_SUB_DEPTH = 6;   // guard rail: keeps the UI readable and prevents runaway nesting
-function subModuleEl(parent, s, colPath, depth){
-  const lv = moduleLeaves(s);                       // includes this sub's own nested subs
-  const box = document.createElement("div");
-  box.className = "submodule";
-  box.style.marginLeft = Math.min(depth-1, 3) * 14 + "px";   // indent, capped so deep trees stay readable
-  const head = document.createElement("div");
-  head.className = "sub-head";
-  const tag = document.createElement("span"); tag.className = "sub-tag";
-  tag.textContent = depth === 1 ? "SUBMODULE" : "L" + depth;
-  tag.title = "Nesting level " + depth;
-  const h3 = document.createElement("h3"); h3.textContent = s.name;
-  const pct = document.createElement("span"); pct.className = "pct";
-  pct.textContent = pctOf(lv)+"% · "+lv.length+" tasks";
-  head.append(tag, h3, pct);
-  if(s.okr){
-    const ch = okrChip(s.okr);
-    if(ch) head.appendChild(ch);
-  }
-  if(editMode){
-    const sp = document.createElement("span"); sp.className = "spacer"; head.appendChild(sp);
-    const acts = document.createElement("div"); acts.className = "acts";
-    acts.appendChild(actBtn("pencil","Rename submodule",false, ()=>
-      openDialog("Rename submodule", {title:s.name, okr:s.okr}, v=>{
-        s.name = v.title;
-        if(v.okr) s.okr = v.okr; else delete s.okr;
-        saveRoadmap();
-      }, {hideExtras:true, okrLink:true})));
-    acts.appendChild(actBtn("trash","Delete submodule",true, ()=>{
-      const nSubs = (s.subs||[]).length;
-      const extra = nSubs ? ` and its ${nSubs} nested submodule(s)` : "";
-      if(confirm(`Delete the submodule “${s.name}” (${lv.length} tasks)${extra}?`)){
-        parent.subs.splice(parent.subs.indexOf(s),1);
-        saveRoadmap(); toast("Submodule deleted");
-      }
-    }));
-    head.appendChild(acts);
-  }
-  box.appendChild(head);
+const MAX_SUB_DEPTH = 6;   // guard rail: keeps the tree readable
 
-  const tree = document.createElement("div");
-  tree.className = "tree";
-  let any = false;
-  (s.items||[]).forEach((item,i)=>{
-    const el = nodeEl(item, s.items, i, String(i+1), colPath);
-    if(el){ tree.appendChild(el); any = true; }
-  });
-  box.appendChild(tree);
-  if(editMode){
-    const add = document.createElement("button");
-    add.className = "addline indent";
-    add.textContent = "＋ Add task to "+s.name;
-    add.onclick = ()=> addTaskTo(s, "New task in “"+s.name+"”");
-    box.appendChild(add);
-  }
-
-  // nested submodules, any depth
-  (s.subs||[]).forEach(child=>{
-    const r = subModuleEl(s, child, colPath+"::"+child.key, depth+1);
-    if(r.el){ box.appendChild(r.el); if(r.any) any = true; }
-  });
-  if(editMode && depth < MAX_SUB_DEPTH){
-    const addSub = document.createElement("button");
-    addSub.className = "addline";
-    addSub.textContent = "＋ Add submodule inside "+s.name;
-    addSub.onclick = ()=> addSubmoduleTo(s, "New submodule in “"+s.name+"”");
-    box.appendChild(addSub);
-  }
-  if(!editMode && !any) return {el:null, any:false};
-  return {el:box, any};
-}
-function addSubmoduleTo(parent, label){
+function addSubmoduleTo(parent, label, parentPath){
   openDialog(label, {}, v=>{
     const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
     parent.subs = parent.subs || [];
     parent.subs.push({name:v.title, key, items:[], subs:[]});
+    if(parentPath){
+      expandedNav.add(parentPath);          // reveal it in the sidebar tree
+      activeModule = parentPath+"::"+key;   // and drill straight into it
+    }
     saveRoadmap(); toast("Submodule added");
   }, {hideExtras:true});
 }
-function renderContentRoadmap(){
+
+function depthOfPath(path){ return path.split("::").length - 1; }
+
+// One node (module or submodule) rendered on its own: breadcrumb, vision, tasks, child links.
+function nodePane(node, path, chain){
   const wrap = $("content");
-  wrap.innerHTML = "";
-  const mods = DATA.modules.filter(m => activeModule==="all" || m.key===activeModule);
+  const lv = moduleLeaves(node);
+  const depth = depthOfPath(path);
+  const block = document.createElement("section");
+  block.className = "module-block";
+
+  if(chain.length > 1){
+    const bc = document.createElement("div");
+    bc.className = "crumbs";
+    const root = document.createElement("button");
+    root.className = "crumb"; root.textContent = "All modules";
+    root.onclick = ()=> navTo("all");
+    bc.appendChild(root);
+    chain.forEach((n,i)=>{
+      const sep = document.createElement("span"); sep.className="crumb-sep"; sep.textContent="/";
+      bc.appendChild(sep);
+      const p = chain.slice(0,i+1).map(x=>x.key).join("::");
+      if(i === chain.length-1){
+        const cur = document.createElement("span");
+        cur.className = "crumb current"; cur.textContent = n.name;
+        bc.appendChild(cur);
+      } else {
+        const c = document.createElement("button");
+        c.className = "crumb"; c.textContent = n.name;
+        c.onclick = ()=> navTo(p);
+        bc.appendChild(c);
+      }
+    });
+    block.appendChild(bc);
+  }
+
+  const head = document.createElement("div");
+  head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = node.name;
+  const pct = document.createElement("span"); pct.className="pct";
+  pct.textContent = pctOf(lv)+"% complete \u00b7 "+lv.length+" tasks";
+  head.append(h2, pct);
+  if(depth){
+    const tag = document.createElement("span"); tag.className="sub-tag";
+    tag.textContent = depth===1 ? "SUBMODULE" : "LEVEL "+(depth+1);
+    head.appendChild(tag);
+  }
+  if(node.okr){ const ch = okrChip(node.okr); if(ch) head.appendChild(ch); }
+  block.appendChild(head);
+
+  const vb = visionBanner(node);
+  if(vb) block.appendChild(vb);
+
+  const tree = document.createElement("div");
+  tree.className = "tree";
+  let any = false;
+  (node.items||[]).forEach((item,i)=>{
+    const el = nodeEl(item, node.items, i, String(i+1), path);
+    if(el){ tree.appendChild(el); any = true; }
+  });
+  block.appendChild(tree);
+  if(editMode){
+    const add = document.createElement("button");
+    add.className = "addline indent";
+    add.textContent = "\uFF0B Add task to "+node.name;
+    add.onclick = ()=> addTaskTo(node, "New task in \u201C"+node.name+"\u201D");
+    block.appendChild(add);
+  }
+
+  // child submodules: navigation cards, not stacked content
+  const kids = node.subs || [];
+  if(kids.length || editMode){
+    const sec = document.createElement("div");
+    sec.className = "sub-nav";
+    const lab = document.createElement("div");
+    lab.className = "sub-nav-label";
+    lab.textContent = kids.length ? "Submodules \u2014 click to open" : "Submodules";
+    sec.appendChild(lab);
+    const grid = document.createElement("div");
+    grid.className = "sub-grid";
+    kids.forEach(k=>{
+      const klv = moduleLeaves(k);
+      const kp = pctOf(klv);
+      const c = document.createElement("button");
+      c.className = "sub-card";
+      c.innerHTML = `<span class="name"></span>
+        <div class="bar"><i style="width:${kp}%"></i></div>
+        <span class="pct">${kp}% \u00b7 ${klv.length} tasks${(k.subs&&k.subs.length)?" \u00b7 "+k.subs.length+" sub":""}</span>`;
+      c.querySelector(".name").textContent = k.name;
+      c.onclick = ()=> navTo(path+"::"+k.key);
+      grid.appendChild(c);
+    });
+    if(editMode && depth < MAX_SUB_DEPTH){
+      const addk = document.createElement("button");
+      addk.className = "sub-card add";
+      addk.textContent = "\uFF0B Add submodule";
+      addk.onclick = ()=> addSubmoduleTo(node, "New submodule in \u201C"+node.name+"\u201D", path);
+      grid.appendChild(addk);
+    }
+    sec.appendChild(grid);
+    block.appendChild(sec);
+  }
+
+  if(editMode || any || kids.length){ wrap.appendChild(block); return true; }
+  return false;
+}
+
+// "All modules": overview cards, one per top-level module — no giant vertical stack.
+function overviewPane(){
+  const wrap = $("content");
+  const grid = document.createElement("div");
+  grid.className = "mod-grid";
   let shown = 0;
-  mods.forEach(m=>{
+  DATA.modules.forEach(m=>{
     const lv = moduleLeaves(m);
-    const block = document.createElement("section");
-    block.className = "module-block";
-    const head = document.createElement("div");
-    head.className = "module-head";
-    const h2 = document.createElement("h2"); h2.textContent = m.name;
-    const pct = document.createElement("span"); pct.className="pct";
-    pct.textContent = pctOf(lv)+"% complete";
-    head.append(h2, pct);
-    if(m.okr){
-      const ch = okrChip(m.okr);
-      if(ch) head.appendChild(ch);
+    const p = pctOf(lv);
+    const c = document.createElement("button");
+    c.className = "mod-card";
+    c.innerHTML = `<span class="mc-name"></span>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <span class="mc-meta">${p}% \u00b7 ${lv.length} tasks${(m.subs&&m.subs.length)?" \u00b7 "+m.subs.length+" submodule(s)":""}</span>`;
+    c.querySelector(".mc-name").textContent = m.name;
+    if(m.vision){
+      const v = document.createElement("span");
+      v.className = "mc-vision"; v.textContent = m.vision;
+      c.appendChild(v);
     }
-    if(editMode){
-      const sp = document.createElement("span"); sp.className="spacer"; head.appendChild(sp);
-      const acts = document.createElement("div"); acts.className = "acts";
-      acts.appendChild(actBtn("pencil","Rename module",false, ()=>
-        openDialog("Rename module", {title:m.name, okr:m.okr}, v=>{
-          m.name = v.title;
-          if(v.okr) m.okr = v.okr; else delete m.okr;
-          saveRoadmap();
-        }, {hideExtras:true, okrLink:true})));
-      acts.appendChild(actBtn("trash","Delete module",true, ()=>{
-        if(confirm(`Delete the whole module “${m.name}” (${lv.length} tasks)?`)){
-          DATA.modules.splice(DATA.modules.indexOf(m),1);
-          if(activeModule===m.key) activeModule="all";
-          saveRoadmap(); toast("Module deleted");
-        }
-      }));
-      head.appendChild(acts);
-    }
-    block.appendChild(head);
-    const vb = visionBanner(m);
-    if(vb) block.appendChild(vb);
+    c.onclick = ()=> navTo(m.key);
+    grid.appendChild(c);
+    shown++;
+  });
+  wrap.appendChild(grid);
+  return shown;
+}
+
+// Search spans the whole tree, wherever you are.
+function searchPane(){
+  const wrap = $("content");
+  let shown = 0;
+  const visit = (node, path, chain) => {
     const tree = document.createElement("div");
     tree.className = "tree";
     let any = false;
-    m.items.forEach((item,i)=>{
-      const el = nodeEl(item, m.items, i, String(i+1), m.key);
+    (node.items||[]).forEach((item,i)=>{
+      const el = nodeEl(item, node.items, i, String(i+1), path);
       if(el){ tree.appendChild(el); any = true; }
     });
-    block.appendChild(tree);
-    if(editMode){
-      const add = document.createElement("button");
-      add.className = "addline indent";
-      add.textContent = "＋ Add task to "+m.name;
-      add.onclick = ()=> addTaskTo(m, "New task in “"+m.name+"”");
-      block.appendChild(add);
+    if(any){
+      const block = document.createElement("section");
+      block.className = "module-block";
+      const head = document.createElement("div");
+      head.className = "module-head";
+      const h2 = document.createElement("h2"); h2.textContent = node.name;
+      const bc = document.createElement("span"); bc.className = "pct";
+      bc.textContent = chain.length>1 ? chain.slice(0,-1).map(x=>x.name).join(" / ") : "Module";
+      head.append(h2, bc);
+      const open = document.createElement("button");
+      open.className = "crumb"; open.textContent = "Open \u2192";
+      open.onclick = ()=> navTo(path);
+      head.appendChild(open);
+      block.appendChild(head);
+      block.appendChild(tree);
+      wrap.appendChild(block);
+      shown++;
     }
-    let subAny = false;
-    (m.subs||[]).forEach(s=>{
-      const r = subModuleEl(m, s, m.key+"::"+s.key, 1);
-      if(r.el){ block.appendChild(r.el); if(r.any) subAny = true; }
-    });
-    if(editMode){
-      const addSub = document.createElement("button");
-      addSub.className = "addline";
-      addSub.textContent = "＋ Add submodule to "+m.name+" (e.g. Bike Booking, PG Booking)";
-      addSub.onclick = ()=> addSubmoduleTo(m, "New submodule in “"+m.name+"”");
-      block.appendChild(addSub);
-      wrap.appendChild(block); shown++;
-    } else if(any || subAny){
-      wrap.appendChild(block); shown++;
-    }
-  });
+    (node.subs||[]).forEach(k=> visit(k, path+"::"+k.key, chain.concat([k])));
+  };
+  DATA.modules.forEach(m=> visit(m, m.key, [m]));
+  return shown;
+}
+
+function renderContentRoadmap(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  let shown = 0;
+  const filtering = query || activeStatus!=="all";
+  if(filtering){
+    shown = searchPane();
+  } else if(activeModule==="all"){
+    shown = overviewPane();
+  } else {
+    const found = findByPath(activeModule);
+    if(!found){ activeModule = "all"; shown = overviewPane(); }
+    else shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0;
+  }
   if(!shown){
-    wrap.innerHTML = '<div class="empty">Nothing matches this filter. Clear the search or choose “All”.</div>';
+    wrap.innerHTML = '<div class="empty">Nothing matches this filter. Clear the search or choose \u201CAll\u201D.</div>';
   }
 }
 
