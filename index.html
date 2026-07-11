@@ -356,6 +356,16 @@ aside{position:sticky;top:16px;align-self:start}
 
 .acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
 .act.off{opacity:.25;cursor:default;pointer-events:none}
+.lockchip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1px solid transparent}
+.lockchip.locked{background:var(--blocked-bg);color:var(--blocked);border-color:#F0C7C3}
+.lockchip.locked:hover{border-color:var(--blocked)}
+.lockchip.ready{background:var(--done-bg);color:var(--done);border-color:#BFE0CD}
+.lockchip.ready:hover{border-color:var(--done)}
+.row.locked > .body > .title, .ct-row.locked > .body > .title{opacity:.6}
+.row.locked, .ct-row.locked{background:repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(176,58,52,.035) 8px,rgba(176,58,52,.035) 16px)}
+#f-deps{min-height:120px;font-family:var(--sans);font-size:13px}
+#f-deps optgroup{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.field .hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
 .node .row:hover .acts, .module-head:hover .acts, .kr:hover .acts, .obj-head:hover .acts, .ct-row:hover .acts, .ct-row:focus-within .acts, .vision:hover .acts, .vision:focus-within .acts, .sub-head:hover .acts, .sub-head:focus-within .acts{opacity:1}
 @media(hover:none){.acts{opacity:.6}}
 .act{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted)}
@@ -546,6 +556,11 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     </div>
     <div class="field" id="f-budget-wrap"><label for="f-budget">Budget (optional)</label><input id="f-budget" placeholder="e.g. ₹2,00,000"></div>
     <div class="field" id="f-okr-wrap"><label for="f-okr">Link to OKR objective (optional)</label><select id="f-okr"></select></div>
+    <div class="field" id="f-deps-wrap">
+      <label for="f-deps">Blocked by (optional) — this task stays locked until these are done</label>
+      <select id="f-deps" multiple size="6"></select>
+      <div class="hint">Ctrl / ⌘ + click to pick several. Click again to unpick.</div>
+    </div>
     <div class="field" id="f-area-wrap"><label for="f-area">Product area</label><select id="f-area"></select></div>
     <div class="field" id="f-photos-wrap">
       <label for="f-photos">Photos (optional)</label>
@@ -596,11 +611,13 @@ let query = "";
 const collapsed = new Set();
 
 /* ---------- helpers ---------- */
+let _tidSeq = 0;
+function newTid(){ return "t" + Date.now().toString(36) + (_tidSeq++).toString(36); }
 function normalize(d){
   d = d || {};
   d.title = d.title || "Product Roadmap";
   d.modules = d.modules || [];
-  const walk = n => { n.items = n.items || []; n.items.forEach(walk); };
+  const walk = n => { if(!n.tid) n.tid = newTid(); n.items = n.items || []; n.items.forEach(walk); };
   const walkSub = s => {
     s.items = s.items || [];
     s.items.forEach(walk);
@@ -693,6 +710,7 @@ function normalizeContent(c){
   c = c || {};
   c.sections = c.sections || [];
   const walk = t => {
+    if(!t.tid) t.tid = newTid();
     t.status = t.status || "planned";
     t.items = t.items || [];      // subtasks, nestable to any depth
     t.items.forEach(walk);
@@ -931,6 +949,39 @@ function openDialog(title, values, onSave, opts={}){
   $("f-dates-wrap").style.display = opts.dates ? "flex" : "none";
   $("f-budget-wrap").style.display = opts.budget ? "" : "none";
   $("f-okr-wrap").style.display = opts.okrLink ? "" : "none";
+  $("f-deps-wrap").style.display = opts.deps ? "" : "none";
+  if(opts.deps){
+    const sel = $("f-deps");
+    sel.innerHTML = "";
+    const groups = {};
+    allTasks().forEach(x=>{
+      if(values.tid && x.tid===values.tid) return;                       // can't block itself
+      if(values.tid && x.path.includes(values.title)) { /* keep: descendants filtered below */ }
+      (groups[x.path] = groups[x.path] || []).push(x);
+    });
+    const selfDesc = new Set();
+    if(values.tid){
+      const collect = t => { selfDesc.add(t.tid); (t.items||[]).forEach(collect); };
+      const me = taskByTid(values.tid);
+      if(me) collect(me.task);
+    }
+    Object.keys(groups).forEach(path=>{
+      const g = document.createElement("optgroup");
+      g.label = path;
+      groups[path].forEach(x=>{
+        if(selfDesc.has(x.tid)) return;                                  // no self / descendant loops
+        const o = document.createElement("option");
+        o.value = x.tid;
+        const done = effStatus(x.task)==="done";
+        const board = (x.kind==="dev" || x.kind==="bug") ? "  \u2014 " + blockerLabel(x) : "";
+        o.textContent = (done ? "\u2713 " : "") + (x.task.title || "(untitled)") + board;
+        g.appendChild(o);
+      });
+      if(g.children.length) sel.appendChild(g);
+    });
+    const chosen = new Set(values.blockedBy || []);
+    [...sel.options].forEach(o=>{ o.selected = chosen.has(o.value); });
+  }
   $("f-area-wrap").style.display = opts.area ? "" : "none";
   $("f-photos-wrap").style.display = opts.photos ? "" : "none";
   dlgPhotos = (opts.photos && Array.isArray(values.photos)) ? values.photos.slice() : [];
@@ -1012,6 +1063,7 @@ $("dlg-save").onclick = ()=>{
     budget: $("f-budget").value.trim(),
     okr: $("f-okr").value,
     area: $("f-area").value,
+    blockedBy: [...$("f-deps").selectedOptions].map(o=>o.value),
     photos: dlgPhotos.slice(),
   });
 };
@@ -1368,16 +1420,112 @@ function applyFields(node, v){
 }
 function addTaskTo(container, label){
   openDialog(label, {}, v=>{
-    const n = {title:v.title, status:"planned"};
+    const n = {title:v.title, status:"planned", tid:newTid()};
     if(v.owner) n.owner = v.owner;
     if(v.note) n.note = v.note;
     if(v.okr) n.okr = v.okr;
+    if(v.blockedBy && v.blockedBy.length) n.blockedBy = v.blockedBy;
     if(v.photos && v.photos.length) n.photos = v.photos;
     container.items = container.items || [];
     container.items.push(n);
     if(container.status) delete container.status;
     saveRoadmap(); toast("Added");
-  }, {okrLink:true, photos:true});
+  }, {okrLink:true, photos:true, deps:true});
+}
+
+/* ================================================================
+   TASK DEPENDENCIES  ("this task is locked until X is done")
+   A task can be blocked by any number of other tasks — anywhere in the
+   app: another module, a submodule, a subtask, or an exam task.
+   ================================================================ */
+function allTasks(){
+  // flat registry of every blockable item in the app, with a human-readable path
+  const out = [];
+  const walkNode = (n, path) => {
+    out.push({tid:n.tid, task:n, path, kind:"roadmap"});
+    (n.items||[]).forEach(c=> walkNode(c, path+" / "+n.title));
+  };
+  const walkMod = (m, path) => {
+    (m.items||[]).forEach(t=> walkNode(t, path));
+    (m.subs||[]).forEach(sub=> walkMod(sub, path+" / "+sub.name));
+  };
+  DATA.modules.forEach(m=> walkMod(m, m.name));
+  CONTENT.sections.forEach(s=>{
+    const walkCt = (t, path) => {
+      out.push({tid:t.tid, task:t, path, kind:"content"});
+      (t.items||[]).forEach(c=> walkCt(c, path+" / "+t.title));
+    };
+    (s.tasks||[]).forEach(t=> walkCt(t, "Content · "+s.name));
+  });
+  // Development board cards — a task can wait on something being built/shipped
+  (DEV.cards||[]).forEach(c=>{
+    const sp = (DEV.sprints||[]).find(x=>x.id===c.sprint);
+    out.push({tid:c.id, task:c, path:"Development · "+(sp ? sp.name : "Backlog"), kind:"dev"});
+  });
+  // Bug tickets — a task can wait on a bug being fixed
+  (BUGS.tickets||[]).forEach(t=>{
+    out.push({tid:t.id, task:t, path:"Bugs · "+(t.source==="student" ? "Student-reported" : "Team"), kind:"bug"});
+  });
+  return out.filter(x=>x.tid);
+}
+function taskByTid(tid){
+  return allTasks().find(x=>x.tid===tid) || null;
+}
+function effStatus(t){
+  // Kanban items (dev cards, bug tickets) carry a column instead of a status
+  if(t.col !== undefined) return t.col === "done" ? "done" : t.col === "todo" ? "planned" : "progress";
+  // a parent task's real status is derived from its leaves
+  if(t.items && t.items.length){
+    const lv = leavesOf(t);
+    return lv.every(l=>l.status==="done") ? "done" : "progress";
+  }
+  return t.status;
+}
+// Human label for any blockable item, whatever board it lives on.
+function blockerLabel(entry){
+  const t = entry.task;
+  if(entry.kind==="dev" || entry.kind==="bug"){
+    const col = KCOLS.find(k=>k.key===t.col);
+    return (col ? col.label : t.col);
+  }
+  return STATUS_LABEL[effStatus(t)] || effStatus(t);
+}
+// Returns the blockers that are NOT yet done. Empty array = task is unlocked.
+function openBlockers(task){
+  if(!task.blockedBy || !task.blockedBy.length) return [];
+  return task.blockedBy
+    .map(tid => taskByTid(tid))
+    .filter(b => b && effStatus(b.task) !== "done");
+}
+function isLocked(task){ return openBlockers(task).length > 0; }
+
+// The 🔒 / ✅ chip shown on a task that has dependencies.
+function lockChip(task){
+  if(!task.blockedBy || !task.blockedBy.length) return null;
+  const open = openBlockers(task);
+  const chip = document.createElement("button");
+  const total = task.blockedBy.length;
+  if(open.length){
+    chip.className = "lockchip locked";
+    chip.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
+      + '<span>Locked \u00b7 waiting on ' + open.length + (total>open.length ? " of "+total : "") + '</span>';
+    chip.title = "Waiting on:\n" + open.map(b=>"\u2022 "+(b.task.title||"(untitled)")+"  \u2014 "+blockerLabel(b)+"  ["+b.path+"]").join("\n");
+  } else {
+    chip.className = "lockchip ready";
+    chip.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg><span>Unblocked</span>';
+    chip.title = "All "+total+" blocker(s) are done \u2014 this task is ready to start.";
+  }
+  chip.onclick = e => {
+    e.stopPropagation();
+    const names = task.blockedBy.map(tid=>{
+      const b = taskByTid(tid);
+      if(!b) return "\u2022 (a deleted item)";
+      const st = effStatus(b.task)==="done" ? "\u2713 " + blockerLabel(b) : blockerLabel(b);
+      return "\u2022 " + (b.task.title||"(untitled)") + "  [" + st + "]\n    in " + b.path;
+    }).join("\n");
+    alert("\u201C"+task.title+"\u201D is blocked by:\n\n"+names+(open.length?"":"\n\nAll clear \u2014 you can start this now."));
+  };
+  return chip;
 }
 
 function nodeEl(node, parentArr, idx, numPath, modKey){
@@ -1414,6 +1562,10 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
 
   const meta = document.createElement("div");
   meta.className = "meta";
+  const lockedNow = isLocked(node);
+  if(lockedNow) row.classList.add("locked");
+  const lc = lockChip(node);
+  if(lc) meta.appendChild(lc);
   if(node.okr){
     const ch = okrChip(node.okr);
     if(ch) meta.appendChild(ch);
@@ -1433,9 +1585,16 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     const pill = document.createElement("button");
     pill.className = "pill "+node.status;
     pill.textContent = STATUS_LABEL[node.status];
-    pill.title = "Click to change status";
+    pill.title = lockedNow ? "This task is locked \u2014 finish its blockers first" : "Click to change status";
     pill.onclick = ()=>{
-      node.status = STATUS_ORDER[(STATUS_ORDER.indexOf(node.status)+1)%STATUS_ORDER.length];
+      const next = STATUS_ORDER[(STATUS_ORDER.indexOf(node.status)+1)%STATUS_ORDER.length];
+      if(isLocked(node) && (next==="progress" || next==="done")){
+        const open = openBlockers(node);
+        if(!confirm("\u201C"+node.title+"\u201D is still waiting on:\n\n"
+          + open.map(b=>"\u2022 "+b.task.title).join("\n")
+          + "\n\nMark it \u201C"+STATUS_LABEL[next]+"\u201D anyway?")) return;
+      }
+      node.status = next;
       saveRoadmap();
     };
     meta.appendChild(pill);
@@ -1453,9 +1612,10 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
       openDialog("Edit task", node, v=>{
         applyFields(node, v);
         if(v.okr) node.okr = v.okr; else delete node.okr;
+        if(v.blockedBy && v.blockedBy.length) node.blockedBy = v.blockedBy; else delete node.blockedBy;
         if(v.photos && v.photos.length) node.photos = v.photos; else delete node.photos;
         saveRoadmap();
-      }, {okrLink:true, photos:true})));
+      }, {okrLink:true, photos:true, deps:true})));
     acts.appendChild(actBtn("trash","Delete",true, ()=>{
       const lv = isParent ? leavesOf(node).length : 0;
       const msg = isParent ? `Delete “${node.title}” and its ${lv} sub-task(s)?` : `Delete “${node.title}”?`;
@@ -2133,6 +2293,10 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
 
   const meta = document.createElement("div");
   meta.className = "meta";
+  const lockedNow = isLocked(task);
+  if(lockedNow) row.classList.add("locked");
+  const lc = lockChip(task);
+  if(lc) meta.appendChild(lc);
   if(task.okr){
     const ch = okrChip(task.okr);
     if(ch) meta.appendChild(ch);
@@ -2152,9 +2316,16 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
     const pill = document.createElement("button");
     pill.className = "pill "+task.status;
     pill.textContent = STATUS_LABEL[task.status];
-    pill.title = "Click to change status";
+    pill.title = lockedNow ? "This task is locked \u2014 finish its blockers first" : "Click to change status";
     pill.onclick = ()=>{
-      task.status = STATUS_ORDER[(STATUS_ORDER.indexOf(task.status)+1)%STATUS_ORDER.length];
+      const next = STATUS_ORDER[(STATUS_ORDER.indexOf(task.status)+1)%STATUS_ORDER.length];
+      if(isLocked(task) && (next==="progress" || next==="done")){
+        const open = openBlockers(task);
+        if(!confirm("\u201C"+task.title+"\u201D is still waiting on:\n\n"
+          + open.map(b=>"\u2022 "+b.task.title).join("\n")
+          + "\n\nMark it \u201C"+STATUS_LABEL[next]+"\u201D anyway?")) return;
+      }
+      task.status = next;
       saveContent();
     };
     meta.appendChild(pill);
@@ -2169,23 +2340,25 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
         if(v.start) task.start = v.start; else delete task.start;
         if(v.deadline) task.deadline = v.deadline; else delete task.deadline;
         if(v.okr) task.okr = v.okr; else delete task.okr;
+        if(v.blockedBy && v.blockedBy.length) task.blockedBy = v.blockedBy; else delete task.blockedBy;
         if(v.photos && v.photos.length) task.photos = v.photos; else delete task.photos;
         saveContent();
-      }, {dates:true, okrLink:true, photos:true})));
+      }, {dates:true, okrLink:true, photos:true, deps:true})));
     acts.appendChild(actBtn("plus","Add subtask under this",false, ()=>
       openDialog("New subtask under \u201C"+task.title+"\u201D", {}, v=>{
-        const st = {title:v.title, status:"planned", items:[]};
+        const st = {title:v.title, status:"planned", items:[], tid:newTid()};
         if(v.owner) st.owner = v.owner;
         if(v.note) st.note = v.note;
         if(v.start) st.start = v.start;
         if(v.deadline) st.deadline = v.deadline;
         if(v.okr) st.okr = v.okr;
+        if(v.blockedBy && v.blockedBy.length) st.blockedBy = v.blockedBy;
         if(v.photos && v.photos.length) st.photos = v.photos;
         task.items = task.items || [];
         task.items.push(st);
         collapsed.delete(colKey);           // reveal the new subtask
         saveContent(); toast("Subtask added");
-      }, {dates:true, okrLink:true, photos:true})));
+      }, {dates:true, okrLink:true, photos:true, deps:true})));
     acts.appendChild(actBtn("trash","Delete task",true, ()=>{
       const n = lv.length;
       const extra = hasKids ? ` and its ${n} subtask(s)` : "";
@@ -2210,16 +2383,17 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
     add.textContent = "\uFF0B Add subtask under "+task.title;
     add.onclick = ()=> {
       openDialog("New subtask under \u201C"+task.title+"\u201D", {}, v=>{
-        const st = {title:v.title, status:"planned", items:[]};
+        const st = {title:v.title, status:"planned", items:[], tid:newTid()};
         if(v.owner) st.owner = v.owner;
         if(v.note) st.note = v.note;
         if(v.start) st.start = v.start;
         if(v.deadline) st.deadline = v.deadline;
         if(v.okr) st.okr = v.okr;
+        if(v.blockedBy && v.blockedBy.length) st.blockedBy = v.blockedBy;
         if(v.photos && v.photos.length) st.photos = v.photos;
         task.items.push(st);
         saveContent(); toast("Subtask added");
-      }, {dates:true, okrLink:true, photos:true});
+      }, {dates:true, okrLink:true, photos:true, deps:true});
     };
     node.appendChild(add);
   }
@@ -2278,15 +2452,16 @@ function renderContentContent(){
       add.className = "addline";
       add.textContent = "＋ Add task to "+s.name;
       add.onclick = ()=> openDialog("New task in “"+s.name+"”", {}, v=>{
-        const t = {title:v.title, status:"planned", items:[]};
+        const t = {title:v.title, status:"planned", items:[], tid:newTid()};
         if(v.owner) t.owner = v.owner;
         if(v.note) t.note = v.note;
         if(v.start) t.start = v.start;
         if(v.deadline) t.deadline = v.deadline;
         if(v.okr) t.okr = v.okr;
+        if(v.blockedBy && v.blockedBy.length) t.blockedBy = v.blockedBy;
         if(v.photos && v.photos.length) t.photos = v.photos;
         s.tasks.push(t); saveContent(); toast("Task added");
-      }, {dates:true, okrLink:true, photos:true});
+      }, {dates:true, okrLink:true, photos:true, deps:true});
       block.appendChild(add);
     }
     wrap.appendChild(block);
