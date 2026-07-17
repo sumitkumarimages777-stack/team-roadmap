@@ -471,6 +471,19 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .choice-list{display:flex;flex-direction:column;gap:8px;margin:4px 0}
 .choice-btn{text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);font-family:var(--sans);font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color .12s,background .12s}
 .choice-btn:hover{border-color:var(--indigo);background:var(--indigo-soft);color:var(--indigo)}
+#imp-text{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--mono);font-size:12px;line-height:1.6;resize:vertical;color:var(--ink);background:var(--card)}
+#imp-text:focus{outline:none;border-color:var(--indigo)}
+.imp-format{margin:6px 0 10px;font-size:12px}
+.imp-format summary{cursor:pointer;color:var(--indigo);font-family:var(--mono);font-size:11px;user-select:none}
+.imp-fhead{font-family:var(--mono);font-size:10px;color:var(--muted);margin:8px 0 3px}
+.imp-fmt{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-x:auto;color:var(--ink);margin:0}
+.imp-preview{margin-top:6px}
+.imp-count{font-family:var(--mono);font-size:11px;color:var(--done);margin-bottom:6px}
+.imp-err{font-family:var(--mono);font-size:11px;color:var(--blocked)}
+.imp-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin-bottom:5px;background:var(--card)}
+.imp-t{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-o{font-family:var(--mono);font-size:10px;background:var(--indigo-soft);color:var(--indigo);border-radius:99px;padding:2px 8px;flex:none}
+.imp-more{font-family:var(--mono);font-size:11px;color:var(--muted);padding:4px 8px}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -726,6 +739,41 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <footer id="foot">
   Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
 </footer>
+
+<div class="overlay" id="import-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3>Import user stories</h3>
+    <div class="dlg-body">
+      <div class="field">
+        <label>Paste stories from your AI (JSON or one per line)</label>
+        <div class="hint">Ask your AI to output the format below, then paste it here. Each becomes a To-Do card.</div>
+        <details class="imp-format">
+          <summary>Show the format / AI prompt</summary>
+          <p class="imp-fhead">Simplest \u2014 one story per line:</p>
+          <pre class="imp-fmt">As a student, I want my live rank so I know where I stand
+As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team</pre>
+          <p class="imp-fhead">Or JSON (more detail):</p>
+          <pre class="imp-fmt">[
+  {"title": "As a student, I want my live rank", "note": "Show percentile vs all attempts", "owner": "App team"},
+  {"title": "As a teacher, I want bulk upload", "note": "CSV + XLSX", "owner": "Panel team"}
+]</pre>
+          <p class="imp-fhead">Prompt you can give any AI:</p>
+          <pre class="imp-fmt">Break this feature into user stories. Output ONLY a JSON array where each item has "title" (As a\u2026 I want\u2026 so that\u2026), "note" (acceptance criteria), and "owner" (which team). No prose.</pre>
+        </details>
+        <textarea id="imp-text" rows="7" placeholder="Paste here\u2026"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="imp-space">Team / dev space</label><select id="imp-space"></select></div>
+        <div class="field"><label for="imp-sprint">Add into</label><select id="imp-sprint"></select></div>
+      </div>
+      <div id="imp-preview" class="imp-preview"></div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('import-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="imp-do" disabled>Import</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="choice-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:360px">
@@ -4763,8 +4811,117 @@ function renderContentDev(){
       DEV.cards.push(c); saveDev(); toast("Added to backlog");
     }, {photos:true});
     block.appendChild(add);
+
+    const imp = document.createElement("button");
+    imp.className = "addline";
+    imp.textContent = "\uD83E\uDD16 Import user stories (paste from AI)";
+    imp.onclick = ()=> openStoryImport(currentSpace());
+    block.appendChild(imp);
   }
   wrap.appendChild(block);
+}
+
+/* ---------- import user stories (paste JSON or plain lines) ---------- */
+function parseStories(text){
+  const raw = (text||"").trim();
+  if(!raw) return {stories:[], error:"Nothing pasted."};
+  try{
+    let j = JSON.parse(raw);
+    if(j && Array.isArray(j.stories)) j = j.stories;
+    if(Array.isArray(j)){
+      const stories = j.map(x=>{
+        if(typeof x === "string") return {title:x};
+        return {
+          title: (x.title || x.story || x.name || "").toString().trim(),
+          note:  (x.note || x.description || x.acceptance || x.details || "").toString().trim(),
+          owner: (x.owner || x.assignee || x.team || "").toString().trim(),
+        };
+      }).filter(s=>s.title);
+      return {stories, error: stories.length ? null : "JSON had no titles."};
+    }
+  }catch(_){ /* not JSON, fall through to plain text */ }
+  const stories = raw.split(/\r?\n/).map(l=>l.trim())
+    .filter(l=> l && !/^[-#>*\s]*$/.test(l))
+    .map(l=>{
+      l = l.replace(/^\s*[-*\u2022\d.]+\s*/, "");
+      const parts = l.split("|").map(p=>p.trim());
+      return {title:parts[0]||"", note:parts[1]||"", owner:parts[2]||""};
+    }).filter(s=>s.title);
+  return {stories, error: stories.length ? null : "Couldn't find any stories."};
+}
+
+function openStoryImport(spaceId){
+  const ov = $("import-overlay");
+  const spaces = DEV.spaces || [];
+  const targetSpace = $("imp-space");
+  targetSpace.innerHTML = "";
+  spaces.forEach(s=>{
+    const o = document.createElement("option");
+    o.value = s.id; o.textContent = s.name;
+    targetSpace.appendChild(o);
+  });
+  targetSpace.value = spaceId || currentSpace();
+
+  const fillSprints = ()=>{
+    const sp = $("imp-sprint");
+    sp.innerHTML = "";
+    const back = document.createElement("option");
+    back.value = ""; back.textContent = "Backlog (no sprint)";
+    sp.appendChild(back);
+    DEV.sprints.filter(x=>x.space===targetSpace.value && !x.completed).forEach(x=>{
+      const o = document.createElement("option");
+      o.value = x.id; o.textContent = x.name;
+      sp.appendChild(o);
+    });
+  };
+  fillSprints();
+  targetSpace.onchange = fillSprints;
+
+  $("imp-text").value = "";
+  $("imp-preview").innerHTML = "";
+  $("imp-do").disabled = true;
+  let parsed = [];
+
+  $("imp-text").oninput = ()=>{
+    const {stories, error} = parseStories($("imp-text").value);
+    parsed = stories;
+    const pv = $("imp-preview");
+    if(error){ pv.innerHTML = '<div class="imp-err">'+error+'</div>'; $("imp-do").disabled = true; return; }
+    $("imp-do").disabled = false;
+    pv.innerHTML = '<div class="imp-count">'+stories.length+' stor'+(stories.length===1?'y':'ies')+' ready to import</div>';
+    stories.slice(0,40).forEach(s=>{
+      const r = document.createElement("div");
+      r.className = "imp-row";
+      const t = document.createElement("span"); t.className="imp-t"; t.textContent = s.title;
+      r.appendChild(t);
+      if(s.owner){ const o = document.createElement("span"); o.className="imp-o"; o.textContent = s.owner; r.appendChild(o); }
+      pv.appendChild(r);
+    });
+    if(stories.length>40){
+      const m = document.createElement("div"); m.className="imp-more"; m.textContent = "\u2026and "+(stories.length-40)+" more";
+      pv.appendChild(m);
+    }
+  };
+
+  $("imp-do").onclick = ()=>{
+    if(!parsed.length) return;
+    const spId = targetSpace.value;
+    const sprintId = $("imp-sprint").value || null;
+    parsed.forEach(s=>{
+      const c = { id:"dv-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+        title:s.title, col:"todo", sprint:sprintId, space:spId, from:"import" };
+      if(s.note) c.note = s.note;
+      if(s.owner) c.owner = s.owner;
+      DEV.cards.push(c);
+    });
+    ov.classList.remove("show");
+    saveDev();
+    const where = sprintId ? (DEV.sprints.find(x=>x.id===sprintId)||{}).name : "the backlog";
+    toast("Imported "+parsed.length+" stor"+(parsed.length===1?"y":"ies")+" into "+where);
+  };
+
+  ov.classList.add("show");
+  setTimeout(()=> $("imp-text").focus(), 50);
 }
 
 function bugSrcChip(t){
