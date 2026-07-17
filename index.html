@@ -723,6 +723,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="expand-all">Expand all</button>
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
+        <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
         <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
@@ -1697,7 +1698,7 @@ function parentOfPath(path){
   const parts = path.split("::");
   return parts.length>1 ? parts.slice(0,-1).join("::") : "all";
 }
-function navTo(path){ activeModule = path; renderAll(); }
+function navTo(path){ activeModule = path; researchOpen = false; activeAnalysis = null; renderAll(); }
 
 function navRow(node, path, depth, parentArr){
   const lv = moduleLeaves(node);
@@ -2228,6 +2229,7 @@ const PROBLEM_Q = [
   {k:"risk",     label:"8. What would make us wrong?",            hint:"Name the assumption that, if false, kills this. Then go check it."},
 ];
 let activeAnalysis = null;   // {path, id} while an analysis table is open
+let researchOpen = false;    // when true, a node shows its Product Research panel instead of tasks
 
 function normalizeAnalyses(node){
   node.analyses = node.analyses || [];
@@ -3469,11 +3471,41 @@ function nodePane(node, path, chain){
     block.appendChild(sec);
   }
 
-  const anSec = analysisSection(node, path);
-  if(anSec) block.appendChild(anSec);
+  const anSec2 = null;   // research now lives in its own panel (📊 Product Research)
 
   if(editMode || any || kids.length || (node.analyses||[]).length){ wrap.appendChild(block); return true; }
   return false;
+}
+
+// Product Research: the six discovery steps, shown only when the user opens the panel.
+function researchPane(node, path, chain){
+  const wrap = $("content");
+  const block = document.createElement("section");
+  block.className = "module-block";
+
+  // breadcrumb back to the node's tasks
+  const bc = document.createElement("div");
+  bc.className = "crumbs";
+  const back = document.createElement("button");
+  back.className = "crumb";
+  back.textContent = "\u2190 Back to " + node.name;
+  back.onclick = ()=>{ researchOpen = false; renderAll(); };
+  bc.appendChild(back);
+  block.appendChild(bc);
+
+  const head = document.createElement("div");
+  head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = node.name;
+  const tag = document.createElement("span"); tag.className = "sub-tag"; tag.textContent = "PRODUCT RESEARCH";
+  const hint = document.createElement("span"); hint.className = "pct";
+  hint.textContent = "Lean Product Playbook \u00b7 work top-down";
+  head.append(h2, tag, hint);
+  block.appendChild(head);
+  wrap.appendChild(block);
+
+  const anSec = analysisSection(node, path);
+  if(anSec) wrap.appendChild(anSec);
+  return true;
 }
 
 // "All modules": overview cards, one per top-level module — no giant vertical stack.
@@ -3551,7 +3583,7 @@ function renderContentRoadmap(){
     shown = overviewPane();
   } else {
     const found = findByPath(activeModule);
-    if(!found){ activeModule = "all"; activeAnalysis = null; shown = overviewPane(); }
+    if(!found){ activeModule = "all"; activeAnalysis = null; researchOpen = false; shown = overviewPane(); }
     else if(activeAnalysis && activeAnalysis.path === activeModule){
       const a = normalizeAnalyses(found.node).find(x=>x.id===activeAnalysis.id);
       const PANES = {problem:problemPane, persona:personaPane, needs:needsPane, valueprop:valuePropPane, mvp:mvpPane};
@@ -3559,6 +3591,7 @@ function renderContentRoadmap(){
       if(a) shown = pane(found.node, activeModule, a) ? 1 : 0;
       else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
     }
+    else if(researchOpen){ shown = researchPane(found.node, activeModule, found.chain) ? 1 : 0; }
     else { activeAnalysis = null; shown = nodePane(found.node, activeModule, found.chain) ? 1 : 0; }
   }
   if(!shown){
@@ -5035,6 +5068,8 @@ function renderAll(){
   ];
   if(view!=="okr" && view!=="ideas") lastWs = view;
   $("nav-team-ideas").classList.toggle("primary", view==="ideas");
+  $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
+  $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
   renderCompanyVision();
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
@@ -5110,6 +5145,13 @@ let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
+$("nav-research").onclick = ()=>{
+  if(view!=="roadmap"){ view = "roadmap"; }
+  if(activeModule==="all"){ toast("Open a module or submodule first, then Product Research"); renderAll(); return; }
+  researchOpen = !researchOpen;
+  activeAnalysis = null;
+  renderAll();
+};
 document.querySelectorAll(".chip").forEach(ch=>{
   ch.onclick = ()=>{
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
