@@ -484,6 +484,36 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .imp-t{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .imp-o{font-family:var(--mono);font-size:10px;background:var(--indigo-soft);color:var(--indigo);border-radius:99px;padding:2px 8px;flex:none}
 .imp-more{font-family:var(--mono);font-size:11px;color:var(--muted);padding:4px 8px}
+.bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin:6px 0 10px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius)}
+.bulk-all{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--ink);cursor:pointer}
+.bulk-all input{width:15px;height:15px;accent-color:var(--indigo);cursor:pointer;margin:0}
+.bulk-bar .bulk-btn{font-family:var(--mono);font-size:12px;padding:5px 11px;border:1px solid var(--line);border-radius:99px;background:var(--card);color:var(--ink);cursor:pointer}
+.bulk-bar .bulk-btn:hover{border-color:var(--indigo);color:var(--indigo)}
+.bulk-bar .bulk-btn.danger:hover{border-color:var(--blocked);color:var(--blocked)}
+.bulk-clear{margin-left:auto;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.bulk-cb{width:15px;height:15px;accent-color:var(--indigo);cursor:pointer;flex:none;margin:10px 0 0}
+.ct-row.sel{background:var(--indigo-soft);border-radius:8px}
+.cmt-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;white-space:nowrap}
+.cmt-chip svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
+.cmt-chip:hover{border-color:var(--indigo);color:var(--indigo)}
+.cmt-chip.has{background:var(--indigo-soft);color:var(--indigo);border-color:transparent}
+.cmt-chip span:empty{display:none}
+.cmt-btn.has{color:var(--indigo)}
+.cmt-btn .cmt-n{font-family:var(--mono);font-size:9px;margin-left:1px}
+.cmt-list{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.cmt-empty{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:20px 0}
+.cmt-item{border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;background:var(--paper)}
+.cmt-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.cmt-who-name{font-family:var(--disp);font-weight:600;font-size:13px}
+.cmt-when{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.cmt-del{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px}
+.cmt-del:hover{color:var(--blocked)}
+.cmt-body{font-size:14px;line-height:1.55;white-space:pre-wrap}
+.cmt-form{display:flex;flex-direction:column;gap:8px}
+.cmt-who-in{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--sans);font-size:13px;background:var(--card);color:var(--ink)}
+.cmt-who-in:focus{outline:none;border-color:var(--indigo)}
+#cmt-text{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--sans);font-size:14px;line-height:1.5;resize:vertical;background:var(--card);color:var(--ink)}
+#cmt-text:focus{outline:none;border-color:var(--indigo)}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -740,6 +770,23 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <footer id="foot">
   Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
 </footer>
+
+<div class="overlay" id="comment-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">
+    <h3>Comments \u00b7 <span id="cmt-heading" style="font-weight:400;color:var(--muted)"></span></h3>
+    <div class="dlg-body">
+      <div id="cmt-list" class="cmt-list"></div>
+      <div class="cmt-form">
+        <input id="cmt-who" class="cmt-who-in" placeholder="Your name" autocomplete="off">
+        <textarea id="cmt-text" rows="2" placeholder="Write a comment\u2026"></textarea>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('comment-overlay').classList.remove('show')">Close</button>
+      <button class="btn save" id="cmt-post">Post</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="import-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
@@ -1029,6 +1076,7 @@ function normalizeDev(d){
 }
 let devSpace = null;   // active team/board; null => first space
 let devSprint = null;  // sprint currently shown on the board
+const backlogSel = new Set();   // ids of backlog cards selected for bulk actions (session only)
 function currentSpace(){
   if(devSpace && DEV.spaces.some(s=>s.id===devSpace)) return devSpace;
   return DEV.spaces.length ? DEV.spaces[0].id : null;
@@ -1526,6 +1574,7 @@ const ICONS = {
   trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   up:'<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
   down:'<svg viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+  comment:'<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
 };
 /* Move an item up/down within its own list. Returns the two buttons, each
    disabled (dimmed, unclickable) at the ends so nothing can fall off the list. */
@@ -1547,6 +1596,114 @@ function moveBtns(arr, idx, save, what){
     mk( 1, "down", "Move "+what+" down"),
   ];
 }
+/* ================================================================
+   COMMENTS — a discussion thread attachable to any card / task / bug.
+   Stored as obj.comments = [{id, who, text, at}]. Anyone can comment
+   (no passcode); comments sync via whichever save() the card uses.
+   ================================================================ */
+let commentTarget = null;   // { obj, save } currently open in the comment dialog
+
+function commentCount(obj){ return (obj && obj.comments && obj.comments.length) || 0; }
+
+// A small 💬 button with a count badge. `save` is the card's own persister.
+// Always-visible comment pill (unlike commentBtn which lives in hover acts).
+function commentChip(obj, save){
+  const n = commentCount(obj);
+  const c = document.createElement("button");
+  c.className = "cmt-chip" + (n ? " has" : "");
+  c.innerHTML = ICONS.comment + '<span>' + (n || "") + '</span>';
+  c.title = n ? n+" comment(s) \u2014 click to open" : "Add a comment";
+  c.onclick = e => { e.stopPropagation(); openComments(obj, save); };
+  return c;
+}
+
+function commentBtn(obj, save){
+  const n = commentCount(obj);
+  const b = document.createElement("button");
+  b.className = "act cmt-btn" + (n ? " has" : "");
+  b.title = n ? n+" comment(s)" : "Comments";
+  b.setAttribute("aria-label", "Comments");
+  b.innerHTML = ICONS.comment + (n ? '<span class="cmt-n">'+n+'</span>' : "");
+  b.onclick = e => { e.stopPropagation(); openComments(obj, save); };
+  return b;
+}
+
+function openComments(obj, save){
+  obj.comments = obj.comments || [];
+  commentTarget = { obj, save };
+  $("cmt-heading").textContent = obj.title || obj.name || "Comments";
+  renderComments();
+  const who = localStorage_getName();
+  $("cmt-who").value = who || "";
+  $("comment-overlay").classList.add("show");
+  setTimeout(()=> $(who ? "cmt-text" : "cmt-who").focus(), 50);
+}
+
+// remember the commenter's name locally so they don't retype it
+function localStorage_getName(){ try{ return sessionStorage.getItem("cmt-name")||""; }catch(_){ return ""; } }
+function localStorage_setName(v){ try{ sessionStorage.setItem("cmt-name", v); }catch(_){} }
+
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s < 60) return "just now";
+  const m = Math.floor(s/60); if(m < 60) return m+"m ago";
+  const h = Math.floor(m/60); if(h < 24) return h+"h ago";
+  const d = Math.floor(h/24); if(d < 7) return d+"d ago";
+  return new Date(ts).toLocaleDateString();
+}
+
+function renderComments(){
+  const list = $("cmt-list");
+  list.innerHTML = "";
+  const { obj } = commentTarget;
+  const cs = obj.comments || [];
+  if(!cs.length){
+    const e = document.createElement("div");
+    e.className = "cmt-empty";
+    e.textContent = "No comments yet. Start the discussion.";
+    list.appendChild(e);
+    return;
+  }
+  cs.forEach(c=>{
+    const row = document.createElement("div");
+    row.className = "cmt-item";
+    const head = document.createElement("div");
+    head.className = "cmt-head";
+    const who = document.createElement("span"); who.className="cmt-who-name"; who.textContent = c.who || "Someone";
+    const when = document.createElement("span"); when.className="cmt-when"; when.textContent = timeAgo(c.at);
+    head.append(who, when);
+    const del = document.createElement("button");
+    del.className = "cmt-del"; del.textContent = "\u00d7"; del.title = "Delete comment";
+    del.onclick = ()=>{
+      if(confirm("Delete this comment?")){
+        obj.comments.splice(obj.comments.indexOf(c),1);
+        commentTarget.save();
+        renderComments();
+      }
+    };
+    head.appendChild(del);
+    row.appendChild(head);
+    const body = document.createElement("div");
+    body.className = "cmt-body"; body.textContent = c.text;
+    row.appendChild(body);
+    list.appendChild(row);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+function postComment(){
+  const { obj, save } = commentTarget;
+  const who = $("cmt-who").value.trim();
+  const text = $("cmt-text").value.trim();
+  if(!text){ $("cmt-text").focus(); return; }
+  localStorage_setName(who);
+  obj.comments = obj.comments || [];
+  obj.comments.push({ id:"c"+Date.now().toString(36), who: who || "Anonymous", text, at: Date.now() });
+  $("cmt-text").value = "";
+  save();
+  renderComments();
+}
+
 function actBtn(icon, label, danger, fn){
   const b = document.createElement("button");
   b.className = "act" + (danger?" danger":"");
@@ -1974,6 +2131,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     };
     meta.appendChild(pill);
   }
+  meta.appendChild(commentChip(node, ()=>saveRoadmap()));
 
   if(editMode){
     const acts = document.createElement("div");
@@ -3969,6 +4127,7 @@ function ctTaskEl(task, parentArr, ti, numPath, secKey){
     };
     meta.appendChild(pill);
   }
+  meta.appendChild(commentChip(task, ()=>saveContent()));
   if(editMode){
     const acts = document.createElement("div");
     acts.className = "acts";
@@ -4707,7 +4866,7 @@ function renderSidebarDev(){
 function devCardOpts(sprintId){
   return {
     onMove: saveDev,
-    cardExtras: c => [originChip(c)],
+    cardExtras: c => [originChip(c), commentChip(c, ()=>saveDev())],
     onEdit: c => openDialog("Edit card", c, v=>{
       applyFields(c, v);
       if(v.photos && v.photos.length) c.photos = v.photos; else delete c.photos;
@@ -4789,9 +4948,99 @@ function renderContentDev(){
   bh.append(h2b, pctb);
   block.appendChild(bh);
 
+  // keep only still-existing ids selected
+  const backlogIds = new Set(backlog.map(c=>c.id));
+  [...backlogSel].forEach(id=>{ if(!backlogIds.has(id)) backlogSel.delete(id); });
+
+  // --- bulk action bar (edit mode, when items exist) ---
+  if(editMode && backlog.length){
+    const bar = document.createElement("div");
+    bar.className = "bulk-bar";
+
+    const all = document.createElement("label");
+    all.className = "bulk-all";
+    const allCb = document.createElement("input");
+    allCb.type = "checkbox";
+    allCb.checked = backlogSel.size === backlog.length && backlog.length>0;
+    allCb.indeterminate = backlogSel.size>0 && backlogSel.size<backlog.length;
+    allCb.onchange = ()=>{
+      if(allCb.checked) backlog.forEach(c=>backlogSel.add(c.id));
+      else backlogSel.clear();
+      renderAll();
+    };
+    all.appendChild(allCb);
+    const allT = document.createElement("span");
+    allT.textContent = backlogSel.size ? backlogSel.size+" selected" : "Select all";
+    all.appendChild(allT);
+    bar.appendChild(all);
+
+    if(backlogSel.size){
+      const chosen = ()=> backlog.filter(c=>backlogSel.has(c.id));
+
+      // move selected into a sprint (this space's open sprints)
+      const openSprints = DEV.sprints.filter(x=>x.space===spc && !x.completed);
+      if(openSprints.length){
+        const mv = document.createElement("button");
+        mv.className = "bulk-btn";
+        mv.textContent = "\u2192 Move to sprint";
+        mv.onclick = ()=>{
+          if(openSprints.length===1){
+            chosen().forEach(c=>{ c.sprint = openSprints[0].id; c.col="todo"; });
+            backlogSel.clear(); saveDev(); toast("Moved to "+openSprints[0].name);
+          } else {
+            openChoice("Move "+backlogSel.size+" item(s) into which sprint?",
+              openSprints.map(s=>({label:s.name, value:s.id})),
+              sid=>{ chosen().forEach(c=>{ c.sprint=sid; c.col="todo"; });
+                backlogSel.clear(); saveDev(); toast("Moved into "+(DEV.sprints.find(x=>x.id===sid)||{}).name); });
+          }
+        };
+        bar.appendChild(mv);
+      }
+
+      // move selected to another team/space
+      if(DEV.spaces.length>1){
+        const mvs = document.createElement("button");
+        mvs.className = "bulk-btn";
+        mvs.textContent = "\u21c4 Move to team";
+        mvs.onclick = ()=> openChoice("Move "+backlogSel.size+" item(s) to which team?",
+          DEV.spaces.filter(s=>s.id!==spc).map(s=>({label:s.name, value:s.id})),
+          sid=>{ chosen().forEach(c=>{ c.space=sid; c.sprint=null; });
+            backlogSel.clear(); saveDev(); toast("Moved to "+(DEV.spaces.find(x=>x.id===sid)||{}).name); });
+        bar.appendChild(mvs);
+      }
+
+      const del = document.createElement("button");
+      del.className = "bulk-btn danger";
+      del.textContent = "\uD83D\uDDD1 Delete selected";
+      del.onclick = ()=>{
+        const n = backlogSel.size;
+        if(confirm("Delete "+n+" selected backlog item(s)? This can't be undone.")){
+          DEV.cards = DEV.cards.filter(c=> !backlogSel.has(c.id));
+          backlogSel.clear(); saveDev(); toast(n+" item(s) deleted");
+        }
+      };
+      bar.appendChild(del);
+
+      const clear = document.createElement("button");
+      clear.className = "bulk-clear";
+      clear.textContent = "Clear";
+      clear.onclick = ()=>{ backlogSel.clear(); renderAll(); };
+      bar.appendChild(clear);
+    }
+    block.appendChild(bar);
+  }
+
   backlog.forEach(c=>{
     const row = document.createElement("div");
-    row.className = "ct-row";
+    row.className = "ct-row" + (backlogSel.has(c.id) ? " sel" : "");
+    if(editMode){
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "bulk-cb";
+      cb.checked = backlogSel.has(c.id);
+      cb.onchange = ()=>{ if(cb.checked) backlogSel.add(c.id); else backlogSel.delete(c.id); renderAll(); };
+      row.appendChild(cb);
+    }
     const body = document.createElement("div");
     body.className = "body";
     const t = document.createElement("div"); t.className = "title"; t.textContent = c.title;
@@ -4804,6 +5053,7 @@ function renderContentDev(){
     const oc = originChip(c);
     if(oc) meta.appendChild(oc);
     if(c.owner){ const o = document.createElement("span"); o.className = "owner"; o.textContent = c.owner; meta.appendChild(o); }
+    meta.appendChild(commentChip(c, ()=>saveDev()));
     if(sp && !sp.completed){
       const mv = document.createElement("button");
       mv.className = "upd";
@@ -4820,7 +5070,7 @@ function renderContentDev(){
         saveDev();
       }, {photos:true})));
       acts.appendChild(actBtn("trash","Delete",true, ()=>{
-        if(confirm("Delete this backlog item?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); }
+        if(confirm("Delete this backlog item?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); backlogSel.delete(c.id); saveDev(); toast("Deleted"); }
       }));
       meta.appendChild(acts);
     }
@@ -5029,6 +5279,7 @@ function renderContentBugs(){
         b.onclick = e => { e.stopPropagation(); view = "dev"; renderAll(); };
         chips.push(b);
       }
+      chips.push(commentChip(t, ()=>saveBugs()));
       return chips;
     },
     extraActs: t => bugIsInDev(t) ? [] : [actBtn("board","Escalate to Development backlog",false, ()=>{
@@ -5145,6 +5396,11 @@ let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
+$("cmt-post").onclick = ()=> postComment();
+$("cmt-text").addEventListener("keydown", e=>{
+  if((e.metaKey || e.ctrlKey) && e.key==="Enter") postComment();
+});
+$("comment-overlay").addEventListener("click", e=>{ if(e.target===$("comment-overlay")) $("comment-overlay").classList.remove("show"); });
 $("nav-research").onclick = ()=>{
   if(view!=="roadmap"){ view = "roadmap"; }
   if(activeModule==="all"){ toast("Open a module or submodule first, then Product Research"); renderAll(); return; }
