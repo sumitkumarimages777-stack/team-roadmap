@@ -468,6 +468,9 @@ aside{position:sticky;top:16px;align-self:start}
 .mvp-toggle.yes,.mvp-pill.yes{background:var(--indigo);color:#fff}
 .mvp-toggle.no,.mvp-pill.no{background:var(--planned-bg);color:var(--planned)}
 tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
+.choice-list{display:flex;flex-direction:column;gap:8px;margin:4px 0}
+.choice-btn{text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);font-family:var(--sans);font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color .12s,background .12s}
+.choice-btn:hover{border-color:var(--indigo);background:var(--indigo-soft);color:var(--indigo)}
 .submodule .submodule{border-top:none;border-left:2px solid var(--line);padding-left:14px;padding-top:10px;margin-top:12px}
 .sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .sub-head h3{font-family:var(--disp);font-size:16px;font-weight:600}
@@ -724,6 +727,14 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
   Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
 </footer>
 
+<div class="overlay" id="choice-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:360px">
+    <h3 id="choice-title">Choose</h3>
+    <div id="choice-list" class="choice-list"></div>
+    <div class="btns"><button class="btn" onclick="document.getElementById('choice-overlay').classList.remove('show')">Cancel</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="dialog" role="dialog" aria-modal="true">
     <h3 id="dlg-title">Edit</h3>
@@ -944,17 +955,35 @@ function normalizeTeamIdeas(t){
 }
 function normalizeDev(d){
   d = d || {};
+  d.spaces = d.spaces || [];
   d.sprints = d.sprints || [];
-  d.sprints.forEach(sp=>{ if(!sp.id) sp.id = "sp-" + Math.random().toString(36).slice(2,9); });
   d.cards = d.cards || [];
+  // migration: if there are cards/sprints but no spaces, wrap everything in a default "Core Team" space
+  if(!d.spaces.length){
+    d.spaces.push({id:"space-core", name:"Core Team"});
+  }
+  const defId = d.spaces[0].id;
+  d.spaces.forEach(sp=>{ if(!sp.id) sp.id = "space-"+Math.random().toString(36).slice(2,9); });
+  d.sprints.forEach(sp=>{
+    if(!sp.id) sp.id = "sp-" + Math.random().toString(36).slice(2,9);
+    if(!sp.space || !d.spaces.some(x=>x.id===sp.space)) sp.space = defId;
+  });
   d.cards.forEach(c=>{
     c.col = KCOLS.some(k=>k.key===c.col) ? c.col : "todo";
     if(c.sprint===undefined || (c.sprint && !d.sprints.some(sp=>sp.id===c.sprint))) c.sprint = null;
     if(!c.id) c.id = "dv-" + Math.random().toString(36).slice(2,9);
+    // a card's space follows its sprint if it has one; otherwise keep/default it
+    if(c.sprint){ const s = d.sprints.find(x=>x.id===c.sprint); if(s) c.space = s.space; }
+    if(!c.space || !d.spaces.some(x=>x.id===c.space)) c.space = defId;
   });
   return d;
 }
-let devSprint = null;   // sprint currently shown on the board
+let devSpace = null;   // active team/board; null => first space
+let devSprint = null;  // sprint currently shown on the board
+function currentSpace(){
+  if(devSpace && DEV.spaces.some(s=>s.id===devSpace)) return devSpace;
+  return DEV.spaces.length ? DEV.spaces[0].id : null;
+}
 function normalizeBugs(b){
   b = b || {};
   b.tickets = b.tickets || [];
@@ -1531,12 +1560,13 @@ function renderHeader(){
     );
     updated = OKRS.updated || "—";
   } else if(view==="dev"){
+    const spc = currentSpace();
     const sp = currentSprint();
     const inSp = sp ? DEV.cards.filter(c=>c.sprint===sp.id) : [];
     const doneN = inSp.filter(c=>c.col==="done").length;
     pct = inSp.length ? Math.round(doneN/inSp.length*100) : 0;
     stats.append(
-      mkStat(DEV.cards.filter(c=>!c.sprint).length,"Backlog"),
+      mkStat(DEV.cards.filter(c=>!c.sprint && c.space===spc).length,"Backlog"),
       mkStat(inSp.length,"In sprint"),
       mkStat(inSp.filter(c=>c.col==="progress"||c.col==="review").length,"In flight"),
       mkStat(doneN,"Done"),
@@ -1900,7 +1930,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
     const acts = document.createElement("div");
     acts.className = "acts";
     acts.appendChild(actBtn("board","Send to Development backlog",false, ()=>{
-      sendToBacklog(node.title, node.note || "", "roadmap", node.owner);
+      pickDevSpace(spaceId => sendToBacklog(node.title, node.note || "", "roadmap", node.owner, undefined, spaceId));
     }));
     moveBtns(parentArr, idx, ()=>saveRoadmap(), "task").forEach(b=>acts.appendChild(b));
     acts.appendChild(actBtn("plus","Add sub-task",false, ()=> addTaskTo(node, "New sub-task under “"+node.title+"”")));
@@ -2507,8 +2537,10 @@ function mvpPane(node, path, a){
           st.name = v.title; st.need = v.owner; saveRoadmap();
         }, {titleLabel:"As a \u2026 I want \u2026 so that \u2026", ownerLabel:"Which need does it serve?"})));
       acts.appendChild(actBtn("board","Send to Development backlog",false, ()=>{
-        DEV.cards.push({id:"dv"+Math.random().toString(36).slice(2,9), title:st.name, col:"todo", sprint:null, area:node.name});
-        saveDev(); toast("Sent to Development backlog");
+        pickDevSpace(spaceId => {
+          DEV.cards.push({id:"dv"+Math.random().toString(36).slice(2,9), title:st.name, col:"todo", sprint:null, area:node.name, space:spaceId});
+          saveDev(); toast("Sent to Development backlog");
+        });
       }));
       acts.appendChild(actBtn("trash","Delete story",true, ()=>{
         if(confirm("Delete this story?")){ a.stories.splice(i,1); saveRoadmap(); }
@@ -4414,7 +4446,7 @@ function kanbanBoard(items, opts){
   return board;
 }
 
-function sendToBacklog(title, note, from, owner, bugId){
+function sendToBacklog(title, note, from, owner, bugId, spaceId){
   const id = "dv-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   DEV.cards.push({
     id: id,
@@ -4425,10 +4457,33 @@ function sendToBacklog(title, note, from, owner, bugId){
     bugId: bugId || undefined,
     col: "todo",
     sprint: null,
+    space: (spaceId && DEV.spaces.some(s=>s.id===spaceId)) ? spaceId : currentSpace(),
   });
   saveDev();
-  toast(bugId ? "Escalated to Development \u2014 the bug will now follow the dev card's status" : "Added to Development backlog");
+  const spName = (DEV.spaces.find(s=>s.id===(spaceId||currentSpace()))||{}).name || "Development";
+  toast(bugId ? "Escalated to "+spName+" \u2014 the bug now follows the dev card" : "Added to "+spName+" backlog");
   return id;
+}
+/* Ask which team/space, then run cb(spaceId). One space => no prompt. */
+function pickDevSpace(cb){
+  const spaces = DEV.spaces || [];
+  if(spaces.length <= 1){ cb(spaces.length ? spaces[0].id : currentSpace()); return; }
+  openChoice("Send to which team?", spaces.map(s=>({label:s.name, value:s.id})), cb);
+}
+/* Minimal single-choice picker built on the dialog overlay. */
+function openChoice(title, options, cb){
+  const ov = $("choice-overlay");
+  $("choice-title").textContent = title;
+  const list = $("choice-list");
+  list.innerHTML = "";
+  options.forEach(o=>{
+    const b = document.createElement("button");
+    b.className = "choice-btn";
+    b.textContent = o.label;
+    b.onclick = ()=>{ ov.classList.remove("show"); cb(o.value); };
+    list.appendChild(b);
+  });
+  ov.classList.add("show");
 }
 
 /* Linked bugs mirror their dev card's column. Dev is the source of truth. */
@@ -4456,19 +4511,68 @@ function originChip(c){
   return sp;
 }
 function currentSprint(){
+  const spc = currentSpace();
+  const inSpace = DEV.sprints.filter(x=>x.space===spc);
   if(devSprint){
-    const sp = DEV.sprints.find(x=>x.id===devSprint);
+    const sp = inSpace.find(x=>x.id===devSprint);
     if(sp) return sp;
   }
-  return DEV.sprints.find(x=>!x.completed) || null;
+  return inSpace.find(x=>!x.completed) || inSpace[0] || null;
 }
 
 function renderSidebarDev(){
   const wrap = $("mods");
   wrap.innerHTML = "";
-  $("side-title").textContent = "Sprints";
+  const spc = currentSpace();
+
+  // --- team / dev-space switcher ---
+  const tl = document.createElement("div");
+  tl.className = "side-title"; tl.style.marginTop = "0"; tl.textContent = "Dev spaces (teams)";
+  wrap.appendChild(tl);
+  DEV.spaces.forEach(space=>{
+    const cards = DEV.cards.filter(c=>c.space===space.id);
+    const doneN = cards.filter(c=>c.col==="done").length;
+    const b = mkSideCard(space.id===spc, ()=>{ devSpace = space.id; devSprint = null; renderAll(); });
+    b.innerHTML = '<span class="name"></span><span class="pct"></span>';
+    b.querySelector(".name").textContent = space.name;
+    b.querySelector(".pct").textContent = DEV.sprints.filter(x=>x.space===space.id).length + " sprint(s) \u00b7 " + doneN + "/" + cards.length + " done";
+    if(editMode){
+      cardActs(b, [
+        ...moveBtns(DEV.spaces, DEV.spaces.indexOf(space), ()=>saveDev(), "space"),
+        actBtn("pencil","Rename team / space",false, ()=>
+          openDialog("Rename dev space", {title:space.name}, v=>{ space.name = v.title; saveDev(); }, {hideExtras:true, titleLabel:"Team / space name"})),
+        actBtn("trash","Delete space",true, ()=>{
+          if(DEV.spaces.length<=1){ toast("Keep at least one dev space"); return; }
+          const n = DEV.cards.filter(c=>c.space===space.id).length;
+          if(confirm("Delete the dev space \u201C"+space.name+"\u201D and its "+n+" card(s) + sprints?")){
+            DEV.cards = DEV.cards.filter(c=>c.space!==space.id);
+            DEV.sprints = DEV.sprints.filter(x=>x.space!==space.id);
+            DEV.spaces.splice(DEV.spaces.indexOf(space),1);
+            devSpace = null; devSprint = null;
+            saveDev(); toast("Dev space deleted");
+          }
+        }),
+      ]);
+    }
+    wrap.appendChild(b);
+  });
+  if(editMode){
+    const addSpace = document.createElement("button");
+    addSpace.className = "mod add";
+    addSpace.textContent = "\uFF0B New dev space (team)";
+    addSpace.onclick = ()=> openDialog("New dev space", {}, v=>{
+      const sp = {id:"space-"+Date.now().toString(36), name:v.title};
+      DEV.spaces.push(sp); devSpace = sp.id; devSprint = null;
+      saveDev(); toast("Dev space created");
+    }, {hideExtras:true, titleLabel:"Team / space name (e.g. Panel Team, App Team)"});
+    wrap.appendChild(addSpace);
+  }
+
+  const st = document.createElement("div");
+  st.className = "side-title"; st.textContent = "Sprints";
+  wrap.appendChild(st);
   const cur = currentSprint();
-  DEV.sprints.forEach(sp=>{
+  DEV.sprints.filter(sp=>sp.space===spc).forEach(sp=>{
     const n = DEV.cards.filter(c=>c.sprint===sp.id).length;
     const doneN = DEV.cards.filter(c=>c.sprint===sp.id && c.col==="done").length;
     const b = mkSideCard(cur && cur.id===sp.id, ()=>{ devSprint = sp.id; renderAll(); });
@@ -4502,8 +4606,8 @@ function renderSidebarDev(){
     const add = document.createElement("button");
     add.className = "mod add";
     add.textContent = "\uFF0B New sprint";
-    add.onclick = ()=> openDialog("New sprint", {title:"Sprint "+(DEV.sprints.length+1)}, v=>{
-      const sp = { id:"sp-"+Date.now().toString(36), name:v.title };
+    add.onclick = ()=> openDialog("New sprint", {title:"Sprint "+(DEV.sprints.filter(x=>x.space===spc).length+1)}, v=>{
+      const sp = { id:"sp-"+Date.now().toString(36), name:v.title, space:spc };
       if(v.start) sp.start = v.start;
       if(v.deadline) sp.end = v.deadline;
       DEV.sprints.push(sp);
@@ -4512,7 +4616,7 @@ function renderSidebarDev(){
     }, {hideExtras:true, dates:true});
     wrap.appendChild(add);
   }
-  const backlogN = DEV.cards.filter(c=>!c.sprint).length;
+  const backlogN = DEV.cards.filter(c=>!c.sprint && c.space===spc).length;
   const note = document.createElement("div");
   note.className = "lb-note";
   note.textContent = backlogN+" item(s) in the backlog below the board. Anyone can move cards; adding, sprints and editing need Edit mode.";
@@ -4530,7 +4634,8 @@ function devCardOpts(sprintId){
     }, {photos:true}),
     onDelete: c => { if(confirm("Delete this card?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); } },
     onAdd: colKey => openDialog("New card", {}, v=>{
-      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey, sprint:sprintId };
+      const _sp = DEV.sprints.find(x=>x.id===sprintId);
+      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey, sprint:sprintId, space:(_sp?_sp.space:currentSpace()) };
       if(v.owner) c.owner = v.owner;
       if(v.note) c.note = v.note;
       if(v.photos && v.photos.length) c.photos = v.photos;
@@ -4590,7 +4695,8 @@ function renderContentDev(){
     wrap.appendChild(d);
   }
 
-  const backlog = DEV.cards.filter(c=>!c.sprint);
+  const spc = currentSpace();
+  const backlog = DEV.cards.filter(c=>!c.sprint && c.space===spc);
   const block = document.createElement("section");
   block.className = "module-block";
   block.style.marginTop = "16px";
@@ -4650,7 +4756,7 @@ function renderContentDev(){
     add.className = "addline";
     add.textContent = "\uFF0B Add to backlog";
     add.onclick = ()=> openDialog("New backlog item", {}, v=>{
-      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:"todo", sprint:null };
+      const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:"todo", sprint:null, space:currentSpace() };
       if(v.owner) c.owner = v.owner;
       if(v.note) c.note = v.note;
       if(v.photos && v.photos.length) c.photos = v.photos;
@@ -4736,9 +4842,11 @@ function renderContentBugs(){
       return chips;
     },
     extraActs: t => bugIsInDev(t) ? [] : [actBtn("board","Escalate to Development backlog",false, ()=>{
-      const cardId = sendToBacklog("Fix: "+t.title, (t.note?t.note+" \u00b7 ":"")+"Reported by "+t.reporter+(t.area?" \u00b7 "+t.area:""), "bug", undefined, t.id);
-      t.devId = cardId;
-      saveBugs();
+      pickDevSpace(spaceId => {
+        const cardId = sendToBacklog("Fix: "+t.title, (t.note?t.note+" \u00b7 ":"")+"Reported by "+t.reporter+(t.area?" \u00b7 "+t.area:""), "bug", undefined, t.id, spaceId);
+        t.devId = cardId;
+        saveBugs();
+      });
     })],
     onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos}, v=>{
       t.title = v.title;
