@@ -569,7 +569,10 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .tl-mh{position:absolute;top:0;bottom:0;right:0;width:9px;cursor:col-resize;z-index:2}
 .tl-m:hover{background:var(--indigo-soft);color:var(--indigo)}
 .tl-m:hover .tl-mh{background:linear-gradient(to right, transparent, rgba(59,91,219,.28))}
-.tl-rows{position:relative;min-height:220px;padding:14px 0 20px;overflow:hidden}
+.tl-rows{position:relative;min-height:220px;padding:50px 0 20px;overflow:hidden}
+.tl-mklane{position:absolute;top:0;left:0;right:0;height:46px;z-index:1;cursor:copy}
+.tl-mklane:hover{background:linear-gradient(to bottom, var(--indigo-soft), transparent)}
+.tl-mk.ghost{opacity:.55;pointer-events:none;background:var(--indigo);top:2px;position:absolute}
 .tl-vline{position:absolute;top:0;bottom:0;width:1px;background:var(--line);pointer-events:none}
 .tl-row{position:relative;height:44px}
 .tl-bar{position:absolute;top:4px;height:36px;border:none;border-radius:8px;cursor:pointer;text-align:left;
@@ -5606,6 +5609,16 @@ function tlMakeCtx(months){
       const r = byYm[p[0]+"-"+p[1]];
       return r ? r.pxd : PXD;
     },
+    dateAt(x){
+      // pixel -> date (respects per-month stretching)
+      if(!months.length) return todayISO();
+      if(x <= 0) return dISO(months[0].startN);
+      const last = months[months.length-1];
+      if(x >= last.x + last.w) return dISO(last.startN + last.days - 1);
+      const r = months.find(mm=> x >= mm.x && x < mm.x + mm.w) || last;
+      const day = Math.min(r.days - 1, Math.max(0, Math.floor((x - r.x) / r.pxd)));
+      return dISO(r.startN + day);
+    },
   };
 }
 function rmapRange(m){
@@ -5784,6 +5797,30 @@ function renderContentRmap(){
 
   const rows = document.createElement("div");
   rows.className = "tl-rows";
+  // the marker strip: hover it and click anywhere to drop a marker on that date (Jira-style)
+  if(editMode){
+    const lane = document.createElement("div");
+    lane.className = "tl-mklane";
+    const ghost = document.createElement("div");
+    ghost.className = "tl-mk ghost";
+    ghost.style.display = "none";
+    lane.appendChild(ghost);
+    lane.addEventListener("mousemove", e=>{
+      const rect = lane.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const dstr = ctx.dateAt(x);
+      ghost.style.display = "";
+      ghost.style.left = (ctx.x(dstr) + 0.5 * ctx.pxdAt(dstr) + 4) + "px";
+      ghost.textContent = "\uFF0B " + fmtD(dstr);
+    });
+    lane.addEventListener("mouseleave", ()=>{ ghost.style.display = "none"; });
+    lane.addEventListener("click", e=>{
+      if(e.target.closest(".tl-mk") && !e.target.classList.contains("ghost")) return;   // editing an existing chip
+      const rect = lane.getBoundingClientRect();
+      openRmapMarker(m, null, ctx.dateAt(e.clientX - rect.left));
+    });
+    rows.appendChild(lane);
+  }
   // month boundary lines
   months.forEach((mm,i)=>{ if(i){ const v = document.createElement("div"); v.className = "tl-vline"; v.style.left = mm.x + "px"; rows.appendChild(v); } });
   const todayN = dNum(todayISO());
@@ -5801,7 +5838,7 @@ function renderContentRmap(){
     let lastX = -1e9, lane = 0;
     sortedMk.forEach(mk2=>{
       const x = ctx.x(mk2.date) + 0.5 * ctx.pxdAt(mk2.date);
-      lane = (x - lastX < 96) ? (lane + 1) % 3 : 0;   // stagger chips that would collide
+      lane = (x - lastX < 96) ? (lane + 1) % 2 : 0;   // stagger chips that would collide
       lastX = x;
       const el = document.createElement("div");
       el.className = "tl-marker";
@@ -5809,7 +5846,7 @@ function renderContentRmap(){
       el.style.setProperty("--mkc", mk2.color || "#3B5BDB");
       const chip = document.createElement("button");
       chip.className = "tl-mk";
-      chip.style.top = (lane * 26) + "px";
+      chip.style.top = (2 + lane * 20) + "px";
       chip.textContent = mk2.label || "Marker";
       chip.title = (mk2.label||"Marker") + " \u00b7 " + fmtD(mk2.date) + (editMode ? "\n(click to edit)" : "");
       if(editMode) chip.onclick = e=>{ e.stopPropagation(); openRmapMarker(m, mk2); };
@@ -5982,10 +6019,10 @@ function startMonthStretch(e, mapId, mm){
 
 /* ---- milestone markers: label + date + colour, pinned to the timeline ---- */
 const MK_COLORS = ["#3B5BDB","#0E7490","#1F7A4D","#9A6A1B","#C2410C","#B03A34","#C2417F","#7048B6","#374151"];
-function openRmapMarker(map, mk){
+function openRmapMarker(map, mk, presetDate){
   $("rmk-heading").textContent = mk ? "Edit marker" : "New marker";
   $("rmk-label").value = mk ? (mk.label||"") : "";
-  $("rmk-date").value = mk ? (mk.date||todayISO()) : todayISO();
+  $("rmk-date").value = mk ? (mk.date||todayISO()) : (presetDate || todayISO());
   let color = (mk && mk.color) || MK_COLORS[0];
   const sw = $("rmk-colors");
   sw.innerHTML = "";
