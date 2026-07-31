@@ -45,6 +45,49 @@ const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
    3. Put the same ID into report-bug.html (the student form) too */
 const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
 
+/* ================================================================
+   MULTI-TEAM: every team (Dubuddy, DYNG, ...) gets the same abstract
+   workspace — its own roadmap, dev boards, bugs, content, OKRs,
+   ideas and timelines. The bin stores { teams: { slug: {...} } }.
+   The active team comes from the URL:  ?team=dubuddy
+   No ?team => the landing page.
+   ================================================================ */
+const TEAM = (new URLSearchParams(location.search).get("team") || "")
+  .toLowerCase().replace(/[^a-z0-9-]/g, "") || null;
+let TEAMS = {};        // slug -> {name}, from the bin (for landing + switcher)
+let lastRecord = null; // last full record we saw (all teams) — merge-safe saves
+function teamsIndex(rec){
+  const out = {};
+  Object.keys((rec && rec.teams) || {}).forEach(k=>{ out[k] = { name: (rec.teams[k] && rec.teams[k].name) || k }; });
+  return out;
+}
+function migrateRecord(raw){
+  if(raw && raw.teams) return raw;
+  if(raw && raw.roadmap){
+    // old single-team bin: everything that exists today becomes team "dubuddy"
+    return { app:"cyberflow-teams", teams: { dubuddy: {
+      name:"Dubuddy", roadmap:raw.roadmap, okrs:raw.okrs, content:raw.content,
+      teamIdeas:raw.teamIdeas, dev:raw.dev, rmaps:raw.rmaps } } };
+  }
+  return { app:"cyberflow-teams", teams:{} };
+}
+function emptyTeam(name){
+  return { name,
+    roadmap:{ title: name+" Roadmap", subtitle:"One place for the "+name+" team to see what we're building, who owns it, and where it stands.", modules:[] },
+    okrs:null, content:{sections:[]}, teamIdeas:null,
+    dev:{ spaces:[{id:"space-core", name:"Core Team"}], sprints:[], cards:[] },
+    rmaps:{maps:[]} };
+}
+function navTeam(slug){
+  const url = location.pathname + "?team=" + slug;
+  if(window.__nav){ window.__nav(url); return; }   // test hook
+  location.href = url;
+}
+function navHome(){
+  if(window.__nav){ window.__nav(location.pathname); return; }
+  location.href = location.pathname;
+}
+
 /* ---- Seed data: used only the first time, to fill the database ---- */
 const DEFAULT_ROADMAP = {
   title: "Product Roadmap",
@@ -499,6 +542,23 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .ws-item .ws-n{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted)}
 .ws-item.ws-add{color:var(--muted);font-family:var(--mono);font-size:12px;border:1.5px dashed var(--line-strong);justify-content:center}
 .ws-item.ws-add:hover{color:var(--indigo);border-color:var(--indigo)}
+/* landing page */
+.landing{position:fixed;inset:0;z-index:400;background:var(--paper);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:9vh 20px 40px}
+.landing-inner{width:100%;max-width:620px;text-align:center}
+.landing-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--indigo)}
+.landing-h1{font-family:var(--disp);font-size:38px;font-weight:700;margin:10px 0 8px;color:var(--ink)}
+.landing-sub{color:var(--muted);font-size:15px;line-height:1.6;margin:0 auto 28px;max-width:480px}
+.landing-list{display:flex;flex-direction:column;gap:12px;text-align:left}
+.team-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;cursor:pointer;font-family:var(--sans);transition:border-color .12s, box-shadow .12s, transform .12s}
+.team-card:hover{border-color:var(--indigo);box-shadow:0 6px 24px rgba(59,91,219,.12);transform:translateY(-1px)}
+.team-card .tc-av{width:44px;height:44px;border-radius:12px;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:20px;flex:none}
+.team-card .tc-name{font-family:var(--disp);font-weight:600;font-size:18px;color:var(--ink)}
+.team-card .tc-slug{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.team-card .tc-go{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--indigo)}
+.team-card.team-add{justify-content:center;border-style:dashed;border-width:1.5px;color:var(--muted);font-family:var(--mono);font-size:13px;background:transparent}
+.team-card.team-add:hover{color:var(--indigo);box-shadow:none;transform:none}
+.landing-err{font-family:var(--mono);font-size:12px;color:var(--blocked);background:var(--blocked-bg);border:1px solid #F0C7C3;border-radius:9px;padding:10px 14px;text-align:center}
+.landing-foot{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:30px}
 .ws-empty{font-family:var(--mono);font-size:11px;color:var(--muted);padding:4px 10px}
 .tl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
 .tl{position:relative}
@@ -740,6 +800,15 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 </style>
 </head>
 <body>
+<div id="landing" class="landing" style="display:none">
+  <div class="landing-inner">
+    <div class="landing-eyebrow">CYBERFLOW · TEAM WORKSPACES</div>
+    <h1 class="landing-h1">Pick your team</h1>
+    <p class="landing-sub">Each team has its own roadmap, development boards, bugs, research and OKRs — same structure, separate worlds.</p>
+    <div id="landing-list" class="landing-list"></div>
+    <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
+  </div>
+</div>
 
 <div class="banner hidden" id="banner"></div>
 
@@ -783,6 +852,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="expand-all">Expand all</button>
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
+        <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
@@ -1179,10 +1249,12 @@ function normalizeBugs(b){
     t.col = KCOLS.some(k=>k.key===t.col) ? t.col : "todo";
     t.source = t.source || "team";
     t.reporter = t.reporter || "Anonymous";
+    t.team = t.team || "dubuddy";        // pre-team tickets (incl. the student form) belong to Dubuddy
     if(!t.id) t.id = "bg-" + Math.random().toString(36).slice(2,9);
   });
   return b;
 }
+function teamBugs(){ return BUGS.tickets.filter(t=> t.team === TEAM); }
 function leavesOf(node){
   if(node.items && node.items.length) return node.items.flatMap(leavesOf);
   node.status = node.status || "planned";
@@ -1233,12 +1305,17 @@ let lastSnapshot = "";
 
 async function pushAll(){
   if(!db) { renderAll(); return; }
-  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS) };
   saving = true;
   try{
-    const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(payload) });
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    lastSnapshot = JSON.stringify(payload);
+    // merge-safe: re-fetch, replace only OUR team's branch, write the whole record back.
+    // Dubuddy's save can never clobber DYNG's data (and vice versa).
+    let rec = lastRecord || { app:"cyberflow-teams", teams:{} };
+    try{ rec = migrateRecord(await fetchAll()); }catch(_){ /* keep lastRecord */ }
+    rec.teams = rec.teams || {};
+    const mine = teamPayload();
+    rec.teams[TEAM] = mine;
+    await putRecord(rec);
+    lastSnapshot = JSON.stringify(mine);
   }catch(e){ toast("Save failed: "+e.message+" — check your internet, then try again"); }
   saving = false;
 }
@@ -1248,6 +1325,26 @@ function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
 function saveRmaps(){ renderAll(); pushAll(); }
+function teamPayload(){
+  return { name: (TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"),
+    roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT),
+    teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS) };
+}
+function loadTeamData(t){
+  t = t || {};
+  DATA = normalize(t.roadmap || clean(emptyTeam(t.name || TEAM || "Team").roadmap));
+  OKRS = normalizeOkrs(t.okrs);
+  CONTENT = normalizeContent(t.content || {sections:[]});
+  TIDEAS = normalizeTeamIdeas(t.teamIdeas);
+  DEV = normalizeDev(t.dev || clean(emptyTeam("x").dev));
+  RMAPS = normalizeRmaps(t.rmaps);
+}
+async function putRecord(rec){
+  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  lastRecord = rec;
+  TEAMS = teamsIndex(rec);
+}
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
 const bugsConfigured = BUGS_BIN_ID && JSONBIN_CONFIG.apiKey;
@@ -1259,6 +1356,16 @@ async function fetchBugs(){
 async function pushBugs(){
   if(!bugsDb){ renderAll(); return; }
   try{
+    // merge-safe: keep other teams' tickets from the server, and any of OUR tickets
+    // the student form added while we were editing (present on server, not local).
+    let server = null;
+    try{ server = normalizeBugs(await fetchBugs()); }catch(_){ }
+    if(server){
+      const localIds = new Set(BUGS.tickets.map(t=>t.id));
+      const others = server.tickets.filter(t=> t.team !== TEAM);
+      const newMine = server.tickets.filter(t=> t.team === TEAM && !localIds.has(t.id));
+      BUGS.tickets = others.concat(BUGS.tickets.filter(t=> t.team === TEAM), newMine);
+    }
     const r = await fetch(BUGS_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(clean(BUGS)) });
     if(!r.ok) throw new Error("HTTP "+r.status);
   }catch(e){ toast("Bug save failed: "+e.message); }
@@ -1281,17 +1388,15 @@ async function fetchAll(){
 async function refresh(showMsg){
   if(!db || saving || $("overlay").classList.contains("show")) return;
   try{
-    const rec = await fetchAll();
-    if(rec && rec.roadmap){
-      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas, dev: rec.dev, rmaps: rec.rmaps });
+    const rec = migrateRecord(await fetchAll());
+    lastRecord = rec;
+    TEAMS = teamsIndex(rec);
+    const mine = rec.teams[TEAM];
+    if(mine){
+      const snap = JSON.stringify(mine);
       if(snap !== lastSnapshot){
         lastSnapshot = snap;
-        DATA = normalize(rec.roadmap);
-        OKRS = normalizeOkrs(rec.okrs);
-        CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
-        TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
-        DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
-        RMAPS = normalizeRmaps(rec.rmaps);
+        loadTeamData(mine);
         renderAll();
         if(showMsg) toast("Refreshed — you're seeing the latest");
       } else if(showMsg) toast("Already up to date");
@@ -1303,32 +1408,41 @@ async function refresh(showMsg){
 }
 
 async function start(){
-  DATA = normalize(clean(DEFAULT_ROADMAP));
-  OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
-  CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
-  TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
-  DEV = normalizeDev(clean(DEFAULT_DEV));
-  RMAPS = normalizeRmaps(null);
+  if(!TEAM){ return startLanding(null); }
+
+  // local defaults while we fetch: dubuddy gets the seed data, other teams start empty
+  if(TEAM === "dubuddy"){
+    DATA = normalize(clean(DEFAULT_ROADMAP));
+    OKRS = normalizeOkrs(clean(DEFAULT_OKRS));
+    CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
+    TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
+    DEV = normalizeDev(clean(DEFAULT_DEV));
+    RMAPS = normalizeRmaps(null);
+    TEAMS = { dubuddy: {name:"Dubuddy"} };
+  } else {
+    loadTeamData(emptyTeam(TEAM.charAt(0).toUpperCase()+TEAM.slice(1)));
+    TEAMS = { dubuddy:{name:"Dubuddy"} }; TEAMS[TEAM] = {name: TEAM.charAt(0).toUpperCase()+TEAM.slice(1)};
+  }
   BUGS = normalizeBugs({tickets:[]});
+
   if(configured){
     try{
-      const rec = await fetchAll();
+      const raw = await fetchAll();
       db = true;
-      if(rec && rec.roadmap){
-        DATA = normalize(rec.roadmap);
-        OKRS = normalizeOkrs(rec.okrs);
-        if(rec.content) CONTENT = normalizeContent(rec.content);
-        if(rec.teamIdeas) TIDEAS = normalizeTeamIdeas(rec.teamIdeas);
-        if(rec.dev) DEV = normalizeDev(rec.dev);
-        RMAPS = normalizeRmaps(rec.rmaps);
-        if(rec.content && rec.teamIdeas && rec.dev && rec.rmaps){
-          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS) });
+      const wasOld = !(raw && raw.teams);
+      let rec = migrateRecord(raw);
+      if(wasOld && raw && raw.roadmap){ await putRecord(rec); }   // one-time migration to the team shape
+      lastRecord = rec; TEAMS = teamsIndex(rec);
+      if(!rec.teams[TEAM]){
+        if(TEAM === "dubuddy"){
+          rec.teams.dubuddy = teamPayload();   // first ever run: seed dubuddy
+          await putRecord(rec);
         } else {
-          await pushAll();   // existing bin from an older version: add the new section(s) to it
+          return startLanding("The team \u201C"+TEAM+"\u201D doesn't exist. Pick one below, or create it.");
         }
-      } else {
-        await pushAll();   // first run: seed the bin with the defaults
       }
+      loadTeamData(rec.teams[TEAM]);
+      lastSnapshot = JSON.stringify(rec.teams[TEAM]);
       await refreshBugs();
       syncLinkedBugs();
       // pick up teammates' changes when you come back to the tab
@@ -1340,6 +1454,84 @@ async function start(){
     showBanner("Live team editing is not connected yet — changes here stay only on your screen. See README.md for the 3-minute JSONBin setup.");
   }
   renderAll();
+}
+
+/* ---------- the landing page: pick a team or create one ---------- */
+async function startLanding(err){
+  const L = $("landing");
+  L.style.display = "flex";
+  document.title = "Cyberflow — Teams";
+  if(configured){
+    try{
+      const raw = await fetchAll();
+      db = true;
+      const wasOld = !(raw && raw.teams);
+      const rec = migrateRecord(raw);
+      if(wasOld && raw && raw.roadmap){ try{ await putRecord(rec); }catch(_){} }
+      lastRecord = rec; TEAMS = teamsIndex(rec);
+    }catch(e){
+      err = err || ("Couldn't reach the database ("+e.message+"). Showing what's known locally.");
+      TEAMS = { dubuddy: {name:"Dubuddy"} };
+    }
+  } else {
+    TEAMS = { dubuddy: {name:"Dubuddy"} };
+  }
+  renderLanding(err);
+}
+function renderLanding(err){
+  const list = $("landing-list");
+  list.innerHTML = "";
+  if(err){
+    const e = document.createElement("div");
+    e.className = "landing-err";
+    e.textContent = err;
+    list.appendChild(e);
+  }
+  const slugs = Object.keys(TEAMS).sort((a,b)=> a==="dubuddy" ? -1 : b==="dubuddy" ? 1 : TEAMS[a].name.localeCompare(TEAMS[b].name));
+  if(!slugs.length){
+    const e = document.createElement("div");
+    e.className = "landing-err";
+    e.textContent = "No teams yet — create the first one below.";
+    list.appendChild(e);
+  }
+  slugs.forEach(slug=>{
+    const c = document.createElement("button");
+    c.className = "team-card";
+    c.innerHTML = '<span class="tc-av"></span><span class="tc-name"></span><span class="tc-slug"></span><span class="tc-go">Enter \u2192</span>';
+    c.querySelector(".tc-av").textContent = (TEAMS[slug].name||slug).charAt(0).toUpperCase();
+    c.querySelector(".tc-name").textContent = TEAMS[slug].name || slug;
+    c.querySelector(".tc-slug").textContent = "/" + slug;
+    c.onclick = ()=> navTeam(slug);
+    list.appendChild(c);
+  });
+  const add = document.createElement("button");
+  add.className = "team-card team-add";
+  add.textContent = "\uFF0B Create a new team";
+  add.onclick = createTeamFlow;
+  list.appendChild(add);
+}
+function createTeamFlow(){
+  const pass = prompt("Team edit passcode (creating a team is an edit):");
+  if(pass === null) return;
+  if(pass !== EDIT_PASSCODE){ alert("Wrong passcode."); return; }
+  const name = prompt("Team name (e.g. DYNG):");
+  if(!name || !name.trim()) return;
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  if(!slug){ alert("The name needs at least one letter or number."); return; }
+  if(TEAMS[slug]){ alert("A team at /"+slug+" already exists \u2014 opening it."); navTeam(slug); return; }
+  (async ()=>{
+    try{
+      let rec = lastRecord || { app:"cyberflow-teams", teams:{} };
+      if(configured && db){
+        try{ rec = migrateRecord(await fetchAll()); }catch(_){ }
+        rec.teams = rec.teams || {};
+        if(rec.teams[slug]){ navTeam(slug); return; }
+        rec.teams[slug] = emptyTeam(name.trim());
+        await putRecord(rec);
+      }
+      navTeam(slug);   // the new team opens with the full empty structure, same as every team
+    }catch(e){ alert("Couldn't create the team: "+e.message); }
+  })();
 }
 function showBanner(msg){ $("banner").textContent = msg; $("banner").classList.remove("hidden"); }
 
@@ -1840,7 +2032,7 @@ function renderHeader(){
     : view==="rmap"
     ? "A timeline across every space \u2014 pull in tasks, dev cards, and bugs from anywhere and schedule them."
     : (DATA.subtitle||"");
-  document.title = $("rm-title").textContent;
+  document.title = $("rm-title").textContent + " \u00b7 " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM || "Cyberflow");
   const stats = $("stats");
   stats.innerHTML = "";
   const mkStat = (val,label)=>{
@@ -2093,7 +2285,7 @@ function allTasks(){
     out.push({tid:c.id, task:c, path:"Development · "+(sp ? sp.name : "Backlog"), kind:"dev"});
   });
   // Bug tickets — a task can wait on a bug being fixed
-  (BUGS.tickets||[]).forEach(t=>{
+  teamBugs().forEach(t=>{
     out.push({tid:t.id, task:t, path:"Bugs · "+(t.source==="student" ? "Student-reported" : "Team"), kind:"bug"});
   });
   return out.filter(x=>x.tid);
@@ -4829,7 +5021,7 @@ function syncLinkedBugs(){
   let changed = false;
   DEV.cards.forEach(c=>{
     if(!c.bugId) return;
-    const t = BUGS.tickets.find(x=>x.id===c.bugId);
+    const t = BUGS.tickets.find(x=>x.id===c.bugId && x.team===TEAM);
     if(t && t.col !== c.col){ t.col = c.col; changed = true; }
   });
   if(changed){
@@ -5312,6 +5504,18 @@ function openStoryImport(spaceId){
    Each item carries start/end months and renders as a bar.
    ================================================================ */
 function currentRmap(){ return RMAPS.maps.find(m=>m.id===activeRmap) || null; }
+function openRmapSettings(m){
+  openDialog(m ? "Rename roadmap" : "New roadmap", {title: m ? m.name : ""}, v=>{
+    if(m){ m.name = v.title; }
+    else{
+      const nm = { id:"rm-"+Date.now().toString(36), name:v.title, items:[] };
+      RMAPS.maps.push(nm);
+      view = "rmap"; activeRmap = nm.id;
+      toast("Roadmap created \u2014 add items from any space");
+    }
+    saveRmaps();
+  }, {hideExtras:true, titleLabel:"Roadmap name (e.g. H2 2026 Timeline)"});
+}
 
 function rmapRange(m){
   // month range shown: from earliest item start to latest end, padded; default 12 months from now
@@ -5605,6 +5809,7 @@ function bugAreaChip(t){
 function reportBugDialog(){
   openDialog("Report a bug / issue", {}, v=>{
     BUGS.tickets.push({
+      team: TEAM,
       id: "bg-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
       title: v.title,
       note: v.note || "",
@@ -5624,7 +5829,7 @@ function renderSidebarBugs(){
   wrap.innerHTML = "";
   $("side-title").textContent = "Tickets";
   KCOLS.forEach(col=>{
-    const n = BUGS.tickets.filter(c=>c.col===col.key).length;
+    const n = teamBugs().filter(c=>c.col===col.key).length;
     const d = document.createElement("div");
     d.className = "mod lb-card";
     d.innerHTML = '<div style="min-width:0"><div class="name"></div></div><span class="lb-pts"></span>';
@@ -5632,7 +5837,7 @@ function renderSidebarBugs(){
     d.querySelector(".lb-pts").textContent = n;
     wrap.appendChild(d);
   });
-  const st = BUGS.tickets.filter(t=>t.source==="student").length;
+  const st = teamBugs().filter(t=>t.source==="student").length;
   const note = document.createElement("div");
   note.className = "lb-note";
   note.textContent = bugsConfigured
@@ -5649,7 +5854,20 @@ function renderContentBugs(){
   report.textContent = "\uD83D\uDC1E \uFF0B Report a bug or issue \u2014 no passcode needed";
   report.onclick = reportBugDialog;
   wrap.appendChild(report);
-  wrap.appendChild(kanbanBoard(BUGS.tickets, {
+  // the public student report form, always one click away so it never gets forgotten
+  const copyLink = document.createElement("button");
+  copyLink.className = "submit-idea copy-form";
+  copyLink.textContent = "\uD83D\uDD17 Copy the student report-form link for this team";
+  copyLink.onclick = ()=>{
+    const base = location.origin + location.pathname.replace(/[^\/]*$/, "") + "report-bug.html";
+    const url = TEAM === "dubuddy" ? base : base + "?team=" + TEAM;
+    const done = ()=> toast("Form link copied \u2014 share it with students");
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(done).catch(()=> prompt("Copy this link:", url));
+    } else prompt("Copy this link:", url);
+  };
+  wrap.appendChild(copyLink);
+  wrap.appendChild(kanbanBoard(teamBugs(), {
     onMove: saveBugs,
     cardExtras: t => {
       const chips = [bugSrcChip(t), bugAreaChip(t)];
@@ -5701,6 +5919,7 @@ function renderAll(){
   ];
   if(view!=="okr" && view!=="ideas") lastWs = view;
   $("nav-team-ideas").classList.toggle("primary", view==="ideas");
+  $("nav-ideas").style.display = (TEAM === "dubuddy") ? "" : "none";   // student ideas are Dubuddy-only
   $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
   $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
   renderCompanyVision();
@@ -5712,20 +5931,7 @@ function renderAll(){
   const ws = $("ws-switch");
   ws.innerHTML = "";
   if(view!=="okr"){
-    WORKSPACE_GROUPS.forEach(g=>{
-      const lbl = document.createElement("div");
-      lbl.className = "ws-label"; lbl.textContent = g.label;
-      ws.appendChild(lbl);
-      g.items.forEach(w=>{
-        const b = document.createElement("button");
-        b.className = "ws-item"+(view===w.key?" active":"");
-        b.innerHTML = '<span class="dot"></span><span></span>';
-        b.querySelector("span:last-child").textContent = w.label;
-        b.onclick = ()=>{ view = w.key; renderAll(); };
-        ws.appendChild(b);
-      });
-    });
-    /* ---- top-level ROADMAPS: timelines that pull cards from every space ---- */
+    /* ---- top-level ROADMAPS first (timelines across every space) ---- */
     const rl = document.createElement("div");
     rl.className = "ws-label"; rl.textContent = "Roadmaps";
     ws.appendChild(rl);
@@ -5742,12 +5948,7 @@ function renderAll(){
       const add = document.createElement("button");
       add.className = "ws-item ws-add";
       add.textContent = "\uFF0B New roadmap";
-      add.onclick = ()=> openDialog("New roadmap", {}, v=>{
-        const m = { id:"rm-"+Date.now().toString(36), name:v.title, items:[] };
-        RMAPS.maps.push(m);
-        view = "rmap"; activeRmap = m.id;
-        saveRmaps(); toast("Roadmap created \u2014 add items from any space");
-      }, {hideExtras:true, titleLabel:"Roadmap name (e.g. H2 2026 Timeline)"});
+      add.onclick = ()=> openRmapSettings(null);
       ws.appendChild(add);
     } else if(!RMAPS.maps.length){
       const e = document.createElement("div");
@@ -5755,6 +5956,20 @@ function renderAll(){
       e.textContent = "None yet \u2014 turn on Edit to create one.";
       ws.appendChild(e);
     }
+
+    WORKSPACE_GROUPS.forEach(g=>{
+      const lbl = document.createElement("div");
+      lbl.className = "ws-label"; lbl.textContent = g.label;
+      ws.appendChild(lbl);
+      g.items.forEach(w=>{
+        const b = document.createElement("button");
+        b.className = "ws-item"+(view===w.key?" active":"");
+        b.innerHTML = '<span class="dot"></span><span></span>';
+        b.querySelector("span:last-child").textContent = w.label;
+        b.onclick = ()=>{ view = w.key; renderAll(); };
+        ws.appendChild(b);
+      });
+    });
   }
   // Educational Content section: expanded (exam cards) on the content view,
   // collapsed (single summary card) everywhere else. Sits below the active view's sub-tabs.
@@ -5813,6 +6028,7 @@ let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
+$("nav-home").onclick = ()=> navHome();
 $("cmt-post").onclick = ()=> postComment();
 $("cmt-text").addEventListener("keydown", e=>{
   if((e.metaKey || e.ctrlKey) && e.key==="Enter") postComment();
@@ -5865,13 +6081,14 @@ $("backup-btn").onclick = ()=>{
     teamIdeas: clean(TIDEAS),
     dev: clean(DEV),
     rmaps: clean(RMAPS),
-    bugs: clean(BUGS),
+    bugs: { tickets: clean(teamBugs()) },
+    team: TEAM,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   const d = new Date(), pad = n=>String(n).padStart(2,"0");
-  a.download = "roadmap-backup-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".json";
+  a.download = (TEAM||"team")+"-backup-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".json";
   document.body.appendChild(a);
   a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -5911,7 +6128,9 @@ $("import-file").addEventListener("change", async e=>{
   renderAll();
   await pushAll();
   if(rec.bugs && Array.isArray(rec.bugs.tickets)){
-    BUGS = normalizeBugs(clean(rec.bugs));
+    const restored = normalizeBugs(clean(rec.bugs)).tickets;
+    restored.forEach(t=>{ t.team = TEAM; });      // a backup restores into the team you're in
+    BUGS.tickets = BUGS.tickets.filter(t=> t.team !== TEAM).concat(restored);
     BUGS.updated = todayStr();
     renderAll();
     if(bugsDb) await pushBugs();

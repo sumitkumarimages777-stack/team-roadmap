@@ -2,116 +2,266 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Report a Bug — DU Buddy</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script>
-/* ============ SETUP ============
-   Paste the SAME two values used in your team tool:
-   - BUGS_BIN_ID: the bin you created with {"tickets": []}
-   - API_KEY: your JSONBin Access Key
-   Host this file anywhere (e.g. add it to the same Vercel repo —
-   it becomes yoursite.vercel.app/report-bug.html) and link to it
-   from the student website. */
-const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
-const API_KEY = "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";
-const PRODUCTS = ["Test Series", "Preference Sheet Maker", "Seniors / Mentorship", "PG Booking", "Website / App", "Other"];
-</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Report an Issue · Dubuddy</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   STUDENT ISSUE REPORT FORM
+   Writes a ticket to the SAME bugs bin your team app reads from.
+   Tickets appear in the Bugs board tagged "student".
+
+   ⚠️ SETUP: the two values below must match your team app's index.html
+   (BUGS_BIN_ID and the JSONBIN Access Key). They're already filled in.
+   ============================================================ */
 :root{
-  --paper:#F6F7F9; --card:#fff; --ink:#17233A; --muted:#5C6A82;
-  --line:#E4E8EF; --indigo:#3B5BDB; --indigo-soft:#EBEFFC;
-  --done:#1F7A4D; --done-bg:#E3F2EA; --err:#B03A34; --err-bg:#FBE7E5;
+  --paper:#F6F7F9; --card:#FFFFFF; --ink:#17233A; --muted:#5C6A82;
+  --line:#E4E8EF; --line-strong:#C9D1DE;
+  --indigo:#3B5BDB; --indigo-soft:#EBEFFC;
+  --done:#1F7A4D; --done-bg:#E3F2EA;
+  --blocked:#B03A34; --blocked-bg:#FBE7E5;
+  --radius:12px;
+  --mono:"IBM Plex Mono",monospace;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --disp:"Space Grotesk",var(--sans);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.55;display:flex;justify-content:center;padding:28px 16px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  min-height:100vh;min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px}
 .wrap{width:100%;max-width:520px}
-h1{font-family:"Space Grotesk",sans-serif;font-size:26px;letter-spacing:-.01em}
-.sub{color:var(--muted);margin:6px 0 22px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
-label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 5px;font-weight:600}
-label:first-child{margin-top:0}
-input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font:inherit;color:var(--ink)}
-textarea{min-height:110px;resize:vertical}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--indigo);outline-offset:1px}
-button{width:100%;margin-top:20px;padding:13px;border:none;border-radius:10px;background:var(--indigo);color:#fff;font:inherit;font-weight:600;font-size:15.5px;cursor:pointer}
-button:hover{background:#3350C4}
-button:disabled{opacity:.6;cursor:default}
-.msg{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:14px;display:none}
-.msg.ok{display:block;background:var(--done-bg);color:var(--done)}
-.msg.err{display:block;background:var(--err-bg);color:var(--err)}
-.foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:16px}
+.head{text-align:center;margin-bottom:20px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--indigo);text-transform:uppercase}
+h1{font-family:var(--disp);font-size:28px;font-weight:700;margin:6px 0 4px}
+.sub{color:var(--muted);font-size:14px;line-height:1.55}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 4px 24px rgba(23,35,58,.06)}
+.field{margin-bottom:16px}
+label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+label .req{color:var(--blocked)}
+input,textarea,select{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 13px;
+  font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--paper)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--indigo);background:#fff}
+textarea{resize:vertical;line-height:1.6}
+.hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px}
+.photos-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photos-preview .thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.photos-preview .thumb img{width:100%;height:100%;object-fit:cover}
+.photos-preview .thumb button{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;
+  background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.uploading{font-family:var(--mono);font-size:11px;color:var(--indigo);margin-top:6px}
+.submit{width:100%;border:none;border-radius:10px;background:var(--indigo);color:#fff;
+  font-family:var(--disp);font-weight:600;font-size:16px;padding:14px;cursor:pointer;margin-top:4px;
+  box-shadow:0 2px 12px rgba(59,91,219,.3);transition:background .15s}
+.submit:hover{background:#3350C4}
+.submit:disabled{opacity:.6;cursor:default}
+.foot{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:16px}
+.msg{border-radius:9px;padding:11px 13px;font-size:14px;margin-bottom:16px;display:none}
+.msg.err{display:block;background:var(--blocked-bg);color:var(--blocked)}
+.done-screen{text-align:center;padding:20px 10px;display:none}
+.done-screen .big{font-size:46px;margin-bottom:10px}
+.done-screen h2{font-family:var(--disp);font-size:22px;margin:0 0 8px}
+.done-screen p{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 18px}
+.done-screen button{border:1px solid var(--indigo);background:#fff;color:var(--indigo);
+  font-family:var(--disp);font-weight:600;font-size:15px;padding:11px 20px;border-radius:9px;cursor:pointer}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🐞 Report a bug or issue</h1>
-  <p class="sub">Found something broken or confusing? Tell us — it goes straight to the team's board.</p>
-  <div class="card">
-    <label for="f-title">What's the problem? *</label>
-    <input id="f-title" maxlength="120" placeholder="e.g. Test timer freezes on question 45">
-    <label for="f-product">Where did it happen?</label>
-    <select id="f-product"></select>
-    <label for="f-desc">Details (what did you do, what went wrong?)</label>
-    <textarea id="f-desc" maxlength="1000" placeholder="Steps to reproduce, what you expected, what happened instead…"></textarea>
-    <label for="f-name">Your name (optional)</label>
-    <input id="f-name" maxlength="60" placeholder="So we can follow up">
-    <button id="send">Submit report</button>
-    <div class="msg" id="msg"></div>
+  <div class="head">
+    <div class="eyebrow">Dubuddy · Help us improve</div>
+    <h1>Report an Issue</h1>
+    <p class="sub">Found a bug, a wrong answer, or something confusing? Tell us and our team will see it right away. No login needed.</p>
   </div>
-  <p class="foot">DU Buddy · your report is shared only with our team</p>
+
+  <div class="card" id="form-card">
+    <div class="msg err" id="err"></div>
+
+    <div class="field">
+      <label for="title">What's the issue? <span class="req">*</span></label>
+      <input id="title" placeholder="e.g. Timer doesn't stop when I submit the test" maxlength="200" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="area">Where did it happen?</label>
+      <select id="area">
+        <option value="">— Choose the section (optional) —</option>
+        <option>Test / attempt screen</option>
+        <option>Question or answer is wrong</option>
+        <option>Reports / results</option>
+        <option>Login / signup</option>
+        <option>Payment</option>
+        <option>App is slow / crashed</option>
+        <option>Something else</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="note">Tell us more</label>
+      <textarea id="note" rows="4" placeholder="What were you doing? What did you expect, and what happened instead?"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="name">Your name (optional)</label>
+      <input id="name" placeholder="So we can thank you / follow up" maxlength="60" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label for="photos">Add screenshots (optional)</label>
+      <input id="photos" type="file" accept="image/*" multiple>
+      <div class="hint">A screenshot helps us fix it faster.</div>
+      <div class="photos-preview" id="preview"></div>
+      <div class="uploading" id="uploading" style="display:none">Uploading photo(s)…</div>
+    </div>
+
+    <button class="submit" id="submit">Send report</button>
+  </div>
+
+  <div class="card done-screen" id="done">
+    <div class="big">✅</div>
+    <h2>Thank you!</h2>
+    <p>Your report reached our team. We read every one and use it to make Dubuddy better for everyone.</p>
+    <button id="another">Report another issue</button>
+  </div>
+
+  <div class="foot">Reports go straight to the Dubuddy product team.</div>
 </div>
 
 <script>
+/* ==== CONFIG — must match your team app's index.html ==== */
+const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
+const ACCESS_KEY  = "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";
+const IMGBB_KEY   = "f4830b69da7997f9791cf15f51dcf9de";
+/* ======================================================== */
+
+const BASE = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
+/* which team this report belongs to — comes from the link (?team=dyng); default Dubuddy */
+const TEAM = ((new URLSearchParams(location.search).get("team") || "dubuddy")
+  .toLowerCase().replace(/[^a-z0-9-]/g, "")) || "dubuddy";
 const $ = id => document.getElementById(id);
-PRODUCTS.forEach(pd=>{
-  const o = document.createElement("option");
-  o.value = pd; o.textContent = pd;
-  $("f-product").appendChild(o);
-});
-const URL_B = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
+let photos = [];
+let uploading = 0;
 
-function show(kind, text){
-  const m = $("msg");
-  m.className = "msg " + kind;
-  m.textContent = text;
+function showErr(m){ const e=$("err"); e.textContent=m; e.style.display="block"; }
+function clearErr(){ $("err").style.display="none"; }
+
+/* ---- photo upload (compress in-browser, then imgbb) ---- */
+function compress(file){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    const rd = new FileReader();
+    rd.onload = ()=>{ img.src = rd.result; };
+    rd.onerror = ()=> rej(new Error("read failed"));
+    img.onload = ()=>{
+      const max = 1400;
+      let {width:w, height:h} = img;
+      if(w > max || h > max){ const s = Math.min(max/w, max/h); w = Math.round(w*s); h = Math.round(h*s); }
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      cv.toBlob(b=> b ? res(b) : rej(new Error("compress failed")), "image/jpeg", 0.82);
+    };
+    img.onerror = ()=> rej(new Error("not an image"));
+    rd.readAsDataURL(file);
+  });
 }
-
-$("send").onclick = async ()=>{
-  const title = $("f-title").value.trim();
-  if(!title){ show("err","Please describe the problem in one line first."); $("f-title").focus(); return; }
-  if(!BUGS_BIN_ID){ show("err","This form isn't connected yet — the site admin needs to finish setup."); return; }
-  const btn = $("send");
-  btn.disabled = true; btn.textContent = "Sending…";
-  try{
-    // read current tickets, append ours, write back
-    const r1 = await fetch(URL_B + "/latest", { headers: { "X-Access-Key": API_KEY, "X-Bin-Meta": "false" } });
-    if(!r1.ok) throw new Error("HTTP "+r1.status);
-    const rec = await r1.json();
-    const tickets = Array.isArray(rec.tickets) ? rec.tickets : [];
-    tickets.push({
-      id: "bg-" + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
-      title: title,
-      note: $("f-desc").value.trim(),
-      area: $("f-product").value,
-      reporter: $("f-name").value.trim() || "Student",
-      source: "student",
-      col: "todo",
-      created: new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}),
-    });
-    const r2 = await fetch(URL_B, {
-      method: "PUT",
-      headers: { "Content-Type":"application/json", "X-Access-Key": API_KEY },
-      body: JSON.stringify({ tickets: tickets, updated: new Date().toISOString() }),
-    });
-    if(!r2.ok) throw new Error("HTTP "+r2.status);
-    show("ok","Thank you! Your report reached the team. 🙌");
-    $("f-title").value = ""; $("f-desc").value = ""; $("f-name").value = "";
-  }catch(e){
-    show("err","Couldn't send right now ("+e.message+"). Please try again in a minute.");
+async function uploadToImgbb(blob){
+  const fd = new FormData();
+  fd.append("image", blob);
+  const r = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, { method:"POST", body: fd });
+  if(!r.ok) throw new Error("upload HTTP " + r.status);
+  const j = await r.json();
+  if(!j.data || !j.data.url) throw new Error("upload rejected");
+  return j.data.url;
+}
+function renderPreview(){
+  const pv = $("preview");
+  pv.innerHTML = "";
+  photos.forEach((url, i)=>{
+    const d = document.createElement("div");
+    d.className = "thumb";
+    const im = document.createElement("img"); im.src = url; d.appendChild(im);
+    const x = document.createElement("button"); x.textContent = "×";
+    x.onclick = ()=>{ photos.splice(i,1); renderPreview(); };
+    d.appendChild(x);
+    pv.appendChild(d);
+  });
+}
+$("photos").addEventListener("change", async e=>{
+  const files = [...e.target.files];
+  e.target.value = "";
+  for(const f of files){
+    if(!f.type.startsWith("image/")) continue;
+    uploading++; $("uploading").style.display = "block";
+    try{
+      const blob = await compress(f);
+      const url = await uploadToImgbb(blob);
+      photos.push(url); renderPreview();
+    }catch(err){ showErr("A photo couldn't upload — you can still send without it."); }
+    finally{ uploading--; if(uploading<=0) $("uploading").style.display = "none"; }
   }
-  btn.disabled = false; btn.textContent = "Submit report";
-};
+});
+
+/* ---- submit: read current tickets, append, save back ---- */
+async function submit(){
+  clearErr();
+  const title = $("title").value.trim();
+  if(!title){ showErr("Please describe the issue first."); $("title").focus(); return; }
+  if(uploading > 0){ showErr("A photo is still uploading — one second."); return; }
+
+  const btn = $("submit");
+  btn.disabled = true; btn.textContent = "Sending…";
+
+  const ticket = {
+    id: "bg-" + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    title: title,
+    note: $("note").value.trim(),
+    area: $("area").value || undefined,
+    reporter: $("name").value.trim() || "Anonymous",
+    source: "student",
+    team: TEAM,
+    col: "todo",
+    created: new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"}),
+    photos: photos.length ? photos.slice() : undefined,
+  };
+
+  try{
+    // 1. read the current bin so we don't overwrite other tickets
+    const rd = await fetch(BASE + "/latest", { headers: { "X-Access-Key": ACCESS_KEY, "X-Bin-Meta": "false" } });
+    if(!rd.ok) throw new Error("read HTTP " + rd.status);
+    const data = await rd.json();
+    const record = (data && Array.isArray(data.tickets)) ? data : { tickets: [] };
+    record.tickets.push(ticket);
+    record.updated = ticket.created;
+
+    // 2. write it back
+    const wr = await fetch(BASE, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Access-Key": ACCESS_KEY },
+      body: JSON.stringify(record),
+    });
+    if(!wr.ok) throw new Error("save HTTP " + wr.status);
+
+    // success
+    $("form-card").style.display = "none";
+    $("done").style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }catch(err){
+    showErr("Couldn't send right now (" + err.message + "). Please check your connection and try again.");
+    btn.disabled = false; btn.textContent = "Send report";
+  }
+}
+$("submit").addEventListener("click", submit);
+
+/* report another */
+$("another").addEventListener("click", ()=>{
+  ["title","note","name","area"].forEach(id=> $(id).value = "");
+  photos = []; renderPreview();
+  clearErr();
+  const b = $("submit"); b.disabled = false; b.textContent = "Send report";
+  $("done").style.display = "none";
+  $("form-card").style.display = "block";
+});
 </script>
 </body>
 </html>
