@@ -5790,7 +5790,8 @@ function rmapRange(m){
   const nums = m.items.flatMap(it=> [it.start, it.end].filter(Boolean).map(dNum));
   const today = dNum(todayISO());
   let a = nums.length ? Math.min(...nums, today) : today;
-  let b = nums.length ? Math.max(...nums, today) : today + 330;
+  let b = nums.length ? Math.max(...nums, today) : today;
+  b = Math.max(b, today + 730);   // with no explicit board range, always show at least the next 2 years
   // snap to whole months with a month of air each side
   const ad = new Date(a*86400000), bd = new Date(b*86400000);
   const aYm = idxYm(ad.getUTCFullYear()*12 + ad.getUTCMonth() - 1);
