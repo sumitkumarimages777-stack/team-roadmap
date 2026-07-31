@@ -972,23 +972,6 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
   </div>
 </div>
 
-<div class="overlay" id="did-overlay">
-  <div class="dialog" role="dialog" aria-modal="true" style="max-width:380px">
-    <h3 id="did-title">Idea</h3>
-    <div class="dlg-body">
-      <div class="field-row">
-        <div class="field"><label for="did-start">From month</label><input id="did-start" type="month"></div>
-        <div class="field"><label for="did-end">To month</label><input id="did-end" type="month"></div>
-      </div>
-      <button class="btn" id="did-clear" style="color:var(--muted)">Clear dates</button>
-    </div>
-    <div class="btns">
-      <button class="btn" onclick="document.getElementById('did-overlay').classList.remove('show')">Cancel</button>
-      <button class="btn save" id="did-save">Save</button>
-    </div>
-  </div>
-</div>
-
 <div class="overlay" id="tpl-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:560px">
     <h3>Space templates</h3>
@@ -1402,14 +1385,36 @@ function normalizeCspaces(c){
     x.type = (x.type === "scrum") ? "scrum" : (x.type === "discovery") ? "discovery" : "bugs";
     if(x.type === "discovery"){
       x.ideas = x.ideas || [];
+      // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
+      x.tl = x.tl || {};
+      if(!x.tl.id) x.tl.id = "rmtl-" + x.id;
+      x.tl.name = x.name;
+      x.tl.items = x.tl.items || [];
+      x.tl.markers = x.tl.markers || [];
+      x.tl.items.forEach(it=>{ if(!it.rid) it.rid = "ri-" + Math.random().toString(36).slice(2,7); });
+      x.tl.markers.forEach(mk=>{ if(!mk.id) mk.id = "mk-" + Math.random().toString(36).slice(2,7); });
       x.ideas.forEach(i=>{
         if(!i.id) i.id = "idea-" + Math.random().toString(36).slice(2,8);
         if(!DISC_STAGES.some(st=>st.key===i.stage)) i.stage = "later";
         if(!DISC_STATES.includes(i.state)) i.state = "Pending";
+        i.status = discStatusOf(i.state);
+        // older ideas stored months on themselves; move them onto the timeline as real dates
+        if(i.start && /^\d{4}-\d{2}$/.test(i.start)){
+          let it = x.tl.items.find(t=>t.tid===i.id);
+          if(!it){ it = { rid:"ri-"+Math.random().toString(36).slice(2,7), tid:i.id }; x.tl.items.push(it); }
+          it.start = monthStartISO(i.start);
+          it.end = monthEndISO(i.end && /^\d{4}-\d{2}$/.test(i.end) ? i.end : i.start);
+        }
+        delete i.start; delete i.end;
       });
+      const ideaIds = new Set(x.ideas.map(i=>i.id));
+      x.tl.items = x.tl.items.filter(it=> ideaIds.has(it.tid));
     }
   });
   return c;
+}
+function discStatusOf(state){
+  return state==="On track" ? "done" : state==="At risk" ? "progress" : state==="Off track" ? "blocked" : "planned";
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
 function currentDisc(){ return CSPACES.list.find(x=>x.id===activeCspace && x.type==="discovery") || null; }
@@ -2520,6 +2525,9 @@ function allTasks(){
   // Bug tickets — a task can wait on a bug being fixed
   teamBugs().forEach(t=>{
     out.push({tid:t.id, task:t, path:"Bugs · "+(t.source==="student" ? "Student-reported" : "Team"), kind:"bug"});
+  });
+  (CSPACES.list||[]).filter(x=>x.type==="discovery").forEach(cs=>{
+    (cs.ideas||[]).forEach(i=> out.push({tid:i.id, task:i, path:cs.name+" · Ideas", kind:"idea"}));
   });
   return out.filter(x=>x.tid);
 }
@@ -5790,10 +5798,16 @@ function rmapRange(m){
   return { n0: dNum(monthStartISO(aYm)), n1: dNum(monthEndISO(bYm)) };
 }
 
-function renderContentRmap(){
+let tlDiscMode = false;   // true while the engine renders a discovery space's timeline
+function tlRerender(){
+  if(view === "rmap") renderContentRmap();
+  else if(view === "disc" && discView === "timeline") renderContentDisc();
+}
+function renderContentRmap(extMap, extOpts){
+  tlDiscMode = !!(extOpts && extOpts.disc);
   const wrap = $("content");
   wrap.innerHTML = "";
-  const m = currentRmap();
+  const m = extMap || currentRmap();
   if(!m){
     const e = document.createElement("div");
     e.className = "empty";
@@ -5814,7 +5828,7 @@ function renderContentRmap(){
   head.style.marginBottom = "12px";
   const row = document.createElement("div");
   row.className = "module-head";
-  const h2 = document.createElement("h2"); h2.textContent = m.name;
+  const h2 = document.createElement("h2"); h2.textContent = tlDiscMode ? "Timeline" : m.name;
   const pc = document.createElement("span"); pc.className = "pct";
   const done = live.filter(it=> effStatus(byTid[it.tid].task)==="done").length;
   const rangeTxt = (m.rangeStart && m.rangeEnd) ? " \u00b7 " + ymShort(m.rangeStart) + " \u2192 " + ymShort(m.rangeEnd) : "";
@@ -5851,11 +5865,13 @@ function renderContentRmap(){
   row.appendChild(zoomWrap);
   if(editMode){
     const spx = document.createElement("span"); spx.className = "spacer"; row.appendChild(spx);
+    if(!tlDiscMode){
     const addB = document.createElement("button");
     addB.className = "tool primary";
     addB.textContent = "\uFF0B Add items from any space";
     addB.onclick = ()=> openRmapPicker(m);
     row.appendChild(addB);
+    }
     const addMk = document.createElement("button");
     addMk.className = "tool";
     addMk.textContent = "\uD83D\uDCCD Marker";
@@ -5863,8 +5879,8 @@ function renderContentRmap(){
     addMk.onclick = ()=> openRmapMarker(m, null);
     row.appendChild(addMk);
     const acts = document.createElement("div"); acts.className = "acts";
-    acts.appendChild(actBtn("pencil","Roadmap settings \u2014 name and board start/end",false, ()=> openRmapSettings(m)));
-    acts.appendChild(actBtn("trash","Delete roadmap",true, ()=>{
+    acts.appendChild(actBtn("pencil", tlDiscMode ? "Board range \u2014 start/end months" : "Roadmap settings \u2014 name and board start/end", false, ()=> openRmapSettings(m, {rangeOnly: tlDiscMode})));
+    if(!tlDiscMode) acts.appendChild(actBtn("trash","Delete roadmap",true, ()=>{
       if(confirm("Delete the roadmap \u201C"+m.name+"\u201D? The cards themselves are NOT deleted \u2014 only this timeline.")){
         RMAPS.maps.splice(RMAPS.maps.indexOf(m),1);
         activeRmap = RMAPS.maps.length ? RMAPS.maps[0].id : null;
@@ -5943,7 +5959,7 @@ function renderContentRmap(){
     h.className = "tl-mh";
     h.addEventListener("mousedown", e=>{ e.preventDefault(); e.stopPropagation(); startMonthStretch(e, m.id, mm); });
     c.appendChild(h);
-    c.addEventListener("dblclick", ()=>{ delete scales[mm.ym]; renderContentRmap(); });
+    c.addEventListener("dblclick", ()=>{ delete scales[mm.ym]; tlRerender(); });
     mrow.appendChild(c);
   });
   tl.appendChild(mrow);
@@ -6018,7 +6034,7 @@ function renderContentRmap(){
     const bx = ctx.x(it.start);
     bar.style.left = bx + "px";
     bar.style.width = Math.max(30, ctx.x(it.end) + ctx.pxdAt(it.end) - bx - 4) + "px";
-    const src = entry.kind==="dev" ? "DEV" : entry.kind==="bug" ? "BUG" : entry.kind==="content" ? "EDU" : "PROD";
+    const src = entry.kind==="dev" ? "DEV" : entry.kind==="bug" ? "BUG" : entry.kind==="content" ? "EDU" : entry.kind==="idea" ? "IDEA" : "PROD";
     bar.innerHTML = (editMode ? '<span class="tl-h l" title="Drag to change the start date"></span>' : '')
       + '<span class="tl-src"></span><span class="tl-t"></span><span class="tl-dates"></span>'
       + (editMode ? '<span class="tl-h r" title="Drag to change the end date"></span>' : '');
@@ -6097,11 +6113,13 @@ function rmListRow(m, it, entry, dateTxt){
     sd.textContent = "\uD83D\uDCC5 Set dates";
     sd.onclick = ()=> editRmapItem(m, it, entry);
     meta.appendChild(sd);
-    const acts = document.createElement("div"); acts.className = "acts";
-    acts.appendChild(actBtn("trash","Remove from this roadmap",true, ()=>{
-      m.items.splice(m.items.indexOf(it),1); saveRmaps();
-    }));
-    meta.appendChild(acts);
+    if(!tlDiscMode){
+      const acts = document.createElement("div"); acts.className = "acts";
+      acts.appendChild(actBtn("trash","Remove from this roadmap",true, ()=>{
+        m.items.splice(m.items.indexOf(it),1); saveRmaps();
+      }));
+      meta.appendChild(acts);
+    }
   }
   r.append(body, meta);
   return r;
@@ -6157,14 +6175,14 @@ function startMonthStretch(e, mapId, mm){
     scales[mm.ym] = newW / (mm.days * PXD);
     if(!raf){
       raf = true;
-      requestAnimationFrame(()=>{ raf = false; if(view === "rmap") renderContentRmap(); });
+      requestAnimationFrame(()=>{ raf = false; tlRerender(); });
     }
   };
   const onUp = ()=>{
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("mouseup", onUp);
     if(Math.abs((scales[mm.ym]||1) - 1) < 0.04) delete scales[mm.ym];   // snap back to normal
-    if(view === "rmap") renderContentRmap();
+    tlRerender();
   };
   window.addEventListener("mousemove", onMove);
   window.addEventListener("mouseup", onUp);
@@ -6214,6 +6232,7 @@ function openRmapMarker(map, mk, presetDate){
 
 /* ---- exact dates dialog ---- */
 function editRmapItem(map, it, entry){
+  $("rmd-remove").style.display = tlDiscMode ? "none" : "";
   $("rmd-title").textContent = entry.task.title || "(untitled)";
   $("rmd-path").textContent = entry.path;
   $("rmd-start").value = it.start || todayISO();
@@ -6237,19 +6256,21 @@ function editRmapItem(map, it, entry){
 }
 
 /* ---- roadmap settings: name + the board's start/end (Jira's timeline range) ---- */
-function openRmapSettings(m){
-  $("rms-heading").textContent = m ? "Roadmap settings" : "New roadmap";
+function openRmapSettings(m, o){
+  o = o || {};
+  $("rms-heading").textContent = o.rangeOnly ? "Board range" : (m ? "Roadmap settings" : "New roadmap");
+  $("rms-name").closest(".field").style.display = o.rangeOnly ? "none" : "";
   $("rms-name").value = m ? m.name : "";
   $("rms-start").value = (m && m.rangeStart) || "";
   $("rms-end").value = (m && m.rangeEnd) || "";
   $("rms-save").onclick = ()=>{
-    const name = $("rms-name").value.trim();
+    const name = o.rangeOnly ? (m && m.name) || "Timeline" : $("rms-name").value.trim();
     if(!name){ $("rms-name").focus(); return; }
     const rs = $("rms-start").value, re = $("rms-end").value;
     if((rs && !re) || (!rs && re)){ toast("Set both months, or leave both empty for auto-fit"); return; }
     if(rs && re && ymIdx(re) < ymIdx(rs)){ toast("The end month is before the start month"); return; }
     if(m){
-      m.name = name;
+      if(!o.rangeOnly) m.name = name;
       if(rs && re){ m.rangeStart = rs; m.rangeEnd = re; } else { delete m.rangeStart; delete m.rangeEnd; }
     } else {
       const nm = { id:"rm-"+Date.now().toString(36), name, items:[] };
@@ -6404,7 +6425,7 @@ function discStateChip(idea){
     openDiscPick(c, {
       current: idea.state,
       options: DISC_STATES.map(x=>({key:x, label:x, cls:"state s-"+x.toLowerCase().replace(/[^a-z]/g,"")})),
-      onPick: k=>{ idea.state = k; saveDisc(); },
+      onPick: k=>{ idea.state = k; idea.status = discStatusOf(k); saveDisc(); },
     });
   };
   return c;
@@ -6435,21 +6456,6 @@ function openIdeaDialog(cs, idea, presetStage){
     }
     saveDisc();
   });
-}
-function openIdeaDates(cs, idea){
-  $("did-title").textContent = idea.title;
-  $("did-start").value = idea.start || "";
-  $("did-end").value = idea.end || "";
-  $("did-clear").onclick = ()=>{ delete idea.start; delete idea.end; $("did-overlay").classList.remove("show"); saveDisc(); };
-  $("did-save").onclick = ()=>{
-    const s0 = $("did-start").value, e0 = $("did-end").value;
-    if(!s0 || !e0){ toast("Pick both months (or Clear dates)"); return; }
-    if(ymIdx(e0) < ymIdx(s0)){ toast("The end month is before the start month"); return; }
-    idea.start = s0; idea.end = e0;
-    $("did-overlay").classList.remove("show");
-    saveDisc();
-  };
-  $("did-overlay").classList.add("show");
 }
 function discIdeaActs(cs, idea){
   const acts = document.createElement("div");
@@ -6570,9 +6576,10 @@ function discRoadmapPane(cs){
       const meta = document.createElement("div"); meta.className = "kcard-meta disc-meta";
       meta.appendChild(discThemeChip(idea, cs));
       meta.appendChild(discStateChip(idea));
-      if(idea.start && idea.end){
+      const tlIt = (cs.tl && cs.tl.items || []).find(t=>t.tid===idea.id);
+      if(tlIt && tlIt.start && tlIt.end){
         const d = document.createElement("span"); d.className = "disc-chip dates";
-        d.textContent = ymShort(idea.start) + " \u2192 " + ymShort(idea.end);
+        d.textContent = fmtD(tlIt.start) + " \u2192 " + fmtD(tlIt.end);
         meta.appendChild(d);
       }
       meta.appendChild(commentChip(idea, saveDisc));
@@ -6604,101 +6611,17 @@ function discRoadmapPane(cs){
   wrap.appendChild(board);
 }
 
-/* ---- Timeline: month grid of dated ideas ---- */
+/* ---- Timeline: the full roadmap engine (drag, zoom, stretch, markers, range) on this space's ideas ---- */
 function discTimelinePane(cs){
-  const wrap = $("content");
-  const dated = cs.ideas.filter(i=> i.start && i.end);
-  const undated = cs.ideas.filter(i=> !(i.start && i.end));
-
-  const block = document.createElement("section");
-  block.className = "module-block";
-  const idxs = dated.flatMap(i=> [ymIdx(i.start), ymIdx(i.end)]);
-  let a = idxs.length ? Math.min(...idxs, ymIdx(nowYm())) : ymIdx(nowYm());
-  let b = idxs.length ? Math.max(...idxs, ymIdx(nowYm())) : ymIdx(nowYm()) + 8;
-  a -= 1; b = Math.max(b + 1, a + 5);
-  const COLW = 110;
-  const scroll = document.createElement("div"); scroll.className = "tl-scroll";
-  const tl = document.createElement("div"); tl.className = "tl";
-  const months = []; for(let i=a;i<=b;i++) months.push(i);
-  tl.style.width = (months.length * COLW) + "px";
-  const qrow = document.createElement("div"); qrow.className = "tl-qrow";
-  let qi = 0;
-  while(qi < months.length){
-    const idx = months[qi], y = Math.floor(idx/12), mo = idx%12;
-    const q = Math.floor(mo/3)+1;
-    const span = Math.min(3-(mo%3), months.length-qi);
-    const cell = document.createElement("div"); cell.className = "tl-q";
-    cell.style.width = (span*COLW)+"px"; cell.textContent = "Q"+q+" "+y;
-    qrow.appendChild(cell); qi += span;
-  }
-  tl.appendChild(qrow);
-  const mrow = document.createElement("div"); mrow.className = "tl-mrow";
-  months.forEach(i=>{ const c = document.createElement("div"); c.className = "tl-m"; c.style.width = COLW+"px"; c.textContent = ymShort(idxYm(i)); mrow.appendChild(c); });
-  tl.appendChild(mrow);
-  const rows = document.createElement("div"); rows.className = "tl-rows disc-rows";
-  months.forEach((mi,i)=>{ if(i){ const v = document.createElement("div"); v.className = "tl-vline"; v.style.left = (i*COLW)+"px"; rows.appendChild(v); } });
-  const tYm = ymIdx(nowYm());
-  if(tYm >= a && tYm <= b){
-    const day = new Date().getDate(), dim = daysInMonth(new Date().getFullYear(), new Date().getMonth()+1);
-    const mk = document.createElement("div"); mk.className = "tl-today";
-    mk.style.left = ((tYm-a)*COLW + (day/dim)*COLW) + "px";
-    mk.innerHTML = '<span>Today</span>';
-    rows.appendChild(mk);
-  }
-  const stateCls = st => st==="On track" ? "st-done" : st==="At risk" ? "st-progress" : st==="Off track" ? "st-blocked" : "st-planned";
-  dated.slice().sort((x,y)=> ymIdx(x.start)-ymIdx(y.start)).forEach(idea=>{
-    const r = document.createElement("div"); r.className = "tl-row";
-    const bar = document.createElement("button");
-    bar.className = "tl-bar " + stateCls(idea.state);
-    const s0 = Math.max(ymIdx(idea.start), a), e0 = Math.min(ymIdx(idea.end), b);
-    bar.style.left = ((s0-a)*COLW)+"px";
-    bar.style.width = (Math.max(1, e0-s0+1)*COLW - 10) + "px";
-    bar.innerHTML = '<span class="tl-t"></span><span class="tl-dates"></span>';
-    bar.querySelector(".tl-t").textContent = idea.title;
-    bar.querySelector(".tl-dates").textContent = ymShort(idea.start) + " \u2192 " + ymShort(idea.end);
-    bar.title = idea.title + "\n" + ymShort(idea.start) + " \u2192 " + ymShort(idea.end) + (editMode ? "\n(click to change the months)" : "");
-    bar.onclick = ()=>{ if(editMode) openIdeaDates(cs, idea); };
-    r.appendChild(bar);
-    rows.appendChild(r);
-  });
-  if(!dated.length){
-    const e = document.createElement("div"); e.className = "empty"; e.style.padding = "40px 20px";
-    e.textContent = editMode ? "No dated ideas \u2014 give ideas start and end months below." : "No dated ideas yet.";
-    rows.appendChild(e);
-  }
-  tl.appendChild(rows);
-  scroll.appendChild(tl);
-  block.appendChild(scroll);
-  wrap.appendChild(block);
-
-  if(undated.length){
-    const us = document.createElement("section");
-    us.className = "module-block"; us.style.marginTop = "14px";
-    const uh = document.createElement("div"); uh.className = "module-head";
-    const h3 = document.createElement("h2"); h3.textContent = "Not on the timeline yet";
-    const up = document.createElement("span"); up.className = "pct"; up.textContent = undated.length + " idea(s) \u2014 no months set";
-    uh.append(h3, up);
-    us.appendChild(uh);
-    undated.forEach(idea=>{
-      const r = document.createElement("div"); r.className = "ct-row";
-      const body = document.createElement("div"); body.className = "body";
-      const t = document.createElement("div"); t.className = "title"; t.textContent = idea.title;
-      body.appendChild(t);
-      const meta = document.createElement("div"); meta.className = "meta disc-meta";
-      meta.appendChild(discStageChip(idea));
-      meta.appendChild(discStateChip(idea));
-      if(editMode){
-        const sd = document.createElement("button");
-        sd.className = "upd";
-        sd.textContent = "\uD83D\uDCC5 Set months";
-        sd.onclick = ()=> openIdeaDates(cs, idea);
-        meta.appendChild(sd);
-      }
-      r.append(body, meta);
-      us.appendChild(r);
-    });
-    wrap.appendChild(us);
-  }
+  cs.tl = cs.tl || { id:"rmtl-"+cs.id, items:[], markers:[] };
+  cs.tl.items = cs.tl.items || [];
+  cs.tl.markers = cs.tl.markers || [];
+  // every idea automatically has a slot on the timeline; deleted ideas drop off
+  const have = new Set(cs.tl.items.map(it=>it.tid));
+  cs.ideas.forEach(i=>{ if(!have.has(i.id)) cs.tl.items.push({ rid:"ri-"+Math.random().toString(36).slice(2,7), tid:i.id }); });
+  const ideaIds = new Set(cs.ideas.map(i=>i.id));
+  cs.tl.items = cs.tl.items.filter(it=> ideaIds.has(it.tid));
+  renderContentRmap(cs.tl, {disc:true});
 }
 
 function bugSrcChip(t){
