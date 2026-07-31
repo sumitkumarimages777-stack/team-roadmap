@@ -1558,7 +1558,17 @@ async function pushAll(){
 }
 function saveRoadmap(){ DATA.updated = todayStr(); renderAll(); pushAll(); }
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
-function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
+function syncContentSpaces(){
+  // Educational Content sections live directly under SPACES — one content-space per section
+  CSPACES.list = CSPACES.list || [];
+  (CONTENT.sections || []).forEach(sec=>{
+    const cs = CSPACES.list.find(x=> x.type==="content" && x.sectionKey===sec.key);
+    if(!cs) CSPACES.list.push({ id:"cs-"+Math.random().toString(36).slice(2,8), name:sec.name, type:"content", sectionKey:sec.key });
+    else cs.name = sec.name;
+  });
+  CSPACES.list = CSPACES.list.filter(x=> x.type!=="content" || (CONTENT.sections||[]).some(sec=>sec.key===x.sectionKey));
+}
+function saveContent(){ CONTENT.updated = todayStr(); syncContentSpaces(); renderAll(); pushAll(); }
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
 function saveRmaps(){ renderAll(); pushAll(); }
@@ -1576,6 +1586,7 @@ function loadTeamData(t){
   DEV = normalizeDev(t.dev || clean(emptyTeam("x").dev));
   RMAPS = normalizeRmaps(t.rmaps);
   CSPACES = normalizeCspaces(t.cspaces);
+  syncContentSpaces();
 }
 async function putRecord(rec){
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -1656,6 +1667,8 @@ async function start(){
     TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
     DEV = normalizeDev(clean(DEFAULT_DEV));
     RMAPS = normalizeRmaps(null);
+    CSPACES = normalizeCspaces(null);
+    syncContentSpaces();
     TEAMS = { dubuddy: {name:"Dubuddy"} };
   } else {
     loadTeamData(emptyTeam(TEAM.charAt(0).toUpperCase()+TEAM.slice(1)));
@@ -6930,7 +6943,7 @@ function renderAll(){
               : cs.type==="discovery"
               ? "Remove \u201C"+cs.name+"\u201D? Its "+(cs.ideas||[]).length+" idea(s) are deleted with it."
               : cs.type==="content"
-              ? "Remove \u201C"+cs.name+"\u201D from the sidebar? Its section and tasks stay under Educational Content."
+              ? "Delete \u201C"+cs.name+"\u201D? Its section and "+(CONTENT.sections.find(x=>x.key===cs.sectionKey)||{tasks:[]}).tasks.flatMap(leavesOf).length+" task(s) are deleted with it."
               : "Remove \u201C"+cs.name+"\u201D from the sidebar? Its board and cards stay under Development.";
             if(!confirm(msg)) return;
             if(cs.type==="bugs"){
@@ -6939,6 +6952,11 @@ function renderAll(){
               pushBugs();
             }
             if(cs.type==="discovery" && view==="disc" && activeCspace===cs.id) view = "roadmap";
+            if(cs.type==="content"){
+              const si = CONTENT.sections.findIndex(x=>x.key===cs.sectionKey);
+              if(si >= 0) CONTENT.sections.splice(si, 1);
+              if(view==="content" && activeSection===cs.sectionKey) view = "roadmap";
+            }
             CSPACES.list.splice(CSPACES.list.indexOf(cs),1);
             renderAll(); pushAll(); toast("Space removed");
           };
@@ -6964,25 +6982,8 @@ function renderAll(){
       }
     });
   }
-  // Educational Content section: expanded (exam cards) on the content view,
-  // collapsed (single summary card) everywhere else. Sits below the active view's sub-tabs.
-  const edu = $("edu-switch");
-  edu.innerHTML = "";
-  if(view!=="okr"){
-    if(view==="content"){
-      renderSidebarExams(edu);
-    } else {
-      const lbl = document.createElement("div");
-      lbl.className = "ws-label"; lbl.textContent = "Educational Content";
-      edu.appendChild(lbl);
-      const allTasks = CONTENT.sections.flatMap(s=>s.tasks.flatMap(leavesOf));
-      const b = mkSideCard(false, ()=>{ view = "content"; activeSection = "all"; renderAll(); });
-      b.innerHTML = `<span class="name">All exams</span>
-        <div class="bar"><i style="width:${pctOf(allTasks)}%"></i></div>
-        <span class="pct">${pctOf(allTasks)}% · ${CONTENT.sections.length} sections · ${allTasks.length} tasks</span>`;
-      edu.appendChild(b);
-    }
-  }
+  // Educational Content sections now live as content-type spaces under SPACES.
+  $("edu-switch").innerHTML = "";
   $("side-title").style.display = "";
   if(view==="roadmap"){ renderSidebarRoadmap(); renderContentRoadmap(); }
   else if(view==="content"){
@@ -7162,6 +7163,7 @@ $("import-file").addEventListener("change", async e=>{
   DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
   RMAPS = normalizeRmaps(rec.rmaps);
   CSPACES = normalizeCspaces(rec.cspaces);
+  syncContentSpaces();
   DATA.updated = todayStr();
   activeModule = "all"; activeSection = "all"; activeCycle = null; devSprint = null; activeRmap = null; collapsed.clear();
   renderAll();
