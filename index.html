@@ -569,6 +569,31 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .disc-col.dc-now{background:#EFF6FF}
 .disc-col.dc-next{background:#F5F7FE}
 .disc-rows{padding-top:14px}
+/* All ideas table */
+.disc-table-scroll{overflow-x:auto}
+.disc-table{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card);min-width:680px}
+.dt-row{display:grid;grid-template-columns:minmax(220px,2.4fr) 62px minmax(150px,1.4fr) minmax(100px,1fr) minmax(100px,1fr) minmax(70px,auto);align-items:center;border-bottom:1px solid var(--line)}
+.disc-table > .dt-row:last-of-type{border-bottom:none}
+.dt-head{background:var(--paper)}
+.dt-head .dt-cell{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:9px 12px}
+.dt-cell{padding:11px 12px;border-right:1px solid var(--line);min-width:0}
+.dt-row .dt-cell:last-child{border-right:none}
+.dt-title{font-family:var(--disp);font-weight:600;font-size:14px;color:var(--ink)}
+.dt-note{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.dt-acts .acts{opacity:1}
+.dt-create{display:block;width:100%;text-align:left;padding:11px 14px;border:none;border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-family:var(--mono);font-size:12.5px;cursor:pointer}
+.dt-create:hover{color:var(--indigo);background:var(--indigo-soft)}
+/* dropdown field picker */
+.dpick{position:fixed;z-index:500;width:252px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(23,35,58,.18);padding:8px}
+.dpick-search{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-family:var(--sans);font-size:13px;margin-bottom:6px;background:var(--paper);color:var(--ink)}
+.dpick-search:focus{outline:none;border-color:var(--indigo)}
+.dpick-list{display:flex;flex-direction:column;gap:2px;max-height:230px;overflow-y:auto}
+.dpick-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border:none;border-radius:7px;background:none;cursor:pointer;text-align:left}
+.dpick-item:hover{background:var(--paper)}
+.dpick-item.sel{background:var(--indigo-soft)}
+.dpick-chk{width:14px;font-size:12px;color:var(--indigo);flex:none}
+.dpick-clear{font-family:var(--mono);font-size:11.5px;color:var(--muted);justify-content:center}
+.dpick-clear:hover{color:var(--blocked)}
 .k-add{margin:6px}
 .ws-item.ws-add{color:var(--muted);font-family:var(--mono);font-size:12px;border:1.5px dashed var(--line-strong);justify-content:center}
 .ws-item.ws-add:hover{color:var(--indigo);border-color:var(--indigo)}
@@ -6296,18 +6321,75 @@ function openRmapPicker(map){
    Ideas live inside the space (CSPACES entry) and sync with the team.
    Three sub-views: All ideas / Roadmap (Now-Next-Later) / Timeline.
    ================================================================ */
+/* ---- dropdown field picker (Jira-style): search + options ---- */
+let dpickEl = null, dpickCloser = null;
+function closeDiscPick(){
+  if(dpickEl){ dpickEl.remove(); dpickEl = null; }
+  if(dpickCloser){ document.removeEventListener("mousedown", dpickCloser, true); dpickCloser = null; }
+}
+function openDiscPick(anchor, cfg){
+  closeDiscPick();
+  const el = dpickEl = document.createElement("div");
+  el.className = "dpick";
+  let term = "";
+  let search = null;
+  if(cfg.search){
+    search = document.createElement("input");
+    search.className = "dpick-search";
+    search.placeholder = "Search";
+    search.oninput = ()=>{ term = search.value.trim().toLowerCase(); draw(); };
+    el.appendChild(search);
+  }
+  const list = document.createElement("div");
+  list.className = "dpick-list";
+  el.appendChild(list);
+  const draw = ()=>{
+    list.innerHTML = "";
+    cfg.options.filter(o=> !term || o.label.toLowerCase().includes(term)).forEach(o=>{
+      const row = document.createElement("button");
+      row.className = "dpick-item" + (o.key===cfg.current ? " sel" : "");
+      const chk = document.createElement("span");
+      chk.className = "dpick-chk";
+      chk.textContent = o.key===cfg.current ? "\u2713" : "";
+      const chip = document.createElement("span");
+      chip.className = "disc-chip " + (o.cls||"");
+      chip.textContent = o.label;
+      row.append(chk, chip);
+      row.onclick = ()=>{ closeDiscPick(); cfg.onPick(o.key); };
+      list.appendChild(row);
+    });
+    if(cfg.allowClear && cfg.current !== undefined && cfg.current !== null){
+      const row = document.createElement("button");
+      row.className = "dpick-item dpick-clear";
+      row.textContent = "\u00d7 Clear";
+      row.onclick = ()=>{ closeDiscPick(); cfg.onPick(undefined); };
+      list.appendChild(row);
+    }
+  };
+  draw();
+  const r = anchor.getBoundingClientRect();
+  el.style.left = Math.max(8, Math.min(r.left, (window.innerWidth || 1200) - 270)) + "px";
+  el.style.top = (r.bottom + 6) + "px";
+  document.body.appendChild(el);
+  if(search) setTimeout(()=> search.focus(), 30);
+  dpickCloser = ev=>{ if(!el.contains(ev.target)) closeDiscPick(); };
+  setTimeout(()=> document.addEventListener("mousedown", dpickCloser, true), 0);
+}
+
 function discThemeChip(idea, cs){
   const t = DISC_THEMES.find(x=>x.key===idea.theme);
   const c = document.createElement("button");
   c.className = "disc-chip theme" + (t ? " has" : "");
   c.textContent = t ? t.label : "+ theme";
-  c.title = editMode ? "Click to change the theme" : (t ? t.label : "No theme");
+  c.title = editMode ? "Click to pick a theme" : (t ? t.label : "No theme");
   c.onclick = e=>{
     e.stopPropagation();
     if(!editMode) return;
-    const idx = DISC_THEMES.findIndex(x=>x.key===idea.theme);
-    idea.theme = (idx >= DISC_THEMES.length-1) ? undefined : DISC_THEMES[idx+1].key;
-    saveDisc();
+    openDiscPick(c, {
+      search: true, allowClear: true, current: idea.theme,
+      options: DISC_THEMES.map(x=>({key:x.key, label:x.label, cls:"theme has"})),
+      onPick: k=>{ if(k) idea.theme = k; else delete idea.theme; saveDisc(); },
+    });
   };
   return c;
 }
@@ -6315,12 +6397,15 @@ function discStateChip(idea){
   const c = document.createElement("button");
   c.className = "disc-chip state s-" + idea.state.toLowerCase().replace(/[^a-z]/g,"");
   c.textContent = idea.state;
-  c.title = editMode ? "Click to change the state" : idea.state;
+  c.title = editMode ? "Click to pick a state" : idea.state;
   c.onclick = e=>{
     e.stopPropagation();
     if(!editMode) return;
-    idea.state = DISC_STATES[(DISC_STATES.indexOf(idea.state)+1) % DISC_STATES.length];
-    saveDisc();
+    openDiscPick(c, {
+      current: idea.state,
+      options: DISC_STATES.map(x=>({key:x, label:x, cls:"state s-"+x.toLowerCase().replace(/[^a-z]/g,"")})),
+      onPick: k=>{ idea.state = k; saveDisc(); },
+    });
   };
   return c;
 }
@@ -6329,13 +6414,15 @@ function discStageChip(idea){
   const c = document.createElement("button");
   c.className = "disc-chip stage st-" + idea.stage;
   c.textContent = st ? st.label : "Later";
-  c.title = editMode ? "Click to move Now \u2192 Next \u2192 Later \u2192 Won't do" : (st ? st.label : "");
+  c.title = editMode ? "Click to pick: Now / Next / Later / Won't do" : (st ? st.label : "");
   c.onclick = e=>{
     e.stopPropagation();
     if(!editMode) return;
-    const i = DISC_STAGES.findIndex(x=>x.key===idea.stage);
-    idea.stage = DISC_STAGES[(i+1) % DISC_STAGES.length].key;
-    saveDisc();
+    openDiscPick(c, {
+      current: idea.stage,
+      options: DISC_STAGES.map(x=>({key:x.key, label:x.label, cls:"stage st-"+x.key})),
+      onPick: k=>{ idea.stage = k; saveDisc(); },
+    });
   };
   return c;
 }
@@ -6387,7 +6474,7 @@ function renderContentDisc(){
   return discIdeasPane(cs);
 }
 
-/* ---- All ideas: the list ---- */
+/* ---- All ideas: Jira-style table ---- */
 function discIdeasPane(cs){
   const wrap = $("content");
   const block = document.createElement("section");
@@ -6399,35 +6486,63 @@ function discIdeasPane(cs){
   head.append(h2, pc);
   block.appendChild(head);
 
+  const scrollWrap = document.createElement("div");
+  scrollWrap.className = "disc-table-scroll";
+  const table = document.createElement("div");
+  table.className = "disc-table";
+
+  const hr = document.createElement("div");
+  hr.className = "dt-row dt-head";
+  ["Summary","\uD83D\uDCAC","Theme","Roadmap","State",""].forEach(t=>{
+    const c = document.createElement("div");
+    c.className = "dt-cell";
+    c.textContent = t;
+    hr.appendChild(c);
+  });
+  table.appendChild(hr);
+
   cs.ideas.forEach(idea=>{
     const r = document.createElement("div");
-    r.className = "ct-row";
-    const body = document.createElement("div"); body.className = "body";
-    const t = document.createElement("div"); t.className = "title"; t.textContent = idea.title;
-    body.appendChild(t);
-    if(idea.note){ const n = document.createElement("div"); n.className = "note"; n.textContent = idea.note; body.appendChild(n); }
-    const meta = document.createElement("div"); meta.className = "meta disc-meta";
-    meta.appendChild(discThemeChip(idea, cs));
-    meta.appendChild(discStageChip(idea));
-    meta.appendChild(discStateChip(idea));
-    meta.appendChild(commentChip(idea, saveDisc));
-    if(editMode) meta.appendChild(discIdeaActs(cs, idea));
-    r.append(body, meta);
-    block.appendChild(r);
+    r.className = "dt-row";
+    const cSum = document.createElement("div");
+    cSum.className = "dt-cell dt-sum";
+    const t = document.createElement("div"); t.className = "dt-title"; t.textContent = idea.title;
+    cSum.appendChild(t);
+    if(idea.note){ const n = document.createElement("div"); n.className = "dt-note"; n.textContent = idea.note; cSum.appendChild(n); }
+    const cCmt = document.createElement("div");
+    cCmt.className = "dt-cell dt-c";
+    cCmt.appendChild(commentChip(idea, saveDisc));
+    const cTheme = document.createElement("div");
+    cTheme.className = "dt-cell";
+    cTheme.appendChild(discThemeChip(idea, cs));
+    const cStage = document.createElement("div");
+    cStage.className = "dt-cell";
+    cStage.appendChild(discStageChip(idea));
+    const cState = document.createElement("div");
+    cState.className = "dt-cell";
+    cState.appendChild(discStateChip(idea));
+    const cActs = document.createElement("div");
+    cActs.className = "dt-cell dt-acts";
+    if(editMode) cActs.appendChild(discIdeaActs(cs, idea));
+    r.append(cSum, cCmt, cTheme, cStage, cState, cActs);
+    table.appendChild(r);
   });
   if(!cs.ideas.length){
     const e = document.createElement("div");
     e.className = "empty";
-    e.textContent = editMode ? "No ideas yet \u2014 add the first one below." : "No ideas yet.";
-    block.appendChild(e);
+    e.style.padding = "28px";
+    e.textContent = editMode ? "No ideas yet \u2014 create the first one below." : "No ideas yet.";
+    table.appendChild(e);
   }
   if(editMode){
-    const add = document.createElement("button");
-    add.className = "addline";
-    add.textContent = "\uFF0B Add an idea";
-    add.onclick = ()=> openIdeaDialog(cs, null);
-    block.appendChild(add);
+    const cr = document.createElement("button");
+    cr.className = "dt-create";
+    cr.textContent = "\uFF0B Create";
+    cr.onclick = ()=> openIdeaDialog(cs, null);
+    table.appendChild(cr);
   }
+  scrollWrap.appendChild(table);
+  block.appendChild(scrollWrap);
   wrap.appendChild(block);
 }
 
