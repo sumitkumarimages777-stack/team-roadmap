@@ -493,6 +493,36 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .bulk-clear{margin-left:auto;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .bulk-cb{width:15px;height:15px;accent-color:var(--indigo);cursor:pointer;flex:none;margin:10px 0 0}
 .ct-row.sel{background:var(--indigo-soft);border-radius:8px}
+
+/* top-level roadmap timeline */
+.ws-item .dot.rm{background:var(--indigo)}
+.ws-item .ws-n{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ws-item.ws-add{color:var(--muted);font-family:var(--mono);font-size:12px;border:1.5px dashed var(--line-strong);justify-content:center}
+.ws-item.ws-add:hover{color:var(--indigo);border-color:var(--indigo)}
+.ws-empty{font-family:var(--mono);font-size:11px;color:var(--muted);padding:4px 10px}
+.tl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.tl{position:relative}
+.tl-qrow{display:flex;border-bottom:1px solid var(--line);background:var(--paper)}
+.tl-q{font-family:var(--disp);font-weight:600;font-size:13px;padding:8px 12px;border-right:1px solid var(--line);white-space:nowrap;overflow:hidden}
+.tl-mrow{display:flex;border-bottom:1px solid var(--line)}
+.tl-m{font-family:var(--mono);font-size:11px;color:var(--muted);padding:6px 12px;border-right:1px dashed var(--line);white-space:nowrap}
+.tl-rows{position:relative;min-height:220px;padding:14px 0 20px;
+  background-image:linear-gradient(to right, var(--line) 1px, transparent 1px)}
+.tl-row{position:relative;height:44px}
+.tl-bar{position:absolute;top:4px;height:36px;border:none;border-radius:8px;cursor:pointer;text-align:left;
+  display:flex;align-items:center;gap:7px;padding:0 12px;overflow:hidden;white-space:nowrap;
+  font-family:var(--sans);box-shadow:0 1px 4px rgba(23,35,58,.12)}
+.tl-bar .tl-t{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.tl-bar .tl-src{font-family:var(--mono);font-size:8px;letter-spacing:.06em;background:rgba(255,255,255,.75);border-radius:4px;padding:1px 5px;flex:none}
+.tl-bar .tl-dates{font-family:var(--mono);font-size:10px;opacity:.75;flex:none;margin-left:auto}
+.tl-bar.st-done{background:var(--done-bg);color:var(--done)}
+.tl-bar.st-progress{background:#FFF2DE;color:#9A6A1B}
+.tl-bar.st-planned{background:var(--indigo-soft);color:var(--indigo)}
+.tl-bar.st-blocked{background:var(--blocked-bg);color:var(--blocked)}
+.tl-bar:hover{filter:brightness(.97);box-shadow:0 3px 10px rgba(23,35,58,.18)}
+.tl-today{position:absolute;top:0;bottom:0;width:2px;background:var(--blocked);z-index:2;pointer-events:none}
+.tl-today span{position:absolute;top:-2px;left:5px;font-family:var(--mono);font-size:9px;background:var(--blocked);color:#fff;border-radius:4px;padding:2px 6px}
+@media(max-width:600px){.tl-bar .tl-dates{display:none}}
 .cmt-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;white-space:nowrap}
 .cmt-chip svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
 .cmt-chip:hover{border-color:var(--indigo);color:var(--indigo)}
@@ -770,6 +800,44 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 <footer id="foot">
   Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
 </footer>
+
+<div class="overlay" id="rmp-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3>Add items to this roadmap</h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:8px">Pull in anything — product tasks, exam tasks, dev cards, bugs. Tick several at once.</div>
+      <div class="dep-box">
+        <div class="dep-search">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="rmp-search" type="text" placeholder="Search everything…" autocomplete="off">
+        </div>
+        <div id="rmp-list" class="dep-list" style="max-height:320px"></div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('rmp-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="rmp-add">Add items</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rmd-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:400px">
+    <h3 id="rmd-title">Item</h3>
+    <div class="dlg-body">
+      <div class="hint" id="rmd-path" style="margin-bottom:12px"></div>
+      <div class="field-row">
+        <div class="field"><label for="rmd-start">Start month</label><input id="rmd-start" type="month"></div>
+        <div class="field"><label for="rmd-end">End month</label><input id="rmd-end" type="month"></div>
+      </div>
+      <button class="btn" id="rmd-remove" style="color:var(--blocked)">Remove from roadmap</button>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('rmd-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="rmd-save">Save dates</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="comment-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">
@@ -1077,6 +1145,29 @@ function normalizeDev(d){
 let devSpace = null;   // active team/board; null => first space
 let devSprint = null;  // sprint currently shown on the board
 const backlogSel = new Set();   // ids of backlog cards selected for bulk actions (session only)
+
+/* ============ TOP-LEVEL ROADMAPS (Jira-style timelines) ============ */
+let RMAPS = { maps: [] };
+let activeRmap = null;          // id of the roadmap being viewed
+function normalizeRmaps(r){
+  r = r || {};
+  r.maps = r.maps || [];
+  r.maps.forEach(m=>{
+    if(!m.id) m.id = "rm-" + Math.random().toString(36).slice(2,9);
+    m.items = m.items || [];
+    m.items.forEach(it=>{ if(!it.rid) it.rid = "ri-" + Math.random().toString(36).slice(2,7); });
+  });
+  return r;
+}
+/* month helpers: dates stored as "YYYY-MM" */
+function ymIdx(ym){ const p = String(ym||"").split("-"); const y=+p[0], m=+p[1]; return (y*12 + (m-1)) || 0; }
+function idxYm(i){ const y = Math.floor(i/12), m = i%12 + 1; return y + "-" + String(m).padStart(2,"0"); }
+function ymShort(ym){
+  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const p = String(ym).split("-");
+  return M[(+p[1])-1] + " \u2019" + String(p[0]).slice(2);
+}
+function nowYm(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); }
 function currentSpace(){
   if(devSpace && DEV.spaces.some(s=>s.id===devSpace)) return devSpace;
   return DEV.spaces.length ? DEV.spaces[0].id : null;
@@ -1142,7 +1233,7 @@ let lastSnapshot = "";
 
 async function pushAll(){
   if(!db) { renderAll(); return; }
-  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV) };
+  const payload = { roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS) };
   saving = true;
   try{
     const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(payload) });
@@ -1156,6 +1247,7 @@ function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
 function saveContent(){ CONTENT.updated = todayStr(); renderAll(); pushAll(); }
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
+function saveRmaps(){ renderAll(); pushAll(); }
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
 const bugsConfigured = BUGS_BIN_ID && JSONBIN_CONFIG.apiKey;
@@ -1191,7 +1283,7 @@ async function refresh(showMsg){
   try{
     const rec = await fetchAll();
     if(rec && rec.roadmap){
-      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas, dev: rec.dev });
+      const snap = JSON.stringify({ roadmap: rec.roadmap, okrs: rec.okrs, content: rec.content, teamIdeas: rec.teamIdeas, dev: rec.dev, rmaps: rec.rmaps });
       if(snap !== lastSnapshot){
         lastSnapshot = snap;
         DATA = normalize(rec.roadmap);
@@ -1199,6 +1291,7 @@ async function refresh(showMsg){
         CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
         TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
         DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
+        RMAPS = normalizeRmaps(rec.rmaps);
         renderAll();
         if(showMsg) toast("Refreshed — you're seeing the latest");
       } else if(showMsg) toast("Already up to date");
@@ -1215,6 +1308,7 @@ async function start(){
   CONTENT = normalizeContent(clean(DEFAULT_CONTENT));
   TIDEAS = normalizeTeamIdeas(clean(DEFAULT_TEAM_IDEAS));
   DEV = normalizeDev(clean(DEFAULT_DEV));
+  RMAPS = normalizeRmaps(null);
   BUGS = normalizeBugs({tickets:[]});
   if(configured){
     try{
@@ -1226,8 +1320,9 @@ async function start(){
         if(rec.content) CONTENT = normalizeContent(rec.content);
         if(rec.teamIdeas) TIDEAS = normalizeTeamIdeas(rec.teamIdeas);
         if(rec.dev) DEV = normalizeDev(rec.dev);
-        if(rec.content && rec.teamIdeas && rec.dev){
-          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV) });
+        RMAPS = normalizeRmaps(rec.rmaps);
+        if(rec.content && rec.teamIdeas && rec.dev && rec.rmaps){
+          lastSnapshot = JSON.stringify({ roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT), teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS) });
         } else {
           await pushAll();   // existing bin from an older version: add the new section(s) to it
         }
@@ -1730,7 +1825,8 @@ function cardActs(card, buttons){
 
 /* ---------- shared header ---------- */
 function renderHeader(){
-  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : (DATA.title || "Product Roadmap");
+  const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
+  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
@@ -1741,6 +1837,8 @@ function renderHeader(){
     ? "Reported by the team and by students \u2014 triage, fix, verify, close."
     : view==="ideas"
     ? "Anyone on the team can pitch an idea \u2014 name on it, points for it, and a clear stage so nothing disappears."
+    : view==="rmap"
+    ? "A timeline across every space \u2014 pull in tasks, dev cards, and bugs from anywhere and schedule them."
     : (DATA.subtitle||"");
   document.title = $("rm-title").textContent;
   const stats = $("stats");
@@ -5207,6 +5305,290 @@ function openStoryImport(spaceId){
   setTimeout(()=> $("imp-text").focus(), 50);
 }
 
+/* ================================================================
+   TOP-LEVEL ROADMAP TIMELINE (Jira-style)
+   A roadmap holds items that point (by tid) at cards living anywhere:
+   product-roadmap tasks, content tasks, dev cards, bug tickets.
+   Each item carries start/end months and renders as a bar.
+   ================================================================ */
+function currentRmap(){ return RMAPS.maps.find(m=>m.id===activeRmap) || null; }
+
+function rmapRange(m){
+  // month range shown: from earliest item start to latest end, padded; default 12 months from now
+  const idxs = m.items.flatMap(it=> [it.start, it.end].filter(Boolean).map(ymIdx));
+  let a = idxs.length ? Math.min(...idxs) : ymIdx(nowYm());
+  let b = idxs.length ? Math.max(...idxs) : ymIdx(nowYm()) + 11;
+  a = Math.min(a, ymIdx(nowYm()));            // always include today
+  b = Math.max(b, a + 5);
+  return {a: a-1, b: b+1};                     // one month of air on each side
+}
+
+function renderContentRmap(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const m = currentRmap();
+  if(!m){
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = RMAPS.maps.length ? "Pick a roadmap from the sidebar." : "No roadmaps yet \u2014 turn on Edit and create one from the sidebar.";
+    wrap.appendChild(e);
+    if(RMAPS.maps.length){ activeRmap = RMAPS.maps[0].id; }
+    return;
+  }
+
+  // resolve items against the live registry; drop pointers to deleted cards
+  const reg = allTasks();
+  const byTid = {};
+  reg.forEach(x=> byTid[x.tid] = x);
+  const live = m.items.filter(it=> byTid[it.tid]);
+  if(live.length !== m.items.length){ m.items = live; }   // silent cleanup
+
+  const head = document.createElement("section");
+  head.className = "module-block";
+  head.style.marginBottom = "12px";
+  const row = document.createElement("div");
+  row.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = m.name;
+  const pc = document.createElement("span"); pc.className = "pct";
+  const done = live.filter(it=> effStatus(byTid[it.tid].task)==="done").length;
+  pc.textContent = live.length + " item(s) \u00b7 " + done + " done";
+  row.append(h2, pc);
+  if(editMode){
+    const spx = document.createElement("span"); spx.className = "spacer"; row.appendChild(spx);
+    const addB = document.createElement("button");
+    addB.className = "tool primary";
+    addB.textContent = "\uFF0B Add items from any space";
+    addB.onclick = ()=> openRmapPicker(m);
+    row.appendChild(addB);
+    const acts = document.createElement("div"); acts.className = "acts";
+    acts.appendChild(actBtn("pencil","Rename roadmap",false, ()=>
+      openDialog("Rename roadmap", {title:m.name}, v=>{ m.name = v.title; saveRmaps(); }, {hideExtras:true})));
+    acts.appendChild(actBtn("trash","Delete roadmap",true, ()=>{
+      if(confirm("Delete the roadmap \u201C"+m.name+"\u201D? The cards themselves are NOT deleted \u2014 only this timeline.")){
+        RMAPS.maps.splice(RMAPS.maps.indexOf(m),1);
+        activeRmap = RMAPS.maps.length ? RMAPS.maps[0].id : null;
+        if(!activeRmap) view = "roadmap";
+        saveRmaps(); toast("Roadmap deleted");
+      }
+    }));
+    row.appendChild(acts);
+    row.querySelector(".acts").style.opacity = 1;
+  }
+  head.appendChild(row);
+  wrap.appendChild(head);
+
+  const scheduled = live.filter(it=> it.start && it.end);
+  const unscheduled = live.filter(it=> !it.start || !it.end);
+
+  /* ---------- the timeline ---------- */
+  const {a, b} = rmapRange(m);
+  const months = []; for(let i=a; i<=b; i++) months.push(i);
+  const COLW = 96;
+
+  const board = document.createElement("section");
+  board.className = "module-block";
+  const scroll = document.createElement("div");
+  scroll.className = "tl-scroll";
+  const tl = document.createElement("div");
+  tl.className = "tl";
+  tl.style.width = (months.length * COLW) + "px";
+
+  // quarter header row
+  const qrow = document.createElement("div");
+  qrow.className = "tl-qrow";
+  let qi = 0;
+  while(qi < months.length){
+    const idx = months[qi];
+    const y = Math.floor(idx/12), mo = idx%12;               // 0-based month
+    const q = Math.floor(mo/3) + 1;
+    const monthsLeftInQ = 3 - (mo % 3);
+    const span = Math.min(monthsLeftInQ, months.length - qi);
+    const cell = document.createElement("div");
+    cell.className = "tl-q";
+    cell.style.width = (span * COLW) + "px";
+    cell.textContent = "Q" + q + " " + y;
+    qrow.appendChild(cell);
+    qi += span;
+  }
+  tl.appendChild(qrow);
+
+  // month header row
+  const mrow = document.createElement("div");
+  mrow.className = "tl-mrow";
+  months.forEach(i=>{
+    const c = document.createElement("div");
+    c.className = "tl-m";
+    c.style.width = COLW + "px";
+    c.textContent = ymShort(idxYm(i));
+    mrow.appendChild(c);
+  });
+  tl.appendChild(mrow);
+
+  // rows area with grid lines + today marker
+  const rows = document.createElement("div");
+  rows.className = "tl-rows";
+  rows.style.backgroundSize = COLW + "px 100%";
+  const todayIdx = ymIdx(nowYm());
+  if(todayIdx >= a && todayIdx <= b){
+    const day = new Date().getDate();
+    const dim = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+    const mk = document.createElement("div");
+    mk.className = "tl-today";
+    mk.style.left = ((todayIdx - a) * COLW + (day/dim) * COLW) + "px";
+    mk.innerHTML = '<span>Today</span>';
+    rows.appendChild(mk);
+  }
+
+  const sorted = scheduled.slice().sort((x,y)=> ymIdx(x.start) - ymIdx(y.start));
+  sorted.forEach(it=>{
+    const entry = byTid[it.tid];
+    const st = effStatus(entry.task);
+    const r = document.createElement("div");
+    r.className = "tl-row";
+    const bar = document.createElement("button");
+    bar.className = "tl-bar st-" + st;
+    const s0 = Math.max(ymIdx(it.start), a), e0 = Math.min(ymIdx(it.end), b);
+    bar.style.left = ((s0 - a) * COLW) + "px";
+    bar.style.width = (Math.max(1, e0 - s0 + 1) * COLW - 10) + "px";
+    const src = entry.kind==="dev" ? "DEV" : entry.kind==="bug" ? "BUG" : entry.kind==="content" ? "EDU" : "PROD";
+    bar.innerHTML = '<span class="tl-src"></span><span class="tl-t"></span><span class="tl-dates"></span>';
+    bar.querySelector(".tl-src").textContent = src;
+    bar.querySelector(".tl-t").textContent = entry.task.title || "(untitled)";
+    bar.querySelector(".tl-dates").textContent = ymShort(it.start) + " \u2192 " + ymShort(it.end);
+    bar.title = (entry.task.title||"") + "\n" + entry.path + "\n" + ymShort(it.start) + " \u2192 " + ymShort(it.end) + (editMode ? "\n(click to edit dates / remove)" : "");
+    bar.onclick = ()=>{ if(editMode) editRmapItem(m, it, entry); };
+    r.appendChild(bar);
+    rows.appendChild(r);
+  });
+  if(!sorted.length){
+    const e = document.createElement("div");
+    e.className = "empty"; e.style.padding = "40px 20px";
+    e.textContent = editMode ? "Nothing scheduled yet \u2014 add items, then give them start and end months." : "Nothing scheduled yet.";
+    rows.appendChild(e);
+  }
+  tl.appendChild(rows);
+  scroll.appendChild(tl);
+  board.appendChild(scroll);
+  wrap.appendChild(board);
+
+  /* ---------- unscheduled ---------- */
+  if(unscheduled.length){
+    const us = document.createElement("section");
+    us.className = "module-block";
+    us.style.marginTop = "14px";
+    const uh = document.createElement("div");
+    uh.className = "module-head";
+    const h3 = document.createElement("h2"); h3.textContent = "Not scheduled yet";
+    const up = document.createElement("span"); up.className = "pct"; up.textContent = unscheduled.length + " item(s) \u2014 no dates";
+    uh.append(h3, up);
+    us.appendChild(uh);
+    unscheduled.forEach(it=>{
+      const entry = byTid[it.tid];
+      const r = document.createElement("div");
+      r.className = "ct-row";
+      const body = document.createElement("div"); body.className = "body";
+      const t = document.createElement("div"); t.className = "title"; t.textContent = entry.task.title || "(untitled)";
+      const n = document.createElement("div"); n.className = "note"; n.textContent = entry.path;
+      body.append(t, n);
+      const meta = document.createElement("div"); meta.className = "meta";
+      const pill = document.createElement("span");
+      pill.className = "pill " + effStatus(entry.task);
+      pill.textContent = STATUS_LABEL[effStatus(entry.task)] || effStatus(entry.task);
+      meta.appendChild(pill);
+      if(editMode){
+        const sd = document.createElement("button");
+        sd.className = "upd";
+        sd.textContent = "\uD83D\uDCC5 Set dates";
+        sd.onclick = ()=> editRmapItem(m, it, entry);
+        meta.appendChild(sd);
+        const acts = document.createElement("div"); acts.className = "acts";
+        acts.appendChild(actBtn("trash","Remove from this roadmap",true, ()=>{
+          m.items.splice(m.items.indexOf(it),1); saveRmaps();
+        }));
+        meta.appendChild(acts);
+      }
+      r.append(body, meta);
+      us.appendChild(r);
+    });
+    wrap.appendChild(us);
+  }
+}
+
+/* ---- edit one item's dates / remove it ---- */
+function editRmapItem(map, it, entry){
+  $("rmd-title").textContent = entry.task.title || "(untitled)";
+  $("rmd-path").textContent = entry.path;
+  $("rmd-start").value = it.start || nowYm();
+  $("rmd-end").value = it.end || it.start || nowYm();
+  $("rmd-save").onclick = ()=>{
+    const s0 = $("rmd-start").value, e0 = $("rmd-end").value;
+    if(!s0 || !e0){ toast("Pick both months"); return; }
+    if(ymIdx(e0) < ymIdx(s0)){ toast("End month is before start month"); return; }
+    it.start = s0; it.end = e0;
+    $("rmd-overlay").classList.remove("show");
+    saveRmaps();
+  };
+  $("rmd-remove").onclick = ()=>{
+    if(confirm("Remove \u201C"+(entry.task.title||"")+"\u201D from this roadmap? The card itself is not deleted.")){
+      map.items.splice(map.items.indexOf(it),1);
+      $("rmd-overlay").classList.remove("show");
+      saveRmaps();
+    }
+  };
+  $("rmd-overlay").classList.add("show");
+}
+
+/* ---- picker: add cards from anywhere ---- */
+let rmapPickSel = new Set();
+function openRmapPicker(map){
+  rmapPickSel = new Set();
+  const already = new Set(map.items.map(it=>it.tid));
+  const pool = allTasks().filter(x=> !already.has(x.tid));
+  const list = $("rmp-list"), search = $("rmp-search");
+  search.value = "";
+  const draw = ()=>{
+    const term = search.value.trim().toLowerCase();
+    list.innerHTML = "";
+    const hits = pool.filter(x=> !term || ((x.task.title||"")+" "+x.path).toLowerCase().includes(term));
+    if(!hits.length){
+      const e = document.createElement("div"); e.className = "dep-none pad"; e.textContent = "No matches.";
+      list.appendChild(e); return;
+    }
+    const groups = {};
+    hits.forEach(x=> (groups[x.path] = groups[x.path] || []).push(x));
+    Object.keys(groups).forEach(path=>{
+      const h = document.createElement("div"); h.className = "dep-group"; h.textContent = path;
+      list.appendChild(h);
+      groups[path].forEach(x=>{
+        const row = document.createElement("label");
+        row.className = "dep-item";
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = rmapPickSel.has(x.tid);
+        cb.onchange = ()=>{ cb.checked ? rmapPickSel.add(x.tid) : rmapPickSel.delete(x.tid); $("rmp-add").textContent = "Add " + (rmapPickSel.size||"") + (rmapPickSel.size===1?" item":" items"); };
+        const t = document.createElement("span"); t.className = "di-title"; t.textContent = x.task.title || "(untitled)";
+        const st = document.createElement("span");
+        const es = effStatus(x.task);
+        st.className = "di-status " + (es==="done"?"done":es);
+        st.textContent = blockerLabel(x);
+        row.append(cb, t, st);
+        list.appendChild(row);
+      });
+    });
+  };
+  search.oninput = draw;
+  draw();
+  $("rmp-add").textContent = "Add items";
+  $("rmp-add").onclick = ()=>{
+    if(!rmapPickSel.size){ toast("Tick at least one item"); return; }
+    rmapPickSel.forEach(tid=> map.items.push({rid:"ri-"+Math.random().toString(36).slice(2,7), tid}));
+    $("rmp-overlay").classList.remove("show");
+    saveRmaps();
+    toast(rmapPickSel.size + " item(s) added \u2014 now set their dates");
+  };
+  $("rmp-overlay").classList.add("show");
+  setTimeout(()=> search.focus(), 50);
+}
+
 function bugSrcChip(t){
   const sp = document.createElement("span");
   sp.className = "src "+(t.source==="student"?"student":"team");
@@ -5311,8 +5693,8 @@ function renderAll(){
      Each needs a renderSidebarX / renderContentX pair wired below. */
   /* Workspace areas, grouped. Add future sections here. */
   const WORKSPACE_GROUPS = [
-    {label:"Product", items:[
-      {key:"roadmap", label:"Roadmap"},
+    {label:"Spaces", items:[
+      {key:"roadmap", label:"Product roadmap"},
       {key:"dev", label:"Development"},
       {key:"bugs", label:"Bugs"},
     ]},
@@ -5343,6 +5725,36 @@ function renderAll(){
         ws.appendChild(b);
       });
     });
+    /* ---- top-level ROADMAPS: timelines that pull cards from every space ---- */
+    const rl = document.createElement("div");
+    rl.className = "ws-label"; rl.textContent = "Roadmaps";
+    ws.appendChild(rl);
+    RMAPS.maps.forEach(m=>{
+      const b = document.createElement("button");
+      b.className = "ws-item"+(view==="rmap" && activeRmap===m.id ? " active" : "");
+      b.innerHTML = '<span class="dot rm"></span><span></span><span class="ws-n"></span>';
+      b.querySelector("span:nth-child(2)").textContent = m.name;
+      b.querySelector(".ws-n").textContent = m.items.length || "";
+      b.onclick = ()=>{ view = "rmap"; activeRmap = m.id; renderAll(); };
+      ws.appendChild(b);
+    });
+    if(editMode){
+      const add = document.createElement("button");
+      add.className = "ws-item ws-add";
+      add.textContent = "\uFF0B New roadmap";
+      add.onclick = ()=> openDialog("New roadmap", {}, v=>{
+        const m = { id:"rm-"+Date.now().toString(36), name:v.title, items:[] };
+        RMAPS.maps.push(m);
+        view = "rmap"; activeRmap = m.id;
+        saveRmaps(); toast("Roadmap created \u2014 add items from any space");
+      }, {hideExtras:true, titleLabel:"Roadmap name (e.g. H2 2026 Timeline)"});
+      ws.appendChild(add);
+    } else if(!RMAPS.maps.length){
+      const e = document.createElement("div");
+      e.className = "ws-empty";
+      e.textContent = "None yet \u2014 turn on Edit to create one.";
+      ws.appendChild(e);
+    }
   }
   // Educational Content section: expanded (exam cards) on the content view,
   // collapsed (single summary card) everywhere else. Sits below the active view's sub-tabs.
@@ -5369,6 +5781,11 @@ function renderAll(){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
     renderContentContent();
+  }
+  else if(view==="rmap"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    renderContentRmap();
   }
   else if(view==="ideas"){ renderSidebarIdeas(); renderContentIdeas(); }
   else if(view==="dev"){ renderSidebarDev(); renderContentDev(); }
@@ -5447,6 +5864,7 @@ $("backup-btn").onclick = ()=>{
     content: clean(CONTENT),
     teamIdeas: clean(TIDEAS),
     dev: clean(DEV),
+    rmaps: clean(RMAPS),
     bugs: clean(BUGS),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
@@ -5487,8 +5905,9 @@ $("import-file").addEventListener("change", async e=>{
   CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
   TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
   DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
+  RMAPS = normalizeRmaps(rec.rmaps);
   DATA.updated = todayStr();
-  activeModule = "all"; activeSection = "all"; activeCycle = null; devSprint = null; collapsed.clear();
+  activeModule = "all"; activeSection = "all"; activeCycle = null; devSprint = null; activeRmap = null; collapsed.clear();
   renderAll();
   await pushAll();
   if(rec.bugs && Array.isArray(rec.bugs.tickets)){
