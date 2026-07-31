@@ -586,6 +586,15 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .tl-zbtn:hover{border-color:var(--indigo);color:var(--indigo)}
 .tl-zbtn.off{opacity:.3;cursor:default;pointer-events:none}
 .tl-zlabel{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted)}
+.tl-marker{position:absolute;top:0;bottom:0;width:0;z-index:2;pointer-events:none}
+.tl-marker::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;background:var(--mkc);opacity:.45}
+.tl-mk{position:absolute;left:4px;background:var(--mkc);color:#fff;border:none;border-radius:5px;
+  font-family:var(--mono);font-size:10px;padding:3px 8px;white-space:nowrap;cursor:pointer;pointer-events:auto;
+  box-shadow:0 1px 4px rgba(23,35,58,.25)}
+.tl-mk::before{content:"\25C6";margin-right:5px;font-size:8px}
+.rmk-colors{display:flex;flex-wrap:wrap;gap:8px}
+.rmk-sw{width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer}
+.rmk-sw.sel{border-color:var(--ink);box-shadow:0 0 0 2px var(--card) inset}
 .tl-bar .tl-t{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
 .tl-bar .tl-src{font-family:var(--mono);font-size:8px;letter-spacing:.06em;background:rgba(255,255,255,.75);border-radius:4px;padding:1px 5px;flex:none}
 .tl-bar .tl-dates{font-family:var(--mono);font-size:10px;opacity:.75;flex:none;margin-left:auto}
@@ -901,6 +910,22 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="btns">
       <button class="btn" onclick="document.getElementById('rmp-overlay').classList.remove('show')">Cancel</button>
       <button class="btn save" id="rmp-add">Add items</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rmk-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:400px">
+    <h3 id="rmk-heading">New marker</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="rmk-label">Label</label><input id="rmk-label" placeholder="e.g. Launch / CUET exam / Marketing starts" autocomplete="off"></div>
+      <div class="field"><label for="rmk-date">Date</label><input id="rmk-date" type="date"></div>
+      <div class="field"><label>Colour</label><div id="rmk-colors" class="rmk-colors"></div></div>
+      <button class="btn" id="rmk-del" style="color:var(--blocked)">Delete marker</button>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('rmk-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="rmk-save">Save marker</button>
     </div>
   </div>
 </div>
@@ -1257,6 +1282,8 @@ function normalizeRmaps(r){
   r.maps = r.maps || [];
   r.maps.forEach(m=>{
     if(!m.id) m.id = "rm-" + Math.random().toString(36).slice(2,9);
+    m.markers = m.markers || [];
+    m.markers.forEach(mk=>{ if(!mk.id) mk.id = "mk-" + Math.random().toString(36).slice(2,7); });
     m.items = m.items || [];
     m.items.forEach(it=>{
       if(!it.rid) it.rid = "ri-" + Math.random().toString(36).slice(2,7);
@@ -5663,6 +5690,12 @@ function renderContentRmap(){
     addB.textContent = "\uFF0B Add items from any space";
     addB.onclick = ()=> openRmapPicker(m);
     row.appendChild(addB);
+    const addMk = document.createElement("button");
+    addMk.className = "tool";
+    addMk.textContent = "\uD83D\uDCCD Marker";
+    addMk.title = "Pin a labelled milestone (launch, exam date\u2026) to a date on the timeline";
+    addMk.onclick = ()=> openRmapMarker(m, null);
+    row.appendChild(addMk);
     const acts = document.createElement("div"); acts.className = "acts";
     acts.appendChild(actBtn("pencil","Roadmap settings \u2014 name and board start/end",false, ()=> openRmapSettings(m)));
     acts.appendChild(actBtn("trash","Delete roadmap",true, ()=>{
@@ -5760,6 +5793,29 @@ function renderContentRmap(){
     mk.style.left = (ctx.x(todayISO()) + 0.5 * ctx.pxdAt(todayISO())) + "px";
     mk.innerHTML = '<span>Today</span>';
     rows.appendChild(mk);
+  }
+  // labelled milestone markers (launch, exam date, ...)
+  {
+    const sortedMk = (m.markers||[]).filter(x=> x.date && dNum(x.date) >= n0 && dNum(x.date) <= n1)
+      .slice().sort((a,b)=> dNum(a.date) - dNum(b.date));
+    let lastX = -1e9, lane = 0;
+    sortedMk.forEach(mk2=>{
+      const x = ctx.x(mk2.date) + 0.5 * ctx.pxdAt(mk2.date);
+      lane = (x - lastX < 96) ? (lane + 1) % 3 : 0;   // stagger chips that would collide
+      lastX = x;
+      const el = document.createElement("div");
+      el.className = "tl-marker";
+      el.style.left = x + "px";
+      el.style.setProperty("--mkc", mk2.color || "#3B5BDB");
+      const chip = document.createElement("button");
+      chip.className = "tl-mk";
+      chip.style.top = (lane * 26) + "px";
+      chip.textContent = mk2.label || "Marker";
+      chip.title = (mk2.label||"Marker") + " \u00b7 " + fmtD(mk2.date) + (editMode ? "\n(click to edit)" : "");
+      if(editMode) chip.onclick = e=>{ e.stopPropagation(); openRmapMarker(m, mk2); };
+      el.appendChild(chip);
+      rows.appendChild(el);
+    });
   }
 
   inRange.slice().sort((x,y)=> dNum(x.start) - dNum(y.start)).forEach(it=>{
@@ -5922,6 +5978,48 @@ function startMonthStretch(e, mapId, mm){
   };
   window.addEventListener("mousemove", onMove);
   window.addEventListener("mouseup", onUp);
+}
+
+/* ---- milestone markers: label + date + colour, pinned to the timeline ---- */
+const MK_COLORS = ["#3B5BDB","#0E7490","#1F7A4D","#9A6A1B","#C2410C","#B03A34","#C2417F","#7048B6","#374151"];
+function openRmapMarker(map, mk){
+  $("rmk-heading").textContent = mk ? "Edit marker" : "New marker";
+  $("rmk-label").value = mk ? (mk.label||"") : "";
+  $("rmk-date").value = mk ? (mk.date||todayISO()) : todayISO();
+  let color = (mk && mk.color) || MK_COLORS[0];
+  const sw = $("rmk-colors");
+  sw.innerHTML = "";
+  MK_COLORS.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "rmk-sw" + (c===color ? " sel" : "");
+    b.style.background = c;
+    b.onclick = ()=>{ color = c; [...sw.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); };
+    sw.appendChild(b);
+  });
+  $("rmk-del").style.display = mk ? "" : "none";
+  $("rmk-del").onclick = ()=>{
+    if(!mk) return;
+    if(confirm("Delete the marker \u201C"+(mk.label||"")+"\u201D?")){
+      map.markers.splice(map.markers.indexOf(mk),1);
+      $("rmk-overlay").classList.remove("show");
+      saveRmaps();
+    }
+  };
+  $("rmk-save").onclick = ()=>{
+    const label = $("rmk-label").value.trim();
+    const date = $("rmk-date").value;
+    if(!label){ $("rmk-label").focus(); return; }
+    if(!date){ toast("Pick a date"); return; }
+    if(mk){ mk.label = label; mk.date = date; mk.color = color; }
+    else{
+      map.markers = map.markers || [];
+      map.markers.push({ id:"mk-"+Date.now().toString(36), label, date, color });
+    }
+    $("rmk-overlay").classList.remove("show");
+    saveRmaps();
+  };
+  $("rmk-overlay").classList.add("show");
+  setTimeout(()=> $("rmk-label").focus(), 50);
 }
 
 /* ---- exact dates dialog ---- */
