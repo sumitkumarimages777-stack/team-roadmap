@@ -595,6 +595,10 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .dpick-clear{font-family:var(--mono);font-size:11.5px;color:var(--muted);justify-content:center}
 .dpick-clear:hover{color:var(--blocked)}
 .k-add{margin:6px}
+.cmode-bar{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:14px;background:var(--card)}
+.cmode{border:none;background:none;font-family:var(--mono);font-size:12px;padding:7px 16px;color:var(--muted);cursor:pointer}
+.cmode.active{background:var(--indigo);color:#fff}
+.content-board .kcard .pill{font-size:10px;padding:2px 8px}
 .ws-item.ws-add{color:var(--muted);font-family:var(--mono);font-size:12px;border:1.5px dashed var(--line-strong);justify-content:center}
 .ws-item.ws-add:hover{color:var(--indigo);border-color:var(--indigo)}
 /* landing page */
@@ -990,6 +994,12 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <span class="tpl-desc">Collect ideas, sort them into Now / Next / Later, and see them on a timeline — like Jira Product Discovery.</span>
           <span class="tpl-by">All ideas · Roadmap · Timeline</span>
         </button>
+        <button class="tpl-card" data-tpl="content">
+          <span class="tpl-emoji">📚</span>
+          <span class="tpl-name">Educational content</span>
+          <span class="tpl-desc">A content section with tasks, deadlines, budgets and the List / Board views — like your exam sections.</span>
+          <span class="tpl-by">Tasks · Budget · Kanban</span>
+        </button>
         <button class="tpl-card" data-tpl="scrum">
           <span class="tpl-emoji">🏃</span>
           <span class="tpl-name">Scrum</span>
@@ -1323,6 +1333,7 @@ function inr(n){
 function budgetOf(sec){ return money(sec.budget); }
 function spentOf(sec){ return (sec.spends||[]).reduce((a,sp)=> a + money(sp.amount), 0); }
 let activeSection = "all";
+let contentMode = "list";   // Educational Content: "list" | "board" (kanban)
 let activeStage = "all";
 function normalizeTeamIdeas(t){
   t = t || {};
@@ -1382,7 +1393,7 @@ function normalizeCspaces(c){
   c.list = c.list || [];
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
-    x.type = (x.type === "scrum") ? "scrum" : (x.type === "discovery") ? "discovery" : "bugs";
+    x.type = (x.type === "scrum") ? "scrum" : (x.type === "discovery") ? "discovery" : (x.type === "content") ? "content" : "bugs";
     if(x.type === "discovery"){
       x.ideas = x.ideas || [];
       // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
@@ -4862,6 +4873,75 @@ function budgetPanel(sec){
   return box;
 }
 
+const CONTENT_COLS = [
+  {key:"planned",  label:"To do"},
+  {key:"progress", label:"In progress"},
+  {key:"done",     label:"Done"},
+];
+function contentBoardPane(secs){
+  const wrap = $("content");
+  const board = document.createElement("div");
+  board.className = "kanban disc-board content-board";
+  // leaf tasks only (parents derive their status from these)
+  const entries = secs.flatMap(sec => sec.tasks.flatMap(leavesOf).map(t=>({t, sec})));
+  const colOf = t => t.status === "blocked" ? "planned" : (CONTENT_COLS.some(c=>c.key===t.status) ? t.status : "planned");
+  CONTENT_COLS.forEach((col, ci)=>{
+    const el = document.createElement("div");
+    el.className = "kcol" + (col.key==="done" ? " kdone" : "");
+    const list = entries.filter(e => colOf(e.t) === col.key);
+    const ch = document.createElement("div");
+    ch.className = "kcol-head";
+    ch.innerHTML = '<b></b><span class="cnt"></span>';
+    ch.querySelector("b").textContent = col.label;
+    ch.querySelector(".cnt").textContent = list.length;
+    el.appendChild(ch);
+    list.forEach(({t, sec})=>{
+      const card = document.createElement("div");
+      card.className = "kcard";
+      const kt = document.createElement("div"); kt.className = "kt"; kt.textContent = t.title;
+      card.appendChild(kt);
+      const bits = [];
+      if(t.deadline) bits.push("\uD83D\uDCC5 " + t.deadline);
+      if(t.owner) bits.push(t.owner);
+      if(bits.length){ const kn = document.createElement("div"); kn.className = "kn"; kn.textContent = bits.join(" \u00b7 "); card.appendChild(kn); }
+      const meta = document.createElement("div"); meta.className = "kcard-meta disc-meta";
+      if(activeSection === "all"){
+        const st = document.createElement("span"); st.className = "disc-chip"; st.textContent = sec.name;
+        meta.appendChild(st);
+      }
+      if(t.status === "blocked"){
+        const bl = document.createElement("span"); bl.className = "pill blocked"; bl.textContent = STATUS_LABEL.blocked || "Blocked";
+        meta.appendChild(bl);
+      }
+      meta.appendChild(commentChip(t, ()=>saveContent()));
+      card.appendChild(meta);
+      if(editMode){
+        const mv = document.createElement("div");
+        mv.className = "kmove";
+        const move = next => {
+          if(isLocked(t) && (next==="progress" || next==="done")){
+            const open = openBlockers(t);
+            if(!confirm("\u201C"+t.title+"\u201D is still waiting on:\n\n"
+              + open.map(b=>"\u2022 "+b.task.title).join("\n")
+              + "\n\nMark it \u201C"+(STATUS_LABEL[next]||next)+"\u201D anyway?")) return;
+          }
+          t.status = next;
+          saveContent();
+        };
+        const back = document.createElement("button"); back.textContent = "\u25C0"; back.disabled = ci===0;
+        if(ci>0){ back.title = "Move to "+CONTENT_COLS[ci-1].label; back.onclick = ()=> move(CONTENT_COLS[ci-1].key); }
+        const fwd = document.createElement("button"); fwd.textContent = "\u25B6"; fwd.disabled = ci===CONTENT_COLS.length-1;
+        if(ci<CONTENT_COLS.length-1){ fwd.title = "Move to "+CONTENT_COLS[ci+1].label; fwd.onclick = ()=> move(CONTENT_COLS[ci+1].key); }
+        mv.append(back, fwd);
+        card.appendChild(mv);
+      }
+      el.appendChild(card);
+    });
+    board.appendChild(el);
+  });
+  wrap.appendChild(board);
+}
+
 function renderContentContent(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -4870,6 +4950,18 @@ function renderContentContent(){
     wrap.innerHTML = '<div class="empty">No sections yet. '+(editMode?'Add an exam from the left.':'Turn on Edit to add your first exam section.')+'</div>';
     return;
   }
+  // List | Board toggle
+  const modeBar = document.createElement("div");
+  modeBar.className = "cmode-bar";
+  [["list","\u2630 List"],["board","\u25A6 Board"]].forEach(([k,lbl])=>{
+    const b = document.createElement("button");
+    b.className = "cmode" + (contentMode===k ? " active" : "");
+    b.textContent = lbl;
+    b.onclick = ()=>{ contentMode = k; renderAll(); };
+    modeBar.appendChild(b);
+  });
+  wrap.appendChild(modeBar);
+  if(contentMode === "board"){ contentBoardPane(secs); return; }
   secs.forEach(s=>{
     const block = document.createElement("section");
     block.className = "module-block";
@@ -6811,15 +6903,18 @@ function renderAll(){
           ? (view==="cbugs" && activeCspace===cs.id)
           : cs.type==="discovery"
           ? (view==="disc" && activeCspace===cs.id)
+          : cs.type==="content"
+          ? (view==="content" && activeSection===cs.sectionKey)
           : (view==="dev" && devSpace===cs.devId);
         const b = document.createElement("button");
         b.className = "ws-item"+(active?" active":"");
         b.innerHTML = '<span class="dot cs"></span><span></span><span class="ws-type"></span>';
         b.querySelector("span:nth-child(2)").textContent = cs.name;
-        b.querySelector(".ws-type").textContent = cs.type==="scrum" ? "scrum" : cs.type==="discovery" ? "product" : "bugs";
+        b.querySelector(".ws-type").textContent = cs.type==="scrum" ? "scrum" : cs.type==="discovery" ? "product" : cs.type==="content" ? "content" : "bugs";
         b.onclick = ()=>{
           if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
           else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
+          else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
           else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
           renderAll();
         };
@@ -6834,6 +6929,8 @@ function renderAll(){
               ? "Remove \u201C"+cs.name+"\u201D? Its tickets are NOT deleted \u2014 they move to the main Bugs space."
               : cs.type==="discovery"
               ? "Remove \u201C"+cs.name+"\u201D? Its "+(cs.ideas||[]).length+" idea(s) are deleted with it."
+              : cs.type==="content"
+              ? "Remove \u201C"+cs.name+"\u201D from the sidebar? Its section and tasks stay under Educational Content."
               : "Remove \u201C"+cs.name+"\u201D from the sidebar? Its board and cards stay under Development.";
             if(!confirm(msg)) return;
             if(cs.type==="bugs"){
@@ -6939,7 +7036,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
-    openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : "New Bugs space", {}, v=>{
+    openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : "New Bugs space", {}, v=>{
       const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type };
       if(type==="scrum"){
         const sp = { id:"space-"+Date.now().toString(36), name:v.title };
@@ -6953,13 +7050,20 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         CSPACES.list.push(cs);
         view = "disc"; activeCspace = cs.id; discView = "ideas";
         renderAll(); pushAll();
+      } else if(type==="content"){
+        const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
+        CONTENT.sections.push({name:v.title, key, tasks:[], spends:[]});
+        cs.sectionKey = key;
+        CSPACES.list.push(cs);
+        view = "content"; activeSection = key;
+        saveContent();   // pushes everything, cspaces included
       } else {
         CSPACES.list.push(cs);
         view = "cbugs"; activeCspace = cs.id;
         renderAll(); pushAll();
       }
       toast("\u201C"+v.title+"\u201D added to Spaces");
-    }, {hideExtras:true, titleLabel: type==="scrum" ? "Space name (e.g. DYNG Tech Team)" : type==="discovery" ? "Space name (e.g. Dubuddy Product Roadmap)" : "Space name (e.g. Panel Bugs)"});
+    }, {hideExtras:true, titleLabel: type==="scrum" ? "Space name (e.g. DYNG Tech Team)" : type==="discovery" ? "Space name (e.g. Dubuddy Product Roadmap)" : type==="content" ? "Space name (e.g. NEET Content)" : "Space name (e.g. Panel Bugs)"});
   };
 });
 $("cmt-post").onclick = ()=> postComment();
