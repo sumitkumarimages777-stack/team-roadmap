@@ -566,12 +566,18 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .tl-q{font-family:var(--disp);font-weight:600;font-size:13px;padding:8px 12px;border-right:1px solid var(--line);white-space:nowrap;overflow:hidden}
 .tl-mrow{display:flex;border-bottom:1px solid var(--line)}
 .tl-m{font-family:var(--mono);font-size:11px;color:var(--muted);padding:6px 12px;border-right:1px dashed var(--line);white-space:nowrap}
-.tl-rows{position:relative;min-height:220px;padding:14px 0 20px;
-  background-image:linear-gradient(to right, var(--line) 1px, transparent 1px)}
+.tl-rows{position:relative;min-height:220px;padding:14px 0 20px;overflow:hidden}
+.tl-vline{position:absolute;top:0;bottom:0;width:1px;background:var(--line);pointer-events:none}
 .tl-row{position:relative;height:44px}
 .tl-bar{position:absolute;top:4px;height:36px;border:none;border-radius:8px;cursor:pointer;text-align:left;
   display:flex;align-items:center;gap:7px;padding:0 12px;overflow:hidden;white-space:nowrap;
-  font-family:var(--sans);box-shadow:0 1px 4px rgba(23,35,58,.12)}
+  font-family:var(--sans);box-shadow:0 1px 4px rgba(23,35,58,.12);user-select:none;touch-action:none}
+.tl-bar.draggable{cursor:grab}
+.tl-bar.dragging{cursor:grabbing;box-shadow:0 6px 18px rgba(23,35,58,.28);z-index:3;opacity:.94}
+.tl-h{position:absolute;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:2}
+.tl-h.l{left:0;border-radius:8px 0 0 8px}
+.tl-h.r{right:0;border-radius:0 8px 8px 0}
+.tl-bar:hover .tl-h{background:rgba(0,0,0,.10)}
 .tl-bar .tl-t{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
 .tl-bar .tl-src{font-family:var(--mono);font-size:8px;letter-spacing:.06em;background:rgba(255,255,255,.75);border-radius:4px;padding:1px 5px;flex:none}
 .tl-bar .tl-dates{font-family:var(--mono);font-size:10px;opacity:.75;flex:none;margin-left:auto}
@@ -891,15 +897,34 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
   </div>
 </div>
 
+<div class="overlay" id="rms-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:420px">
+    <h3 id="rms-heading">Roadmap settings</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="rms-name">Roadmap name</label><input id="rms-name" placeholder="e.g. H2 2026 Timeline" autocomplete="off"></div>
+      <div class="field-row">
+        <div class="field"><label for="rms-start">Board starts</label><input id="rms-start" type="month"></div>
+        <div class="field"><label for="rms-end">Board ends</label><input id="rms-end" type="month"></div>
+      </div>
+      <div class="hint" style="margin:-4px 0 4px">The timeline shows exactly this window and scrolls left ↔ right inside it. Leave both empty to auto-fit around your items.</div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('rms-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="rms-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="rmd-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:400px">
     <h3 id="rmd-title">Item</h3>
     <div class="dlg-body">
       <div class="hint" id="rmd-path" style="margin-bottom:12px"></div>
       <div class="field-row">
-        <div class="field"><label for="rmd-start">Start month</label><input id="rmd-start" type="month"></div>
-        <div class="field"><label for="rmd-end">End month</label><input id="rmd-end" type="month"></div>
+        <div class="field"><label for="rmd-start">Start date</label><input id="rmd-start" type="date"></div>
+        <div class="field"><label for="rmd-end">End date</label><input id="rmd-end" type="date"></div>
       </div>
+      <div class="hint" style="margin:-4px 0 12px">Tip: on the timeline you can also drag a bar to move it, or drag its edges to stretch / shrink it.</div>
       <button class="btn" id="rmd-remove" style="color:var(--blocked)">Remove from roadmap</button>
     </div>
     <div class="btns">
@@ -1225,7 +1250,12 @@ function normalizeRmaps(r){
   r.maps.forEach(m=>{
     if(!m.id) m.id = "rm-" + Math.random().toString(36).slice(2,9);
     m.items = m.items || [];
-    m.items.forEach(it=>{ if(!it.rid) it.rid = "ri-" + Math.random().toString(36).slice(2,7); });
+    m.items.forEach(it=>{
+      if(!it.rid) it.rid = "ri-" + Math.random().toString(36).slice(2,7);
+      // older items stored months ("2026-08"); upgrade to real dates
+      if(/^\d{4}-\d{2}$/.test(it.start||"")) it.start = monthStartISO(it.start);
+      if(/^\d{4}-\d{2}$/.test(it.end||""))   it.end   = monthEndISO(it.end);
+    });
   });
   return r;
 }
@@ -1238,6 +1268,18 @@ function ymShort(ym){
   return M[(+p[1])-1] + " \u2019" + String(p[0]).slice(2);
 }
 function nowYm(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); }
+/* day-level date math: dates stored as "YYYY-MM-DD" */
+function dNum(s){ return Math.round(Date.parse(s + "T00:00:00Z") / 86400000); }
+function dISO(n){ return new Date(n * 86400000).toISOString().slice(0,10); }
+function daysInMonth(y,m){ return new Date(Date.UTC(y, m, 0)).getUTCDate(); }   // m: 1-12
+function monthStartISO(ym){ return ym + "-01"; }
+function monthEndISO(ym){ const p = ym.split("-"); return ym + "-" + String(daysInMonth(+p[0], +p[1])).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtD(s){
+  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const p = String(s).split("-");
+  return (+p[2]) + " " + M[(+p[1])-1] + " \u2019" + p[0].slice(2);
+}
 function currentSpace(){
   if(devSpace && DEV.spaces.some(s=>s.id===devSpace)) return devSpace;
   return DEV.spaces.length ? DEV.spaces[0].id : null;
@@ -5504,27 +5546,23 @@ function openStoryImport(spaceId){
    Each item carries start/end months and renders as a bar.
    ================================================================ */
 function currentRmap(){ return RMAPS.maps.find(m=>m.id===activeRmap) || null; }
-function openRmapSettings(m){
-  openDialog(m ? "Rename roadmap" : "New roadmap", {title: m ? m.name : ""}, v=>{
-    if(m){ m.name = v.title; }
-    else{
-      const nm = { id:"rm-"+Date.now().toString(36), name:v.title, items:[] };
-      RMAPS.maps.push(nm);
-      view = "rmap"; activeRmap = nm.id;
-      toast("Roadmap created \u2014 add items from any space");
-    }
-    saveRmaps();
-  }, {hideExtras:true, titleLabel:"Roadmap name (e.g. H2 2026 Timeline)"});
-}
 
+const PXD = 3.4;                     // pixels per day on the timeline
+let tlScrollPos = {};                // remember horizontal scroll per roadmap
 function rmapRange(m){
-  // month range shown: from earliest item start to latest end, padded; default 12 months from now
-  const idxs = m.items.flatMap(it=> [it.start, it.end].filter(Boolean).map(ymIdx));
-  let a = idxs.length ? Math.min(...idxs) : ymIdx(nowYm());
-  let b = idxs.length ? Math.max(...idxs) : ymIdx(nowYm()) + 11;
-  a = Math.min(a, ymIdx(nowYm()));            // always include today
-  b = Math.max(b, a + 5);
-  return {a: a-1, b: b+1};                     // one month of air on each side
+  // board range: the roadmap's own start/end months if set (Jira-style), else auto-fit
+  if(m.rangeStart && m.rangeEnd && ymIdx(m.rangeEnd) >= ymIdx(m.rangeStart)){
+    return { n0: dNum(monthStartISO(m.rangeStart)), n1: dNum(monthEndISO(m.rangeEnd)) };
+  }
+  const nums = m.items.flatMap(it=> [it.start, it.end].filter(Boolean).map(dNum));
+  const today = dNum(todayISO());
+  let a = nums.length ? Math.min(...nums, today) : today;
+  let b = nums.length ? Math.max(...nums, today) : today + 330;
+  // snap to whole months with a month of air each side
+  const ad = new Date(a*86400000), bd = new Date(b*86400000);
+  const aYm = idxYm(ad.getUTCFullYear()*12 + ad.getUTCMonth() - 1);
+  const bYm = idxYm(bd.getUTCFullYear()*12 + bd.getUTCMonth() + 1);
+  return { n0: dNum(monthStartISO(aYm)), n1: dNum(monthEndISO(bYm)) };
 }
 
 function renderContentRmap(){
@@ -5540,12 +5578,11 @@ function renderContentRmap(){
     return;
   }
 
-  // resolve items against the live registry; drop pointers to deleted cards
   const reg = allTasks();
   const byTid = {};
   reg.forEach(x=> byTid[x.tid] = x);
   const live = m.items.filter(it=> byTid[it.tid]);
-  if(live.length !== m.items.length){ m.items = live; }   // silent cleanup
+  if(live.length !== m.items.length){ m.items = live; }
 
   const head = document.createElement("section");
   head.className = "module-block";
@@ -5555,7 +5592,8 @@ function renderContentRmap(){
   const h2 = document.createElement("h2"); h2.textContent = m.name;
   const pc = document.createElement("span"); pc.className = "pct";
   const done = live.filter(it=> effStatus(byTid[it.tid].task)==="done").length;
-  pc.textContent = live.length + " item(s) \u00b7 " + done + " done";
+  const rangeTxt = (m.rangeStart && m.rangeEnd) ? " \u00b7 " + ymShort(m.rangeStart) + " \u2192 " + ymShort(m.rangeEnd) : "";
+  pc.textContent = live.length + " item(s) \u00b7 " + done + " done" + rangeTxt;
   row.append(h2, pc);
   if(editMode){
     const spx = document.createElement("span"); spx.className = "spacer"; row.appendChild(spx);
@@ -5565,8 +5603,7 @@ function renderContentRmap(){
     addB.onclick = ()=> openRmapPicker(m);
     row.appendChild(addB);
     const acts = document.createElement("div"); acts.className = "acts";
-    acts.appendChild(actBtn("pencil","Rename roadmap",false, ()=>
-      openDialog("Rename roadmap", {title:m.name}, v=>{ m.name = v.title; saveRmaps(); }, {hideExtras:true})));
+    acts.appendChild(actBtn("pencil","Roadmap settings \u2014 name and board start/end",false, ()=> openRmapSettings(m)));
     acts.appendChild(actBtn("trash","Delete roadmap",true, ()=>{
       if(confirm("Delete the roadmap \u201C"+m.name+"\u201D? The cards themselves are NOT deleted \u2014 only this timeline.")){
         RMAPS.maps.splice(RMAPS.maps.indexOf(m),1);
@@ -5581,93 +5618,107 @@ function renderContentRmap(){
   head.appendChild(row);
   wrap.appendChild(head);
 
-  const scheduled = live.filter(it=> it.start && it.end);
+  const {n0, n1} = rmapRange(m);
+  const scheduled   = live.filter(it=> it.start && it.end);
   const unscheduled = live.filter(it=> !it.start || !it.end);
+  const inRange  = scheduled.filter(it=> dNum(it.end) >= n0 && dNum(it.start) <= n1);
+  const outRange = scheduled.filter(it=> !(dNum(it.end) >= n0 && dNum(it.start) <= n1));
 
-  /* ---------- the timeline ---------- */
-  const {a, b} = rmapRange(m);
-  const months = []; for(let i=a; i<=b; i++) months.push(i);
-  const COLW = 96;
-
+  /* ---------- the timeline (linear in days) ---------- */
   const board = document.createElement("section");
   board.className = "module-block";
   const scroll = document.createElement("div");
   scroll.className = "tl-scroll";
   const tl = document.createElement("div");
   tl.className = "tl";
-  tl.style.width = (months.length * COLW) + "px";
+  const totalW = (n1 - n0 + 1) * PXD;
+  tl.style.width = totalW + "px";
 
-  // quarter header row
+  // month list within range (each with its exact pixel width)
+  const months = [];
+  {
+    const d0 = new Date(n0*86400000);
+    let y = d0.getUTCFullYear(), mo = d0.getUTCMonth()+1;
+    while(dNum(y+"-"+String(mo).padStart(2,"0")+"-01") <= n1){
+      const ym = y+"-"+String(mo).padStart(2,"0");
+      const s0 = Math.max(dNum(monthStartISO(ym)), n0);
+      const e0 = Math.min(dNum(monthEndISO(ym)), n1);
+      months.push({ ym, y, m: mo, x: (s0-n0)*PXD, w: (e0-s0+1)*PXD });
+      mo++; if(mo>12){ mo=1; y++; }
+    }
+  }
+
   const qrow = document.createElement("div");
   qrow.className = "tl-qrow";
   let qi = 0;
   while(qi < months.length){
-    const idx = months[qi];
-    const y = Math.floor(idx/12), mo = idx%12;               // 0-based month
-    const q = Math.floor(mo/3) + 1;
-    const monthsLeftInQ = 3 - (mo % 3);
-    const span = Math.min(monthsLeftInQ, months.length - qi);
+    const q = Math.floor((months[qi].m-1)/3) + 1;
+    let span = 0, w = 0;
+    while(qi+span < months.length && Math.floor((months[qi+span].m-1)/3)+1 === q && months[qi+span].y === months[qi].y){ w += months[qi+span].w; span++; }
     const cell = document.createElement("div");
     cell.className = "tl-q";
-    cell.style.width = (span * COLW) + "px";
-    cell.textContent = "Q" + q + " " + y;
+    cell.style.width = w + "px";
+    cell.textContent = "Q" + q + " " + months[qi].y;
     qrow.appendChild(cell);
     qi += span;
   }
   tl.appendChild(qrow);
 
-  // month header row
   const mrow = document.createElement("div");
   mrow.className = "tl-mrow";
-  months.forEach(i=>{
+  months.forEach(mm=>{
     const c = document.createElement("div");
     c.className = "tl-m";
-    c.style.width = COLW + "px";
-    c.textContent = ymShort(idxYm(i));
+    c.style.width = mm.w + "px";
+    c.textContent = ymShort(mm.ym);
     mrow.appendChild(c);
   });
   tl.appendChild(mrow);
 
-  // rows area with grid lines + today marker
   const rows = document.createElement("div");
   rows.className = "tl-rows";
-  rows.style.backgroundSize = COLW + "px 100%";
-  const todayIdx = ymIdx(nowYm());
-  if(todayIdx >= a && todayIdx <= b){
-    const day = new Date().getDate();
-    const dim = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+  // month boundary lines
+  months.forEach((mm,i)=>{ if(i){ const v = document.createElement("div"); v.className = "tl-vline"; v.style.left = mm.x + "px"; rows.appendChild(v); } });
+  const todayN = dNum(todayISO());
+  if(todayN >= n0 && todayN <= n1){
     const mk = document.createElement("div");
     mk.className = "tl-today";
-    mk.style.left = ((todayIdx - a) * COLW + (day/dim) * COLW) + "px";
+    mk.style.left = ((todayN - n0 + 0.5) * PXD) + "px";
     mk.innerHTML = '<span>Today</span>';
     rows.appendChild(mk);
   }
 
-  const sorted = scheduled.slice().sort((x,y)=> ymIdx(x.start) - ymIdx(y.start));
-  sorted.forEach(it=>{
+  inRange.slice().sort((x,y)=> dNum(x.start) - dNum(y.start)).forEach(it=>{
     const entry = byTid[it.tid];
     const st = effStatus(entry.task);
     const r = document.createElement("div");
     r.className = "tl-row";
-    const bar = document.createElement("button");
-    bar.className = "tl-bar st-" + st;
-    const s0 = Math.max(ymIdx(it.start), a), e0 = Math.min(ymIdx(it.end), b);
-    bar.style.left = ((s0 - a) * COLW) + "px";
-    bar.style.width = (Math.max(1, e0 - s0 + 1) * COLW - 10) + "px";
+    const bar = document.createElement("div");
+    bar.className = "tl-bar st-" + st + (editMode ? " draggable" : "");
+    const sN = dNum(it.start), eN = dNum(it.end);
+    bar.style.left = ((sN - n0) * PXD) + "px";
+    bar.style.width = Math.max(30, (eN - sN + 1) * PXD - 4) + "px";
     const src = entry.kind==="dev" ? "DEV" : entry.kind==="bug" ? "BUG" : entry.kind==="content" ? "EDU" : "PROD";
-    bar.innerHTML = '<span class="tl-src"></span><span class="tl-t"></span><span class="tl-dates"></span>';
+    bar.innerHTML = (editMode ? '<span class="tl-h l" title="Drag to change the start date"></span>' : '')
+      + '<span class="tl-src"></span><span class="tl-t"></span><span class="tl-dates"></span>'
+      + (editMode ? '<span class="tl-h r" title="Drag to change the end date"></span>' : '');
     bar.querySelector(".tl-src").textContent = src;
     bar.querySelector(".tl-t").textContent = entry.task.title || "(untitled)";
-    bar.querySelector(".tl-dates").textContent = ymShort(it.start) + " \u2192 " + ymShort(it.end);
-    bar.title = (entry.task.title||"") + "\n" + entry.path + "\n" + ymShort(it.start) + " \u2192 " + ymShort(it.end) + (editMode ? "\n(click to edit dates / remove)" : "");
-    bar.onclick = ()=>{ if(editMode) editRmapItem(m, it, entry); };
+    bar.querySelector(".tl-dates").textContent = fmtD(it.start) + " \u2192 " + fmtD(it.end);
+    bar.title = (entry.task.title||"") + "\n" + entry.path + "\n" + fmtD(it.start) + " \u2192 " + fmtD(it.end)
+      + (editMode ? "\nDrag to move \u00b7 drag the edges to stretch \u00b7 click for exact dates" : "");
+    if(editMode){
+      bar.addEventListener("mousedown", e=> startBarDrag(e, m, it, entry, "move", n0, bar));
+      bar.querySelector(".tl-h.l").addEventListener("mousedown", e=>{ e.stopPropagation(); startBarDrag(e, m, it, entry, "start", n0, bar); });
+      bar.querySelector(".tl-h.r").addEventListener("mousedown", e=>{ e.stopPropagation(); startBarDrag(e, m, it, entry, "end", n0, bar); });
+    }
     r.appendChild(bar);
     rows.appendChild(r);
   });
-  if(!sorted.length){
+  if(!inRange.length){
     const e = document.createElement("div");
     e.className = "empty"; e.style.padding = "40px 20px";
-    e.textContent = editMode ? "Nothing scheduled yet \u2014 add items, then give them start and end months." : "Nothing scheduled yet.";
+    e.textContent = editMode ? "Nothing scheduled in this window \u2014 add items and give them dates, or widen the board range (\u270e)." : "Nothing scheduled in this window.";
     rows.appendChild(e);
   }
   tl.appendChild(rows);
@@ -5675,59 +5726,111 @@ function renderContentRmap(){
   board.appendChild(scroll);
   wrap.appendChild(board);
 
+  // keep the user's horizontal position across saves; first open lands on today
+  const key = m.id;
+  scroll.addEventListener("scroll", ()=>{ tlScrollPos[key] = scroll.scrollLeft; });
+  if(tlScrollPos[key] !== undefined) scroll.scrollLeft = tlScrollPos[key];
+  else if(todayN >= n0 && todayN <= n1) scroll.scrollLeft = Math.max(0, (todayN - n0) * PXD - 260);
+
+  /* ---------- outside the board range ---------- */
+  if(outRange.length){
+    const os = document.createElement("section");
+    os.className = "module-block"; os.style.marginTop = "14px";
+    const oh = document.createElement("div"); oh.className = "module-head";
+    const h3 = document.createElement("h2"); h3.textContent = "Outside the board range";
+    const op = document.createElement("span"); op.className = "pct";
+    op.textContent = outRange.length + " item(s) \u2014 dated beyond " + (m.rangeStart ? ymShort(m.rangeStart)+" \u2192 "+ymShort(m.rangeEnd) : "the window");
+    oh.append(h3, op);
+    os.appendChild(oh);
+    outRange.forEach(it=> os.appendChild(rmListRow(m, it, byTid[it.tid], fmtD(it.start)+" \u2192 "+fmtD(it.end))));
+    wrap.appendChild(os);
+  }
+
   /* ---------- unscheduled ---------- */
   if(unscheduled.length){
     const us = document.createElement("section");
-    us.className = "module-block";
-    us.style.marginTop = "14px";
-    const uh = document.createElement("div");
-    uh.className = "module-head";
+    us.className = "module-block"; us.style.marginTop = "14px";
+    const uh = document.createElement("div"); uh.className = "module-head";
     const h3 = document.createElement("h2"); h3.textContent = "Not scheduled yet";
     const up = document.createElement("span"); up.className = "pct"; up.textContent = unscheduled.length + " item(s) \u2014 no dates";
     uh.append(h3, up);
     us.appendChild(uh);
-    unscheduled.forEach(it=>{
-      const entry = byTid[it.tid];
-      const r = document.createElement("div");
-      r.className = "ct-row";
-      const body = document.createElement("div"); body.className = "body";
-      const t = document.createElement("div"); t.className = "title"; t.textContent = entry.task.title || "(untitled)";
-      const n = document.createElement("div"); n.className = "note"; n.textContent = entry.path;
-      body.append(t, n);
-      const meta = document.createElement("div"); meta.className = "meta";
-      const pill = document.createElement("span");
-      pill.className = "pill " + effStatus(entry.task);
-      pill.textContent = STATUS_LABEL[effStatus(entry.task)] || effStatus(entry.task);
-      meta.appendChild(pill);
-      if(editMode){
-        const sd = document.createElement("button");
-        sd.className = "upd";
-        sd.textContent = "\uD83D\uDCC5 Set dates";
-        sd.onclick = ()=> editRmapItem(m, it, entry);
-        meta.appendChild(sd);
-        const acts = document.createElement("div"); acts.className = "acts";
-        acts.appendChild(actBtn("trash","Remove from this roadmap",true, ()=>{
-          m.items.splice(m.items.indexOf(it),1); saveRmaps();
-        }));
-        meta.appendChild(acts);
-      }
-      r.append(body, meta);
-      us.appendChild(r);
-    });
+    unscheduled.forEach(it=> us.appendChild(rmListRow(m, it, byTid[it.tid], null)));
     wrap.appendChild(us);
   }
 }
+function rmListRow(m, it, entry, dateTxt){
+  const r = document.createElement("div");
+  r.className = "ct-row";
+  const body = document.createElement("div"); body.className = "body";
+  const t = document.createElement("div"); t.className = "title"; t.textContent = entry.task.title || "(untitled)";
+  const n = document.createElement("div"); n.className = "note"; n.textContent = entry.path + (dateTxt ? " \u00b7 " + dateTxt : "");
+  body.append(t, n);
+  const meta = document.createElement("div"); meta.className = "meta";
+  const pill = document.createElement("span");
+  pill.className = "pill " + effStatus(entry.task);
+  pill.textContent = STATUS_LABEL[effStatus(entry.task)] || effStatus(entry.task);
+  meta.appendChild(pill);
+  if(editMode){
+    const sd = document.createElement("button");
+    sd.className = "upd";
+    sd.textContent = "\uD83D\uDCC5 Set dates";
+    sd.onclick = ()=> editRmapItem(m, it, entry);
+    meta.appendChild(sd);
+    const acts = document.createElement("div"); acts.className = "acts";
+    acts.appendChild(actBtn("trash","Remove from this roadmap",true, ()=>{
+      m.items.splice(m.items.indexOf(it),1); saveRmaps();
+    }));
+    meta.appendChild(acts);
+  }
+  r.append(body, meta);
+  return r;
+}
 
-/* ---- edit one item's dates / remove it ---- */
+/* ---- drag to move, drag the edges to stretch (Jira-style) ---- */
+function startBarDrag(e, map, it, entry, mode, n0, bar){
+  e.preventDefault();
+  const x0 = e.clientX;
+  const s0 = dNum(it.start), e0 = dNum(it.end);
+  let moved = false, ns = s0, ne = e0;
+  const apply = ()=>{
+    bar.style.left = ((ns - n0) * PXD) + "px";
+    bar.style.width = Math.max(30, (ne - ns + 1) * PXD - 4) + "px";
+    const dt = bar.querySelector(".tl-dates");
+    if(dt) dt.textContent = fmtD(dISO(ns)) + " \u2192 " + fmtD(dISO(ne));
+  };
+  const onMove = ev=>{
+    const dx = ev.clientX - x0;
+    if(Math.abs(dx) > 3) moved = true;
+    const dd = Math.round(dx / PXD);
+    if(mode === "move"){ ns = s0 + dd; ne = e0 + dd; }
+    else if(mode === "start"){ ns = Math.min(s0 + dd, e0); }
+    else { ne = Math.max(e0 + dd, s0); }
+    bar.classList.add("dragging");
+    apply();
+  };
+  const onUp = ()=>{
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    bar.classList.remove("dragging");
+    if(!moved){ if(mode === "move") editRmapItem(map, it, entry); return; }
+    it.start = dISO(ns); it.end = dISO(ne);
+    saveRmaps();
+  };
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+/* ---- exact dates dialog ---- */
 function editRmapItem(map, it, entry){
   $("rmd-title").textContent = entry.task.title || "(untitled)";
   $("rmd-path").textContent = entry.path;
-  $("rmd-start").value = it.start || nowYm();
-  $("rmd-end").value = it.end || it.start || nowYm();
+  $("rmd-start").value = it.start || todayISO();
+  $("rmd-end").value = it.end || it.start || todayISO();
   $("rmd-save").onclick = ()=>{
     const s0 = $("rmd-start").value, e0 = $("rmd-end").value;
-    if(!s0 || !e0){ toast("Pick both months"); return; }
-    if(ymIdx(e0) < ymIdx(s0)){ toast("End month is before start month"); return; }
+    if(!s0 || !e0){ toast("Pick both dates"); return; }
+    if(dNum(e0) < dNum(s0)){ toast("The end date is before the start date"); return; }
     it.start = s0; it.end = e0;
     $("rmd-overlay").classList.remove("show");
     saveRmaps();
@@ -5740,6 +5843,35 @@ function editRmapItem(map, it, entry){
     }
   };
   $("rmd-overlay").classList.add("show");
+}
+
+/* ---- roadmap settings: name + the board's start/end (Jira's timeline range) ---- */
+function openRmapSettings(m){
+  $("rms-heading").textContent = m ? "Roadmap settings" : "New roadmap";
+  $("rms-name").value = m ? m.name : "";
+  $("rms-start").value = (m && m.rangeStart) || "";
+  $("rms-end").value = (m && m.rangeEnd) || "";
+  $("rms-save").onclick = ()=>{
+    const name = $("rms-name").value.trim();
+    if(!name){ $("rms-name").focus(); return; }
+    const rs = $("rms-start").value, re = $("rms-end").value;
+    if((rs && !re) || (!rs && re)){ toast("Set both months, or leave both empty for auto-fit"); return; }
+    if(rs && re && ymIdx(re) < ymIdx(rs)){ toast("The end month is before the start month"); return; }
+    if(m){
+      m.name = name;
+      if(rs && re){ m.rangeStart = rs; m.rangeEnd = re; } else { delete m.rangeStart; delete m.rangeEnd; }
+    } else {
+      const nm = { id:"rm-"+Date.now().toString(36), name, items:[] };
+      if(rs && re){ nm.rangeStart = rs; nm.rangeEnd = re; }
+      RMAPS.maps.push(nm);
+      view = "rmap"; activeRmap = nm.id;
+      toast("Roadmap created \u2014 add items from any space");
+    }
+    $("rms-overlay").classList.remove("show");
+    saveRmaps();
+  };
+  $("rms-overlay").classList.add("show");
+  setTimeout(()=> $("rms-name").focus(), 50);
 }
 
 /* ---- picker: add cards from anywhere ---- */
