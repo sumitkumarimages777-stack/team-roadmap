@@ -649,6 +649,18 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .acct-item:hover{background:var(--paper)}
 .acct-item.danger{color:var(--blocked)}
 .admin-crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+.admin-page{position:fixed;inset:0;z-index:390;background:var(--paper);overflow-y:auto}
+.admin-shell{display:flex;min-height:100vh;max-width:1200px;margin:0 auto}
+.admin-side{width:250px;flex:none;border-right:1px solid var(--line);padding:32px 18px;display:flex;flex-direction:column;gap:6px;background:var(--card)}
+.admin-side-brand{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink);margin-bottom:2px}
+.admin-side-team{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-bottom:18px}
+.admin-navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:11px 14px;border:1px solid transparent;border-radius:10px;background:none;font-family:var(--sans);font-size:14px;color:var(--ink);cursor:pointer}
+.admin-navitem:hover{background:var(--paper)}
+.admin-navitem.active{border-color:var(--indigo);background:var(--indigo-soft);color:var(--indigo);font-weight:600}
+.admin-back{margin-top:auto;text-align:left;padding:11px 14px;border:none;background:none;color:var(--muted);font-family:var(--mono);font-size:12.5px;cursor:pointer;border-radius:8px}
+.admin-back:hover{color:var(--indigo);background:var(--indigo-soft)}
+.admin-main{flex:1;padding:44px 48px;min-width:0}
+@media(max-width:760px){.admin-shell{flex-direction:column}.admin-side{width:auto;border-right:none;border-bottom:1px solid var(--line)}.admin-main{padding:28px 20px}}
 .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 .perm-card{border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
 .perm-card-head{padding:16px 18px;background:var(--paper);border-bottom:1px solid var(--line)}
@@ -968,6 +980,18 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div id="landing-list" class="landing-list"></div>
     <div id="landing-userbar" class="landing-userbar" style="display:none"></div>
     <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
+  </div>
+</div>
+
+<div id="admin-page" class="admin-page" style="display:none">
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <div class="admin-side-brand">⚙️ Administration</div>
+      <div class="admin-side-team" id="admin-side-team"></div>
+      <nav class="admin-nav" id="admin-nav"></nav>
+      <button class="admin-back" id="admin-back">← Back to workspace</button>
+    </aside>
+    <div class="admin-main" id="admin-main"></div>
   </div>
 </div>
 
@@ -7579,11 +7603,7 @@ function renderAll(){
     $("mods").innerHTML = "";
     renderContentCsnode();
   }
-  else if(view==="admin"){
-    if(!canManagePeople()){ view = "roadmap"; defaultView(); return renderAll(); }
-    renderAdminSidebar();
-    renderContentAdmin();
-  }
+
   else {
     // OKR structure edits are leadership-only: while on this view, edit affordances
     // render only if the leadership passcode has been entered.
@@ -7894,8 +7914,35 @@ function roleOptions(sel, current, maxRole){
 function openAdmin(section){
   if(!canManagePeople()){ toast("Only Owners and Admins can open Administration"); return; }
   adminView = section || "users";
-  view = "admin";
-  renderAll();
+  renderAdminPage();
+  $("admin-page").style.display = "block";
+  window.scrollTo(0,0);
+}
+function closeAdmin(){ $("admin-page").style.display = "none"; }
+function renderAdminPage(){
+  // left nav (only Users + Permissions for now)
+  $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
+  const nav = $("admin-nav");
+  nav.innerHTML = "";
+  [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"]].forEach(([k,ico,lbl])=>{
+    const b = document.createElement("button");
+    b.className = "admin-navitem" + (adminView===k ? " active" : "");
+    b.innerHTML = '<span></span><span></span>';
+    b.querySelector("span:first-child").textContent = ico;
+    b.querySelector("span:last-child").textContent = lbl;
+    b.onclick = ()=>{ adminView = k; renderAdminPage(); };
+    nav.appendChild(b);
+  });
+  $("admin-back").onclick = ()=> closeAdmin();
+  // main
+  const main = $("admin-main");
+  main.innerHTML = "";
+  const crumb = document.createElement("div");
+  crumb.className = "admin-crumb";
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : "Users");
+  main.appendChild(crumb);
+  if(adminView === "permissions") renderAdminPermissions(main);
+  else renderAdminUsers(main);
 }
 function renderAdminSidebar(){
   const wrap = $("mods");
@@ -7916,19 +7963,7 @@ function renderAdminSidebar(){
   back.onclick = ()=>{ view = "roadmap"; defaultView(); renderAll(); };
   wrap.appendChild(back);
 }
-function renderContentAdmin(){
-  const wrap = $("content");
-  wrap.innerHTML = "";
-  if(!canManagePeople()){ wrap.innerHTML = '<div class="empty">Administration is limited to Owners and Admins.</div>'; return; }
-  const crumb = document.createElement("div");
-  crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : "Users");
-  wrap.appendChild(crumb);
-  if(adminView === "permissions") return renderAdminPermissions();
-  return renderAdminUsers();
-}
-function renderAdminPermissions(){
-  const wrap = $("content");
+function renderAdminPermissions(wrap){
   const head = document.createElement("div"); head.className = "module-head";
   const h2 = document.createElement("h2"); h2.textContent = "Permissions";
   head.appendChild(h2);
@@ -7969,8 +8004,7 @@ function renderAdminPermissions(){
   note.textContent = "This is a reference view of the built-in roles. (For a future release, these can become editable, per-space rules \u2014 see the developer handoff note.)";
   wrap.appendChild(note);
 }
-function renderAdminUsers(){
-  const wrap = $("content");
+function renderAdminUsers(wrap){
   const head = document.createElement("div"); head.className = "module-head";
   const h2 = document.createElement("h2"); h2.textContent = "Users";
   const pc = document.createElement("span"); pc.className = "pct";
@@ -8016,7 +8050,7 @@ function buildAddUserCard(){
     u.teams[TEAM] = role;
     pushUsers();
     email.value=""; name.value=""; pass.value=""; err.textContent="";
-    renderAll();
+    if($("admin-page").style.display==="block") renderAdminPage(); else renderAll();
     toast(ROLE_LABEL[role] + " added");
   };
   row.append(sel, add);
