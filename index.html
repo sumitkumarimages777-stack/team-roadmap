@@ -695,6 +695,24 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .au-name{font-weight:600;color:var(--ink);font-size:14px;display:flex;align-items:center}
 .au-email{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .au-roletag{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.ws-gear{margin-left:auto;color:var(--muted);font-size:13px;padding:0 4px;border-radius:4px;flex:none}
+.ws-gear:hover{color:var(--indigo);background:var(--indigo-soft)}
+.ws-item .ws-gear + .ws-del{margin-left:2px}
+.ss-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.ss-tab{background:none;border:none;border-bottom:2px solid transparent;padding:9px 12px;font-family:var(--sans);font-size:13.5px;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+.ss-tab.active{color:var(--indigo);border-bottom-color:var(--indigo);font-weight:600}
+.ss-member{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.ss-member:last-child{border-bottom:none}
+.ss-mrole{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.ss-note{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+.ss-addrow{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.ss-addrow select,.ss-addrow input{margin:0}
+.ss-permrow{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.ss-permrow:last-child{border-bottom:none}
+.ss-permrow .perm-tick{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.ss-permrow.on .perm-tick{background:var(--done-bg);color:var(--done)}
+.ss-permrow.off{color:var(--muted)}
+.ss-permrow.off .perm-tick{background:var(--paper);border:1px solid var(--line)}
 .au-acts{display:flex;gap:4px;justify-content:flex-end}
 @media(max-width:640px){.au-row{grid-template-columns:1fr auto}.au-acts{grid-column:1/-1;justify-content:flex-start;padding-top:0}}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
@@ -1002,6 +1020,21 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div id="landing-list" class="landing-list"></div>
     <div id="landing-userbar" class="landing-userbar" style="display:none"></div>
     <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
+  </div>
+</div>
+
+<div class="overlay" id="spacesettings-overlay" style="z-index:415">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:640px">
+    <div class="admin-crumb" id="ssettings-crumb"></div>
+    <h3 id="ssettings-title">Space settings</h3>
+    <div class="ss-tabs">
+      <button class="ss-tab" data-sstab="people">👥 People</button>
+      <button class="ss-tab" data-sstab="perms">🔐 Permissions</button>
+    </div>
+    <div class="dlg-body" id="ssettings-body"></div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('spacesettings-overlay').classList.remove('show')">Close</button>
+    </div>
   </div>
 </div>
 
@@ -1577,6 +1610,57 @@ let editMode = false;
 let leaderMode = false;   // now derived: Owner/Admin get leadership powers (Vision/OKRs)
 function canEdit(){ return can("editor"); }
 function canManagePeople(){ return can("admin"); }
+
+/* ================================================================
+   PER-SPACE PERMISSIONS  (real enforcement)
+   ----------------------------------------------------------------
+   Each space can carry members:{email: role}. A person's EFFECTIVE
+   role in a space = their explicit space role if set, else their
+   TEAM role (the team role is the floor — team Admins/Owners always
+   retain full control so nobody can lock the owner out).
+   DEV HANDOFF: like the rest of auth, these checks are client-side
+   and must be enforced on the server. can*Space() are the choke
+   points to wire to the API.
+   ================================================================ */
+// resolve the space object currently being viewed -> a stable key + its member map
+function currentSpaceRef(){
+  if(view==="dev"){
+    const cs = (CSPACES.list||[]).find(x=>x.type==="scrum" && x.devId===devSpace);
+    if(cs) return {key:"cs:"+cs.id, obj:cs, name:cs.name};
+    return {key:"dev:"+(devSpace||"core"), obj:_devSpaceObj(devSpace), name:(_devSpaceObj(devSpace)||{}).name||"Development"};
+  }
+  if(view==="bugs") return {key:"bugs:main", obj:_bugsMainSpace(), name:"Bugs"};
+  if(view==="cbugs"){ const cs=(CSPACES.list||[]).find(x=>x.id===activeCspace); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  if(view==="disc"){ const cs=currentDisc(); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  if(view==="csnode"){ const cs=(CSPACES.list||[]).find(x=>x.id===activeCspace); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  if(view==="content"){ const cs=(CSPACES.list||[]).find(x=>x.type==="content" && x.sectionKey===activeSection); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  if(view==="roadmap"){ const topKey=String(activeModule).split("::")[0]; const cs=(CSPACES.list||[]).find(x=>x.type==="module" && x.moduleKey===topKey); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  return null;   // roadmaps (rmap), okrs, ideas, admin => team-level only
+}
+// synthetic host objects for the two built-in spaces so they can hold members[]
+let _bugsSpaceMembers = null, _devCoreMembers = {};
+function _bugsMainSpace(){ return { members: (BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {}) }; }
+function _devSpaceObj(id){ return { members: (BUILTIN_SPACE_MEMBERS.dev = BUILTIN_SPACE_MEMBERS.dev || {}) }; }
+function spaceMembers(ref){ if(!ref||!ref.obj) return {}; ref.obj.members = ref.obj.members || {}; return ref.obj.members; }
+// effective role for a user in a given space ref
+function spaceRoleOf(user, ref){
+  if(!user) return "";
+  const teamRole = roleOf(user, TEAM);
+  if(!teamRole) return "";                     // not on the team at all -> no access
+  if(roleRank(teamRole) <= roleRank("admin")) return teamRole;   // team Owners/Admins keep full power
+  if(!ref) return teamRole;                    // team-level view -> team role
+  const m = spaceMembers(ref);
+  const sr = m[user.email];
+  return sr || teamRole;                        // explicit space role, else team role as floor
+}
+function canInSpace(min, ref){
+  const r = spaceRoleOf(currentUser(), ref);
+  if(!r) return false;
+  return roleRank(r) <= roleRank(min);
+}
+// the space currently in view
+function canEditHere(){ return canInSpace("editor", currentSpaceRef()); }
+function canManageSpacePeople(){ return canInSpace("admin", currentSpaceRef()); }
 function refreshLeaderFromRole(){ leaderMode = can("admin"); }
 function requireLeader(){
   // leadership content (Vision, Mission, OKRs) is Owner/Admin only now — no passcode.
@@ -1788,6 +1872,7 @@ function normalizeCspaces(c){
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
     x.type = ["scrum","discovery","content","module","research","competitor"].includes(x.type) ? x.type : "bugs";
+    x.members = x.members || {};   // per-space role assignments {email: role}
     if(x.type === "research" || x.type === "competitor"){
       // these spaces host their research/analysis on their own node (like a module node, but not in the module list)
       x.node = x.node || { name: x.name, key: "csnode-" + x.id, items: [], analyses: [] };
@@ -2023,7 +2108,8 @@ function saveRmaps(){ renderAll(); pushAll(); }
 function teamPayload(){
   return { name: (TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"),
     roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT),
-    teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES) };
+    teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES),
+    spaceMembers: clean(BUILTIN_SPACE_MEMBERS) };
 }
 function loadTeamData(t){
   t = t || {};
@@ -2034,9 +2120,13 @@ function loadTeamData(t){
   DEV = normalizeDev(t.dev || clean(emptyTeam("x").dev));
   RMAPS = normalizeRmaps(t.rmaps);
   CSPACES = normalizeCspaces(t.cspaces);
+  BUILTIN_SPACE_MEMBERS = t.spaceMembers || { dev:{}, bugs:{} };
+  BUILTIN_SPACE_MEMBERS.dev = BUILTIN_SPACE_MEMBERS.dev || {};
+  BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {};
   syncContentSpaces();
   syncModuleSpaces();
 }
+let BUILTIN_SPACE_MEMBERS = { dev:{}, bugs:{} };
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -7446,6 +7536,8 @@ function renderContentBugs(cs){
 function renderAll(){
   if(!DATA || !OKRS || !CONTENT) return;
   renderHeader();
+  // per-space enforcement: if the viewer can't edit THIS space, editMode is suppressed here
+  if(editMode && !canEditHere()) editMode = false;
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
   /* Workspace areas — add future sections here (one line each).
@@ -7518,6 +7610,19 @@ function renderAll(){
         b.innerHTML = '<span class="dot"></span><span></span>';
         b.querySelector("span:last-child").textContent = w.label;
         b.onclick = ()=>{ view = w.key; renderAll(); };
+        if(editMode && canManagePeople()){
+          const gear = document.createElement("span");
+          gear.className = "ws-gear";
+          gear.textContent = "\u2699";
+          gear.title = "Space settings";
+          gear.onclick = e=>{
+            e.stopPropagation();
+            const ref = w.key==="bugs" ? {key:"bugs:main", obj:_bugsMainSpace(), name:"Bugs"}
+                       : {key:"dev:core", obj:_devSpaceObj(null), name:"Development"};
+            openSpaceSettings(ref);
+          };
+          b.appendChild(gear);
+        }
         ws.appendChild(b);
       });
       /* custom spaces created from templates */
@@ -7548,6 +7653,12 @@ function renderAll(){
           renderAll();
         };
         if(editMode){
+          const gear = document.createElement("span");
+          gear.className = "ws-gear";
+          gear.textContent = "\u2699";
+          gear.title = "Space settings";
+          gear.onclick = e=>{ e.stopPropagation(); openSpaceSettings({key:"cs:"+cs.id, obj:cs, name:cs.name}); };
+          b.appendChild(gear);
           const del = document.createElement("span");
           del.className = "ws-del";
           del.textContent = "\u00d7";
@@ -7840,8 +7951,9 @@ if($("login-pass")){ $("login-pass").addEventListener("keydown", e=>{ if(e.key==
 
 $("edit-toggle").onclick = ()=>{
   if(!editMode){
-    if(!canEdit()){
-      toast(currentUser() ? "You need Editor access or higher to edit this team" : "Sign in to edit");
+    if(!canEditHere()){
+      const ref = currentSpaceRef();
+      toast(currentUser() ? (ref ? "You need Editor access in \u201C"+ref.name+"\u201D to edit it" : "You need Editor access to edit this") : "Sign in to edit");
       return;
     }
   }
@@ -8145,6 +8257,113 @@ function renderAdminUsers(wrap){
     });
   }
   drawTable();
+}
+
+let ssRef = null, ssTab = "people";
+function openSpaceSettings(ref){
+  if(!ref){ return; }
+  ssRef = ref; ssTab = "people";
+  if(!canManageSpacePeople()){ toast("You need Admin access in this space to manage it"); return; }
+  $("ssettings-crumb").textContent = "\u2699\uFE0F SPACE SETTINGS \u203A " + ref.name.toUpperCase();
+  $("ssettings-title").textContent = ref.name;
+  document.querySelectorAll("#spacesettings-overlay .ss-tab").forEach(t=>{
+    t.onclick = ()=>{ ssTab = t.getAttribute("data-sstab"); drawSpaceSettings(); };
+  });
+  drawSpaceSettings();
+  $("spacesettings-overlay").classList.add("show");
+}
+function drawSpaceSettings(){
+  document.querySelectorAll("#spacesettings-overlay .ss-tab").forEach(t=>{
+    t.classList.toggle("active", t.getAttribute("data-sstab")===ssTab);
+  });
+  const body = $("ssettings-body");
+  body.innerHTML = "";
+  if(ssTab === "perms") return drawSpacePerms(body);
+  return drawSpacePeople(body);
+}
+function drawSpacePeople(body){
+  const ref = ssRef;
+  const note = document.createElement("div");
+  note.className = "ss-note";
+  note.innerHTML = "Give people a role <b>in this space only</b>. A space role overrides their team role here \u2014 e.g. make a team Viewer an Editor of just this space, or restrict a team Editor to Viewer here. Team Owners and Admins always keep full access.";
+  body.appendChild(note);
+
+  const members = spaceMembers(ref);
+  // everyone who has any access to this space: team members + explicit space members
+  const teamMembers = USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
+  const rows = teamMembers.slice().sort((a,b)=> roleRank(spaceRoleOf(a,ref)) - roleRank(spaceRoleOf(b,ref)) || (a.name||"").localeCompare(b.name||""));
+  const iAmSuper = currentUser().super;
+
+  rows.forEach(u=>{
+    const row = document.createElement("div"); row.className = "ss-member";
+    const av = document.createElement("div"); av.className = "person-av";
+    if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; }
+    else { av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
+    const main = document.createElement("div"); main.className = "person-main";
+    const nm = document.createElement("div"); nm.className = "person-name"; nm.textContent = userDisplayName(u);
+    if(u.id===currentUser().id){ const y=document.createElement("span"); y.className="person-you"; y.textContent="YOU"; nm.appendChild(y); }
+    const em = document.createElement("div"); em.className = "person-email"; em.textContent = u.email;
+    main.append(nm, em);
+    row.append(av, main);
+
+    const teamRole = roleOf(u, TEAM);
+    // team owners/admins can't be demoted per-space (floor)
+    if(u.super || roleRank(teamRole) <= roleRank("admin")){
+      const tag = document.createElement("span"); tag.className = "ss-mrole";
+      tag.textContent = (u.super ? "Owner" : ROLE_LABEL[teamRole]) + " (team)";
+      row.appendChild(tag);
+    } else {
+      const sel = document.createElement("select"); sel.className = "person-role";
+      // options: "team default" + each role
+      const def = document.createElement("option"); def.value = ""; def.textContent = "Team default (" + ROLE_LABEL[teamRole] + ")";
+      sel.appendChild(def);
+      ROLES.forEach(r=>{ if(r==="owner") return; const o=document.createElement("option"); o.value=r; o.textContent="This space: "+ROLE_LABEL[r]; sel.appendChild(o); });
+      sel.value = members[u.email] || "";
+      sel.onchange = ()=>{
+        if(sel.value) members[u.email] = sel.value; else delete members[u.email];
+        persistSpace(ref); drawSpaceSettings();
+      };
+      row.appendChild(sel);
+    }
+    body.appendChild(row);
+  });
+}
+function drawSpacePerms(body){
+  const note = document.createElement("div");
+  note.className = "ss-note";
+  note.textContent = "What each role can do inside this space. Space roles are set on the People tab; a person's effective role here is their space role, or their team role if none is set.";
+  body.appendChild(note);
+  const caps = [
+    {label:"View this space",        roles:["owner","admin","editor","commenter","viewer"]},
+    {label:"Comment on items",       roles:["owner","admin","editor","commenter"]},
+    {label:"Create & edit work",     roles:["owner","admin","editor"]},
+    {label:"Manage this space's people", roles:["owner","admin"]},
+    {label:"Delete this space",      roles:["owner","admin"]},
+  ];
+  ROLES.forEach(role=>{
+    const rowsFor = caps.filter(c=>c.roles.includes(role));
+    if(!rowsFor.length) return;
+  });
+  // render as a compact per-role list
+  ROLES.forEach(role=>{
+    const h = document.createElement("div");
+    h.style.cssText = "font-weight:600;margin:12px 0 4px;color:var(--ink)";
+    h.textContent = ROLE_LABEL[role];
+    body.appendChild(h);
+    caps.forEach(c=>{
+      const has = c.roles.includes(role);
+      const r = document.createElement("div"); r.className = "ss-permrow " + (has?"on":"off");
+      r.innerHTML = '<span class="perm-tick"></span><span></span>';
+      r.querySelector(".perm-tick").textContent = has ? "\u2713" : "\u2014";
+      r.querySelector("span:last-child").textContent = c.label;
+      body.appendChild(r);
+    });
+  });
+}
+// persist a space's members: cspaces ride in teamPayload; dev/bugs host spaces need their own push
+function persistSpace(ref){
+  // custom-space members ride in cspaces; built-in dev/bugs members ride in the team payload.
+  if(ref) pushAll();
 }
 
 function openInvite(){
