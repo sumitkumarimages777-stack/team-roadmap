@@ -233,7 +233,9 @@ input,textarea{font:inherit;color:var(--ink)}
 
 header{border-bottom:1px solid var(--line);background:var(--card)}
 .head-inner{max-width:1200px;margin:0 auto;padding:26px 24px 22px;position:relative}
-.corner-nav-wrap{position:absolute;top:28px;right:24px;display:flex;gap:8px}
+.corner-nav-wrap{position:absolute;top:28px;right:24px;display:flex;gap:8px;align-items:center}
+.corner-account{display:inline-flex;align-items:center;gap:7px}
+.corner-account .ca-av{width:20px;height:20px;border-radius:50%;background-size:cover;background-position:center;background:var(--indigo);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .corner-nav{font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;background:var(--indigo);border-radius:99px;padding:9px 16px;box-shadow:0 2px 10px rgba(59,91,219,.25);transition:background .15s}
 .corner-nav:hover{background:#3350C4}
 .corner-nav.ghost{background:var(--card);color:var(--indigo);border:1.5px solid var(--indigo);box-shadow:none}
@@ -962,6 +964,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="corner-nav-wrap">
       <button class="corner-nav ghost" id="nav-a">Workspace</button>
       <button class="corner-nav" id="nav-b">OKRs</button>
+      <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     <span class="eyebrow">Internal · Team Workspace</span>
     <h1 id="rm-title"></h1>
@@ -998,7 +1001,6 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
         <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
-        <button class="tool" id="nav-account" title="Your account">👤 Account</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
@@ -7368,7 +7370,17 @@ function renderAll(){
   $("nav-ideas").style.display = (TEAM === "dubuddy") ? "" : "none";   // student ideas are Dubuddy-only
   $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
   $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
-  if($("nav-account")) $("nav-account").style.display = currentUser() ? "" : "none";
+  if($("nav-account")){
+    const acc = $("nav-account");
+    if(currentUser()){
+      acc.style.display = "";
+      const u = currentUser();
+      const avImg = (u.profile && u.profile.photo) ? "background-image:url("+u.profile.photo+")" : "background:"+userAvatarColor(u);
+      acc.innerHTML = '<span class="ca-av" style="'+avImg+'"></span><span></span>';
+      acc.querySelector(".ca-av").textContent = (u.profile && u.profile.photo) ? "" : (userDisplayName(u)||"?").charAt(0).toUpperCase();
+      acc.querySelector("span:last-child").textContent = (userDisplayName(u)||"").split(" ")[0] || "Account";
+    } else { acc.style.display = "none"; }
+  }
   renderCompanyVision();
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
