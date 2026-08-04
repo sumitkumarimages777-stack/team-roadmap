@@ -695,6 +695,11 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .au-name{font-weight:600;color:var(--ink);font-size:14px;display:flex;align-items:center}
 .au-email{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .au-roletag{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.ws-draggable{cursor:grab}
+.ws-draggable:active{cursor:grabbing}
+.ws-dragging{opacity:.5}
+.ws-drop-before{box-shadow:inset 0 3px 0 -1px var(--indigo)}
+.ws-drop-after{box-shadow:inset 0 -3px 0 -1px var(--indigo)}
 .ws-gear{margin-left:auto;color:var(--muted);font-size:13px;padding:0 4px;border-radius:4px;flex:none}
 .ws-gear:hover{color:var(--indigo);background:var(--indigo-soft)}
 .ws-item .ws-gear + .ws-del{margin-left:2px}
@@ -7818,6 +7823,30 @@ function renderAll(){
           };
           b.appendChild(del);
         }
+        if(editMode && canManagePeople()){
+          b.draggable = true;
+          b.classList.add("ws-draggable");
+          b.dataset.csid = cs.id;
+          b.addEventListener("dragstart", e=>{ wsDragId = cs.id; b.classList.add("ws-dragging"); e.dataTransfer.effectAllowed = "move"; try{ e.dataTransfer.setData("text/plain", cs.id); }catch(_){} });
+          b.addEventListener("dragend", ()=>{ b.classList.remove("ws-dragging"); document.querySelectorAll(".ws-drop-before,.ws-drop-after").forEach(x=>x.classList.remove("ws-drop-before","ws-drop-after")); wsDragId = null; });
+          b.addEventListener("dragover", e=>{
+            if(!wsDragId || wsDragId===cs.id) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            const r = b.getBoundingClientRect();
+            const after = (e.clientY - r.top) > r.height/2;
+            b.classList.toggle("ws-drop-after", after);
+            b.classList.toggle("ws-drop-before", !after);
+          });
+          b.addEventListener("dragleave", ()=>{ b.classList.remove("ws-drop-before","ws-drop-after"); });
+          b.addEventListener("drop", e=>{
+            e.preventDefault();
+            b.classList.remove("ws-drop-before","ws-drop-after");
+            if(!wsDragId || wsDragId===cs.id) return;
+            const r = b.getBoundingClientRect();
+            const after = (e.clientY - r.top) > r.height/2;
+            reorderCspace(wsDragId, cs.id, after);
+          });
+        }
         ws.appendChild(b);
         if(cs.type==="discovery" && view==="disc" && activeCspace===cs.id){
           [["ideas","All ideas"],["roadmap","Roadmap"],["timeline","Timeline"]].forEach(([k,lbl])=>{
@@ -8503,6 +8532,20 @@ function deleteBuiltinDev(){
     saveDev(); pushAll(); renderAll();
     toast("Development migrated to \u201C"+target.name+"\u201D");
   });
+}
+
+let wsDragId = null;
+function reorderCspace(dragId, targetId, after){
+  const list = CSPACES.list;
+  const from = list.findIndex(x=>x.id===dragId);
+  if(from < 0) return;
+  const [moved] = list.splice(from, 1);
+  let to = list.findIndex(x=>x.id===targetId);
+  if(to < 0){ list.splice(from, 0, moved); return; }   // target gone; undo
+  if(after) to += 1;
+  list.splice(to, 0, moved);
+  renderAll(); pushAll();
+  toast("Spaces reordered");
 }
 
 let ssRef = null, ssTab = "people";
