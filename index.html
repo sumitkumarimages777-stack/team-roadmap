@@ -27,8 +27,10 @@ const JSONBIN_CONFIG = {
   binId: "6a49401cda38895dfe2e012c",
   apiKey: "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.",
 };
-const EDIT_PASSCODE = "dubuddy2026";   // change this to any word your team prefers
-const LEADER_PASSCODE = "cyberflow-vision-2026";   // CHANGE THIS — leadership-only passcode protecting Vision, Mission, OKRs, Core Values etc. Keep it different from EDIT_PASSCODE and share only with leadership.
+// EDIT_PASSCODE / LEADER_PASSCODE are RETIRED — access is by role now (see the AUTH section).
+// Kept as empty strings so any leftover reference is inert. Safe to delete once confirmed unused.
+const EDIT_PASSCODE = "";
+const LEADER_PASSCODE = "";
 
 /* Photo uploads (optional, ~2 min setup):
    1. Go to https://imgbb.com and sign up (free)
@@ -62,7 +64,7 @@ function teamsIndex(rec){
   return out;
 }
 function migrateRecord(raw){
-  if(raw && raw.teams) return raw;
+  if(raw && raw.teams){ raw.users = raw.users || []; return raw; }
   if(raw && raw.roadmap){
     // old single-team bin: everything that exists today becomes team "dubuddy"
     return { app:"cyberflow-teams", teams: { dubuddy: {
@@ -611,6 +613,32 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .landing{position:fixed;inset:0;z-index:400;background:var(--paper);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:9vh 20px 40px}
 .landing-inner{width:100%;max-width:620px;text-align:center}
 .landing-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--indigo)}
+.login-panel{max-width:380px;margin:8px auto 0}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 24px;text-align:left;box-shadow:0 10px 40px rgba(23,35,58,.08)}
+.login-title{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--ink)}
+.login-sub{font-size:13px;color:var(--muted);margin:6px 0 18px;line-height:1.5}
+.login-input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:var(--sans);font-size:14px;margin-bottom:10px;background:var(--paper);color:var(--ink)}
+.login-input:focus{outline:none;border-color:var(--indigo)}
+.login-err{color:var(--blocked);font-size:12.5px;min-height:16px;margin:2px 0 8px}
+.login-do{width:100%;background:var(--indigo);color:#fff;border:none;border-radius:10px;padding:12px;font-family:var(--sans);font-weight:600;font-size:14px;cursor:pointer}
+.login-do:hover{background:var(--indigo-strong,#2f49b8)}
+.landing-userbar{margin-top:18px;font-size:13px;color:var(--muted)}
+.landing-userbar b{color:var(--ink)}
+.landing-userbar button{background:none;border:none;color:var(--indigo);font-family:var(--mono);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:8px}
+.people-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.person{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.person-av{width:34px;height:34px;border-radius:50%;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.person-main{min-width:0;flex:1}
+.person-name{font-weight:600;color:var(--ink);font-size:14px}
+.person-email{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.person-you{font-family:var(--mono);font-size:9px;background:var(--indigo-soft);color:var(--indigo);padding:2px 6px;border-radius:99px;margin-left:6px}
+.pa-select,.person-role{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-family:var(--sans);font-size:13px;background:var(--paper);color:var(--ink)}
+.person-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.person-del:hover{color:var(--blocked);background:var(--blocked-bg)}
+.people-add{border-top:1px solid var(--line);padding-top:16px}
+.pa-title{font-weight:600;font-size:13px;margin-bottom:10px;color:var(--ink)}
+.pa-row{display:flex;gap:8px;align-items:center;margin-top:2px}
+.pa-row .pa-select{flex:1}
 .landing-h1{font-family:var(--disp);font-size:38px;font-weight:700;margin:10px 0 8px;color:var(--ink)}
 .landing-sub{color:var(--muted);font-size:15px;line-height:1.6;margin:0 auto 28px;max-width:480px}
 .landing-list{display:flex;flex-direction:column;gap:12px;text-align:left}
@@ -896,7 +924,18 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="landing-eyebrow">CYBERFLOW · TEAM WORKSPACES</div>
     <h1 class="landing-h1">Pick your team</h1>
     <p class="landing-sub">Each team has its own roadmap, development boards, bugs, research and OKRs — same structure, separate worlds.</p>
+    <div id="login-panel" class="login-panel" style="display:none">
+      <div class="login-card">
+        <div class="login-title">Sign in</div>
+        <div class="login-sub">Use your Cyberflow account. Contact an owner if you need access.</div>
+        <input id="login-email" class="login-input" type="email" placeholder="you@cyberflow.in" autocomplete="username">
+        <input id="login-pass" class="login-input" type="password" placeholder="Password" autocomplete="current-password">
+        <div id="login-err" class="login-err"></div>
+        <button id="login-btn" class="login-do">Sign in \u2192</button>
+      </div>
+    </div>
     <div id="landing-list" class="landing-list"></div>
+    <div id="landing-userbar" class="landing-userbar" style="display:none"></div>
     <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
   </div>
 </div>
@@ -944,6 +983,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
         <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
+        <button class="tool" id="nav-people" title="Manage people & roles" style="display:none">👥 People</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
@@ -978,6 +1018,30 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="btns">
       <button class="btn" onclick="document.getElementById('rmp-overlay').classList.remove('show')">Cancel</button>
       <button class="btn save" id="rmp-add">Add items</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="people-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:620px">
+    <h3>People &amp; roles — <span id="people-team"></span></h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:10px">Owners and Admins manage who can see and edit this team. Roles apply to <b>this team only</b> — the same person can have a different role elsewhere.</div>
+      <div id="people-list" class="people-list"></div>
+      <div class="people-add">
+        <div class="pa-title">Add someone to this team</div>
+        <input id="pa-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off">
+        <input id="pa-name" class="login-input" type="text" placeholder="Name (optional)" autocomplete="off">
+        <div class="pa-row">
+          <select id="pa-role" class="pa-select"></select>
+          <button id="pa-add" class="btn save">Add / invite</button>
+        </div>
+        <div id="pa-err" class="login-err"></div>
+        <div class="hint" style="margin-top:4px">If they don't have an account yet, one is created with a temporary password <code>welcome</code> that they should change later. (Prototype: password handling moves server-side.)</div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('people-overlay').classList.remove('show')">Close</button>
     </div>
   </div>
 </div>
@@ -1204,17 +1268,134 @@ const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
 let view = "roadmap";           // "roadmap" | "okr" | "content"
-let editMode = false;
-let leaderMode = false;   // unlocked with LEADER_PASSCODE — guards Vision, Mission, OKRs, Core Values etc.
-function requireLeader(){
-  if(leaderMode || sessionStorage.getItem("rm-leader")==="1"){ leaderMode = true; return true; }
-  const p = prompt("Leadership passcode (Vision, Mission & OKRs are protected):");
-  if(p === null) return false;
-  if(p !== LEADER_PASSCODE){ toast("Wrong leadership passcode"); return false; }
-  leaderMode = true;
-  sessionStorage.setItem("rm-leader","1");
-  return true;
+/* ================================================================
+   AUTH · USERS · PERMISSIONS   (JSON prototype)
+   ----------------------------------------------------------------
+   DEVELOPER HANDOFF — READ THIS BEFORE SHIPPING TO PRODUCTION
+   ----------------------------------------------------------------
+   This is a WORKING prototype of the login + permission model, but it
+   is NOT secure. All checks run in the browser and the data (incl. the
+   "passwords") lives in the JSONBin record, which anyone can read/write
+   with the access key embedded in this file. Treat everything below as
+   a precise SPEC of the intended behaviour, not as a security boundary.
+
+   To make it real, a developer should:
+     1. Move the JSONBin key + all reads/writes behind a server (e.g.
+        Vercel Functions). The browser must never hold the key.
+     2. Replace fakeHash() with real password hashing (bcrypt/argon2)
+        on the server; never store or compare plaintext.
+     3. Issue a signed session token (httpOnly cookie / JWT) at login,
+        instead of the sessionStorage flag used here.
+     4. ENFORCE permissions on the server for every read/write —
+        can()/roleOf() here only hide UI; the server is the real gate.
+     5. Keep the role model + flows identical to what's specified here,
+        so this prototype doubles as the acceptance spec.
+   The functions to point at the API: currentUser(), login(), logout(),
+   roleOf(), can(), and every place that calls pushAll()/putRecord().
+   ================================================================ */
+
+// role ladder, most→least powerful. index = rank, used for >= comparisons.
+const ROLES = ["owner","admin","editor","commenter","viewer"];
+const ROLE_LABEL = {owner:"Owner", admin:"Admin", editor:"Editor", commenter:"Commenter", viewer:"Viewer"};
+const ROLE_DESC = {
+  owner:"Everything, including managing people and deleting the team",
+  admin:"Manage people and edit everything",
+  editor:"Edit everything, but can't manage people",
+  commenter:"Read and comment only",
+  viewer:"Read only",
+};
+function roleRank(r){ const i = ROLES.indexOf(r); return i<0 ? ROLES.length : i; }
+
+// USERS live at the record root: rec.users = [{ id, email, name, pass, teams:{slug:role}, super }]
+// `super` = bootstrap owner (Sumit) who can see/manage every team.
+let USERS = [];
+let SESSION = null;   // the logged-in user object (a reference into USERS)
+
+// NOT real hashing — flagged for the developer. Deterministic obfuscation only.
+function fakeHash(pw){
+  let h = 0; const salt = "cyberflow-proto";
+  const str = salt + "|" + pw;
+  for(let i=0;i<str.length;i++){ h = ((h<<5)-h + str.charCodeAt(i))|0; }
+  return "fh_" + (h>>>0).toString(36);
 }
+function normalizeUsers(arr){
+  const out = (arr||[]).map(u=>({
+    id: u.id || "u-"+Math.random().toString(36).slice(2,9),
+    email: (u.email||"").toLowerCase().trim(),
+    name: u.name || (u.email||"").split("@")[0] || "User",
+    pass: u.pass || "",
+    teams: u.teams || {},
+    super: !!u.super,
+  })).filter(u=>u.email);
+  return out;
+}
+// bootstrap: if no users exist yet, create the super-admin owner (Sumit).
+const BOOTSTRAP_OWNER = { email:"sumit@cyberflow.in", name:"Sumit", pass:"cyberflow", super:true };
+function ensureBootstrapOwner(){
+  if(!USERS.length){
+    USERS = normalizeUsers([{ ...BOOTSTRAP_OWNER, pass: fakeHash(BOOTSTRAP_OWNER.pass), teams:{} }]);
+    return true;   // caller should persist
+  }
+  return false;
+}
+
+function currentUser(){ return SESSION; }
+function findUser(email){ return USERS.find(u=>u.email === (email||"").toLowerCase().trim()); }
+// role of a user in a team ("" if none). Super-admin is owner everywhere.
+function roleOf(user, team){
+  if(!user) return "";
+  if(user.super) return "owner";
+  return (user.teams && user.teams[team]) || "";
+}
+// is the current user allowed to act at `min` level (or higher) in the current TEAM?
+function can(min){
+  const r = roleOf(SESSION, TEAM);
+  if(!r) return false;
+  return roleRank(r) <= roleRank(min);
+}
+function isMember(user, team){ return !!roleOf(user, team); }
+function myTeams(user){
+  if(!user) return [];
+  if(user.super) return Object.keys(TEAMS);
+  return Object.keys(user.teams || {}).filter(t=>TEAMS[t]);
+}
+
+// session persistence (prototype: sessionStorage holds the email; dev swaps for a real token)
+function restoreSession(){
+  const em = sessionStorage.getItem("cf-user");
+  if(em){ const u = findUser(em); if(u){ SESSION = u; return true; } }
+  SESSION = null; return false;
+}
+function login(email, pw){
+  const u = findUser(email);
+  if(!u) return { ok:false, err:"No account for that email." };
+  if(u.pass !== fakeHash(pw)) return { ok:false, err:"Wrong password." };
+  SESSION = u;
+  sessionStorage.setItem("cf-user", u.email);
+  return { ok:true };
+}
+function logout(){
+  SESSION = null;
+  sessionStorage.removeItem("cf-user");
+  sessionStorage.removeItem("rm-ok");
+  sessionStorage.removeItem("rm-leader");
+  navHome();
+}
+
+// EDIT permission now derives from role: Editor and above can edit.
+// editMode is a per-session toggle (like before) but you can only TURN IT ON with the right role.
+let editMode = false;
+let leaderMode = false;   // now derived: Owner/Admin get leadership powers (Vision/OKRs)
+function canEdit(){ return can("editor"); }
+function canManagePeople(){ return can("admin"); }
+function refreshLeaderFromRole(){ leaderMode = can("admin"); }
+function requireLeader(){
+  // leadership content (Vision, Mission, OKRs) is Owner/Admin only now — no passcode.
+  if(can("admin")){ leaderMode = true; return true; }
+  toast("Vision & OKRs are limited to Owners and Admins");
+  return false;
+}
+
 let activeModule = "all";
 function firstModuleKey(){ return (DATA.modules && DATA.modules[0] && DATA.modules[0].key) || "all"; }
 function defaultView(){
@@ -1656,10 +1837,20 @@ function loadTeamData(t){
   syncModuleSpaces();
 }
 async function putRecord(rec){
+  rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
   if(!r.ok) throw new Error("HTTP "+r.status);
   lastRecord = rec;
   TEAMS = teamsIndex(rec);
+}
+// persist the user directory merge-safely (refetch, replace only rec.users, write back)
+async function pushUsers(){
+  if(!(configured && db)){ return; }
+  try{
+    let rec = migrateRecord(await fetchAll());
+    rec.users = USERS;
+    await putRecord(rec);
+  }catch(e){ showBanner("Couldn't save the user changes ("+e.message+")."); }
 }
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
@@ -1752,6 +1943,8 @@ async function start(){
       let rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ await putRecord(rec); }   // one-time migration to the team shape
       lastRecord = rec; TEAMS = teamsIndex(rec);
+      USERS = normalizeUsers(rec.users);
+      if(ensureBootstrapOwner()){ rec.users = USERS; try{ await putRecord(rec); }catch(_){} }
       if(!rec.teams[TEAM]){
         if(TEAM === "dubuddy"){
           rec.teams.dubuddy = teamPayload();   // first ever run: seed dubuddy
@@ -1762,6 +1955,15 @@ async function start(){
       }
       loadTeamData(rec.teams[TEAM]);
       lastSnapshot = JSON.stringify(rec.teams[TEAM]);
+      restoreSession();
+      // AUTH GATE: must be signed in AND a member of this team (super-admin bypasses)
+      if(!currentUser()){
+        return startLanding("Sign in to open \u201C"+((TEAMS[TEAM]&&TEAMS[TEAM].name)||TEAM)+"\u201D.");
+      }
+      if(!isMember(currentUser(), TEAM)){
+        return startLanding("You're not a member of \u201C"+((TEAMS[TEAM]&&TEAMS[TEAM].name)||TEAM)+"\u201D. Ask an owner for access.");
+      }
+      refreshLeaderFromRole();
       defaultView();
       await refreshBugs();
       syncLinkedBugs();
@@ -1789,6 +1991,9 @@ async function startLanding(err){
       const rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ try{ await putRecord(rec); }catch(_){} }
       lastRecord = rec; TEAMS = teamsIndex(rec);
+      USERS = normalizeUsers(rec.users);
+      if(ensureBootstrapOwner()){ rec.users = USERS; try{ await putRecord(rec); }catch(_){} }
+      restoreSession();
     }catch(e){
       err = err || ("Couldn't reach the database ("+e.message+"). Showing what's known locally.");
       TEAMS = { dubuddy: {name:"Dubuddy"} };
@@ -1801,13 +2006,34 @@ async function startLanding(err){
 function renderLanding(err){
   const list = $("landing-list");
   list.innerHTML = "";
+  const loggedIn = !!currentUser();
+  $("login-panel").style.display = loggedIn ? "none" : "block";
+  $("landing-userbar").style.display = loggedIn ? "block" : "none";
+  const h1 = document.querySelector(".landing-h1");
+  if(h1) h1.textContent = loggedIn ? "Pick your team" : "Sign in to Cyberflow";
+  if(!loggedIn){ if(err){ $("login-err").textContent = err; } return; }
+  const ub = $("landing-userbar");
+  ub.innerHTML = "";
+  const who = document.createElement("span");
+  who.innerHTML = "Signed in as <b></b>";
+  who.querySelector("b").textContent = currentUser().name + (currentUser().super ? " \u00b7 super-admin" : "");
+  const lo = document.createElement("button"); lo.textContent = "Sign out";
+  lo.onclick = ()=> logout();
+  ub.append(who, lo);
   if(err){
     const e = document.createElement("div");
     e.className = "landing-err";
     e.textContent = err;
     list.appendChild(e);
   }
-  const slugs = Object.keys(TEAMS).sort((a,b)=> a==="dubuddy" ? -1 : b==="dubuddy" ? 1 : TEAMS[a].name.localeCompare(TEAMS[b].name));
+  const mine = myTeams(currentUser());
+  const slugs = mine.sort((a,b)=> a==="dubuddy" ? -1 : b==="dubuddy" ? 1 : (TEAMS[a].name||a).localeCompare(TEAMS[b].name||b));
+  if(!slugs.length){
+    const e = document.createElement("div");
+    e.className = "landing-err";
+    e.textContent = currentUser().super ? "No teams yet \u2014 create the first one below." : "You're not a member of any team yet. Ask an owner to add you.";
+    list.appendChild(e);
+  }
   if(!slugs.length){
     const e = document.createElement("div");
     e.className = "landing-err";
@@ -1824,16 +2050,16 @@ function renderLanding(err){
     c.onclick = ()=> navTeam(slug);
     list.appendChild(c);
   });
-  const add = document.createElement("button");
-  add.className = "team-card team-add";
-  add.textContent = "\uFF0B Create a new team";
-  add.onclick = createTeamFlow;
-  list.appendChild(add);
+  if(currentUser() && currentUser().super){
+    const add = document.createElement("button");
+    add.className = "team-card team-add";
+    add.textContent = "\uFF0B Create a new team";
+    add.onclick = createTeamFlow;
+    list.appendChild(add);
+  }
 }
 function createTeamFlow(){
-  const pass = prompt("Team edit passcode (creating a team is an edit):");
-  if(pass === null) return;
-  if(pass !== EDIT_PASSCODE){ alert("Wrong passcode."); return; }
+  if(!(currentUser() && currentUser().super)){ alert("Only a super-admin can create teams."); return; }
   const name = prompt("Team name (e.g. DYNG):");
   if(!name || !name.trim()) return;
   const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
@@ -1847,6 +2073,9 @@ function createTeamFlow(){
         rec.teams = rec.teams || {};
         if(rec.teams[slug]){ navTeam(slug); return; }
         rec.teams[slug] = emptyTeam(name.trim());
+        const me = USERS.find(u=>u.id===currentUser().id);
+        if(me && !me.super){ me.teams = me.teams || {}; me.teams[slug] = "owner"; }
+        rec.users = USERS;
         await putRecord(rec);
       }
       navTeam(slug);   // the new team opens with the full empty structure, same as every team
@@ -7029,6 +7258,7 @@ function renderAll(){
   $("nav-ideas").style.display = (TEAM === "dubuddy") ? "" : "none";   // student ideas are Dubuddy-only
   $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
   $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
+  if($("nav-people")) $("nav-people").style.display = canManagePeople() ? "" : "none";
   renderCompanyVision();
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
@@ -7222,6 +7452,7 @@ let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
+if($("nav-people")){ $("nav-people").onclick = openPeople; }
 $("nav-home").onclick = ()=> navHome();
 document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
@@ -7380,19 +7611,117 @@ $("import-file").addEventListener("change", async e=>{
   toast("Backup restored"+(db ? " and synced to the team" : " (local only — JSONBin not connected)"));
 });
 
+function doLogin(){
+  const email = $("login-email").value, pw = $("login-pass").value;
+  const r = login(email, pw);
+  if(!r.ok){ $("login-err").textContent = r.err; return; }
+  $("login-err").textContent = "";
+  refreshLeaderFromRole();
+  renderLanding(null);
+}
+if($("login-btn")){ $("login-btn").onclick = doLogin; }
+if($("login-pass")){ $("login-pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); }); }
+
 $("edit-toggle").onclick = ()=>{
-  if(!editMode && EDIT_PASSCODE && sessionStorage.getItem("rm-ok")!=="1"){
-    const p = prompt("Enter the edit passcode:");
-    if(p!==EDIT_PASSCODE){ toast("Wrong passcode"); return; }
-    sessionStorage.setItem("rm-ok","1");
+  if(!editMode){
+    if(!canEdit()){
+      toast(currentUser() ? "You need Editor access or higher to edit this team" : "Sign in to edit");
+      return;
+    }
   }
   editMode = !editMode;
+  refreshLeaderFromRole();
   const b = $("edit-toggle");
   b.textContent = editMode ? "✓ Editing — click to finish" : "✎ Edit";
   b.classList.toggle("editing", editMode);
   b.classList.toggle("primary", !editMode);
   renderAll();
 };
+function roleOptions(sel, current, maxRole){
+  // owners can assign any role; admins can assign up to admin (not owner)
+  sel.innerHTML = "";
+  ROLES.forEach(r=>{
+    if(maxRole && roleRank(r) < roleRank(maxRole)) return;   // can't grant above your own ceiling
+    const o = document.createElement("option");
+    o.value = r; o.textContent = ROLE_LABEL[r] + " \u2014 " + ROLE_DESC[r];
+    if(r===current) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+function openPeople(){
+  if(!canManagePeople()){ toast("Only Owners and Admins can manage people"); return; }
+  $("people-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
+  const myRank = roleRank(roleOf(currentUser(), TEAM));
+  const ceiling = currentUser().super ? "owner" : "admin";   // admins can't create owners
+  renderPeopleList();
+  roleOptions($("pa-role"), "editor", ceiling);
+  $("pa-email").value = ""; $("pa-name").value = ""; $("pa-err").textContent = "";
+  $("pa-add").onclick = ()=>{
+    const email = ($("pa-email").value||"").toLowerCase().trim();
+    const name = ($("pa-name").value||"").trim();
+    const role = $("pa-role").value;
+    if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){ $("pa-err").textContent = "Enter a valid email."; return; }
+    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
+    let u = findUser(email);
+    if(!u){
+      u = normalizeUsers([{ email, name: name||email.split("@")[0], pass: fakeHash("welcome"), teams:{} }])[0];
+      USERS.push(u);
+    } else if(name){ u.name = name; }
+    u.teams = u.teams || {};
+    u.teams[TEAM] = role;
+    pushUsers();
+    renderPeopleList();
+    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-err").textContent = "";
+    toast(ROLE_LABEL[role] + " added");
+  };
+  $("people-overlay").classList.add("show");
+}
+function renderPeopleList(){
+  const wrap = $("people-list");
+  wrap.innerHTML = "";
+  const members = USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
+  members.sort((a,b)=> roleRank(roleOf(a,TEAM)) - roleRank(roleOf(b,TEAM)) || a.name.localeCompare(b.name));
+  const iAmSuper = currentUser().super;
+  members.forEach(u=>{
+    const row = document.createElement("div");
+    row.className = "person";
+    const av = document.createElement("div"); av.className = "person-av"; av.textContent = (u.name||u.email).charAt(0).toUpperCase();
+    const main = document.createElement("div"); main.className = "person-main";
+    const nm = document.createElement("div"); nm.className = "person-name";
+    nm.textContent = u.name;
+    if(u.id===currentUser().id){ const y = document.createElement("span"); y.className="person-you"; y.textContent="YOU"; nm.appendChild(y); }
+    if(u.super){ const sp = document.createElement("span"); sp.className="person-you"; sp.textContent="SUPER"; nm.appendChild(sp); }
+    const em = document.createElement("div"); em.className = "person-email"; em.textContent = u.email;
+    main.append(nm, em);
+    row.append(av, main);
+
+    if(u.super){
+      const tag = document.createElement("span"); tag.className = "person-role"; tag.style.opacity=".7"; tag.textContent = "Owner (all teams)";
+      row.appendChild(tag);
+    } else {
+      const sel = document.createElement("select"); sel.className = "person-role";
+      roleOptions(sel, roleOf(u, TEAM), iAmSuper ? "owner" : "admin");
+      // an admin can't change an owner's role
+      const targetIsOwner = roleOf(u, TEAM)==="owner";
+      if(targetIsOwner && !iAmSuper) sel.disabled = true;
+      sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); renderPeopleList(); };
+      row.appendChild(sel);
+      // remove from team (not allowed on yourself or, for admins, on owners)
+      const canRemove = u.id!==currentUser().id && !(targetIsOwner && !iAmSuper);
+      if(canRemove){
+        const del = document.createElement("button"); del.className = "person-del"; del.textContent = "\u00d7";
+        del.title = "Remove from this team";
+        del.onclick = ()=>{
+          if(!confirm("Remove "+u.name+" from this team? Their account stays; they just lose access here.")) return;
+          delete u.teams[TEAM]; pushUsers(); renderPeopleList();
+        };
+        row.appendChild(del);
+      }
+    }
+    wrap.appendChild(row);
+  });
+}
+
 function toast(msg){
   const t = $("toast");
   t.textContent = msg;
