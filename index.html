@@ -2191,7 +2191,8 @@ function teamPayload(){
   return { name: (TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"),
     roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT),
     teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES),
-    spaceMembers: clean(BUILTIN_SPACE_MEMBERS) };
+    spaceMembers: clean(BUILTIN_SPACE_MEMBERS), builtinHidden: clean(BUILTIN_HIDDEN),
+    bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
   t = t || {};
@@ -2205,10 +2206,14 @@ function loadTeamData(t){
   BUILTIN_SPACE_MEMBERS = t.spaceMembers || { dev:{}, bugs:{} };
   BUILTIN_SPACE_MEMBERS.dev = BUILTIN_SPACE_MEMBERS.dev || {};
   BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {};
+  BUILTIN_HIDDEN = t.builtinHidden || { dev:false, bugs:false };
+  BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   syncContentSpaces();
   syncModuleSpaces();
 }
 let BUILTIN_SPACE_MEMBERS = { dev:{}, bugs:{} };
+let BUILTIN_HIDDEN = { dev:false, bugs:false };
+let BUGS_DEFAULT_BOARD = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -2251,6 +2256,14 @@ async function pushBugs(){
   }catch(e){ toast("Bug save failed: "+e.message); }
 }
 function saveBugs(){ BUGS.updated = todayStr(); renderAll(); pushBugs(); }
+function rerouteOrphanBugs(){
+  // when built-in Bugs is hidden and a default board exists, board===null (student) tickets move there
+  if(BUILTIN_HIDDEN.bugs && BUGS_DEFAULT_BOARD && CSPACES.list.some(x=>x.id===BUGS_DEFAULT_BOARD && x.type==="bugs")){
+    let moved = false;
+    teamBugs().forEach(t=>{ if(!t.board){ t.board = BUGS_DEFAULT_BOARD; moved = true; } });
+    if(moved) pushBugs();
+  }
+}
 async function refreshBugs(){
   if(!bugsConfigured) return;
   try{
@@ -2340,6 +2353,7 @@ async function start(){
       defaultView();
       if(currentUser() && currentUser().mustChangePw){ setTimeout(()=> openPassword(true), 400); }
       await refreshBugs();
+      rerouteOrphanBugs();
       syncLinkedBugs();
       // pick up teammates' changes when you come back to the tab
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(false); });
@@ -7626,6 +7640,12 @@ function renderAll(){
     if(ref && ref.key.indexOf("cs:")===0 && !canViewSpace(ref)){
       view = "roadmap"; activeCspace = null; editMode = false; defaultView();
     }
+    // bounce off a hidden built-in
+    if(view==="dev" && BUILTIN_HIDDEN.dev){ view = "roadmap"; defaultView(); }
+    if(view==="bugs" && BUILTIN_HIDDEN.bugs){
+      const tb = (CSPACES.list||[]).find(x=>x.id===BUGS_DEFAULT_BOARD && x.type==="bugs") || (CSPACES.list||[]).find(x=>x.type==="bugs");
+      if(tb){ view = "cbugs"; activeCspace = tb.id; } else { view = "roadmap"; defaultView(); }
+    }
   })();
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
@@ -7694,6 +7714,8 @@ function renderAll(){
       lbl.className = "ws-label"; lbl.textContent = g.label;
       ws.appendChild(lbl);
       g.items.forEach(w=>{
+        if(w.key==="dev" && BUILTIN_HIDDEN.dev) return;
+        if(w.key==="bugs" && BUILTIN_HIDDEN.bugs) return;
         const b = document.createElement("button");
         b.className = "ws-item"+(view===w.key?" active":"");
         b.innerHTML = '<span class="dot"></span><span></span>';
@@ -7711,6 +7733,13 @@ function renderAll(){
             openSpaceSettings(ref);
           };
           b.appendChild(gear);
+          // delete (migrate-then-remove) the built-in
+          const del = document.createElement("span");
+          del.className = "ws-del";
+          del.textContent = "\u00d7";
+          del.title = "Move its data to another space and delete";
+          del.onclick = e=>{ e.stopPropagation(); if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); };
+          b.appendChild(del);
         }
         ws.appendChild(b);
       });
@@ -8428,6 +8457,52 @@ function renderAdminUsers(wrap){
     });
   }
   drawTable();
+}
+
+// migrate a built-in space's data into a template space, then hide the built-in
+function bugsTargetSpaces(){ return (CSPACES.list||[]).filter(x=>x.type==="bugs"); }
+function scrumTargetSpaces(){ return (CSPACES.list||[]).filter(x=>x.type==="scrum" && x.devId); }
+function deleteBuiltinBugs(){
+  const targets = bugsTargetSpaces();
+  if(!targets.length){
+    alert("Create a Bugs space first (＋ Add space \u2192 Bugs), then delete this one to move its tickets there.");
+    return;
+  }
+  openChoice("Move Bugs into which space?", targets.map(t=>({label:t.name, value:t.id})), targetId=>{
+    const target = CSPACES.list.find(x=>x.id===targetId);
+    if(!target) return;
+    const orphan = teamBugs().filter(t=>!t.board);
+    if(!confirm("Move "+orphan.length+" ticket(s) from the built-in Bugs into \u201C"+target.name+"\u201D and delete the built-in Bugs board?\n\nNew student bug reports will also start arriving in \u201C"+target.name+"\u201D.")) return;
+    // merge: retag all board===null tickets to the target
+    teamBugs().forEach(t=>{ if(!t.board) t.board = target.id; });
+    BUGS_DEFAULT_BOARD = target.id;         // student pipeline now routes here
+    BUILTIN_HIDDEN.bugs = true;
+    if(view==="bugs"){ view = "cbugs"; activeCspace = target.id; }
+    pushBugs(); pushAll(); renderAll();
+    toast("Bugs migrated to \u201C"+target.name+"\u201D");
+  });
+}
+function deleteBuiltinDev(){
+  const targets = scrumTargetSpaces();
+  if(!targets.length){
+    alert("Create a Scrum space first (＋ Add space \u2192 Scrum), then delete Development to move its board there.");
+    return;
+  }
+  openChoice("Move Development into which space?", targets.map(t=>({label:t.name, value:t.id})), targetId=>{
+    const target = CSPACES.list.find(x=>x.id===targetId);
+    if(!target || !target.devId) return;
+    const coreId = "space-core";
+    const spr = (DEV.sprints||[]).filter(x=>x.space===coreId || !x.space);
+    const crd = (DEV.cards||[]).filter(x=>x.space===coreId || !x.space);
+    if(!confirm("Move "+spr.length+" sprint(s) and "+crd.length+" card(s) from Development into \u201C"+target.name+"\u201D and delete the built-in Development board?")) return;
+    // merge: retag core sprints/cards to the target's dev space
+    (DEV.sprints||[]).forEach(x=>{ if(x.space===coreId || !x.space) x.space = target.devId; });
+    (DEV.cards||[]).forEach(x=>{ if(x.space===coreId || !x.space) x.space = target.devId; });
+    BUILTIN_HIDDEN.dev = true;
+    if(view==="dev" && (!devSpace || devSpace===coreId)){ devSpace = target.devId; }
+    saveDev(); pushAll(); renderAll();
+    toast("Development migrated to \u201C"+target.name+"\u201D");
+  });
 }
 
 let ssRef = null, ssTab = "people";
