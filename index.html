@@ -713,6 +713,15 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .ss-permrow.on .perm-tick{background:var(--done-bg);color:var(--done)}
 .ss-permrow.off{color:var(--muted)}
 .ss-permrow.off .perm-tick{background:var(--paper);border:1px solid var(--line)}
+.access-opts{display:flex;flex-direction:column;gap:8px}
+.access-opt{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid var(--line);border-radius:11px;padding:13px 14px;background:var(--card);cursor:pointer}
+.access-opt:hover{border-color:var(--indigo)}
+.access-opt.sel{border-color:var(--indigo);background:var(--indigo-soft)}
+.access-ico{font-size:18px;flex:none;line-height:1.3}
+.access-name{font-weight:600;color:var(--ink);font-size:14px}
+.access-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45}
+.ss-access-row{display:flex;gap:8px;align-items:center;margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ss-access-row select{margin:0}
 .au-acts{display:flex;gap:4px;justify-content:flex-end}
 @media(max-width:640px){.au-row{grid-template-columns:1fr auto}.au-acts{grid-column:1/-1;justify-content:flex-start;padding-top:0}}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
@@ -1020,6 +1029,20 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div id="landing-list" class="landing-list"></div>
     <div id="landing-userbar" class="landing-userbar" style="display:none"></div>
     <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
+  </div>
+</div>
+
+<div class="overlay" id="access-overlay" style="z-index:418">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">
+    <h3 id="access-heading">Space access</h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:12px">Who can see and work in this space? You can change this later in \u2699 Space settings.</div>
+      <div id="access-opts" class="access-opts"></div>
+    </div>
+    <div class="btns">
+      <button class="btn" id="access-cancel">Cancel</button>
+      <button class="btn save" id="access-ok">Create space</button>
+    </div>
   </div>
 </div>
 
@@ -1652,6 +1675,29 @@ function spaceRoleOf(user, ref){
   const m = spaceMembers(ref);
   const sr = m[user.email];
   return sr || teamRole;                        // explicit space role, else team role as floor
+}
+const SPACE_ACCESS = [
+  {key:"open",    label:"Open",    icon:"\uD83D\uDD13", desc:"Everyone on the team can see it, and edit per their team role."},
+  {key:"limited", label:"Limited", icon:"\uD83D\uDC65", desc:"Everyone can see and comment, but only people you add can edit."},
+  {key:"private", label:"Private", icon:"\uD83D\uDD12", desc:"Only Admins and people you add can see or edit this space."},
+];
+function spaceAccessOf(ref){ return (ref && ref.obj && ref.obj.access) || "open"; }
+// can the current user even SEE this space? (Admins/Owners always can)
+function canViewSpace(ref){
+  if(!ref) return true;
+  if(!currentUser()) return true;   // not signed in -> login gate handles it; don't blank the sidebar
+  const teamRole = roleOf(currentUser(), TEAM);
+  if(!teamRole) return false;
+  if(roleRank(teamRole) <= roleRank("admin")) return true;   // owners/admins see everything
+  const access = spaceAccessOf(ref);
+  if(access !== "private") return true;                       // open & limited are visible to all
+  // private: only explicit members can see it
+  const m = spaceMembers(ref);
+  return !!m[currentUser().email];
+}
+// build a ref for any custom space object (for visibility checks in the sidebar)
+function csRef(cs){
+  return { key:"cs:"+cs.id, obj:cs, name:cs.name };
 }
 function canInSpace(min, ref){
   const r = spaceRoleOf(currentUser(), ref);
@@ -7538,6 +7584,13 @@ function renderAll(){
   renderHeader();
   // per-space enforcement: if the viewer can't edit THIS space, editMode is suppressed here
   if(editMode && !canEditHere()) editMode = false;
+  // visibility protection: if you're viewing a space you can no longer see, bounce to a safe view
+  (function(){
+    const ref = currentSpaceRef();
+    if(ref && ref.key.indexOf("cs:")===0 && !canViewSpace(ref)){
+      view = "roadmap"; activeCspace = null; editMode = false; defaultView();
+    }
+  })();
   $("rm-controls").style.display = view==="roadmap" ? "contents" : "none";
   $("rm-tools").style.display = view==="roadmap" ? "contents" : "none";
   /* Workspace areas — add future sections here (one line each).
@@ -7627,6 +7680,7 @@ function renderAll(){
       });
       /* custom spaces created from templates */
       CSPACES.list.forEach(cs=>{
+        if(!canViewSpace(csRef(cs))) return;   // private spaces hidden from non-members
         const active = cs.type==="bugs"
           ? (view==="cbugs" && activeCspace===cs.id)
           : cs.type==="discovery"
@@ -7780,12 +7834,32 @@ $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
 if($("nav-account")){ $("nav-account").onclick = openAccount; }
 $("nav-home").onclick = ()=> navHome();
+function chooseAccess(name, onPick){
+  let chosen = "open";
+  $("access-heading").textContent = "Access \u2014 " + name;
+  const box = $("access-opts");
+  box.innerHTML = "";
+  SPACE_ACCESS.forEach(a=>{
+    const b = document.createElement("button");
+    b.className = "access-opt" + (a.key===chosen ? " sel" : "");
+    b.innerHTML = '<span class="access-ico"></span><span><span class="access-name"></span><span class="access-desc"></span></span>';
+    b.querySelector(".access-ico").textContent = a.icon;
+    b.querySelector(".access-name").textContent = a.label;
+    b.querySelector(".access-desc").textContent = a.desc;
+    b.onclick = ()=>{ chosen = a.key; [...box.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); };
+    box.appendChild(b);
+  });
+  $("access-cancel").onclick = ()=> $("access-overlay").classList.remove("show");
+  $("access-ok").onclick = ()=>{ $("access-overlay").classList.remove("show"); onPick(chosen); };
+  $("access-overlay").classList.add("show");
+}
 document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
     openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
-      const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type };
+     chooseAccess(v.title, access=>{
+      const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members:{} };
       if(type==="scrum"){
         const sp = { id:"space-"+Date.now().toString(36), name:v.title };
         DEV.spaces.push(sp);
@@ -7803,6 +7877,8 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         DATA.modules.push({name:v.title, key, items:[], subs:[]});
         view = "roadmap"; activeModule = key; researchOpen = false; activeAnalysis = null;
         saveRoadmap();   // sync creates the space entry and pushes everything
+        const mcs = CSPACES.list.find(x=>x.type==="module" && x.moduleKey===key);
+        if(mcs){ mcs.access = access; mcs.members = mcs.members || {}; pushAll(); }
       } else if(type==="research" || type==="competitor"){
         cs.node = { name: v.title, key: "csnode-"+cs.id, items: [], analyses: [] };
         CSPACES.list.push(cs);
@@ -7812,6 +7888,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
         CONTENT.sections.push({name:v.title, key, tasks:[], spends:[]});
         cs.sectionKey = key;
+        cs.access = access; cs.members = {};
         CSPACES.list.push(cs);
         view = "content"; activeSection = key;
         saveContent();   // pushes everything, cspaces included
@@ -7821,6 +7898,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         renderAll(); pushAll();
       }
       toast("\u201C"+v.title+"\u201D added to Spaces");
+     });
     }, {hideExtras:true, titleLabel: type==="scrum" ? "Space name (e.g. DYNG Tech Team)" : type==="discovery" ? "Space name (e.g. Dubuddy Product Roadmap)" : type==="content" ? "Space name (e.g. NEET Content)" : type==="research" ? "Space name (e.g. Dubuddy Discovery)" : type==="competitor" ? "Space name (e.g. Test-prep landscape)" : "Space name (e.g. Panel Bugs)"});
   };
 });
@@ -8283,6 +8361,19 @@ function drawSpaceSettings(){
 }
 function drawSpacePeople(body){
   const ref = ssRef;
+  // access-level control
+  const arow = document.createElement("div"); arow.className = "ss-access-row";
+  const alab = document.createElement("div"); alab.style.cssText = "font-weight:600;color:var(--ink);font-size:13px"; alab.textContent = "Access:";
+  const asel = document.createElement("select"); asel.className = "person-role";
+  SPACE_ACCESS.forEach(a=>{ const o=document.createElement("option"); o.value=a.key; o.textContent=a.icon+" "+a.label; asel.appendChild(o); });
+  asel.value = spaceAccessOf(ref);
+  const adesc = document.createElement("span"); adesc.className = "access-desc"; adesc.style.flex = "1";
+  const setDesc = ()=>{ adesc.textContent = (SPACE_ACCESS.find(a=>a.key===asel.value)||{}).desc || ""; };
+  setDesc();
+  asel.onchange = ()=>{ ref.obj.access = asel.value; setDesc(); persistSpace(ref); };
+  arow.append(alab, asel, adesc);
+  body.appendChild(arow);
+
   const note = document.createElement("div");
   note.className = "ss-note";
   note.innerHTML = "Give people a role <b>in this space only</b>. A space role overrides their team role here \u2014 e.g. make a team Viewer an Editor of just this space, or restrict a team Editor to Viewer here. Team Owners and Admins always keep full access.";
