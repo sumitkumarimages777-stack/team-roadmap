@@ -1000,17 +1000,23 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <span class="tpl-desc">Collect ideas, sort them into Now / Next / Later, and see them on a timeline — like Jira Product Discovery.</span>
           <span class="tpl-by">All ideas · Roadmap · Timeline</span>
         </button>
-        <button class="tpl-card" data-tpl="module">
-          <span class="tpl-emoji">🧩</span>
-          <span class="tpl-name">Product module</span>
-          <span class="tpl-desc">A top-level module on the Product roadmap — tasks, submodules, dependencies and Product Research.</span>
-          <span class="tpl-by">Tasks · Submodules · Research</span>
-        </button>
         <button class="tpl-card" data-tpl="content">
           <span class="tpl-emoji">📚</span>
           <span class="tpl-name">Educational content</span>
           <span class="tpl-desc">A content section with tasks, deadlines, budgets and the List / Board views — like your exam sections.</span>
           <span class="tpl-by">Tasks · Budget · Kanban</span>
+        </button>
+        <button class="tpl-card" data-tpl="research">
+          <span class="tpl-emoji">📊</span>
+          <span class="tpl-name">Product Research</span>
+          <span class="tpl-desc">The Lean Product Playbook — validate the problem, define personas, score needs, value prop and MVP.</span>
+          <span class="tpl-by">6 steps · problem → MVP</span>
+        </button>
+        <button class="tpl-card" data-tpl="competitor">
+          <span class="tpl-emoji">⚔️</span>
+          <span class="tpl-name">Competitor Analysis</span>
+          <span class="tpl-desc">Compare against competitors — product-level feature grids and feature-level deep dives, side by side.</span>
+          <span class="tpl-by">Product-level · Feature-level</span>
         </button>
         <button class="tpl-card" data-tpl="scrum">
           <span class="tpl-emoji">🏃</span>
@@ -1411,7 +1417,13 @@ function normalizeCspaces(c){
   c.list = c.list || [];
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
-    x.type = (x.type === "scrum") ? "scrum" : (x.type === "discovery") ? "discovery" : (x.type === "content") ? "content" : (x.type === "module") ? "module" : "bugs";
+    x.type = ["scrum","discovery","content","module","research","competitor"].includes(x.type) ? x.type : "bugs";
+    if(x.type === "research" || x.type === "competitor"){
+      // these spaces host their research/analysis on their own node (like a module node, but not in the module list)
+      x.node = x.node || { name: x.name, key: "csnode-" + x.id, items: [], analyses: [] };
+      x.node.name = x.name;
+      normalizeAnalyses(x.node);
+    }
     if(x.type === "discovery"){
       x.ideas = x.ideas || [];
       // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
@@ -2446,6 +2458,11 @@ function renderHeader(){
 const expandedNav = new Set();   // paths whose children are shown in the sidebar
 
 function findByPath(path){
+  if(typeof path === "string" && path.indexOf("cs::") === 0){
+    const cs = (CSPACES.list||[]).find(x=>x.id === path.slice(4));
+    if(cs && cs.node) return { node: cs.node, chain: [cs.node] };
+    return null;
+  }
   if(!path || path==="all") return null;
   const parts = path.split("::");
   let node = DATA.modules.find(m=>m.key===parts[0]);
@@ -4269,20 +4286,53 @@ function nodePane(node, path, chain){
 }
 
 // Product Research: the six discovery steps, shown only when the user opens the panel.
+function renderContentCsnode(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  const cs = (CSPACES.list||[]).find(x=>x.id===activeCspace && (x.type==="research" || x.type==="competitor"));
+  if(!cs){ view = "dev"; renderAll(); return; }
+  const path = "cs::" + cs.id;
+  const node = cs.node;
+  normalizeAnalyses(node);
+  // an analysis open inside this space?
+  if(activeAnalysis && activeAnalysis.path === path){
+    const a = node.analyses.find(x=>x.id===activeAnalysis.id);
+    const PANES = {problem:problemPane, persona:personaPane, needs:needsPane, valueprop:valuePropPane, mvp:mvpPane};
+    const pane = a && (PANES[a.type] || analysisPane);
+    if(a){ pane(node, path, a); return; }
+    activeAnalysis = null;
+  }
+  if(cs.type === "research"){ researchPane(node, path, [node]); return; }
+  // competitor space: header + the analysis section (both product & feature templates available)
+  const head = document.createElement("section");
+  head.className = "module-block"; head.style.marginBottom = "10px";
+  const row = document.createElement("div"); row.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = cs.name;
+  const tag = document.createElement("span"); tag.className = "sub-tag"; tag.textContent = "COMPETITOR ANALYSIS";
+  row.append(h2, tag);
+  head.appendChild(row);
+  wrap.appendChild(head);
+  const anSec = analysisSection(node, path);
+  if(anSec) wrap.appendChild(anSec);
+  else { const e = document.createElement("div"); e.className="empty"; e.textContent = editMode ? "Add a product-level or feature-level analysis below." : "No analyses yet."; wrap.appendChild(e); }
+}
+
 function researchPane(node, path, chain){
   const wrap = $("content");
   const block = document.createElement("section");
   block.className = "module-block";
 
-  // breadcrumb back to the node's tasks
-  const bc = document.createElement("div");
-  bc.className = "crumbs";
-  const back = document.createElement("button");
-  back.className = "crumb";
-  back.textContent = "\u2190 Back to " + node.name;
-  back.onclick = ()=>{ researchOpen = false; renderAll(); };
-  bc.appendChild(back);
-  block.appendChild(bc);
+  // breadcrumb back to the node's tasks (module spaces only; research SPACES have no task list)
+  if(String(path).indexOf("cs::") !== 0){
+    const bc = document.createElement("div");
+    bc.className = "crumbs";
+    const back = document.createElement("button");
+    back.className = "crumb";
+    back.textContent = "\u2190 Back to " + node.name;
+    back.onclick = ()=>{ researchOpen = false; renderAll(); };
+    bc.appendChild(back);
+    block.appendChild(bc);
+  }
 
   const head = document.createElement("div");
   head.className = "module-head";
@@ -7036,17 +7086,20 @@ function renderAll(){
           ? (view==="content" && activeSection===cs.sectionKey)
           : cs.type==="module"
           ? (view==="roadmap" && (activeModule===cs.moduleKey || String(activeModule).indexOf(cs.moduleKey+"::")===0))
+          : (cs.type==="research" || cs.type==="competitor")
+          ? (view==="csnode" && activeCspace===cs.id)
           : (view==="dev" && devSpace===cs.devId);
         const b = document.createElement("button");
         b.className = "ws-item"+(active?" active":"");
         b.innerHTML = '<span class="dot cs"></span><span></span><span class="ws-type"></span>';
         b.querySelector("span:nth-child(2)").textContent = cs.name;
-        b.querySelector(".ws-type").textContent = cs.type==="scrum" ? "scrum" : cs.type==="discovery" ? "product" : cs.type==="content" ? "content" : cs.type==="module" ? "module" : "bugs";
+        b.querySelector(".ws-type").textContent = cs.type==="scrum" ? "scrum" : cs.type==="discovery" ? "product" : cs.type==="content" ? "content" : cs.type==="module" ? "module" : cs.type==="research" ? "research" : cs.type==="competitor" ? "compete" : "bugs";
         b.onclick = ()=>{
           if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
           else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
           else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
           else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
+          else if(cs.type==="research" || cs.type==="competitor"){ view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false; }
           else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
           renderAll();
         };
@@ -7065,6 +7118,8 @@ function renderAll(){
               ? "Delete \u201C"+cs.name+"\u201D? Its section and "+(CONTENT.sections.find(x=>x.key===cs.sectionKey)||{tasks:[]}).tasks.flatMap(leavesOf).length+" task(s) are deleted with it."
               : cs.type==="module"
               ? "Delete \u201C"+cs.name+"\u201D? The module, its submodules and "+moduleLeaves(DATA.modules.find(x=>x.key===cs.moduleKey)||{items:[]}).length+" task(s) are deleted with it."
+              : (cs.type==="research" || cs.type==="competitor")
+              ? "Delete \u201C"+cs.name+"\u201D? Its "+((cs.node&&cs.node.analyses)||[]).length+" analysis/analyses are deleted with it."
               : "Remove \u201C"+cs.name+"\u201D from the sidebar? Its board and cards stay under Development.";
             if(!confirm(msg)) return;
             if(cs.type==="bugs"){
@@ -7078,6 +7133,7 @@ function renderAll(){
               if(si >= 0) CONTENT.sections.splice(si, 1);
               if(view==="content" && activeSection===cs.sectionKey) view = "roadmap";
             }
+            if((cs.type==="research" || cs.type==="competitor") && view==="csnode" && activeCspace===cs.id){ view = "dev"; activeAnalysis = null; }
             if(cs.type==="module"){
               const mi = DATA.modules.findIndex(x=>x.key===cs.moduleKey);
               if(mi >= 0) DATA.modules.splice(mi, 1);
@@ -7138,6 +7194,11 @@ function renderAll(){
     $("mods").innerHTML = "";
     renderContentDisc();
   }
+  else if(view==="csnode"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    renderContentCsnode();
+  }
   else {
     // OKR structure edits are leadership-only: while on this view, edit affordances
     // render only if the leadership passcode has been entered.
@@ -7166,7 +7227,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
-    openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="module" ? "New Product module" : "New Bugs space", {}, v=>{
+    openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
       const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type };
       if(type==="scrum"){
         const sp = { id:"space-"+Date.now().toString(36), name:v.title };
@@ -7185,6 +7246,11 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         DATA.modules.push({name:v.title, key, items:[], subs:[]});
         view = "roadmap"; activeModule = key; researchOpen = false; activeAnalysis = null;
         saveRoadmap();   // sync creates the space entry and pushes everything
+      } else if(type==="research" || type==="competitor"){
+        cs.node = { name: v.title, key: "csnode-"+cs.id, items: [], analyses: [] };
+        CSPACES.list.push(cs);
+        view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false;
+        renderAll(); pushAll();
       } else if(type==="content"){
         const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
         CONTENT.sections.push({name:v.title, key, tasks:[], spends:[]});
@@ -7198,7 +7264,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         renderAll(); pushAll();
       }
       toast("\u201C"+v.title+"\u201D added to Spaces");
-    }, {hideExtras:true, titleLabel: type==="scrum" ? "Space name (e.g. DYNG Tech Team)" : type==="discovery" ? "Space name (e.g. Dubuddy Product Roadmap)" : type==="content" ? "Space name (e.g. NEET Content)" : type==="module" ? "Module name (e.g. DYNG)" : "Space name (e.g. Panel Bugs)"});
+    }, {hideExtras:true, titleLabel: type==="scrum" ? "Space name (e.g. DYNG Tech Team)" : type==="discovery" ? "Space name (e.g. Dubuddy Product Roadmap)" : type==="content" ? "Space name (e.g. NEET Content)" : type==="research" ? "Space name (e.g. Dubuddy Discovery)" : type==="competitor" ? "Space name (e.g. Test-prep landscape)" : "Space name (e.g. Panel Bugs)"});
   };
 });
 $("cmt-post").onclick = ()=> postComment();
