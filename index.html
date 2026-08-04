@@ -722,6 +722,24 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .access-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45}
 .ss-access-row{display:flex;gap:8px;align-items:center;margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .ss-access-row select{margin:0}
+.access-people{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.ap-head{font-weight:600;font-size:13px;color:var(--ink)}
+.ap-opt{font-weight:400;color:var(--muted);font-size:12px}
+.ap-sub{font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.45}
+.ap-picker{position:relative}
+.ap-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.ap-chip{display:inline-flex;align-items:center;gap:6px;background:var(--indigo-soft);color:var(--indigo);border-radius:99px;padding:4px 6px 4px 4px;font-size:12.5px}
+.ap-chip .ap-av{width:18px;height:18px;border-radius:50%;background:var(--indigo);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center}
+.ap-chip select{border:none;background:none;font-size:11px;color:var(--indigo);font-family:var(--mono);cursor:pointer;padding:0 2px}
+.ap-chip .ap-x{cursor:pointer;font-weight:700;opacity:.7;padding:0 2px}
+.ap-chip .ap-x:hover{opacity:1}
+.ap-suggest{position:absolute;left:0;right:0;top:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px rgba(23,35,58,.12);max-height:200px;overflow-y:auto;z-index:5;display:none}
+.ap-suggest.show{display:block}
+.ap-sugg{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer}
+.ap-sugg:hover{background:var(--paper)}
+.ap-sugg .ap-av{width:26px;height:26px;border-radius:50%;background:var(--indigo);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;flex:none}
+.ap-sugg-name{font-size:13px;color:var(--ink);font-weight:600}
+.ap-sugg-email{font-size:11px;color:var(--muted)}
 .au-acts{display:flex;gap:4px;justify-content:flex-end}
 @media(max-width:640px){.au-row{grid-template-columns:1fr auto}.au-acts{grid-column:1/-1;justify-content:flex-start;padding-top:0}}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
@@ -1038,6 +1056,15 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div class="dlg-body">
       <div class="hint" style="margin-bottom:12px">Who can see and work in this space? You can change this later in \u2699 Space settings.</div>
       <div id="access-opts" class="access-opts"></div>
+      <div id="access-people" class="access-people">
+        <div class="ap-head">Add people to this space <span class="ap-opt">(optional)</span></div>
+        <div class="ap-sub" id="access-people-sub"></div>
+        <div class="ap-picker">
+          <div id="access-chips" class="ap-chips"></div>
+          <input id="access-personinput" class="login-input" type="text" placeholder="Type a name or email\u2026" autocomplete="off" style="margin:0">
+          <div id="access-suggest" class="ap-suggest"></div>
+        </div>
+      </div>
     </div>
     <div class="btns">
       <button class="btn" id="access-cancel">Cancel</button>
@@ -7836,9 +7863,15 @@ if($("nav-account")){ $("nav-account").onclick = openAccount; }
 $("nav-home").onclick = ()=> navHome();
 function chooseAccess(name, onPick){
   let chosen = "open";
+  const picked = {};   // email -> role for this new space
   $("access-heading").textContent = "Access \u2014 " + name;
   const box = $("access-opts");
   box.innerHTML = "";
+  const subFor = k => k==="private"
+      ? "Private spaces are hidden from everyone else \u2014 add the people who should see it."
+      : k==="limited"
+      ? "Everyone can see it; add the people who should be able to edit."
+      : "Everyone on the team can already see and edit this space. Adding people here gives them a specific role.";
   SPACE_ACCESS.forEach(a=>{
     const b = document.createElement("button");
     b.className = "access-opt" + (a.key===chosen ? " sel" : "");
@@ -7846,11 +7879,62 @@ function chooseAccess(name, onPick){
     b.querySelector(".access-ico").textContent = a.icon;
     b.querySelector(".access-name").textContent = a.label;
     b.querySelector(".access-desc").textContent = a.desc;
-    b.onclick = ()=>{ chosen = a.key; [...box.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); };
+    b.onclick = ()=>{ chosen = a.key; [...box.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); $("access-people-sub").textContent = subFor(chosen); };
     box.appendChild(b);
   });
+  $("access-people-sub").textContent = subFor(chosen);
+
+  // people picker: choose from existing team members (excluding yourself + team admins/owners who already have access)
+  const chips = $("access-chips");
+  const input = $("access-personinput");
+  const sugg = $("access-suggest");
+  const me = currentUser();
+  const candidates = USERS.filter(u=> !u.super && u.id!==(me&&me.id) && (u.teams && u.teams[TEAM]) && roleRank(roleOf(u,TEAM)) > roleRank("admin"));
+  function drawChips(){
+    chips.innerHTML = "";
+    Object.keys(picked).forEach(email=>{
+      const u = findUser(email); if(!u) return;
+      const chip = document.createElement("span"); chip.className = "ap-chip";
+      const av = document.createElement("span"); av.className = "ap-av";
+      if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; } else { av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
+      const nm = document.createElement("span"); nm.textContent = userDisplayName(u);
+      const sel = document.createElement("select");
+      ["editor","commenter","viewer"].forEach(r=>{ const o=document.createElement("option"); o.value=r; o.textContent=ROLE_LABEL[r]; sel.appendChild(o); });
+      sel.value = picked[email];
+      sel.onchange = ()=>{ picked[email] = sel.value; };
+      const x = document.createElement("span"); x.className = "ap-x"; x.textContent = "\u00d7";
+      x.onclick = ()=>{ delete picked[email]; drawChips(); };
+      chip.append(av, nm, sel, x);
+      chips.appendChild(chip);
+    });
+  }
+  function drawSuggest(){
+    const term = (input.value||"").toLowerCase().trim();
+    sugg.innerHTML = "";
+    const matches = candidates.filter(u=> !picked[u.email] && (!term || (u.name||"").toLowerCase().includes(term) || u.email.includes(term))).slice(0,6);
+    if(!matches.length){ sugg.classList.remove("show"); return; }
+    matches.forEach(u=>{
+      const row = document.createElement("div"); row.className = "ap-sugg";
+      const av = document.createElement("span"); av.className = "ap-av";
+      if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; } else { av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
+      const meta = document.createElement("div");
+      meta.innerHTML = '<div class="ap-sugg-name"></div><div class="ap-sugg-email"></div>';
+      meta.querySelector(".ap-sugg-name").textContent = userDisplayName(u);
+      meta.querySelector(".ap-sugg-email").textContent = u.email;
+      row.append(av, meta);
+      row.onclick = ()=>{ picked[u.email] = "editor"; input.value = ""; drawChips(); drawSuggest(); input.focus(); };
+      sugg.appendChild(row);
+    });
+    sugg.classList.add("show");
+  }
+  input.value = ""; Object.keys(picked).forEach(k=>delete picked[k]);
+  drawChips();
+  input.onfocus = drawSuggest;
+  input.oninput = drawSuggest;
+  input.onblur = ()=> setTimeout(()=> sugg.classList.remove("show"), 150);
+
   $("access-cancel").onclick = ()=> $("access-overlay").classList.remove("show");
-  $("access-ok").onclick = ()=>{ $("access-overlay").classList.remove("show"); onPick(chosen); };
+  $("access-ok").onclick = ()=>{ $("access-overlay").classList.remove("show"); onPick(chosen, Object.assign({}, picked)); };
   $("access-overlay").classList.add("show");
 }
 document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
@@ -7858,8 +7942,8 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
     openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
-     chooseAccess(v.title, access=>{
-      const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members:{} };
+     chooseAccess(v.title, (access, members)=>{
+      const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members: members||{} };
       if(type==="scrum"){
         const sp = { id:"space-"+Date.now().toString(36), name:v.title };
         DEV.spaces.push(sp);
@@ -7878,7 +7962,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         view = "roadmap"; activeModule = key; researchOpen = false; activeAnalysis = null;
         saveRoadmap();   // sync creates the space entry and pushes everything
         const mcs = CSPACES.list.find(x=>x.type==="module" && x.moduleKey===key);
-        if(mcs){ mcs.access = access; mcs.members = mcs.members || {}; pushAll(); }
+        if(mcs){ mcs.access = access; mcs.members = members||{}; pushAll(); }
       } else if(type==="research" || type==="competitor"){
         cs.node = { name: v.title, key: "csnode-"+cs.id, items: [], analyses: [] };
         CSPACES.list.push(cs);
@@ -7888,7 +7972,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
         CONTENT.sections.push({name:v.title, key, tasks:[], spends:[]});
         cs.sectionKey = key;
-        cs.access = access; cs.members = {};
+        cs.access = access; cs.members = members||{};
         CSPACES.list.push(cs);
         view = "content"; activeSection = key;
         saveContent();   // pushes everything, cspaces included
