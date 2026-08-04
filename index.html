@@ -595,6 +595,8 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .dpick-clear{font-family:var(--mono);font-size:11.5px;color:var(--muted);justify-content:center}
 .dpick-clear:hover{color:var(--blocked)}
 .k-add{margin:6px}
+.mod.convert{width:100%;text-align:left;padding:9px 12px;margin-top:4px;border:1px dashed var(--line-strong);border-radius:10px;background:none;color:var(--muted);font-family:var(--mono);font-size:11.5px;cursor:pointer}
+.mod.convert:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
 .cmode-bar{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:14px;background:var(--card)}
 .cmode{border:none;background:none;font-family:var(--mono);font-size:12px;padding:7px 16px;color:var(--muted);cursor:pointer}
 .cmode.active{background:var(--indigo);color:#fff}
@@ -1442,6 +1444,32 @@ function normalizeCspaces(c){
 }
 function discStatusOf(state){
   return state==="On track" ? "done" : state==="At risk" ? "progress" : state==="Off track" ? "blocked" : "planned";
+}
+function stateFromStatus(st){
+  return st==="done" ? "On track" : st==="progress" ? "At risk" : st==="blocked" ? "Off track" : "Pending";
+}
+// list every discovery space, for the "convert into which Product Roadmap?" picker
+function discoverySpaces(){ return (CSPACES.list||[]).filter(x=>x.type==="discovery"); }
+// C-migration: move a module's leaf tasks into a discovery space as ideas, then drop the module
+function convertModuleToIdeas(mod, disc){
+  disc.ideas = disc.ideas || [];
+  const leaves = moduleLeaves(mod);   // all leaf tasks, any depth, submodules flattened
+  leaves.forEach(t=>{
+    const idea = {
+      id: "idea-" + Math.random().toString(36).slice(2,9),
+      title: t.title || "(untitled)",
+      note: t.note || "",
+      stage: "later",
+      state: stateFromStatus(t.status),
+    };
+    idea.status = discStatusOf(idea.state);
+    if(t.comments && t.comments.length) idea.comments = t.comments;   // keep the discussion
+    disc.ideas.push(idea);
+  });
+  // remove the module itself (its space entry is pruned by syncModuleSpaces)
+  const mi = DATA.modules.findIndex(m=>m.key===mod.key);
+  if(mi >= 0) DATA.modules.splice(mi, 1);
+  return leaves.length;
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
 function currentDisc(){ return CSPACES.list.find(x=>x.id===activeCspace && x.type==="discovery") || null; }
@@ -2508,6 +2536,16 @@ function renderSidebarRoadmap(){
   overview.innerHTML = `<span class="name">Overview</span><span class="pct">${pctOf(lv)}% \u00b7 ${lv.length} tasks</span>`;
   overview.onclick = ()=> navTo(mod.key);
   wrap.appendChild(overview);
+
+  // convert this module's tasks into a Product Roadmap space (as ideas)
+  if(editMode && discoverySpaces().length){
+    const conv = document.createElement("button");
+    conv.className = "mod convert";
+    conv.textContent = "\u2192 Move tasks into a Product Roadmap";
+    conv.title = "Flatten this module's tasks into a Product Roadmap space as ideas, then remove the module";
+    conv.onclick = ()=> openConvertModule(mod);
+    wrap.appendChild(conv);
+  }
 
   // submodule tree, rooted at this module
   const kids = mod.items ? mod.items.filter(n=> n.items) : [];
@@ -6615,6 +6653,22 @@ function discStageChip(idea){
     });
   };
   return c;
+}
+function openConvertModule(mod){
+  const discs = discoverySpaces();
+  openChoice(
+    "Move \u201C"+mod.name+"\u201D ("+moduleLeaves(mod).length+" tasks) into which Product Roadmap? Its tasks become ideas and the module is removed.",
+    discs.map(d=>({label:d.name, value:d.id})),
+    id=>{
+      const disc = discs.find(d=>d.id===id);
+      if(!disc) return;
+      const n = convertModuleToIdeas(mod, disc);
+      // land in the discovery space we just filled
+      view = "disc"; activeCspace = disc.id; discView = "ideas";
+      saveRoadmap();   // prunes the module space + pushes; discovery ideas ride in cspaces
+      toast(n+" task(s) moved into \u201C"+disc.name+"\u201D as ideas");
+    }
+  );
 }
 function openIdeaDialog(cs, idea, presetStage){
   openDialog(idea ? "Edit idea" : "New idea", idea || {}, v=>{
