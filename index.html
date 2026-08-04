@@ -247,10 +247,16 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 #edu-switch{display:flex;flex-direction:column;gap:6px;margin-top:20px}
 #edu-switch:empty{display:none}
 .ws-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 4px 4px}
-.ws-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-family:var(--disp);font-weight:600;font-size:14px;color:var(--muted);text-align:left;width:100%}
+.ws-item{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 13px;font-family:var(--disp);font-weight:600;font-size:14px;color:var(--muted);text-align:left;width:100%;min-width:0}
+/* the name span truncates instead of wrapping */
+.ws-item > span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-item .dot{flex:none}
+.ws-item .ws-type{flex:none}
+.ws-item .ws-gear,.ws-item .ws-del{flex:none}
 .ws-item:hover{border-color:var(--line-strong);color:var(--ink)}
 .ws-item.active{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft);box-shadow:0 0 0 1px var(--indigo)}
 .ws-item .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.ws-item .ws-n{flex:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
 @media(max-width:860px){#ws-switch,#edu-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}}
 @media(max-width:760px){.corner-nav-wrap{position:static;margin-bottom:14px}}
 
@@ -307,7 +313,7 @@ h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4vw,36px);letter
 .live{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;background:var(--done-bg);color:var(--done)}
 .live.off{background:var(--planned-bg);color:var(--planned)}
 
-.layout{max-width:1200px;margin:0 auto;padding:24px;display:grid;grid-template-columns:260px 1fr;gap:24px}
+.layout{max-width:1220px;margin:0 auto;padding:24px;display:grid;grid-template-columns:272px 1fr;gap:26px}
 @media(max-width:860px){.layout{grid-template-columns:1fr;padding:16px}}
 
 aside{position:sticky;top:16px;align-self:start}
@@ -1011,6 +1017,14 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .kcard .note{margin-top:3px}
 .kcard-meta{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
 .kmove{display:flex;gap:2px;margin-left:auto}
+.kmove{display:none}
+.kadd{width:100%;border:1px dashed var(--line);background:none;border-radius:8px;padding:9px;color:var(--muted);font-family:var(--sans);font-size:13px;cursor:pointer;margin-top:6px}
+.kadd:hover{border-color:var(--indigo);color:var(--indigo)}
+.kmove-acts{display:flex;justify-content:flex-end;margin-top:6px;opacity:.6}
+.kcard.kdrag{cursor:grab}
+.kcard.kdrag:active{cursor:grabbing}
+.kcard.kdragging{opacity:.45}
+.kcol.kover{background:var(--indigo-soft);outline:2px dashed var(--indigo);outline-offset:-4px}
 .kmove button{width:24px;height:24px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center}
 .kmove button:hover:not(:disabled){border-color:var(--indigo);color:var(--indigo)}
 .kmove button:disabled{opacity:.3;cursor:default}
@@ -5661,11 +5675,63 @@ function budgetPanel(sec){
   return box;
 }
 
+/* ---------- generic kanban drag-and-drop ----------
+   Cards become draggable in edit mode; dropping on a column calls onMove(colKey).
+   Replaces the old \u25c0 \u25b6 arrow buttons on every board. */
+let _kDrag = null;   // {id, from} of the card being dragged
+function makeCardDraggable(card, cardId, fromCol, onMove){
+  if(!editMode) return;
+  card.draggable = true;
+  card.classList.add("kdrag");
+  card.addEventListener("dragstart", e=>{
+    _kDrag = {id:cardId, from:fromCol, onMove};
+    card.classList.add("kdragging");
+    e.dataTransfer.effectAllowed = "move";
+    try{ e.dataTransfer.setData("text/plain", cardId); }catch(_){}
+    e.stopPropagation();
+  });
+  card.addEventListener("dragend", ()=>{
+    card.classList.remove("kdragging");
+    document.querySelectorAll(".kcol.kover").forEach(x=>x.classList.remove("kover"));
+    _kDrag = null;
+  });
+}
+function makeColumnDroppable(colEl, colKey){
+  if(!editMode) return;
+  colEl.addEventListener("dragover", e=>{
+    if(!_kDrag) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    colEl.classList.add("kover");
+  });
+  colEl.addEventListener("dragleave", e=>{
+    if(e.target===colEl) colEl.classList.remove("kover");
+  });
+  colEl.addEventListener("drop", e=>{
+    e.preventDefault();
+    colEl.classList.remove("kover");
+    if(!_kDrag) return;
+    const d = _kDrag;
+    if(d.from !== colKey && typeof d.onMove === "function"){ d.onMove(d.id, colKey); }
+    _kDrag = null;
+  });
+}
+
 const CONTENT_COLS = [
   {key:"planned",  label:"To do"},
   {key:"progress", label:"In progress"},
   {key:"done",     label:"Done"},
 ];
+function openContentTask(task, sec){
+  openDialog("Edit task", task, v=>{
+    applyFields(task, v);
+    if(v.start) task.start = v.start; else delete task.start;
+    if(v.deadline) task.deadline = v.deadline; else delete task.deadline;
+    if(v.okr) task.okr = v.okr; else delete task.okr;
+    if(v.blockedBy && v.blockedBy.length) task.blockedBy = v.blockedBy; else delete task.blockedBy;
+    if(v.photos && v.photos.length) task.photos = v.photos; else delete task.photos;
+    saveContent();
+  }, {dates:true, okrLink:true, photos:true, deps:true});
+}
 function contentBoardPane(secs){
   const wrap = $("content");
   const board = document.createElement("div");
@@ -5676,6 +5742,7 @@ function contentBoardPane(secs){
   CONTENT_COLS.forEach((col, ci)=>{
     const el = document.createElement("div");
     el.className = "kcol" + (col.key==="done" ? " kdone" : "");
+    makeColumnDroppable(el, col.key);
     const list = entries.filter(e => colOf(e.t) === col.key);
     const ch = document.createElement("div");
     ch.className = "kcol-head";
@@ -5703,28 +5770,44 @@ function contentBoardPane(secs){
       }
       meta.appendChild(commentChip(t, ()=>saveContent()));
       card.appendChild(meta);
+      // clicking a card opens its editor
+      kt.style.cursor = "pointer";
+      kt.onclick = ()=>{ if(typeof openContentTask==="function"){ openContentTask(t, sec); } };
       if(editMode){
-        const mv = document.createElement("div");
-        mv.className = "kmove";
-        const move = next => {
-          if(isLocked(t) && (next==="progress" || next==="done")){
+        makeCardDraggable(card, t.tid || t.id || t.title, col.key, (id, toCol)=>{
+          if(isLocked(t) && (toCol==="progress" || toCol==="done")){
             const open = openBlockers(t);
             if(!confirm("\u201C"+t.title+"\u201D is still waiting on:\n\n"
               + open.map(b=>"\u2022 "+b.task.title).join("\n")
-              + "\n\nMark it \u201C"+(STATUS_LABEL[next]||next)+"\u201D anyway?")) return;
+              + "\n\nMark it \u201C"+(STATUS_LABEL[toCol]||toCol)+"\u201D anyway?")) return;
           }
-          t.status = next;
-          saveContent();
-        };
-        const back = document.createElement("button"); back.textContent = "\u25C0"; back.disabled = ci===0;
-        if(ci>0){ back.title = "Move to "+CONTENT_COLS[ci-1].label; back.onclick = ()=> move(CONTENT_COLS[ci-1].key); }
-        const fwd = document.createElement("button"); fwd.textContent = "\u25B6"; fwd.disabled = ci===CONTENT_COLS.length-1;
-        if(ci<CONTENT_COLS.length-1){ fwd.title = "Move to "+CONTENT_COLS[ci+1].label; fwd.onclick = ()=> move(CONTENT_COLS[ci+1].key); }
-        mv.append(back, fwd);
-        card.appendChild(mv);
+          t.status = toCol; saveContent();
+        });
       }
       el.appendChild(card);
     });
+    if(editMode){
+      const add = document.createElement("button");
+      add.className = "kadd";
+      add.textContent = "\uFF0B Add";
+      add.onclick = ()=>{
+        // add to the active section (or the first, when viewing "all")
+        const targetSec = (activeSection !== "all" && CONTENT.sections.find(x=>x.key===activeSection)) || secs[0];
+        if(!targetSec){ toast("Create a section first"); return; }
+        openDialog("New task in \u201C"+targetSec.name+"\u201D", {}, v=>{
+          const t = {title:v.title, status: col.key, items:[], tid:newTid()};
+          if(v.owner) t.owner = v.owner;
+          if(v.note) t.note = v.note;
+          if(v.start) t.start = v.start;
+          if(v.deadline) t.deadline = v.deadline;
+          if(v.okr) t.okr = v.okr;
+          if(v.blockedBy && v.blockedBy.length) t.blockedBy = v.blockedBy;
+          if(v.photos && v.photos.length) t.photos = v.photos;
+          targetSec.tasks.push(t); saveContent(); toast("Task added");
+        }, {dates:true, okrLink:true, photos:true, deps:true});
+      };
+      el.appendChild(add);
+    }
     board.appendChild(el);
   });
   wrap.appendChild(board);
@@ -6036,6 +6119,7 @@ function kanbanBoard(items, opts){
   KCOLS.forEach((col,ci)=>{
     const kc = document.createElement("div");
     kc.className = "kcol"+(col.key==="done"?" kdone":"");
+    makeColumnDroppable(kc, col.key);
     const head = document.createElement("div");
     head.className = "kcol-head";
     head.innerHTML = "<b></b><span class='cnt'></span>";
@@ -6070,19 +6154,15 @@ function kanbanBoard(items, opts){
         acts.appendChild(actBtn("trash","Delete",true, ()=>opts.onDelete(item)));
         meta.appendChild(acts);
       }
-      const mv = document.createElement("div");
-      mv.className = "kmove";
-      const back = document.createElement("button");
-      back.textContent = "\u25C0"; back.title = "Move left";
-      back.disabled = ci===0;
-      back.onclick = ()=>{ item.col = KCOLS[ci-1].key; opts.onMove(); };
-      const fwd = document.createElement("button");
-      fwd.textContent = "\u25B6"; fwd.title = "Move right";
-      fwd.disabled = ci===KCOLS.length-1;
-      fwd.onclick = ()=>{ item.col = KCOLS[ci+1].key; opts.onMove(); };
-      mv.append(back, fwd);
-      meta.appendChild(mv);
       card.appendChild(meta);
+      // click to edit
+      if(opts.onEdit){ t.style.cursor = "pointer"; t.onclick = ()=> opts.onEdit(item); }
+      // drag between columns
+      if(editMode){
+        makeCardDraggable(card, item.id || item.tid || item.title, col.key, (id, toCol)=>{
+          item.col = toCol; opts.onMove();
+        });
+      }
       kc.appendChild(card);
     });
     if(editMode && opts.onAdd){
@@ -7410,6 +7490,8 @@ function discIdeasPane(cs){
     const cSum = document.createElement("div");
     cSum.className = "dt-cell dt-sum";
     const t = document.createElement("div"); t.className = "dt-title"; t.textContent = idea.title;
+    t.style.cursor = "pointer";
+    t.onclick = ()=> openIdeaDialog(cs, idea);
     cSum.appendChild(t);
     if(idea.note){ const n = document.createElement("div"); n.className = "dt-note"; n.textContent = idea.note; cSum.appendChild(n); }
     const cCmt = document.createElement("div");
@@ -7457,6 +7539,11 @@ function discRoadmapPane(cs){
   DISC_STAGES.forEach((st, si)=>{
     const col = document.createElement("div");
     col.className = "kcol disc-col dc-" + st.key;
+    if(editMode){
+      col.addEventListener("dragover", e=>{ if(!_kDrag) return; e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("kover"); });
+      col.addEventListener("dragleave", e=>{ if(e.target===col) col.classList.remove("kover"); });
+      col.addEventListener("drop", e=>{ e.preventDefault(); col.classList.remove("kover"); if(!_kDrag) return; const d=_kDrag; if(d.from!==st.key && typeof d.onMove==="function") d.onMove(d.id, st.key); _kDrag=null; });
+    }
     const ch = document.createElement("div");
     ch.className = "kcol-head";
     const ideas = cs.ideas.filter(i=>i.stage===st.key);
@@ -7481,18 +7568,15 @@ function discRoadmapPane(cs){
       }
       meta.appendChild(commentChip(idea, saveDisc));
       card.appendChild(meta);
+      // click opens the idea editor
+      t.style.cursor = "pointer";
+      t.onclick = ()=> openIdeaDialog(cs, idea);
       if(editMode){
-        const mv = document.createElement("div");
-        mv.className = "kmove";
-        const back = document.createElement("button"); back.textContent = "\u25C0"; back.disabled = si===0;
-        back.title = si>0 ? "Move to "+DISC_STAGES[si-1].label : "";
-        back.onclick = ()=>{ idea.stage = DISC_STAGES[si-1].key; saveDisc(); };
-        const fwd = document.createElement("button"); fwd.textContent = "\u25B6"; fwd.disabled = si===DISC_STAGES.length-1;
-        fwd.title = si<DISC_STAGES.length-1 ? "Move to "+DISC_STAGES[si+1].label : "";
-        fwd.onclick = ()=>{ idea.stage = DISC_STAGES[si+1].key; saveDisc(); };
-        const acts = discIdeaActs(cs, idea);
-        mv.append(back, acts, fwd);
-        card.appendChild(mv);
+        // keep the edit/delete actions (just not the arrows)
+        const actRow = document.createElement("div"); actRow.className = "kmove-acts";
+        actRow.appendChild(discIdeaActs(cs, idea));
+        card.appendChild(actRow);
+        makeCardDraggable(card, idea.id, st.key, (id, toStage)=>{ idea.stage = toStage; saveDisc(); });
       }
       col.appendChild(card);
     });
