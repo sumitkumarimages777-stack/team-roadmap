@@ -648,7 +648,21 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .acct-item{display:block;width:100%;text-align:left;padding:11px 12px;border:none;background:none;border-radius:9px;font-family:var(--sans);font-size:14px;color:var(--ink);cursor:pointer}
 .acct-item:hover{background:var(--paper)}
 .acct-item.danger{color:var(--blocked)}
-.admin-crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.admin-crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.perm-card{border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.perm-card-head{padding:16px 18px;background:var(--paper);border-bottom:1px solid var(--line)}
+.perm-role{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--ink)}
+.perm-desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.perm-caps{padding:12px 14px;display:flex;flex-direction:column;gap:7px}
+.perm-chip{display:flex;align-items:center;gap:9px;font-size:13px}
+.perm-chip .perm-tick{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.perm-chip.on{color:var(--ink)}
+.perm-chip.on .perm-tick{background:var(--done-bg);color:var(--done)}
+.perm-chip.off{color:var(--muted)}
+.perm-chip.off .perm-tick{background:var(--paper);color:var(--line-strong,#c7ccd6);border:1px solid var(--line)}
+.admin-add{max-width:520px;margin-top:20px;border:1px solid var(--line);border-radius:12px;padding:18px;border-top:1px solid var(--line)}
+.admin-add .login-input{margin-bottom:10px}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
 .pf-av{width:76px;height:76px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px;background-size:cover;background-position:center;flex:none}
 .pf-photo-actions{flex:1}
@@ -1776,6 +1790,18 @@ function convertModuleToIdeas(mod, disc){
   return leaves.length;
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
+let adminView = "users";  // Administration page: "users" | "permissions"
+// capability matrix shown on the Permissions reference page (what each role can do)
+const PERM_CAPS = [
+  {key:"view",    label:"View everything",         roles:["owner","admin","editor","commenter","viewer"]},
+  {key:"comment", label:"Comment on items",        roles:["owner","admin","editor","commenter"]},
+  {key:"edit",    label:"Create & edit work",      roles:["owner","admin","editor"]},
+  {key:"spaces",  label:"Add & remove spaces",     roles:["owner","admin","editor"]},
+  {key:"okrs",    label:"See & edit Vision / OKRs",roles:["owner","admin"]},
+  {key:"people",  label:"Manage people & roles",   roles:["owner","admin"]},
+  {key:"invite",  label:"Invite / remove members", roles:["owner","admin"]},
+  {key:"team",    label:"Create & delete teams",   roles:["owner"]},
+];
 function currentDisc(){ return CSPACES.list.find(x=>x.id===activeCspace && x.type==="discovery") || null; }
 function saveDisc(){ renderAll(); pushAll(); }
 function boardBugs(cs){ return teamBugs().filter(t=> (t.board || null) === (cs ? cs.id : null)); }
@@ -2679,13 +2705,15 @@ function cardActs(card, buttons){
 /* ---------- shared header ---------- */
 function renderHeader(){
   const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
-  $("rm-title").textContent = view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
     ? "Content work by exam — what's being made, who owns it, and when it's due."
     : view==="dev"
     ? "Sprint work moving left to right \u2014 pick a card, build it, get it reviewed, ship it."
+    : view==="admin"
+    ? "Manage who can access this team and what each role can do."
     : view==="disc"
     ? "Collect ideas, decide what happens Now / Next / Later, and put them on a timeline."
     : (view==="bugs" || view==="cbugs")
@@ -7551,6 +7579,11 @@ function renderAll(){
     $("mods").innerHTML = "";
     renderContentCsnode();
   }
+  else if(view==="admin"){
+    if(!canManagePeople()){ view = "roadmap"; defaultView(); return renderAll(); }
+    renderAdminSidebar();
+    renderContentAdmin();
+  }
   else {
     // OKR structure edits are leadership-only: while on this view, edit affordances
     // render only if the leadership passcode has been entered.
@@ -7773,7 +7806,7 @@ function openAccount(){
 }
 $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").classList.remove("show"); openProfile(); });
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
-$("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPeople(); });
+$("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
 
 let pfColor = null, pfPhoto = null;
@@ -7858,6 +7891,141 @@ function roleOptions(sel, current, maxRole){
     sel.appendChild(o);
   });
 }
+function openAdmin(section){
+  if(!canManagePeople()){ toast("Only Owners and Admins can open Administration"); return; }
+  adminView = section || "users";
+  view = "admin";
+  renderAll();
+}
+function renderAdminSidebar(){
+  const wrap = $("mods");
+  wrap.innerHTML = "";
+  $("side-title").style.display = "";
+  $("side-title").textContent = "Administration";
+  [["users","\uD83D\uDC65 Users"],["permissions","\uD83D\uDD10 Permissions"]].forEach(([k,lbl])=>{
+    const b = document.createElement("button");
+    b.className = "mod" + (adminView===k ? " active" : "");
+    b.innerHTML = '<span class="name"></span>';
+    b.querySelector(".name").textContent = lbl;
+    b.onclick = ()=>{ adminView = k; renderAll(); };
+    wrap.appendChild(b);
+  });
+  const back = document.createElement("button");
+  back.className = "mod add";
+  back.textContent = "\u2190 Back to workspace";
+  back.onclick = ()=>{ view = "roadmap"; defaultView(); renderAll(); };
+  wrap.appendChild(back);
+}
+function renderContentAdmin(){
+  const wrap = $("content");
+  wrap.innerHTML = "";
+  if(!canManagePeople()){ wrap.innerHTML = '<div class="empty">Administration is limited to Owners and Admins.</div>'; return; }
+  const crumb = document.createElement("div");
+  crumb.className = "admin-crumb";
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : "Users");
+  wrap.appendChild(crumb);
+  if(adminView === "permissions") return renderAdminPermissions();
+  return renderAdminUsers();
+}
+function renderAdminPermissions(){
+  const wrap = $("content");
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Permissions";
+  head.appendChild(h2);
+  wrap.appendChild(head);
+  const intro = document.createElement("div");
+  intro.className = "hint"; intro.style.margin = "0 0 18px";
+  intro.textContent = "What each role can do in a team. Roles are assigned per team on the Users page \u2014 the same person can hold different roles in different teams.";
+  wrap.appendChild(intro);
+
+  // role cards, msg91-style
+  const grid = document.createElement("div");
+  grid.className = "perm-grid";
+  ROLES.forEach(role=>{
+    const card = document.createElement("div");
+    card.className = "perm-card";
+    const ch = document.createElement("div"); ch.className = "perm-card-head";
+    const nm = document.createElement("div"); nm.className = "perm-role"; nm.textContent = ROLE_LABEL[role];
+    const ds = document.createElement("div"); ds.className = "perm-desc"; ds.textContent = ROLE_DESC[role];
+    ch.append(nm, ds);
+    card.appendChild(ch);
+    const caps = document.createElement("div"); caps.className = "perm-caps";
+    PERM_CAPS.forEach(cap=>{
+      const has = cap.roles.includes(role);
+      const chip = document.createElement("div");
+      chip.className = "perm-chip" + (has ? " on" : " off");
+      chip.innerHTML = '<span class="perm-tick"></span><span></span>';
+      chip.querySelector(".perm-tick").textContent = has ? "\u2713" : "\u2014";
+      chip.querySelector("span:last-child").textContent = cap.label;
+      caps.appendChild(chip);
+    });
+    card.appendChild(caps);
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+
+  const note = document.createElement("div");
+  note.className = "hint"; note.style.marginTop = "18px";
+  note.textContent = "This is a reference view of the built-in roles. (For a future release, these can become editable, per-space rules \u2014 see the developer handoff note.)";
+  wrap.appendChild(note);
+}
+function renderAdminUsers(){
+  const wrap = $("content");
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Users";
+  const pc = document.createElement("span"); pc.className = "pct";
+  const memberCount = USERS.filter(u=> u.super || (u.teams && u.teams[TEAM])).length;
+  pc.textContent = memberCount + " in " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM);
+  head.append(h2, pc);
+  wrap.appendChild(head);
+  const intro = document.createElement("div");
+  intro.className = "hint"; intro.style.margin = "0 0 16px";
+  intro.textContent = "Owners and Admins manage who can see and edit this team. Roles apply to this team only.";
+  wrap.appendChild(intro);
+  const list = document.createElement("div"); list.id = "admin-user-list"; list.className = "people-list";
+  wrap.appendChild(list);
+  renderPeopleList(list);
+  // add-user card
+  wrap.appendChild(buildAddUserCard());
+}
+function buildAddUserCard(){
+  const box = document.createElement("div");
+  box.className = "people-add admin-add";
+  box.innerHTML = '<div class="pa-title">Add someone to this team</div>';
+  const email = document.createElement("input"); email.className="login-input"; email.type="email"; email.placeholder="their@email.com"; email.id="au-email";
+  const name = document.createElement("input"); name.className="login-input"; name.type="text"; name.placeholder="Name (optional)"; name.id="au-name";
+  const pass = document.createElement("input"); pass.className="login-input"; pass.type="text"; pass.placeholder="Starting password (optional \u2014 defaults to '"+TEMP_PW+"')"; pass.id="au-pass";
+  const row = document.createElement("div"); row.className="pa-row";
+  const sel = document.createElement("select"); sel.className="pa-select"; sel.id="au-role";
+  roleOptions(sel, "editor", currentUser().super ? "owner" : "admin");
+  const add = document.createElement("button"); add.className="btn save"; add.textContent="Add / invite";
+  const err = document.createElement("div"); err.className="login-err"; err.id="au-err";
+  add.onclick = ()=>{
+    const em = (email.value||"").toLowerCase().trim();
+    const nm = (name.value||"").trim();
+    const role = sel.value;
+    if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ err.textContent = "Enter a valid email."; return; }
+    if(!currentUser().super && roleRank(role) < roleRank("admin")){ err.textContent = "Admins can't grant Owner."; return; }
+    let u = findUser(em);
+    if(!u){
+      const startPw = (pass.value||"").trim() || TEMP_PW;
+      u = normalizeUsers([{ email:em, name: nm||em.split("@")[0], pass: fakeHash(startPw), teams:{}, mustChangePw: startPw===TEMP_PW }])[0];
+      USERS.push(u);
+    } else if(nm){ u.name = nm; }
+    u.teams = u.teams || {};
+    u.teams[TEAM] = role;
+    pushUsers();
+    email.value=""; name.value=""; pass.value=""; err.textContent="";
+    renderAll();
+    toast(ROLE_LABEL[role] + " added");
+  };
+  row.append(sel, add);
+  const hint = document.createElement("div"); hint.className="hint"; hint.style.marginTop="6px";
+  hint.textContent = "If they don't have an account yet, one is created with the starting password above (default '"+TEMP_PW+"'), which they set on first login.";
+  box.append(email, name, pass, row, err, hint);
+  return box;
+}
+
 function openPeople(){
   if(!canManagePeople()){ toast("Only Owners and Admins can manage people"); return; }
   $("people-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
@@ -7887,8 +8055,8 @@ function openPeople(){
   };
   $("people-overlay").classList.add("show");
 }
-function renderPeopleList(){
-  const wrap = $("people-list");
+function renderPeopleList(target){
+  const wrap = target || $("people-list");
   wrap.innerHTML = "";
   const members = USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
   members.sort((a,b)=> roleRank(roleOf(a,TEAM)) - roleRank(roleOf(b,TEAM)) || a.name.localeCompare(b.name));
@@ -7915,7 +8083,7 @@ function renderPeopleList(){
       // an admin can't change an owner's role
       const targetIsOwner = roleOf(u, TEAM)==="owner";
       if(targetIsOwner && !iAmSuper) sel.disabled = true;
-      sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); renderPeopleList(); };
+      sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); renderPeopleList(wrap); };
       row.appendChild(sel);
       // reset password (Owner/Admin, not on owners you can't manage)
       if(u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
@@ -7935,7 +8103,7 @@ function renderPeopleList(){
         del.title = "Remove from this team";
         del.onclick = ()=>{
           if(!confirm("Remove "+u.name+" from this team? Their account stays; they just lose access here.")) return;
-          delete u.teams[TEAM]; pushUsers(); renderPeopleList();
+          delete u.teams[TEAM]; pushUsers(); renderPeopleList(wrap);
         };
         row.appendChild(del);
       }
