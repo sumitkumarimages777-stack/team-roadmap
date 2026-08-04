@@ -1697,11 +1697,19 @@ function spaceRoleOf(user, ref){
   if(!user) return "";
   const teamRole = roleOf(user, TEAM);
   if(!teamRole) return "";                     // not on the team at all -> no access
-  if(roleRank(teamRole) <= roleRank("admin")) return teamRole;   // team Owners/Admins keep full power
+  if(roleRank(teamRole) <= roleRank("admin")) return teamRole;   // team Owners/Admins ALWAYS keep full power
   if(!ref) return teamRole;                    // team-level view -> team role
   const m = spaceMembers(ref);
   const sr = m[user.email];
-  return sr || teamRole;                        // explicit space role, else team role as floor
+  // "none" is an explicit "no access to this space" for a team member
+  if(sr === "none") return "";
+  if(spaceAccessOf(ref) === "private"){
+    // PRIVATE: members-only. Team role does NOT leak in as a floor for non-admins.
+    // Only an explicit space role grants access; not added => nothing here, space hidden.
+    return sr || "";
+  }
+  // OPEN / LIMITED: team role is the floor, an explicit space role can raise or lower it.
+  return sr || teamRole;
 }
 const SPACE_ACCESS = [
   {key:"open",    label:"Open",    icon:"\uD83D\uDD13", desc:"Everyone on the team can see it, and edit per their team role."},
@@ -1718,9 +1726,10 @@ function canViewSpace(ref){
   if(roleRank(teamRole) <= roleRank("admin")) return true;   // owners/admins see everything
   const access = spaceAccessOf(ref);
   if(access !== "private") return true;                       // open & limited are visible to all
-  // private: only explicit members can see it
+  // private: only explicit members (with a real role, not "none") can see it
   const m = spaceMembers(ref);
-  return !!m[currentUser().email];
+  const sr = m[currentUser().email];
+  return !!sr && sr !== "none";
 }
 // build a ref for any custom space object (for visibility checks in the sidebar)
 function csRef(cs){
@@ -8490,9 +8499,17 @@ function drawSpacePeople(body){
     } else {
       const sel = document.createElement("select"); sel.className = "person-role";
       // options: "team default" + each role
-      const def = document.createElement("option"); def.value = ""; def.textContent = "Team default (" + ROLE_LABEL[teamRole] + ")";
+      const isPrivate = spaceAccessOf(ref) === "private";
+      const def = document.createElement("option"); def.value = "";
+      // in a private space, "not added" means no access; elsewhere it means team default
+      def.textContent = isPrivate ? "\u2014 Not added (no access)" : "Team default (" + ROLE_LABEL[teamRole] + ")";
       sel.appendChild(def);
       ROLES.forEach(r=>{ if(r==="owner") return; const o=document.createElement("option"); o.value=r; o.textContent="This space: "+ROLE_LABEL[r]; sel.appendChild(o); });
+      // explicit "No access" for OPEN/LIMITED spaces (private already excludes via "not added")
+      if(!isPrivate){
+        const no = document.createElement("option"); no.value = "none"; no.textContent = "\uD83D\uDEAB No access to this space";
+        sel.appendChild(no);
+      }
       sel.value = members[u.email] || "";
       sel.onchange = ()=>{
         if(sel.value) members[u.email] = sel.value; else delete members[u.email];
