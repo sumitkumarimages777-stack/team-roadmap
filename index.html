@@ -639,6 +639,21 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .pa-title{font-weight:600;font-size:13px;margin-bottom:10px;color:var(--ink)}
 .pa-row{display:flex;gap:8px;align-items:center;margin-top:2px}
 .pa-row .pa-select{flex:1}
+.acct-who{display:flex;gap:12px;align-items:center;padding-bottom:14px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.acct-av{width:44px;height:44px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;background-size:cover;background-position:center;flex:none}
+.acct-name{font-weight:700;color:var(--ink)}
+.acct-email{font-size:12px;color:var(--muted)}
+.acct-item{display:block;width:100%;text-align:left;padding:11px 12px;border:none;background:none;border-radius:9px;font-family:var(--sans);font-size:14px;color:var(--ink);cursor:pointer}
+.acct-item:hover{background:var(--paper)}
+.acct-item.danger{color:var(--blocked)}
+.admin-crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
+.pf-av{width:76px;height:76px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px;background-size:cover;background-position:center;flex:none}
+.pf-photo-actions{flex:1}
+.pf-colors{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 6px}
+.pf-sw{width:24px;height:24px;border-radius:6px;border:2px solid transparent;cursor:pointer}
+.pf-sw.sel{border-color:var(--ink)}
+#pf-fields .field{margin-top:10px}
 .landing-h1{font-family:var(--disp);font-size:38px;font-weight:700;margin:10px 0 8px;color:var(--ink)}
 .landing-sub{color:var(--muted);font-size:15px;line-height:1.6;margin:0 auto 28px;max-width:480px}
 .landing-list{display:flex;flex-direction:column;gap:12px;text-align:left}
@@ -983,7 +998,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
         <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
-        <button class="tool" id="nav-people" title="Manage people & roles" style="display:none">👥 People</button>
+        <button class="tool" id="nav-account" title="Your account">👤 Account</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
@@ -1022,8 +1037,66 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
   </div>
 </div>
 
+<div class="overlay" id="account-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:380px">
+    <h3 id="acct-heading">Account</h3>
+    <div class="dlg-body">
+      <div class="acct-who">
+        <div class="acct-av" id="acct-av"></div>
+        <div><div class="acct-name" id="acct-name"></div><div class="acct-email" id="acct-email"></div></div>
+      </div>
+      <button class="acct-item" id="acct-profile">👤 My profile</button>
+      <button class="acct-item" id="acct-password">🔑 Change password</button>
+      <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
+      <button class="acct-item danger" id="acct-logout">→] Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="profile-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3>My profile</h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:14px">Everything here is optional — fill in as much or as little as you like.</div>
+      <div class="pf-photo-row">
+        <div class="pf-av" id="pf-av"></div>
+        <div class="pf-photo-actions">
+          <button class="btn" id="pf-upload">Upload photo</button>
+          <input type="file" id="pf-file" accept="image/*" style="display:none">
+          <div class="pf-colors" id="pf-colors"></div>
+          <div class="hint" id="pf-photo-hint">Or pick an avatar colour. Photos upload via ImgBB.</div>
+        </div>
+      </div>
+      <div class="field"><label for="pf-name">Full name</label><input id="pf-name" class="login-input" type="text"></div>
+      <div id="pf-fields"></div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('profile-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="pf-save">Save profile</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="pw-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:380px">
+    <h3 id="pw-heading">Change password</h3>
+    <div class="dlg-body">
+      <div class="hint" id="pw-hint" style="margin-bottom:12px"></div>
+      <div class="field"><label for="pw-old">Current password</label><input id="pw-old" class="login-input" type="password" autocomplete="current-password"></div>
+      <div class="field"><label for="pw-new">New password</label><input id="pw-new" class="login-input" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="pw-new2">Confirm new password</label><input id="pw-new2" class="login-input" type="password" autocomplete="new-password"></div>
+      <div id="pw-err" class="login-err"></div>
+    </div>
+    <div class="btns">
+      <button class="btn" id="pw-cancel">Cancel</button>
+      <button class="btn save" id="pw-save">Update password</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="people-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:620px">
+    <div class="admin-crumb">⚙️ Administration › People</div>
     <h3>People &amp; roles — <span id="people-team"></span></h3>
     <div class="dlg-body">
       <div class="hint" style="margin-bottom:10px">Owners and Admins manage who can see and edit this team. Roles apply to <b>this team only</b> — the same person can have a different role elsewhere.</div>
@@ -1032,6 +1105,7 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
         <div class="pa-title">Add someone to this team</div>
         <input id="pa-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off">
         <input id="pa-name" class="login-input" type="text" placeholder="Name (optional)" autocomplete="off">
+        <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional \u2014 defaults to 'welcome')" autocomplete="off">
         <div class="pa-row">
           <select id="pa-role" class="pa-select"></select>
           <button id="pa-add" class="btn save">Add / invite</button>
@@ -1326,9 +1400,26 @@ function normalizeUsers(arr){
     pass: u.pass || "",
     teams: u.teams || {},
     super: !!u.super,
+    mustChangePw: !!u.mustChangePw,   // true after an invite/reset with a temp password
+    profile: u.profile || {},          // all-optional: {photo, displayName, title, dept, org, location, tz, pronouns, bio, avatarColor}
   })).filter(u=>u.email);
   return out;
 }
+const TEMP_PW = "welcome";
+// profile fields we surface on the Profile page — every one optional
+const PROFILE_FIELDS = [
+  {key:"displayName", label:"Display name", ph:"How your name shows to others"},
+  {key:"title",       label:"Job title",   ph:"e.g. Product Lead"},
+  {key:"dept",        label:"Department",  ph:"e.g. Engineering"},
+  {key:"org",         label:"Organisation",ph:"e.g. Cyberflow"},
+  {key:"location",    label:"Location",    ph:"e.g. Amritsar, India"},
+  {key:"tz",          label:"Timezone",    ph:"e.g. IST (UTC+5:30)"},
+  {key:"pronouns",    label:"Pronouns",    ph:"e.g. she/her"},
+  {key:"bio",         label:"About you",   ph:"A sentence or two", area:true},
+];
+const AVATAR_COLORS = ["#3B5BDB","#0E7490","#1F7A4D","#9A6A1B","#C2410C","#B03A34","#C2417F","#7048B6","#374151"];
+function userDisplayName(u){ return (u.profile && u.profile.displayName) || u.name || u.email; }
+function userAvatarColor(u){ return (u.profile && u.profile.avatarColor) || AVATAR_COLORS[(u.email||"").length % AVATAR_COLORS.length]; }
 // bootstrap: if no users exist yet, create the super-admin owner (Sumit).
 const BOOTSTRAP_OWNER = { email:"sumit@cyberflow.in", name:"Sumit", pass:"cyberflow", super:true };
 function ensureBootstrapOwner(){
@@ -1372,7 +1463,25 @@ function login(email, pw){
   if(u.pass !== fakeHash(pw)) return { ok:false, err:"Wrong password." };
   SESSION = u;
   sessionStorage.setItem("cf-user", u.email);
+  return { ok:true, mustChangePw: !!u.mustChangePw || pw === TEMP_PW };
+}
+// a signed-in user changes their OWN password
+function changeMyPassword(oldPw, newPw){
+  const u = currentUser();
+  if(!u) return { ok:false, err:"Not signed in." };
+  if(u.pass !== fakeHash(oldPw)) return { ok:false, err:"Current password is wrong." };
+  if(!newPw || newPw.length < 4) return { ok:false, err:"New password must be at least 4 characters." };
+  u.pass = fakeHash(newPw);
+  u.mustChangePw = false;
+  pushUsers();
   return { ok:true };
+}
+// an Owner/Admin resets a member's password to a temp one they must change
+function resetUserPassword(user){
+  user.pass = fakeHash(TEMP_PW);
+  user.mustChangePw = true;
+  pushUsers();
+  return TEMP_PW;
 }
 function logout(){
   SESSION = null;
@@ -1965,6 +2074,7 @@ async function start(){
       }
       refreshLeaderFromRole();
       defaultView();
+      if(currentUser() && currentUser().mustChangePw){ setTimeout(()=> openPassword(true), 400); }
       await refreshBugs();
       syncLinkedBugs();
       // pick up teammates' changes when you come back to the tab
@@ -7258,7 +7368,7 @@ function renderAll(){
   $("nav-ideas").style.display = (TEAM === "dubuddy") ? "" : "none";   // student ideas are Dubuddy-only
   $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
   $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
-  if($("nav-people")) $("nav-people").style.display = canManagePeople() ? "" : "none";
+  if($("nav-account")) $("nav-account").style.display = currentUser() ? "" : "none";
   renderCompanyVision();
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
@@ -7452,7 +7562,7 @@ let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
-if($("nav-people")){ $("nav-people").onclick = openPeople; }
+if($("nav-account")){ $("nav-account").onclick = openAccount; }
 $("nav-home").onclick = ()=> navHome();
 document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
@@ -7618,6 +7728,7 @@ function doLogin(){
   $("login-err").textContent = "";
   refreshLeaderFromRole();
   renderLanding(null);
+  if(r.mustChangePw){ setTimeout(()=> openPassword(true), 200); }
 }
 if($("login-btn")){ $("login-btn").onclick = doLogin; }
 if($("login-pass")){ $("login-pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); }); }
@@ -7637,6 +7748,93 @@ $("edit-toggle").onclick = ()=>{
   b.classList.toggle("primary", !editMode);
   renderAll();
 };
+function openAccount(){
+  const u = currentUser();
+  if(!u){ return; }
+  $("acct-name").textContent = userDisplayName(u);
+  $("acct-email").textContent = u.email;
+  const av = $("acct-av");
+  if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; av.textContent = ""; }
+  else { av.style.backgroundImage = "none"; av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
+  $("acct-admin").style.display = canManagePeople() ? "" : "none";
+  $("account-overlay").classList.add("show");
+}
+$("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").classList.remove("show"); openProfile(); });
+$("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
+$("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPeople(); });
+$("acct-logout") && ($("acct-logout").onclick = ()=> logout());
+
+let pfColor = null, pfPhoto = null;
+function openProfile(){
+  const u = currentUser();
+  if(!u) return;
+  pfColor = userAvatarColor(u);
+  pfPhoto = (u.profile && u.profile.photo) || null;
+  $("pf-name").value = u.name || "";
+  // build the optional fields
+  const wrap = $("pf-fields");
+  wrap.innerHTML = "";
+  PROFILE_FIELDS.forEach(f=>{
+    const field = document.createElement("div"); field.className = "field";
+    const lab = document.createElement("label"); lab.textContent = f.label; lab.setAttribute("for","pf-"+f.key);
+    const inp = document.createElement(f.area ? "textarea" : "input");
+    inp.id = "pf-"+f.key; inp.className = "login-input"; inp.placeholder = f.ph;
+    if(f.area) inp.rows = 2; else inp.type = "text";
+    inp.value = (u.profile && u.profile[f.key]) || "";
+    field.append(lab, inp); wrap.appendChild(field);
+  });
+  // avatar preview + colours
+  drawPfAvatar();
+  const sw = $("pf-colors"); sw.innerHTML = "";
+  AVATAR_COLORS.forEach(c=>{
+    const b = document.createElement("button"); b.className = "pf-sw"+(c===pfColor?" sel":""); b.style.background = c;
+    b.onclick = ()=>{ pfColor = c; pfPhoto = null; [...sw.children].forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); drawPfAvatar(); };
+    sw.appendChild(b);
+  });
+  $("pf-upload").onclick = ()=> $("pf-file").click();
+  $("pf-file").onchange = async e=>{
+    const file = e.target.files[0]; if(!file) return;
+    $("pf-photo-hint").textContent = "Uploading\u2026";
+    try{ pfPhoto = await uploadPhoto(file); drawPfAvatar(); $("pf-photo-hint").textContent = "Photo ready \u2014 Save to keep it."; }
+    catch(err){ $("pf-photo-hint").textContent = "Upload failed: "+err.message; }
+  };
+  $("pf-save").onclick = ()=>{
+    u.name = $("pf-name").value.trim() || u.name;
+    u.profile = u.profile || {};
+    PROFILE_FIELDS.forEach(f=>{ const v = ($("pf-"+f.key).value||"").trim(); if(v) u.profile[f.key] = v; else delete u.profile[f.key]; });
+    u.profile.avatarColor = pfColor;
+    if(pfPhoto) u.profile.photo = pfPhoto; else delete u.profile.photo;
+    pushUsers();
+    $("profile-overlay").classList.remove("show");
+    toast("Profile saved");
+    renderAll();
+  };
+  $("profile-overlay").classList.add("show");
+}
+function drawPfAvatar(){
+  const av = $("pf-av");
+  if(pfPhoto){ av.style.backgroundImage = "url("+pfPhoto+")"; av.textContent = ""; }
+  else { av.style.backgroundImage = "none"; av.style.background = pfColor; av.textContent = ($("pf-name").value||"?").charAt(0).toUpperCase(); }
+}
+function openPassword(forced){
+  $("pw-heading").textContent = forced ? "Set your password" : "Change password";
+  $("pw-hint").textContent = forced
+    ? "You're using a temporary password. Please set your own to continue."
+    : "Choose a new password for your account.";
+  $("pw-old").value = ""; $("pw-new").value = ""; $("pw-new2").value = ""; $("pw-err").textContent = "";
+  $("pw-cancel").style.display = forced ? "none" : "";
+  $("pw-save").onclick = ()=>{
+    const oldPw = $("pw-old").value, n1 = $("pw-new").value, n2 = $("pw-new2").value;
+    if(n1 !== n2){ $("pw-err").textContent = "The two new passwords don't match."; return; }
+    const r = changeMyPassword(oldPw, n1);
+    if(!r.ok){ $("pw-err").textContent = r.err; return; }
+    $("pw-overlay").classList.remove("show");
+    toast("Password updated");
+  };
+  $("pw-cancel").onclick = ()=> $("pw-overlay").classList.remove("show");
+  $("pw-overlay").classList.add("show");
+}
+
 function roleOptions(sel, current, maxRole){
   // owners can assign any role; admins can assign up to admin (not owner)
   sel.innerHTML = "";
@@ -7655,7 +7853,7 @@ function openPeople(){
   const ceiling = currentUser().super ? "owner" : "admin";   // admins can't create owners
   renderPeopleList();
   roleOptions($("pa-role"), "editor", ceiling);
-  $("pa-email").value = ""; $("pa-name").value = ""; $("pa-err").textContent = "";
+  $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-err").textContent = "";
   $("pa-add").onclick = ()=>{
     const email = ($("pa-email").value||"").toLowerCase().trim();
     const name = ($("pa-name").value||"").trim();
@@ -7664,14 +7862,15 @@ function openPeople(){
     if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
     let u = findUser(email);
     if(!u){
-      u = normalizeUsers([{ email, name: name||email.split("@")[0], pass: fakeHash("welcome"), teams:{} }])[0];
+      const startPw = ($("pa-pass").value||"").trim() || TEMP_PW;
+      u = normalizeUsers([{ email, name: name||email.split("@")[0], pass: fakeHash(startPw), teams:{}, mustChangePw: startPw===TEMP_PW }])[0];
       USERS.push(u);
     } else if(name){ u.name = name; }
     u.teams = u.teams || {};
     u.teams[TEAM] = role;
     pushUsers();
     renderPeopleList();
-    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-err").textContent = "";
+    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-err").textContent = "";
     toast(ROLE_LABEL[role] + " added");
   };
   $("people-overlay").classList.add("show");
@@ -7706,6 +7905,17 @@ function renderPeopleList(){
       if(targetIsOwner && !iAmSuper) sel.disabled = true;
       sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); renderPeopleList(); };
       row.appendChild(sel);
+      // reset password (Owner/Admin, not on owners you can't manage)
+      if(u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
+        const rp = document.createElement("button"); rp.className = "person-del"; rp.textContent = "\u21BA";
+        rp.title = "Reset this person's password to a temporary one";
+        rp.onclick = ()=>{
+          if(!confirm("Reset "+u.name+"'s password? They'll get the temporary password '"+TEMP_PW+"' and must set a new one.")) return;
+          const tp = resetUserPassword(u);
+          toast(u.name+"'s password reset to '"+tp+"'");
+        };
+        row.appendChild(rp);
+      }
       // remove from team (not allowed on yourself or, for admins, on owners)
       const canRemove = u.id!==currentUser().id && !(targetIsOwner && !iAmSuper);
       if(canRemove){
