@@ -673,8 +673,30 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .perm-chip.on .perm-tick{background:var(--done-bg);color:var(--done)}
 .perm-chip.off{color:var(--muted)}
 .perm-chip.off .perm-tick{background:var(--paper);color:var(--line-strong,#c7ccd6);border:1px solid var(--line)}
-.admin-add{max-width:520px;margin-top:20px;border:1px solid var(--line);border-radius:12px;padding:18px;border-top:1px solid var(--line)}
-.admin-add .login-input{margin-bottom:10px}
+.admin-userhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+.admin-invite-btn{flex:none;white-space:nowrap}
+.admin-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.admin-stat{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--card)}
+.admin-stat .as-lab{font-size:12px;color:var(--muted);margin-bottom:6px}
+.admin-stat .as-val{font-family:var(--disp);font-weight:700;font-size:26px;color:var(--ink)}
+.admin-search{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.admin-search .login-input{margin:0;flex:1;max-width:340px}
+.admin-reset{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:12.5px;cursor:pointer}
+.admin-reset:hover{color:var(--indigo)}
+.admin-table{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.au-row{display:grid;grid-template-columns:1fr minmax(200px,auto) 90px;align-items:center;border-bottom:1px solid var(--line)}
+.admin-table .au-row:last-child{border-bottom:none}
+.au-head{background:var(--paper)}
+.au-head .au-cell{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 16px}
+.au-cell{padding:12px 16px;min-width:0}
+.au-user{display:flex;align-items:center;gap:12px}
+.au-user .person-av{width:36px;height:36px;font-size:14px;background-size:cover;background-position:center}
+.au-meta{min-width:0}
+.au-name{font-weight:600;color:var(--ink);font-size:14px;display:flex;align-items:center}
+.au-email{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.au-roletag{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.au-acts{display:flex;gap:4px;justify-content:flex-end}
+@media(max-width:640px){.au-row{grid-template-columns:1fr auto}.au-acts{grid-column:1/-1;justify-content:flex-start;padding-top:0}}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
 .pf-av{width:76px;height:76px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px;background-size:cover;background-position:center;flex:none}
 .pf-photo-actions{flex:1}
@@ -980,6 +1002,24 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
     <div id="landing-list" class="landing-list"></div>
     <div id="landing-userbar" class="landing-userbar" style="display:none"></div>
     <div class="landing-foot">Cyberflow — building India's next big tech company.</div>
+  </div>
+</div>
+
+<div class="overlay" id="invite-overlay">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:440px">
+    <h3>Invite users to this team</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="iv-email">Email</label><input id="iv-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off"></div>
+      <div class="field"><label for="iv-name">Name (optional)</label><input id="iv-name" class="login-input" type="text" autocomplete="off"></div>
+      <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="defaults to 'welcome'" autocomplete="off"></div>
+      <div class="field"><label for="iv-role">Role</label><select id="iv-role" class="pa-select" style="width:100%"></select></div>
+      <div id="iv-err" class="login-err"></div>
+      <div class="hint">If they don't have an account yet, one is created with the starting password above (default 'welcome'), which they set on first login.</div>
+    </div>
+    <div class="btns">
+      <button class="btn" onclick="document.getElementById('invite-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn save" id="iv-add">Add / invite</button>
+    </div>
   </div>
 </div>
 
@@ -8004,60 +8044,134 @@ function renderAdminPermissions(wrap){
   note.textContent = "This is a reference view of the built-in roles. (For a future release, these can become editable, per-space rules \u2014 see the developer handoff note.)";
   wrap.appendChild(note);
 }
-function renderAdminUsers(wrap){
-  const head = document.createElement("div"); head.className = "module-head";
-  const h2 = document.createElement("h2"); h2.textContent = "Users";
-  const pc = document.createElement("span"); pc.className = "pct";
-  const memberCount = USERS.filter(u=> u.super || (u.teams && u.teams[TEAM])).length;
-  pc.textContent = memberCount + " in " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM);
-  head.append(h2, pc);
-  wrap.appendChild(head);
-  const intro = document.createElement("div");
-  intro.className = "hint"; intro.style.margin = "0 0 16px";
-  intro.textContent = "Owners and Admins manage who can see and edit this team. Roles apply to this team only.";
-  wrap.appendChild(intro);
-  const list = document.createElement("div"); list.id = "admin-user-list"; list.className = "people-list";
-  wrap.appendChild(list);
-  renderPeopleList(list);
-  // add-user card
-  wrap.appendChild(buildAddUserCard());
+function adminMembers(){
+  return USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
 }
-function buildAddUserCard(){
-  const box = document.createElement("div");
-  box.className = "people-add admin-add";
-  box.innerHTML = '<div class="pa-title">Add someone to this team</div>';
-  const email = document.createElement("input"); email.className="login-input"; email.type="email"; email.placeholder="their@email.com"; email.id="au-email";
-  const name = document.createElement("input"); name.className="login-input"; name.type="text"; name.placeholder="Name (optional)"; name.id="au-name";
-  const pass = document.createElement("input"); pass.className="login-input"; pass.type="text"; pass.placeholder="Starting password (optional \u2014 defaults to '"+TEMP_PW+"')"; pass.id="au-pass";
-  const row = document.createElement("div"); row.className="pa-row";
-  const sel = document.createElement("select"); sel.className="pa-select"; sel.id="au-role";
-  roleOptions(sel, "editor", currentUser().super ? "owner" : "admin");
-  const add = document.createElement("button"); add.className="btn save"; add.textContent="Add / invite";
-  const err = document.createElement("div"); err.className="login-err"; err.id="au-err";
-  add.onclick = ()=>{
-    const em = (email.value||"").toLowerCase().trim();
-    const nm = (name.value||"").trim();
-    const role = sel.value;
-    if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ err.textContent = "Enter a valid email."; return; }
-    if(!currentUser().super && roleRank(role) < roleRank("admin")){ err.textContent = "Admins can't grant Owner."; return; }
+let adminUserQuery = "";
+function renderAdminUsers(wrap){
+  const members = adminMembers();
+  // header row: title + Invite button
+  const head = document.createElement("div"); head.className = "admin-userhead";
+  const left = document.createElement("div");
+  const h2 = document.createElement("h2"); h2.textContent = "Users"; h2.style.margin = "0";
+  const sub = document.createElement("div"); sub.className = "hint"; sub.style.marginTop = "4px";
+  sub.textContent = "Owners and Admins manage who can see and edit this team. Roles apply to this team only.";
+  left.append(h2, sub);
+  const invite = document.createElement("button");
+  invite.className = "btn save admin-invite-btn";
+  invite.textContent = "\uFF0B Invite users";
+  invite.onclick = ()=> openInvite();
+  head.append(left, invite);
+  wrap.appendChild(head);
+
+  // stat cards
+  const stats = document.createElement("div"); stats.className = "admin-stats";
+  const owners = members.filter(u=> u.super || roleOf(u,TEAM)==="owner").length;
+  const admins = members.filter(u=> !u.super && roleOf(u,TEAM)==="admin").length;
+  [["Total users", members.length],["Owners", owners],["Admins", admins],["Roles", ROLES.length]].forEach(([lab,val])=>{
+    const c = document.createElement("div"); c.className = "admin-stat";
+    c.innerHTML = '<div class="as-lab"></div><div class="as-val"></div>';
+    c.querySelector(".as-lab").textContent = lab;
+    c.querySelector(".as-val").textContent = val;
+    stats.appendChild(c);
+  });
+  wrap.appendChild(stats);
+
+  // search
+  const sbar = document.createElement("div"); sbar.className = "admin-search";
+  const si = document.createElement("input"); si.className = "login-input"; si.placeholder = "Search by name or email"; si.value = adminUserQuery;
+  si.oninput = ()=>{ adminUserQuery = si.value; drawTable(); };
+  const reset = document.createElement("button"); reset.className = "admin-reset"; reset.textContent = "Reset";
+  reset.onclick = ()=>{ adminUserQuery = ""; si.value = ""; drawTable(); };
+  sbar.append(si, reset);
+  wrap.appendChild(sbar);
+
+  // table
+  const table = document.createElement("div"); table.className = "admin-table";
+  wrap.appendChild(table);
+  const iAmSuper = currentUser().super;
+  function drawTable(){
+    table.innerHTML = "";
+    const hr = document.createElement("div"); hr.className = "au-row au-head";
+    ["User","Role","Actions"].forEach(t=>{ const c = document.createElement("div"); c.className="au-cell"; c.textContent=t; hr.appendChild(c); });
+    table.appendChild(hr);
+    const term = adminUserQuery.trim().toLowerCase();
+    const rows = members
+      .filter(u=> !term || (u.name||"").toLowerCase().includes(term) || (u.email||"").includes(term))
+      .sort((a,b)=> roleRank(roleOf(a,TEAM)) - roleRank(roleOf(b,TEAM)) || (a.name||"").localeCompare(b.name||""));
+    if(!rows.length){
+      const e = document.createElement("div"); e.className = "empty"; e.style.padding="24px"; e.textContent = "No users match \u201C"+adminUserQuery+"\u201D.";
+      table.appendChild(e); return;
+    }
+    rows.forEach(u=>{
+      const r = document.createElement("div"); r.className = "au-row";
+      // user cell: avatar + name + email
+      const uc = document.createElement("div"); uc.className = "au-cell au-user";
+      const av = document.createElement("div"); av.className = "person-av";
+      if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; }
+      else { av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
+      const meta = document.createElement("div"); meta.className = "au-meta";
+      const nm = document.createElement("div"); nm.className = "au-name";
+      nm.textContent = userDisplayName(u);
+      if(u.id===currentUser().id){ const y=document.createElement("span"); y.className="person-you"; y.textContent="YOU"; nm.appendChild(y); }
+      if(u.super){ const sp=document.createElement("span"); sp.className="person-you"; sp.textContent="SUPER"; nm.appendChild(sp); }
+      const em = document.createElement("div"); em.className="au-email"; em.textContent = u.email;
+      meta.append(nm, em);
+      uc.append(av, meta);
+      // role cell
+      const rc = document.createElement("div"); rc.className = "au-cell";
+      const targetIsOwner = roleOf(u,TEAM)==="owner";
+      if(u.super){
+        const tag = document.createElement("span"); tag.className="au-roletag"; tag.textContent = "Owner (all teams)";
+        rc.appendChild(tag);
+      } else {
+        const sel = document.createElement("select"); sel.className = "person-role";
+        roleOptions(sel, roleOf(u,TEAM), iAmSuper ? "owner" : "admin");
+        if(targetIsOwner && !iAmSuper) sel.disabled = true;
+        sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); drawTable(); };
+        rc.appendChild(sel);
+      }
+      // actions cell
+      const ac = document.createElement("div"); ac.className = "au-cell au-acts";
+      if(!u.super && u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
+        const rp = document.createElement("button"); rp.className="person-del"; rp.textContent="\u21BA"; rp.title="Reset password";
+        rp.onclick = ()=>{ if(confirm("Reset "+u.name+"'s password to '"+TEMP_PW+"'? They must set a new one.")){ resetUserPassword(u); toast(u.name+"'s password reset to '"+TEMP_PW+"'"); } };
+        const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
+        del.onclick = ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ delete u.teams[TEAM]; pushUsers(); renderAdminPage(); } };
+        ac.append(rp, del);
+      }
+      r.append(uc, rc, ac);
+      table.appendChild(r);
+    });
+  }
+  drawTable();
+}
+
+function openInvite(){
+  const ceiling = currentUser().super ? "owner" : "admin";
+  roleOptions($("iv-role"), "editor", ceiling);
+  $("iv-email").value=""; $("iv-name").value=""; $("iv-pass").value=""; $("iv-err").textContent="";
+  $("iv-add").onclick = ()=>{
+    const em = ($("iv-email").value||"").toLowerCase().trim();
+    const nm = ($("iv-name").value||"").trim();
+    const role = $("iv-role").value;
+    if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ $("iv-err").textContent = "Enter a valid email."; return; }
+    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("iv-err").textContent = "Admins can't grant Owner."; return; }
     let u = findUser(em);
     if(!u){
-      const startPw = (pass.value||"").trim() || TEMP_PW;
+      const startPw = ($("iv-pass").value||"").trim() || TEMP_PW;
       u = normalizeUsers([{ email:em, name: nm||em.split("@")[0], pass: fakeHash(startPw), teams:{}, mustChangePw: startPw===TEMP_PW }])[0];
       USERS.push(u);
     } else if(nm){ u.name = nm; }
     u.teams = u.teams || {};
     u.teams[TEAM] = role;
     pushUsers();
-    email.value=""; name.value=""; pass.value=""; err.textContent="";
-    if($("admin-page").style.display==="block") renderAdminPage(); else renderAll();
+    $("invite-overlay").classList.remove("show");
+    renderAdminPage();
     toast(ROLE_LABEL[role] + " added");
   };
-  row.append(sel, add);
-  const hint = document.createElement("div"); hint.className="hint"; hint.style.marginTop="6px";
-  hint.textContent = "If they don't have an account yet, one is created with the starting password above (default '"+TEMP_PW+"'), which they set on first login.";
-  box.append(email, name, pass, row, err, hint);
-  return box;
+  $("invite-overlay").classList.add("show");
+  setTimeout(()=> $("iv-email").focus(), 50);
 }
 
 function openPeople(){
