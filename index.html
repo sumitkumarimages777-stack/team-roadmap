@@ -1301,7 +1301,6 @@ body{margin:0}
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
         
-        <button class="tool primary" id="edit-toggle">✎ Edit</button>
       </div>
     </div>
         <div id="content"></div>
@@ -8042,7 +8041,7 @@ function renderAll(){
   if(!DATA || !OKRS || !CONTENT) return;
   renderHeader();
   // per-space enforcement: if the viewer can't edit THIS space, editMode is suppressed here
-  if(editMode && !canEditHere()) editMode = false;
+  editMode = canEditHere();   // Jira-style: always editable where you have permission (no toggle)
   // visibility protection: if you're viewing a space you can no longer see, bounce to a safe view
   (function(){
     const ref = currentSpaceRef();
@@ -8596,22 +8595,6 @@ function doLogin(){
 if($("login-btn")){ $("login-btn").onclick = doLogin; }
 if($("login-pass")){ $("login-pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); }); }
 
-$("edit-toggle").onclick = ()=>{
-  if(!editMode){
-    if(!canEditHere()){
-      const ref = currentSpaceRef();
-      toast(currentUser() ? (ref ? "You need Editor access in \u201C"+ref.name+"\u201D to edit it" : "You need Editor access to edit this") : "Sign in to edit");
-      return;
-    }
-  }
-  editMode = !editMode;
-  refreshLeaderFromRole();
-  const b = $("edit-toggle");
-  b.textContent = editMode ? "✓ Editing — click to finish" : "✎ Edit";
-  b.classList.toggle("editing", editMode);
-  b.classList.toggle("primary", !editMode);
-  renderAll();
-};
 function openAccount(){
   const u = currentUser();
   if(!u){ return; }
