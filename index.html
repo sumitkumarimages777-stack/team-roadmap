@@ -1138,6 +1138,8 @@ body{margin:0}
 .alllist-name{font-family:var(--disp);font-weight:600;font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .alllist-sub{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);flex:none}
 .alllist-empty{color:var(--muted);padding:16px 12px;font-size:14px}
+.kdrop-before{box-shadow:0 -3px 0 0 var(--indigo)}
+.kdrop-after{box-shadow:0 3px 0 0 var(--indigo)}
 </style>
 </head>
 <body>
@@ -5993,6 +5995,22 @@ function budgetPanel(sec){
    Cards become draggable in edit mode; dropping on a column calls onMove(colKey).
    Replaces the old \u25c0 \u25b6 arrow buttons on every board. */
 let _kDrag = null;   // {id, from} of the card being dragged
+function ensureOrd(items){ items.forEach((it,i)=>{ if(typeof it.ord!=="number") it.ord=(i+1)*100; }); }
+function placeByDrop(allItems, dragItem, toColKey, refId, after, getCol, setCol, idOf){
+  setCol(dragItem, toColKey);
+  const sibs = allItems.filter(x=> x!==dragItem && getCol(x)===toColKey).sort((a,b)=>(a.ord||0)-(b.ord||0));
+  let prev=null, next=null;
+  if(refId==null){ prev=sibs[sibs.length-1]||null; }
+  else {
+    const ri=sibs.findIndex(x=>idOf(x)===refId);
+    if(ri<0){ prev=sibs[sibs.length-1]||null; }
+    else if(after){ prev=sibs[ri]; next=sibs[ri+1]||null; }
+    else { prev=sibs[ri-1]||null; next=sibs[ri]; }
+  }
+  const lo = prev ? (prev.ord||0) : ((next?(next.ord||0):0)-200);
+  const hi = next ? (next.ord||0) : ((prev?(prev.ord||0):0)+200);
+  dragItem.ord = (lo+hi)/2;
+}
 function makeCardDraggable(card, cardId, fromCol, onMove){
   if(!editMode) return;
   card.draggable = true;
@@ -6006,8 +6024,27 @@ function makeCardDraggable(card, cardId, fromCol, onMove){
   });
   card.addEventListener("dragend", ()=>{
     card.classList.remove("kdragging");
-    document.querySelectorAll(".kcol.kover").forEach(x=>x.classList.remove("kover"));
+    document.querySelectorAll(".kover,.kdrop-before,.kdrop-after").forEach(x=>x.classList.remove("kover","kdrop-before","kdrop-after"));
     _kDrag = null;
+  });
+  // each card is a drop target too -> insert before/after it (position-aware)
+  card.addEventListener("dragover", e=>{
+    if(!_kDrag || _kDrag.id===cardId) return;
+    e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect="move";
+    const r=card.getBoundingClientRect();
+    const after=(e.clientY-r.top) > r.height/2;
+    card.classList.toggle("kdrop-after", after);
+    card.classList.toggle("kdrop-before", !after);
+  });
+  card.addEventListener("dragleave", ()=>{ card.classList.remove("kdrop-before","kdrop-after"); });
+  card.addEventListener("drop", e=>{
+    if(!_kDrag || _kDrag.id===cardId){ card.classList.remove("kdrop-before","kdrop-after"); return; }
+    e.preventDefault(); e.stopPropagation();
+    const r=card.getBoundingClientRect();
+    const after=(e.clientY-r.top) > r.height/2;
+    card.classList.remove("kdrop-before","kdrop-after");
+    const d=_kDrag; _kDrag=null;
+    if(typeof d.onMove==="function") d.onMove(d.id, fromCol, cardId, after);
   });
 }
 function makeColumnDroppable(colEl, colKey){
@@ -6024,9 +6061,8 @@ function makeColumnDroppable(colEl, colKey){
     e.preventDefault();
     colEl.classList.remove("kover");
     if(!_kDrag) return;
-    const d = _kDrag;
-    if(d.from !== colKey && typeof d.onMove === "function"){ d.onMove(d.id, colKey); }
-    _kDrag = null;
+    const d = _kDrag; _kDrag = null;
+    if(typeof d.onMove === "function"){ d.onMove(d.id, colKey, null, false); }
   });
 }
 
@@ -6052,12 +6088,13 @@ function contentBoardPane(secs){
   board.className = "kanban disc-board content-board";
   // leaf tasks only (parents derive their status from these)
   const entries = secs.flatMap(sec => sec.tasks.flatMap(leavesOf).map(t=>({t, sec})));
+  ensureOrd(entries.map(e=>e.t));
   const colOf = t => t.status === "blocked" ? "planned" : (CONTENT_COLS.some(c=>c.key===t.status) ? t.status : "planned");
   CONTENT_COLS.forEach((col, ci)=>{
     const el = document.createElement("div");
     el.className = "kcol" + (col.key==="done" ? " kdone" : "");
     makeColumnDroppable(el, col.key);
-    const list = entries.filter(e => colOf(e.t) === col.key);
+    const list = entries.filter(e => colOf(e.t) === col.key).sort((a,b)=>((a.t.ord||0)-(b.t.ord||0)));
     const ch = document.createElement("div");
     ch.className = "kcol-head";
     ch.innerHTML = '<b></b><span class="cnt"></span>';
@@ -6088,14 +6125,15 @@ function contentBoardPane(secs){
       kt.style.cursor = "pointer";
       kt.onclick = ()=>{ if(typeof openContentTask==="function"){ openContentTask(t, sec); } };
       if(editMode){
-        makeCardDraggable(card, t.tid || t.id || t.title, col.key, (id, toCol)=>{
+        makeCardDraggable(card, t.tid || t.id || t.title, col.key, (id, toCol, refId, after)=>{
           if(isLocked(t) && (toCol==="progress" || toCol==="done")){
             const open = openBlockers(t);
             if(!confirm("\u201C"+t.title+"\u201D is still waiting on:\n\n"
               + open.map(b=>"\u2022 "+b.task.title).join("\n")
               + "\n\nMark it \u201C"+(STATUS_LABEL[toCol]||toCol)+"\u201D anyway?")) return;
           }
-          t.status = toCol; saveContent();
+          placeByDrop(entries.map(e=>e.t), t, toCol, refId, after, x=>colOf(x), (x,c)=>x.status=c, x=>(x.tid||x.id||x.title));
+          saveContent();
         });
       }
       el.appendChild(card);
@@ -6430,6 +6468,7 @@ function kanbanBoard(items, opts){
   // opts: {getCol, setCol, cardExtras(item)->nodes[], onEdit(item), onDelete(item), onAdd(colKey), canAdd}
   const board = document.createElement("div");
   board.className = "kanban";
+  ensureOrd(items);
   KCOLS.forEach((col,ci)=>{
     const kc = document.createElement("div");
     kc.className = "kcol"+(col.key==="done"?" kdone":"");
@@ -6438,7 +6477,7 @@ function kanbanBoard(items, opts){
     head.className = "kcol-head";
     head.innerHTML = "<b></b><span class='cnt'></span>";
     head.querySelector("b").textContent = col.label + (col.key==="done" ? " \u2713" : "");
-    const inCol = items.filter(i=>i.col===col.key);
+    const inCol = items.filter(i=>i.col===col.key).sort((a,b)=>(a.ord||0)-(b.ord||0));
     head.querySelector(".cnt").textContent = inCol.length;
     kc.appendChild(head);
     inCol.forEach(item=>{
@@ -6473,8 +6512,9 @@ function kanbanBoard(items, opts){
       if(opts.onEdit){ t.style.cursor = "pointer"; t.onclick = ()=> opts.onEdit(item); }
       // drag between columns
       if(editMode){
-        makeCardDraggable(card, item.id || item.tid || item.title, col.key, (id, toCol)=>{
-          item.col = toCol; opts.onMove();
+        makeCardDraggable(card, item.id || item.tid || item.title, col.key, (id, toCol, refId, after)=>{
+          placeByDrop(items, item, toCol, refId, after, x=>x.col, (x,c)=>x.col=c, x=>(x.id||x.tid||x.title));
+          opts.onMove();
         });
       }
       kc.appendChild(card);
@@ -7855,17 +7895,18 @@ function discRoadmapPane(cs){
   const wrap = $("content");
   const board = document.createElement("div");
   board.className = "kanban disc-board";
+  ensureOrd(cs.ideas);
   DISC_STAGES.forEach((st, si)=>{
     const col = document.createElement("div");
     col.className = "kcol disc-col dc-" + st.key;
     if(editMode){
       col.addEventListener("dragover", e=>{ if(!_kDrag) return; e.preventDefault(); e.dataTransfer.dropEffect="move"; col.classList.add("kover"); });
       col.addEventListener("dragleave", e=>{ if(e.target===col) col.classList.remove("kover"); });
-      col.addEventListener("drop", e=>{ e.preventDefault(); col.classList.remove("kover"); if(!_kDrag) return; const d=_kDrag; if(d.from!==st.key && typeof d.onMove==="function") d.onMove(d.id, st.key); _kDrag=null; });
+      col.addEventListener("drop", e=>{ e.preventDefault(); col.classList.remove("kover"); if(!_kDrag) return; const d=_kDrag; _kDrag=null; if(typeof d.onMove==="function") d.onMove(d.id, st.key, null, false); });
     }
     const ch = document.createElement("div");
     ch.className = "kcol-head";
-    const ideas = cs.ideas.filter(i=>i.stage===st.key);
+    const ideas = cs.ideas.filter(i=>i.stage===st.key).sort((a,b)=>(a.ord||0)-(b.ord||0));
     ch.innerHTML = '<b></b><span class="cnt"></span>';
     ch.querySelector("b").textContent = st.label;
     ch.querySelector(".cnt").textContent = ideas.length;
@@ -7895,7 +7936,7 @@ function discRoadmapPane(cs){
         const actRow = document.createElement("div"); actRow.className = "kmove-acts";
         actRow.appendChild(discIdeaActs(cs, idea));
         card.appendChild(actRow);
-        makeCardDraggable(card, idea.id, st.key, (id, toStage)=>{ idea.stage = toStage; saveDisc(); });
+        makeCardDraggable(card, idea.id, st.key, (id, toStage, refId, after)=>{ placeByDrop(cs.ideas, idea, toStage, refId, after, x=>x.stage, (x,c)=>x.stage=c, x=>x.id); saveDisc(); });
       }
       col.appendChild(card);
     });
