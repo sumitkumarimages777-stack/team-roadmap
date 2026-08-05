@@ -3031,29 +3031,43 @@ function cardActs(card, buttons){
 }
 
 /* ---------- shared header ---------- */
-/* ---------- pane tabs: Summary (stats) vs work (content) ---------- */
-let paneTab = "work";
+/* ---------- pane tabs: Summary + a view's sub-views (Jira-style) ---------- */
+let paneTab = "work";     // "summary" or "work"
 let _lastNavSig = "";
-function workTabLabel(){
-  return view==="rmap" ? "Timeline" : view==="okr" ? "Objectives" : view==="disc" ? "Ideas"
+// the work-area tabs for the current view (Summary is prepended separately)
+function workTabs(){
+  if(view==="disc") return [{key:"ideas",label:"All ideas"},{key:"roadmap",label:"Roadmap"},{key:"timeline",label:"Timeline"}];
+  const l = view==="rmap" ? "Timeline" : view==="okr" ? "Objectives"
     : view==="dev" ? "Board" : (view==="bugs"||view==="cbugs") ? "Board" : view==="content" ? "Board"
     : view==="ideas" ? "Ideas" : view==="admin" ? "Admin" : "Board";
+  return [{key:"work",label:l}];
 }
+// which work tab is highlighted while the work pane is showing
+function workTabActiveKey(){ return view==="disc" ? discView : "work"; }
 function applyPaneTab(){
   const su=$("pane-summary"), wk=$("pane-work");
   if(su) su.classList.toggle("show", paneTab==="summary");
   if(wk) wk.classList.toggle("show", paneTab!=="summary");
+}
+function selectWorkTab(key){
+  paneTab="work";
+  if(view==="disc" && discView!==key){ discView=key; renderAll(); return; }  // re-render the sub-view
+  applyPaneTab(); renderTabs();
 }
 function renderTabs(){
   const strip=$("tabstrip"); if(!strip) return;
   const sig=[view,activeCspace,activeModule,activeSection,devSpace,devSprint,activeRmap,activeCycle].join("|");
   if(sig!==_lastNavSig){ _lastNavSig=sig; paneTab="work"; }
   strip.innerHTML="";
-  [{k:"summary",l:"Summary"},{k:"work",l:workTabLabel()}].forEach(t=>{
+  const actKey = workTabActiveKey();
+  [{summary:true,label:"Summary"}].concat(workTabs()).forEach(t=>{
     const b=document.createElement("button");
-    b.className="tab"+(paneTab===t.k?" active":"");
-    b.textContent=t.l;
-    b.onclick=()=>{ paneTab=t.k; applyPaneTab(); renderTabs(); };
+    const on = t.summary ? (paneTab==="summary") : (paneTab==="work" && t.key===actKey);
+    b.className="tab"+(on?" active":"");
+    b.textContent=t.label;
+    b.onclick = t.summary
+      ? (()=>{ paneTab="summary"; applyPaneTab(); renderTabs(); })
+      : (()=>{ selectWorkTab(t.key); });
     strip.appendChild(b);
   });
   applyPaneTab();
@@ -8042,15 +8056,7 @@ function renderAll(){
           });
         }
         ws.appendChild(b);
-        if(cs.type==="discovery" && view==="disc" && activeCspace===cs.id){
-          [["ideas","All ideas"],["roadmap","Roadmap"],["timeline","Timeline"]].forEach(([k,lbl])=>{
-            const sub = document.createElement("button");
-            sub.className = "ws-item ws-sub"+(discView===k?" active":"");
-            sub.textContent = lbl;
-            sub.onclick = ()=>{ discView = k; renderAll(); };
-            ws.appendChild(sub);
-          });
-        }
+        /* discovery sub-views (All ideas / Roadmap / Timeline) now render as content tabs */
       });
       if(editMode){
         const addSp = document.createElement("button");
