@@ -1180,7 +1180,10 @@ body{margin:0}
 /* ===== OKR line-of-sight legend ===== */
 .okr-los{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--indigo-soft);border-radius:10px;padding:10px 14px;margin-bottom:8px}
 .okr-los-lead{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--indigo);margin-right:4px}
-.okr-los-step{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:3px 11px}
+.okr-los-step{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:4px 12px;cursor:pointer}
+.okr-los-step:hover{border-color:var(--indigo);color:var(--indigo)}
+.okr-los-step.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.okr-los-clear{border:none;background:none;color:var(--indigo);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:6px}
 .okr-los-arrow{color:var(--indigo);font-weight:700}
 </style>
 </head>
@@ -1686,6 +1689,7 @@ const $ = id => document.getElementById(id);
 let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, DEV = null, BUGS = null, db = null, bugsDb = false;
 const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}, {key:"review",label:"In Review"}, {key:"done",label:"Done"} ];
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
+let okrFilter = null;   // null = all levels; else a level key to focus
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
@@ -5666,14 +5670,19 @@ function renderContentOkr(){
   if(cyc.objectives.length){
     const _los = document.createElement("div"); _los.className="okr-los";
     const _lead=document.createElement("span"); _lead.className="okr-los-lead"; _lead.textContent="How your work ladders up"; _los.appendChild(_lead);
-    ["My OKRs","My Team","My Department","My Company"].forEach((t,i)=>{
+    ["individual","subteam","team","department","company"].forEach((lvk,i)=>{
       if(i){ const arr=document.createElement("span"); arr.className="okr-los-arrow"; arr.textContent="\u2192"; _los.appendChild(arr); }
-      const st=document.createElement("span"); st.className="okr-los-step"; st.textContent=t; _los.appendChild(st);
+      const st=document.createElement("button"); st.className="okr-los-step"+(okrFilter===lvk?" active":""); st.textContent=okrLevelLabel(lvk);
+      const _cnt=cyc.objectives.filter(o=>(o.level||"team")===lvk).length;
+      st.title=_cnt+" objective(s) \u2014 click to focus this level";
+      st.onclick=()=>{ okrFilter=(okrFilter===lvk?null:lvk); renderAll(); };
+      _los.appendChild(st);
     });
+    if(okrFilter){ const clr=document.createElement("button"); clr.className="okr-los-clear"; clr.textContent="Show all"; clr.onclick=()=>{ okrFilter=null; renderAll(); }; _los.appendChild(clr); }
     wrap.appendChild(_los);
   }
   const _lvRank = ob => { const i=OKR_LEVELS.findIndex(l=>l.key===(ob.level||"team")); return i<0?2:i; };
-  const _ordered = cyc.objectives.slice().sort((a,b)=> _lvRank(a)-_lvRank(b));
+  const _ordered = cyc.objectives.slice().filter(o=> !okrFilter || (o.level||"team")===okrFilter).sort((a,b)=> _lvRank(a)-_lvRank(b));
   let _lastLv=null, _dispNum=0;
   _ordered.forEach(ob=>{
     const _lvKey = ob.level || "team";
@@ -5772,12 +5781,15 @@ function renderContentOkr(){
     wrap.appendChild(card);
   });
 
+  if(okrFilter && !cyc.objectives.some(o=>(o.level||"team")===okrFilter)){
+    const _e=document.createElement("div"); _e.className="empty"; _e.textContent="No "+okrLevelLabel(okrFilter)+" yet."+(editMode?" Add one below.":""); wrap.appendChild(_e);
+  }
   if(editMode){
     const add = document.createElement("button");
     add.className = "addline";
     add.style.padding = "12px";
-    add.textContent = "＋ Add objective to "+cyc.name;
-    add.onclick = ()=> openDialog("New objective", {level:"team"}, v=>{
+    add.textContent = okrFilter ? ("＋ Add "+okrLevelLabel(okrFilter)+" objective") : ("＋ Add objective to "+cyc.name);
+    add.onclick = ()=> openDialog("New objective", {level: okrFilter || "team"}, v=>{
       const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[], level:v.level||"team"};
       if(v.owner) ob.owner = v.owner;
       if(v.note) ob.note = v.note;
