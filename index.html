@@ -1045,6 +1045,41 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;transition:transform .25s;z-index:200;max-width:90vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ===== Jira-style app shell (Phase 1) ===== */
+html,body{height:100%}
+body{margin:0}
+.shell{display:grid;grid-template-columns:276px 1fr;height:100vh;overflow:hidden}
+.rail{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:static;top:auto}
+.rail-brand{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.brand-dot{width:28px;height:28px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;flex:none}
+.brand-txt{min-width:0}
+.brand-eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brand-name{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink);line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rail-scroll{flex:1;min-height:0;overflow:auto;padding:12px}
+.rail-foot{border-top:1px solid var(--line);padding:10px;display:flex;gap:6px;flex-wrap:wrap}
+.rail-foot .tool{margin:0}
+.pane{min-height:0;overflow:auto;display:flex;flex-direction:column}
+.pane-head{padding:22px 30px 0;position:relative}
+.pane-head .corner-nav-wrap{position:static;top:auto;right:auto;margin-left:auto}
+.head-row{display:flex;align-items:flex-start;gap:16px}
+.head-row .head-left{min-width:0}
+.tabstrip{position:sticky;top:0;z-index:5;background:var(--paper);margin-top:18px;padding:0 30px;border-bottom:1px solid var(--line);display:flex;gap:2px;flex-wrap:wrap}
+.tab{border:none;background:transparent;padding:12px 14px;font-family:var(--disp);font-weight:600;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--indigo);border-bottom-color:var(--indigo)}
+.pane-body{flex:1;min-height:0}
+.tabpane{display:none;padding:22px 30px 10px}
+.tabpane.show{display:block}
+#pane-work.tabpane{padding-top:18px}
+#pane-summary .head-meta{margin-top:0}
+@media(max-width:820px){
+  .shell{grid-template-columns:1fr;height:auto;overflow:visible}
+  .rail{border-right:none;border-bottom:1px solid var(--line)}
+  .pane{overflow:visible}
+  .head-row{flex-wrap:wrap}
+  .pane-head,.tabstrip,.tabpane{padding-left:16px;padding-right:16px}
+}
 </style>
 </head>
 <body>
@@ -1139,31 +1174,54 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
 
 <div class="banner hidden" id="banner"></div>
 
-<header>
-  <div class="head-inner">
-    <div class="corner-nav-wrap">
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-brand">
+      <div class="brand-dot" id="rail-dot">T</div>
+      <div class="brand-txt">
+        <div class="brand-eyebrow">Internal · Team Workspace</div>
+        <div class="brand-name" id="rail-teamname">Team</div>
+      </div>
+    </div>
+    <div class="rail-scroll">
+      <div id="ws-switch"></div>
+      <div class="side-title" id="side-title">Modules</div>
+      <div class="mods" id="mods"></div>
+      <div id="edu-switch"></div>
+    </div>
+    <div class="rail-foot" id="rail-foot">
+      <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
+        <button class="tool" id="nav-research">📊 Product Research</button>
+        <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
+        <button class="tool" id="nav-ideas">💡 Student Ideas</button>
+        <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
+        <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
+        <input type="file" id="import-file" accept=".json,application/json" style="display:none">
+        <button class="tool" id="refresh-btn" title="Fetch the latest changes made by teammates">⟳ Refresh</button>
+    </div>
+  </aside>
+  <main class="pane">
+    <div class="pane-head">
+      <div class="corner-nav-wrap">
       <button class="corner-nav ghost" id="nav-a">Workspace</button>
       <button class="corner-nav" id="nav-b">OKRs</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
-    <span class="eyebrow">Internal · Team Workspace</span>
-    <h1 id="rm-title"></h1>
-    <p class="subtitle" id="rm-subtitle"></p>
-    <div class="head-meta" id="stats"></div>
-    <div id="company-vision"></div>
-  </div>
-</header>
-
-<div class="layout">
-  <aside>
-    <div id="ws-switch"></div>
-    <div class="side-title" id="side-title">Modules</div>
-    <div class="mods" id="mods"></div>
-    <div id="edu-switch"></div>
-  </aside>
-
-  <main>
-    <div class="controls">
+      <div class="head-row">
+        <div class="head-left">
+          <h1 id="rm-title"></h1>
+          <p class="subtitle" id="rm-subtitle"></p>
+        </div>
+      </div>
+      <div id="company-vision"></div>
+    </div>
+    <div class="tabstrip" id="tabstrip"></div>
+    <div class="pane-body">
+      <section class="tabpane" id="pane-summary">
+        <div class="head-meta" id="stats"></div>
+      </section>
+      <section class="tabpane show" id="pane-work">
+        <div class="controls">
       <span id="rm-controls" style="display:contents">
         <div class="search">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -1180,24 +1238,18 @@ footer{max-width:1200px;margin:0 auto;padding:10px 24px 40px;color:var(--muted);
           <button class="tool" id="expand-all">Expand all</button>
           <button class="tool" id="collapse-all">Collapse all</button>
         </span>
-        <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
-        <button class="tool" id="nav-research">📊 Product Research</button>
-        <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
-        <button class="tool" id="nav-ideas">💡 Student Ideas</button>
-        <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
-        <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
-        <input type="file" id="import-file" accept=".json,application/json" style="display:none">
-        <button class="tool" id="refresh-btn" title="Fetch the latest changes made by teammates">⟳ Refresh</button>
+        
         <button class="tool primary" id="edit-toggle">✎ Edit</button>
       </div>
     </div>
-    <div id="content"></div>
+        <div id="content"></div>
+      </section>
+    </div>
+    <footer id="foot">
+      Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
+    </footer>
   </main>
 </div>
-
-<footer id="foot">
-  Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
-</footer>
 
 <div class="overlay" id="rmp-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
@@ -2979,6 +3031,33 @@ function cardActs(card, buttons){
 }
 
 /* ---------- shared header ---------- */
+/* ---------- pane tabs: Summary (stats) vs work (content) ---------- */
+let paneTab = "work";
+let _lastNavSig = "";
+function workTabLabel(){
+  return view==="rmap" ? "Timeline" : view==="okr" ? "Objectives" : view==="disc" ? "Ideas"
+    : view==="dev" ? "Board" : (view==="bugs"||view==="cbugs") ? "Board" : view==="content" ? "Board"
+    : view==="ideas" ? "Ideas" : view==="admin" ? "Admin" : "Board";
+}
+function applyPaneTab(){
+  const su=$("pane-summary"), wk=$("pane-work");
+  if(su) su.classList.toggle("show", paneTab==="summary");
+  if(wk) wk.classList.toggle("show", paneTab!=="summary");
+}
+function renderTabs(){
+  const strip=$("tabstrip"); if(!strip) return;
+  const sig=[view,activeCspace,activeModule,activeSection,devSpace,devSprint,activeRmap,activeCycle].join("|");
+  if(sig!==_lastNavSig){ _lastNavSig=sig; paneTab="work"; }
+  strip.innerHTML="";
+  [{k:"summary",l:"Summary"},{k:"work",l:workTabLabel()}].forEach(t=>{
+    const b=document.createElement("button");
+    b.className="tab"+(paneTab===t.k?" active":"");
+    b.textContent=t.l;
+    b.onclick=()=>{ paneTab=t.k; applyPaneTab(); renderTabs(); };
+    strip.appendChild(b);
+  });
+  applyPaneTab();
+}
 function renderHeader(){
   const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
   $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
@@ -3000,6 +3079,7 @@ function renderHeader(){
     ? "A timeline across every space \u2014 pull in tasks, dev cards, and bugs from anywhere and schedule them."
     : (DATA.subtitle||"");
   document.title = $("rm-title").textContent + " \u00b7 " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM || "Cyberflow");
+  (function(){ var _tn=(TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"); var _n=$("rail-teamname"); if(_n) _n.textContent=_tn; var _d=$("rail-dot"); if(_d) _d.textContent=(_tn.charAt(0)||"T").toUpperCase(); })();
   const stats = $("stats");
   stats.innerHTML = "";
   const mkStat = (val,label)=>{
@@ -3092,6 +3172,7 @@ function renderHeader(){
   live.className = "live"+(db?"":" off");
   live.textContent = db ? "● team sync on" : "local only";
   stats.appendChild(live);
+  renderTabs();
 }
 
 /* ================================================================
