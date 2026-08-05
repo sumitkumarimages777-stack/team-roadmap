@@ -1120,6 +1120,24 @@ body{margin:0}
 .bg-remove{border:1px solid var(--line);background:var(--card);color:var(--blocked);border-radius:9px;padding:8px 14px;font-family:var(--disp);font-weight:600;cursor:pointer}
 .bg-remove:hover{background:var(--blocked-bg)}
 .bg-done{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:8px 16px;font-family:var(--disp);font-weight:600;cursor:pointer}
+
+/* ===== view-all button + searchable list ===== */
+.ws-more{border:1px dashed var(--line-strong);background:transparent;color:var(--muted);justify-content:center;font-weight:600}
+.ws-more:hover{border-color:var(--indigo);color:var(--indigo)}
+.alllist-back{position:fixed;inset:0;z-index:441;background:rgba(23,35,58,.35);display:flex;align-items:flex-start;justify-content:center;padding:8vh 20px 20px}
+.alllist-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 70px rgba(23,35,58,.28);width:min(520px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.alllist-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px}
+.alllist-head h3{font-family:var(--disp);font-weight:700;font-size:17px;margin:0}
+.alllist-x{border:none;background:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;border-radius:6px}
+.alllist-x:hover{color:var(--ink);background:var(--paper)}
+.alllist-search{margin:0 18px 10px;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font:inherit;background:var(--paper);color:var(--ink)}
+.alllist-search:focus{outline:none;border-color:var(--indigo)}
+.alllist-items{overflow:auto;padding:2px 10px 14px}
+.alllist-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:none;border-radius:9px;padding:10px 12px;cursor:pointer}
+.alllist-row:hover{background:var(--paper)}
+.alllist-name{font-family:var(--disp);font-weight:600;font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alllist-sub{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);flex:none}
+.alllist-empty{color:var(--muted);padding:16px 12px;font-size:14px}
 </style>
 </head>
 <body>
@@ -2334,6 +2352,7 @@ function loadTeamData(t){
   SPACE_BG = t.spaceBg || {};
   syncContentSpaces();
   syncModuleSpaces();
+  loadRecent();
 }
 let BUILTIN_SPACE_MEMBERS = { dev:{}, bugs:{} };
 let BUILTIN_HIDDEN = { dev:false, bugs:false };
@@ -3119,6 +3138,84 @@ function openBgPicker(ref){
   const done=document.createElement("button"); done.className="bg-done"; done.textContent="Done"; done.onclick=closeBgPicker;
   acts.append(rem, done); p.appendChild(acts);
   back.appendChild(p); document.body.appendChild(back);
+}
+/* ---------- recent spaces/roadmaps + "view all" (Jira-style) ---------- */
+const SIDEBAR_CAP = 5;
+let RECENT = [];         // ref keys, most-recent first (per browser)
+let _lastRecentKey = null;
+function loadRecent(){ try{ RECENT = JSON.parse(localStorage.getItem("cf-recent-"+TEAM)||"[]") || []; }catch(_){ RECENT=[]; } _lastRecentKey=null; }
+function saveRecent(){ try{ localStorage.setItem("cf-recent-"+TEAM, JSON.stringify(RECENT.slice(0,60))); }catch(_){} }
+function noteRecent(){
+  const ref = currentSpaceRef(); if(!ref) return;
+  if(ref.key===_lastRecentKey) return;
+  _lastRecentKey = ref.key;
+  RECENT = [ref.key].concat(RECENT.filter(x=>x!==ref.key));
+  saveRecent();
+}
+function rankByRecent(items, keyFn){
+  const rank = k => { const i = RECENT.indexOf(k); return i<0 ? 1e9 : i; };
+  return items.map((it,i)=>[it,i]).sort((a,b)=> (rank(keyFn(a[0]))-rank(keyFn(b[0]))) || (a[1]-b[1])).map(x=>x[0]);
+}
+function csIsActive(cs){
+  return cs.type==="bugs" ? (view==="cbugs" && activeCspace===cs.id)
+    : cs.type==="discovery" ? (view==="disc" && activeCspace===cs.id)
+    : cs.type==="content" ? (view==="content" && activeSection===cs.sectionKey)
+    : cs.type==="module" ? (view==="roadmap" && (activeModule===cs.moduleKey || String(activeModule).indexOf(cs.moduleKey+"::")===0))
+    : (cs.type==="research"||cs.type==="competitor") ? (view==="csnode" && activeCspace===cs.id)
+    : (view==="dev" && devSpace===cs.devId);
+}
+function navToSpace(cs){
+  if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
+  else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
+  else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
+  else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
+  else if(cs.type==="research" || cs.type==="competitor"){ view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false; }
+  else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
+  renderAll();
+}
+function csTypeLabel(t){ return t==="scrum"?"Scrum":t==="discovery"?"Product":t==="content"?"Content":t==="module"?"Module":t==="research"?"Research":t==="competitor"?"Competitor":"Bugs"; }
+function closeAllList(){ const e=document.getElementById("alllist-back"); if(e) e.remove(); }
+function openAllList(kind){
+  closeAllList();
+  let items=[];
+  if(kind==="roadmaps"){
+    RMAPS.maps.filter(m=>canViewSpace(rmapRef(m))).forEach(m=>{
+      items.push({name:m.name, sub:"Roadmap", dot:"rm", go:()=>{ view="rmap"; activeRmap=m.id; renderAll(); }});
+    });
+  } else {
+    if(!BUILTIN_HIDDEN.bugs) items.push({name:"Bugs", sub:"Bugs", dot:"", go:()=>{ view="bugs"; renderAll(); }});
+    if(!BUILTIN_HIDDEN.dev) items.push({name:"Development", sub:"Scrum", dot:"", go:()=>{ view="dev"; devSpace=null; devSprint=null; renderAll(); }});
+    CSPACES.list.filter(cs=>canViewSpace(csRef(cs))).forEach(cs=>{
+      items.push({name:cs.name, sub:csTypeLabel(cs.type), dot:"cs", go:()=> navToSpace(cs)});
+    });
+  }
+  const back=document.createElement("div"); back.className="alllist-back"; back.id="alllist-back";
+  back.onclick=(e)=>{ if(e.target===back) closeAllList(); };
+  const p=document.createElement("div"); p.className="alllist-panel";
+  const head=document.createElement("div"); head.className="alllist-head";
+  const h=document.createElement("h3"); h.textContent = kind==="roadmaps" ? "All roadmaps" : "All spaces";
+  const x=document.createElement("button"); x.className="alllist-x"; x.textContent="\u00d7"; x.onclick=closeAllList;
+  head.append(h,x); p.appendChild(head);
+  const search=document.createElement("input"); search.className="alllist-search"; search.type="search"; search.placeholder="Search\u2026";
+  p.appendChild(search);
+  const listEl=document.createElement("div"); listEl.className="alllist-items"; p.appendChild(listEl);
+  const draw=()=>{
+    const q=(search.value||"").toLowerCase().trim();
+    listEl.innerHTML="";
+    const filt=items.filter(it=> !q || it.name.toLowerCase().includes(q));
+    if(!filt.length){ const e=document.createElement("div"); e.className="alllist-empty"; e.textContent="No matches"; listEl.appendChild(e); return; }
+    filt.forEach(it=>{
+      const row=document.createElement("button"); row.className="alllist-row";
+      row.innerHTML='<span class="dot '+(it.dot||"")+'"></span><span class="alllist-name"></span><span class="alllist-sub"></span>';
+      row.querySelector(".alllist-name").textContent=it.name;
+      row.querySelector(".alllist-sub").textContent=it.sub;
+      row.onclick=()=>{ closeAllList(); it.go(); };
+      listEl.appendChild(row);
+    });
+  };
+  search.oninput=draw; draw();
+  back.appendChild(p); document.body.appendChild(back);
+  setTimeout(()=>{ try{ search.focus(); }catch(_){}} ,40);
 }
 /* ---------- sidebar row "..." overflow menu ---------- */
 function closeRowMenu(){ ["rowmenu","rowmenu-back"].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); }); }
@@ -8009,7 +8106,11 @@ function renderAll(){
     const rl = document.createElement("div");
     rl.className = "ws-label"; rl.textContent = "Roadmaps";
     ws.appendChild(rl);
-    RMAPS.maps.forEach(m=>{
+    const _allRm = RMAPS.maps.filter(m=>canViewSpace(rmapRef(m)));
+    let _rmList = rankByRecent(_allRm, m=>"rm:"+m.id);
+    if(view==="rmap" && activeRmap){ const _a=_allRm.find(m=>m.id===activeRmap); if(_a) _rmList=[_a].concat(_rmList.filter(m=>m.id!==_a.id)); }
+    const _shownRm = _rmList.slice(0, SIDEBAR_CAP);
+    _shownRm.forEach(m=>{
       if(!canViewSpace(rmapRef(m))) return;   // private roadmaps hidden from non-members
       const b = document.createElement("button");
       b.className = "ws-item"+(view==="rmap" && activeRmap===m.id ? " active" : "");
@@ -8029,6 +8130,13 @@ function renderAll(){
       }
       ws.appendChild(b);
     });
+    if(_allRm.length > _shownRm.length){
+      const _more = document.createElement("button");
+      _more.className = "ws-item ws-more";
+      _more.textContent = "View all roadmaps (" + _allRm.length + ")";
+      _more.onclick = ()=> openAllList("roadmaps");
+      ws.appendChild(_more);
+    }
     if(editMode){
       const add = document.createElement("button");
       add.className = "ws-item ws-add";
@@ -8069,32 +8177,19 @@ function renderAll(){
         ws.appendChild(b);
       });
       /* custom spaces created from templates */
-      CSPACES.list.forEach(cs=>{
+      const _allCs = CSPACES.list.filter(cs=>canViewSpace(csRef(cs)));
+      let _csList = rankByRecent(_allCs, cs=>"cs:"+cs.id);
+      const _actCs = _allCs.find(cs=>csIsActive(cs));
+      if(_actCs) _csList=[_actCs].concat(_csList.filter(cs=>cs.id!==_actCs.id));
+      const _shownCs = _csList.slice(0, SIDEBAR_CAP);
+      _shownCs.forEach(cs=>{
         if(!canViewSpace(csRef(cs))) return;   // private spaces hidden from non-members
-        const active = cs.type==="bugs"
-          ? (view==="cbugs" && activeCspace===cs.id)
-          : cs.type==="discovery"
-          ? (view==="disc" && activeCspace===cs.id)
-          : cs.type==="content"
-          ? (view==="content" && activeSection===cs.sectionKey)
-          : cs.type==="module"
-          ? (view==="roadmap" && (activeModule===cs.moduleKey || String(activeModule).indexOf(cs.moduleKey+"::")===0))
-          : (cs.type==="research" || cs.type==="competitor")
-          ? (view==="csnode" && activeCspace===cs.id)
-          : (view==="dev" && devSpace===cs.devId);
+        const active = csIsActive(cs);
         const b = document.createElement("button");
         b.className = "ws-item"+(active?" active":"");
         b.innerHTML = '<span class="dot cs"></span><span></span>';
         b.querySelector("span:nth-child(2)").textContent = cs.name;
-        b.onclick = ()=>{
-          if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
-          else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
-          else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
-          else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
-          else if(cs.type==="research" || cs.type==="competitor"){ view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false; }
-          else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
-          renderAll();
-        };
+        b.onclick = ()=> navToSpace(cs);
         if(editMode){
           const doDelete = ()=>{
             const msg = cs.type==="bugs"
@@ -8165,6 +8260,13 @@ function renderAll(){
         ws.appendChild(b);
         /* discovery sub-views (All ideas / Roadmap / Timeline) now render as content tabs */
       });
+      if(_allCs.length > _shownCs.length){
+        const _moreCs = document.createElement("button");
+        _moreCs.className = "ws-item ws-more";
+        _moreCs.textContent = "View all spaces (" + _allCs.length + ")";
+        _moreCs.onclick = ()=> openAllList("spaces");
+        ws.appendChild(_moreCs);
+      }
       if(editMode){
         const addSp = document.createElement("button");
         addSp.className = "ws-item ws-add";
@@ -8227,6 +8329,7 @@ function renderAll(){
     }
   }
   applySpaceBg();
+  noteRecent();
 }
 
 /* ---------- controls ---------- */
