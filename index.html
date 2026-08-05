@@ -1102,6 +1102,24 @@ body{margin:0}
 .ws-menu-btn{margin-left:auto;flex:none;color:var(--muted);font-size:17px;line-height:1;padding:0 6px;border-radius:6px;cursor:pointer}
 .ws-menu-btn:hover{color:var(--ink);background:var(--indigo-soft)}
 .ws-item .ws-n + .ws-menu-btn{margin-left:6px}
+
+/* ===== per-space background + picker ===== */
+.pane.has-bg .pane-topbar,.pane.has-bg .tabstrip{background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.bg-back{position:fixed;inset:0;z-index:440;background:rgba(23,35,58,.35);display:flex;align-items:center;justify-content:center;padding:20px}
+.bg-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(23,35,58,.25);width:min(460px,94vw);max-height:88vh;overflow:auto;padding:20px}
+.bg-panel h3{font-family:var(--disp);font-weight:700;font-size:16px;margin:0}
+.bg-crumb{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px}
+.bg-sec-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+.bg-swatches{display:flex;flex-wrap:wrap;gap:10px}
+.bg-sw{width:54px;height:40px;border-radius:9px;border:1px solid var(--line-strong);cursor:pointer;background-size:cover;background-position:center}
+.bg-sw:hover{outline:2px solid var(--indigo);outline-offset:1px}
+.bg-url-row{display:flex;gap:8px;margin-top:2px}
+.bg-url-row input{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font:inherit;background:var(--paper);color:var(--ink)}
+.bg-apply{border:none;background:var(--indigo);color:#fff;border-radius:9px;padding:9px 15px;font-family:var(--disp);font-weight:600;cursor:pointer}
+.bg-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
+.bg-remove{border:1px solid var(--line);background:var(--card);color:var(--blocked);border-radius:9px;padding:8px 14px;font-family:var(--disp);font-weight:600;cursor:pointer}
+.bg-remove:hover{background:var(--blocked-bg)}
+.bg-done{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:8px 16px;font-family:var(--disp);font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2296,6 +2314,7 @@ function teamPayload(){
     roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT),
     teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES),
     spaceMembers: clean(BUILTIN_SPACE_MEMBERS), builtinHidden: clean(BUILTIN_HIDDEN),
+    spaceBg: clean(SPACE_BG),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2312,12 +2331,14 @@ function loadTeamData(t){
   BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {};
   BUILTIN_HIDDEN = t.builtinHidden || { dev:false, bugs:false };
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
+  SPACE_BG = t.spaceBg || {};
   syncContentSpaces();
   syncModuleSpaces();
 }
 let BUILTIN_SPACE_MEMBERS = { dev:{}, bugs:{} };
 let BUILTIN_HIDDEN = { dev:false, bugs:false };
 let BUGS_DEFAULT_BOARD = null;
+let SPACE_BG = {};   // per-space background, keyed by currentSpaceRef().key
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -3057,6 +3078,48 @@ function cardActs(card, buttons){
 }
 
 /* ---------- shared header ---------- */
+/* ---------- per-space background (Jira-style) ---------- */
+function spaceBgOf(ref){ return (ref && SPACE_BG[ref.key]) || ""; }
+function setSpaceBg(ref, css){
+  if(!ref) return;
+  if(css) SPACE_BG[ref.key] = css; else delete SPACE_BG[ref.key];
+  renderAll(); pushAll();
+}
+function applySpaceBg(){
+  const pane = document.querySelector(".pane"); if(!pane) return;
+  const ref = currentSpaceRef();
+  const css = ref ? (SPACE_BG[ref.key] || "") : "";
+  pane.style.background = css;
+  pane.classList.toggle("has-bg", !!css);
+}
+function closeBgPicker(){ const e=document.getElementById("bg-back"); if(e) e.remove(); }
+function openBgPicker(ref){
+  if(!ref) return; closeBgPicker();
+  const COLORS=["#F6F7F9","#EBEFFC","#E3F2EA","#FBF1DC","#FBE7E5","#EEF1F5","#F0E9FB","#E7F5F8","#FDECEF"];
+  const GRADS=["linear-gradient(135deg,#EBEFFC,#F6F7F9)","linear-gradient(135deg,#E3F2EA,#EBEFFC)","linear-gradient(135deg,#FBF1DC,#FBE7E5)","linear-gradient(135deg,#F0E9FB,#E7F5F8)","linear-gradient(135deg,#EEF1F5,#E3F2EA)","linear-gradient(135deg,#FDECEF,#F0E9FB)"];
+  const back=document.createElement("div"); back.className="bg-back"; back.id="bg-back";
+  back.onclick=(e)=>{ if(e.target===back) closeBgPicker(); };
+  const p=document.createElement("div"); p.className="bg-panel";
+  const h=document.createElement("h3"); h.textContent="Space background"; p.appendChild(h);
+  const cr=document.createElement("div"); cr.className="bg-crumb"; cr.textContent=ref.name; p.appendChild(cr);
+  const pick=(css)=>{ setSpaceBg(ref, css); closeBgPicker(); };
+  const mkSec=(label)=>{ const l=document.createElement("div"); l.className="bg-sec-label"; l.textContent=label; p.appendChild(l); const row=document.createElement("div"); row.className="bg-swatches"; p.appendChild(row); return row; };
+  const cRow=mkSec("Solid colours");
+  COLORS.forEach(c=>{ const sw=document.createElement("button"); sw.className="bg-sw"; sw.style.background=c; sw.title=c; sw.onclick=()=>pick(c); cRow.appendChild(sw); });
+  const gRow=mkSec("Gradients");
+  GRADS.forEach(g=>{ const sw=document.createElement("button"); sw.className="bg-sw"; sw.style.background=g; sw.onclick=()=>pick(g); gRow.appendChild(sw); });
+  const il=document.createElement("div"); il.className="bg-sec-label"; il.textContent="Custom image (paste a URL)"; p.appendChild(il);
+  const urow=document.createElement("div"); urow.className="bg-url-row";
+  const inp=document.createElement("input"); inp.type="url"; inp.placeholder="https://\u2026/photo.jpg";
+  const ap=document.createElement("button"); ap.className="bg-apply"; ap.textContent="Apply";
+  ap.onclick=()=>{ const u=(inp.value||"").trim(); if(!u){ inp.focus(); return; } pick('linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)), url("'+u+'") center/cover no-repeat'); };
+  urow.append(inp, ap); p.appendChild(urow);
+  const acts=document.createElement("div"); acts.className="bg-actions";
+  const rem=document.createElement("button"); rem.className="bg-remove"; rem.textContent="Remove background"; rem.onclick=()=>pick("");
+  const done=document.createElement("button"); done.className="bg-done"; done.textContent="Done"; done.onclick=closeBgPicker;
+  acts.append(rem, done); p.appendChild(acts);
+  back.appendChild(p); document.body.appendChild(back);
+}
 /* ---------- sidebar row "..." overflow menu ---------- */
 function closeRowMenu(){ ["rowmenu","rowmenu-back"].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); }); }
 function openRowMenu(anchorEl, items){
@@ -7959,6 +8022,7 @@ function renderAll(){
         menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
         menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
           {label:"Settings", onClick:()=> openSpaceSettings(rmapRef(m))},
+          {label:"Set background", onClick:()=> openBgPicker(rmapRef(m))},
           {label:"Delete roadmap", danger:true, onClick:()=> deleteRoadmap(m)},
         ]); };
         b.appendChild(menu);
@@ -7997,6 +8061,7 @@ function renderAll(){
           menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
           menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
             {label:"Settings", onClick:()=> openSpaceSettings(ref)},
+            {label:"Set background", onClick:()=> openBgPicker(ref)},
             {label:"Delete\u2026", danger:true, onClick:()=> { if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); }},
           ]); };
           b.appendChild(menu);
@@ -8068,6 +8133,7 @@ function renderAll(){
           menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
           menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
             {label:"Settings", onClick:()=> openSpaceSettings({key:"cs:"+cs.id, obj:cs, name:cs.name})},
+            {label:"Set background", onClick:()=> openBgPicker({key:"cs:"+cs.id, obj:cs, name:cs.name})},
             {label:"Delete\u2026", danger:true, onClick: doDelete},
           ]); };
           b.appendChild(menu);
@@ -8160,6 +8226,7 @@ function renderAll(){
       $("content").prepend(bar);
     }
   }
+  applySpaceBg();
 }
 
 /* ---------- controls ---------- */
