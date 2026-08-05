@@ -1176,6 +1176,12 @@ body{margin:0}
 .okr-aligned-count{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
 .okr-flash{animation:okrflash 1.2s ease}
 @keyframes okrflash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px var(--indigo)}}
+
+/* ===== OKR line-of-sight legend ===== */
+.okr-los{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--indigo-soft);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+.okr-los-lead{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--indigo);margin-right:4px}
+.okr-los-step{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:3px 11px}
+.okr-los-arrow{color:var(--indigo);font-weight:700}
 </style>
 </head>
 <body>
@@ -5647,6 +5653,8 @@ function krEl(kr, ob, ki, oi){
 function okrAlignOptions(cyc, excludeId){
   return (cyc?cyc.objectives:[]).filter(o=>o.id!==excludeId).map(o=>({id:o.id, title:o.title}));
 }
+function okrChain(ob){ const chain=[]; let cur=ob, g=0; while(cur && cur.alignsTo && g++<12){ const p=findObjective(cur.alignsTo); if(!p) break; chain.push(p.ob); cur=p.ob; } return chain; }
+function okrLevelLabel(k){ return k==="individual" ? "My OKRs" : "My " + ((OKR_LEVELS.find(l=>l.key===k)||{}).label||"Team"); }
 function renderContentOkr(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -5655,12 +5663,21 @@ function renderContentOkr(){
     wrap.innerHTML = '<div class="empty">No cycle selected. '+(editMode?'Add one from the left.':'Turn on Edit to add your first cycle (e.g. “Q3 2026”).')+'</div>';
     return;
   }
+  if(cyc.objectives.length){
+    const _los = document.createElement("div"); _los.className="okr-los";
+    const _lead=document.createElement("span"); _lead.className="okr-los-lead"; _lead.textContent="How your work ladders up"; _los.appendChild(_lead);
+    ["My OKRs","My Team","My Department","My Company"].forEach((t,i)=>{
+      if(i){ const arr=document.createElement("span"); arr.className="okr-los-arrow"; arr.textContent="\u2192"; _los.appendChild(arr); }
+      const st=document.createElement("span"); st.className="okr-los-step"; st.textContent=t; _los.appendChild(st);
+    });
+    wrap.appendChild(_los);
+  }
   const _lvRank = ob => { const i=OKR_LEVELS.findIndex(l=>l.key===(ob.level||"team")); return i<0?2:i; };
   const _ordered = cyc.objectives.slice().sort((a,b)=> _lvRank(a)-_lvRank(b));
   let _lastLv=null, _dispNum=0;
   _ordered.forEach(ob=>{
     const _lvKey = ob.level || "team";
-    if(_lvKey!==_lastLv){ _lastLv=_lvKey; const _lh=document.createElement("div"); _lh.className="okr-level-hdr"; _lh.textContent=((OKR_LEVELS.find(l=>l.key===_lvKey)||{}).label||"Team")+" OKRs"; wrap.appendChild(_lh); }
+    if(_lvKey!==_lastLv){ _lastLv=_lvKey; const _lh=document.createElement("div"); _lh.className="okr-level-hdr"; _lh.textContent=okrLevelLabel(_lvKey); wrap.appendChild(_lh); }
     _dispNum++;
     const oi = cyc.objectives.indexOf(ob);
     const card = document.createElement("section");
@@ -5674,7 +5691,7 @@ function renderContentOkr(){
     const _lvBadge = document.createElement("span"); _lvBadge.className="okr-lv-badge lv-"+(ob.level||"team"); _lvBadge.textContent=((OKR_LEVELS.find(l=>l.key===(ob.level||"team"))||{}).label||"Team");
     head.append(tag, _lvBadge, title);
     if(ob.assignee) head.appendChild(assigneeAvatar(ob.assignee));
-    if(ob.alignsTo){ const _par=findObjective(ob.alignsTo); if(_par){ const _al=document.createElement("button"); _al.className="okr-aligns"; _al.textContent="\u2191 "+_par.ob.title; _al.title="Aligns to: "+_par.ob.title; _al.onclick=()=>{ const el=document.getElementById("obj-"+ob.alignsTo); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("okr-flash"); setTimeout(()=>el.classList.remove("okr-flash"),1200); } }; head.appendChild(_al); } }
+    if(ob.alignsTo){ const _chain=okrChain(ob); if(_chain.length){ const _al=document.createElement("button"); _al.className="okr-aligns"; _al.textContent="\u2191 "+_chain.map(o=>o.title).join(" \u203A "); _al.title="Rolls up to: "+_chain.map(o=>o.title).join(" \u203A "); _al.onclick=()=>{ const el=document.getElementById("obj-"+ob.alignsTo); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("okr-flash"); setTimeout(()=>el.classList.remove("okr-flash"),1200); } }; head.appendChild(_al); } }
     const _kids = cyc.objectives.filter(o=>o.alignsTo===ob.id);
     if(_kids.length){ const _ac=document.createElement("span"); _ac.className="okr-aligned-count"; _ac.textContent=_kids.length+" aligned"; head.appendChild(_ac); }
     if(ob.owner){
