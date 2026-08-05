@@ -1704,7 +1704,8 @@ function currentSpaceRef(){
   if(view==="csnode"){ const cs=(CSPACES.list||[]).find(x=>x.id===activeCspace); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="content"){ const cs=(CSPACES.list||[]).find(x=>x.type==="content" && x.sectionKey===activeSection); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="roadmap"){ const topKey=String(activeModule).split("::")[0]; const cs=(CSPACES.list||[]).find(x=>x.type==="module" && x.moduleKey===topKey); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
-  return null;   // roadmaps (rmap), okrs, ideas, admin => team-level only
+  if(view==="rmap"){ const rm = RMAPS.maps.find(x=>x.id===activeRmap); return rm ? rmapRef(rm) : null; }
+  return null;   // okrs, ideas, admin => team-level only
 }
 // synthetic host objects for the two built-in spaces so they can hold members[]
 let _bugsSpaceMembers = null, _devCoreMembers = {};
@@ -1753,6 +1754,10 @@ function canViewSpace(ref){
 // build a ref for any custom space object (for visibility checks in the sidebar)
 function csRef(cs){
   return { key:"cs:"+cs.id, obj:cs, name:cs.name };
+}
+// build a ref for a roadmap so it reuses the whole space access/permission machinery
+function rmapRef(m){
+  return m ? { key:"rm:"+m.id, obj:m, name:m.name, kind:"roadmap" } : null;
 }
 function canInSpace(min, ref){
   const r = spaceRoleOf(currentUser(), ref);
@@ -2066,6 +2071,8 @@ function normalizeRmaps(r){
   r.maps = r.maps || [];
   r.maps.forEach(m=>{
     if(!m.id) m.id = "rm-" + Math.random().toString(36).slice(2,9);
+    if(!m.access) m.access = "open";      // access model: open | limited | private (mirrors spaces)
+    m.members = m.members || {};          // email -> per-roadmap role
     m.markers = m.markers || [];
     m.markers.forEach(mk=>{ if(!mk.id) mk.id = "mk-" + Math.random().toString(36).slice(2,7); });
     m.items = m.items || [];
@@ -6774,7 +6781,7 @@ function renderContentRmap(extMap, extOpts){
     e.className = "empty";
     e.textContent = RMAPS.maps.length ? "Pick a roadmap from the sidebar." : "No roadmaps yet \u2014 turn on Edit and create one from the sidebar.";
     wrap.appendChild(e);
-    if(RMAPS.maps.length){ activeRmap = RMAPS.maps[0].id; }
+    if(RMAPS.maps.length){ const _fv = RMAPS.maps.find(x=>canViewSpace(rmapRef(x))) || RMAPS.maps[0]; activeRmap = _fv.id; }
     return;
   }
 
@@ -7233,15 +7240,20 @@ function openRmapSettings(m, o){
     if(m){
       if(!o.rangeOnly) m.name = name;
       if(rs && re){ m.rangeStart = rs; m.rangeEnd = re; } else { delete m.rangeStart; delete m.rangeEnd; }
+      $("rms-overlay").classList.remove("show");
+      saveRmaps();
     } else {
-      const nm = { id:"rm-"+Date.now().toString(36), name, items:[] };
-      if(rs && re){ nm.rangeStart = rs; nm.rangeEnd = re; }
-      RMAPS.maps.push(nm);
-      view = "rmap"; activeRmap = nm.id;
-      toast("Roadmap created \u2014 add items from any space");
+      $("rms-overlay").classList.remove("show");
+      // pick access (open/limited/private) + bring team members, exactly like spaces
+      chooseAccess(name, (access, members)=>{
+        const nm = { id:"rm-"+Date.now().toString(36), name, items:[], access, members: members||{} };
+        if(rs && re){ nm.rangeStart = rs; nm.rangeEnd = re; }
+        RMAPS.maps.push(nm);
+        view = "rmap"; activeRmap = nm.id;
+        toast("Roadmap created \u2014 add items from any space");
+        saveRmaps();
+      });
     }
-    $("rms-overlay").classList.remove("show");
-    saveRmaps();
   };
   $("rms-overlay").classList.add("show");
   setTimeout(()=> $("rms-name").focus(), 50);
@@ -7729,6 +7741,14 @@ function renderAll(){
     if(ref && ref.key.indexOf("cs:")===0 && !canViewSpace(ref)){
       view = "roadmap"; activeCspace = null; editMode = false; defaultView();
     }
+    // bounce off a roadmap you can no longer see -> first viewable, else leave rmap view
+    if(view==="rmap"){
+      const rm = RMAPS.maps.find(x=>x.id===activeRmap);
+      if(!rm || !canViewSpace(rmapRef(rm))){
+        const fv = RMAPS.maps.find(x=>canViewSpace(rmapRef(x)));
+        if(fv){ activeRmap = fv.id; } else { view = "roadmap"; activeRmap = null; editMode = false; defaultView(); }
+      }
+    }
     // bounce off a hidden built-in
     if(view==="dev" && BUILTIN_HIDDEN.dev){ view = "roadmap"; defaultView(); }
     if(view==="bugs" && BUILTIN_HIDDEN.bugs){
@@ -7777,12 +7797,21 @@ function renderAll(){
     rl.className = "ws-label"; rl.textContent = "Roadmaps";
     ws.appendChild(rl);
     RMAPS.maps.forEach(m=>{
+      if(!canViewSpace(rmapRef(m))) return;   // private roadmaps hidden from non-members
       const b = document.createElement("button");
       b.className = "ws-item"+(view==="rmap" && activeRmap===m.id ? " active" : "");
       b.innerHTML = '<span class="dot rm"></span><span></span><span class="ws-n"></span>';
       b.querySelector("span:nth-child(2)").textContent = m.name;
       b.querySelector(".ws-n").textContent = m.items.length || "";
       b.onclick = ()=>{ view = "rmap"; activeRmap = m.id; renderAll(); };
+      if(editMode){
+        const gear = document.createElement("span");
+        gear.className = "ws-gear";
+        gear.textContent = "\u2699";
+        gear.title = "Roadmap access & people";
+        gear.onclick = e=>{ e.stopPropagation(); openSpaceSettings(rmapRef(m)); };
+        b.appendChild(gear);
+      }
       ws.appendChild(b);
     });
     if(editMode){
@@ -8637,7 +8666,7 @@ function openSpaceSettings(ref){
   if(!ref){ return; }
   ssRef = ref; ssTab = "people";
   if(!canManageSpacePeople()){ toast("You need Admin access in this space to manage it"); return; }
-  $("ssettings-crumb").textContent = "\u2699\uFE0F SPACE SETTINGS \u203A " + ref.name.toUpperCase();
+  $("ssettings-crumb").textContent = "\u2699\uFE0F " + ((ref.kind==="roadmap")?"ROADMAP SETTINGS":"SPACE SETTINGS") + " \u203A " + ref.name.toUpperCase();
   $("ssettings-title").textContent = ref.name;
   document.querySelectorAll("#spacesettings-overlay .ss-tab").forEach(t=>{
     t.onclick = ()=>{ ssTab = t.getAttribute("data-sstab"); drawSpaceSettings(); };
@@ -8671,7 +8700,7 @@ function drawSpacePeople(body){
 
   const note = document.createElement("div");
   note.className = "ss-note";
-  note.innerHTML = "Give people a role <b>in this space only</b>. A space role overrides their team role here \u2014 e.g. make a team Viewer an Editor of just this space, or restrict a team Editor to Viewer here. Team Owners and Admins always keep full access.";
+  note.innerHTML = "Give people a role <b>in this "+((ref&&ref.kind==="roadmap")?"roadmap":"space")+" only</b>. A "+((ref&&ref.kind==="roadmap")?"roadmap":"space")+" role overrides their team role here \u2014 e.g. make a team Viewer an Editor of just this "+((ref&&ref.kind==="roadmap")?"roadmap":"space")+", or restrict a team Editor to Viewer here. Team Owners and Admins always keep full access.";
   body.appendChild(note);
 
   const members = spaceMembers(ref);
@@ -8727,12 +8756,13 @@ function drawSpacePerms(body){
   note.className = "ss-note";
   note.textContent = "What each role can do inside this space. Space roles are set on the People tab; a person's effective role here is their space role, or their team role if none is set.";
   body.appendChild(note);
+  const _pn = (ssRef && ssRef.kind==="roadmap") ? "roadmap" : "space";
   const caps = [
-    {label:"View this space",        roles:["owner","admin","editor","commenter","viewer"]},
+    {label:"View this "+_pn,        roles:["owner","admin","editor","commenter","viewer"]},
     {label:"Comment on items",       roles:["owner","admin","editor","commenter"]},
     {label:"Create & edit work",     roles:["owner","admin","editor"]},
-    {label:"Manage this space's people", roles:["owner","admin"]},
-    {label:"Delete this space",      roles:["owner","admin"]},
+    {label:"Manage this "+_pn+"'s people", roles:["owner","admin"]},
+    {label:"Delete this "+_pn,      roles:["owner","admin"]},
   ];
   ROLES.forEach(role=>{
     const rowsFor = caps.filter(c=>c.roles.includes(role));
