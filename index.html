@@ -1161,6 +1161,21 @@ body{margin:0}
 .dlg-labels-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .dlg-label-chip{display:inline-flex;align-items:center;gap:5px;background:var(--indigo-soft);color:var(--indigo);border-radius:99px;padding:3px 4px 3px 10px;font-size:12px}
 .dlg-label-chip button{border:none;background:none;color:var(--indigo);cursor:pointer;font-size:14px;line-height:1;padding:0 3px}
+
+/* ===== org-level OKRs + alignment ===== */
+.okr-level-hdr{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px 2px;font-weight:600}
+.okr-level-hdr:first-child{margin-top:0}
+.okr-lv-badge{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;margin-top:3px;flex:none;align-self:center}
+.lv-company{background:#EDE9FE;color:#6D28D9}
+.lv-department{background:var(--indigo-soft);color:var(--indigo)}
+.lv-team{background:var(--done-bg);color:var(--done)}
+.lv-subteam{background:var(--progress-bg);color:var(--progress)}
+.lv-individual{background:var(--planned-bg);color:var(--planned)}
+.okr-aligns{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:3px 11px;font-size:12px;color:var(--indigo);cursor:pointer;margin-top:4px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.okr-aligns:hover{background:var(--indigo-soft);border-color:var(--indigo)}
+.okr-aligned-count{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+.okr-flash{animation:okrflash 1.2s ease}
+@keyframes okrflash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px var(--indigo)}}
 </style>
 </head>
 <body>
@@ -1613,6 +1628,8 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
+    <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"><option value="company">Company</option><option value="department">Department</option><option value="team">Team</option><option value="subteam">Sub-team</option><option value="individual">Individual</option></select></div>
+    <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
       <div class="field"><label for="f-start">Start (optional)</label><input id="f-start" placeholder="e.g. 4th July"></div>
@@ -1662,6 +1679,7 @@ const $ = id => document.getElementById(id);
 
 let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, DEV = null, BUGS = null, db = null, bugsDb = false;
 const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}, {key:"review",label:"In Review"}, {key:"done",label:"Done"} ];
+const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
@@ -1961,6 +1979,7 @@ function normalizeOkrs(o){
     c.objectives.forEach((ob,i) => {
       ob.krs = ob.krs || [];
       if(!ob.id) ob.id = "ob-" + c.key + "-" + i;   // deterministic so all teammates derive the same id
+      if(!ob.level) ob.level = "team";
     });
   });
   return o;
@@ -2819,6 +2838,15 @@ function openDialog(title, values, onSave, opts={}){
     renderDlgLabels();
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
+  $("f-level-wrap").style.display = opts.level ? "" : "none";
+  $("f-level").value = values.level || "team";
+  $("f-alignsto-wrap").style.display = opts.alignTo ? "" : "none";
+  if(opts.alignTo){
+    const _asel=$("f-alignsto"); _asel.innerHTML="";
+    const _none=document.createElement("option"); _none.value=""; _none.textContent="\u2014 None \u2014"; _asel.appendChild(_none);
+    (opts.alignOptions||[]).forEach(o=>{ const op=document.createElement("option"); op.value=o.id; op.textContent=o.title; _asel.appendChild(op); });
+    _asel.value = values.alignsTo || "";
+  }
   $("f-metric-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-dates-wrap").style.display = (opts.dates || opts.dateOne) ? "flex" : "none";
@@ -2932,6 +2960,8 @@ $("dlg-save").onclick = ()=>{
     duedate: $("f-duedate") ? $("f-duedate").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
+    level: $("f-level") ? $("f-level").value : "",
+    alignsTo: $("f-alignsto") ? $("f-alignsto").value : "",
     current: $("f-current").value,
     target: $("f-target").value,
     unit: $("f-unit").value.trim(),
@@ -5614,6 +5644,9 @@ function krEl(kr, ob, ki, oi){
   return row;
 }
 
+function okrAlignOptions(cyc, excludeId){
+  return (cyc?cyc.objectives:[]).filter(o=>o.id!==excludeId).map(o=>({id:o.id, title:o.title}));
+}
 function renderContentOkr(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -5622,16 +5655,28 @@ function renderContentOkr(){
     wrap.innerHTML = '<div class="empty">No cycle selected. '+(editMode?'Add one from the left.':'Turn on Edit to add your first cycle (e.g. “Q3 2026”).')+'</div>';
     return;
   }
-  cyc.objectives.forEach((ob,oi)=>{
+  const _lvRank = ob => { const i=OKR_LEVELS.findIndex(l=>l.key===(ob.level||"team")); return i<0?2:i; };
+  const _ordered = cyc.objectives.slice().sort((a,b)=> _lvRank(a)-_lvRank(b));
+  let _lastLv=null, _dispNum=0;
+  _ordered.forEach(ob=>{
+    const _lvKey = ob.level || "team";
+    if(_lvKey!==_lastLv){ _lastLv=_lvKey; const _lh=document.createElement("div"); _lh.className="okr-level-hdr"; _lh.textContent=((OKR_LEVELS.find(l=>l.key===_lvKey)||{}).label||"Team")+" OKRs"; wrap.appendChild(_lh); }
+    _dispNum++;
+    const oi = cyc.objectives.indexOf(ob);
     const card = document.createElement("section");
-    card.className = "obj-card";
+    card.className = "obj-card"; card.id = "obj-"+ob.id;
     const head = document.createElement("div");
     head.className = "obj-head";
     const tag = document.createElement("span");
-    tag.className = "obj-tag"; tag.textContent = "O"+(oi+1);
+    tag.className = "obj-tag"; tag.textContent = "O"+_dispNum;
     const title = document.createElement("div");
     title.className = "obj-title"; title.textContent = ob.title;
-    head.append(tag, title);
+    const _lvBadge = document.createElement("span"); _lvBadge.className="okr-lv-badge lv-"+(ob.level||"team"); _lvBadge.textContent=((OKR_LEVELS.find(l=>l.key===(ob.level||"team"))||{}).label||"Team");
+    head.append(tag, _lvBadge, title);
+    if(ob.assignee) head.appendChild(assigneeAvatar(ob.assignee));
+    if(ob.alignsTo){ const _par=findObjective(ob.alignsTo); if(_par){ const _al=document.createElement("button"); _al.className="okr-aligns"; _al.textContent="\u2191 "+_par.ob.title; _al.title="Aligns to: "+_par.ob.title; _al.onclick=()=>{ const el=document.getElementById("obj-"+ob.alignsTo); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("okr-flash"); setTimeout(()=>el.classList.remove("okr-flash"),1200); } }; head.appendChild(_al); } }
+    const _kids = cyc.objectives.filter(o=>o.alignsTo===ob.id);
+    if(_kids.length){ const _ac=document.createElement("span"); _ac.className="okr-aligned-count"; _ac.textContent=_kids.length+" aligned"; head.appendChild(_ac); }
     if(ob.owner){
       const o = document.createElement("span"); o.className="owner"; o.style.marginTop="6px"; o.textContent = ob.owner;
       head.appendChild(o);
@@ -5644,7 +5689,7 @@ function renderContentOkr(){
     if(editMode){
       const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
       acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
-        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); saveOkrs(); })));
+        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); ob.level=v.level||"team"; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee:true})));
       acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
         if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
           cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
@@ -5715,12 +5760,14 @@ function renderContentOkr(){
     add.className = "addline";
     add.style.padding = "12px";
     add.textContent = "＋ Add objective to "+cyc.name;
-    add.onclick = ()=> openDialog("New objective", {}, v=>{
-      const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[]};
+    add.onclick = ()=> openDialog("New objective", {level:"team"}, v=>{
+      const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[], level:v.level||"team"};
       if(v.owner) ob.owner = v.owner;
       if(v.note) ob.note = v.note;
+      if(v.alignsTo) ob.alignsTo = v.alignsTo;
+      if(v.assignee) ob.assignee = v.assignee;
       cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
-    });
+    }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, null), assignee:true});
     wrap.appendChild(add);
   } else if(!cyc.objectives.length){
     wrap.innerHTML += '<div class="empty">No objectives in this cycle yet. Turn on Edit to add some.</div>';
