@@ -1062,7 +1062,16 @@ body{margin:0}
 .pane{min-height:0;overflow:auto}
 .pane-topbar{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:0 30px;min-height:57px;border-bottom:1px solid var(--line);background:var(--paper)}
 .pane-topbar .corner-nav-wrap{position:static;top:auto;right:auto;display:flex;gap:10px;align-items:center}
-.pane-head{padding:20px 30px 0;position:relative}
+.pane-head{padding:14px 30px 6px;position:relative}
+.space-crumb{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+#rm-title{font-size:clamp(20px,2.4vw,26px);margin-top:0}
+.vis-btn{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:99px;padding:6px 13px;font-family:var(--disp);font-weight:600;font-size:12.5px;cursor:pointer}
+.vis-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+.vis-btn .vis-chev{transition:transform .15s;font-size:10px}
+.vis-btn.open{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.vis-btn.open .vis-chev{transform:rotate(180deg)}
+#company-vision{display:none}
+#company-vision.vision-open{display:block}
 .head-row{display:flex;align-items:flex-start;gap:16px}
 .head-row .head-left{min-width:0}
 .tabstrip{position:sticky;top:0;z-index:5;background:var(--paper);margin-top:18px;padding:0 30px;border-bottom:1px solid var(--line);display:flex;gap:2px;flex-wrap:wrap}
@@ -1081,6 +1090,18 @@ body{margin:0}
   .head-row{flex-wrap:wrap}
   .pane-head,.tabstrip,.tabpane{padding-left:16px;padding-right:16px}
 }
+
+/* ===== sidebar row "..." menu ===== */
+.rowmenu-back{position:fixed;inset:0;z-index:430}
+.rowmenu{position:fixed;z-index:431;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px rgba(23,35,58,.16);padding:5px;min-width:180px}
+.rowmenu-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:none;border-radius:7px;padding:8px 11px;font-family:var(--sans);font-size:13.5px;color:var(--ink);cursor:pointer}
+.rowmenu-item:hover{background:var(--paper)}
+.rowmenu-item.danger{color:var(--blocked)}
+.rowmenu-item.danger:hover{background:var(--blocked-bg)}
+.rowmenu-sep{height:1px;background:var(--line);margin:4px 2px}
+.ws-menu-btn{margin-left:auto;flex:none;color:var(--muted);font-size:17px;line-height:1;padding:0 6px;border-radius:6px;cursor:pointer}
+.ws-menu-btn:hover{color:var(--ink);background:var(--indigo-soft)}
+.ws-item .ws-n + .ws-menu-btn{margin-left:6px}
 </style>
 </head>
 <body>
@@ -1210,11 +1231,13 @@ body{margin:0}
     </div>
     </div>
     <div class="pane-head">
+      <div class="space-crumb" id="space-crumb"></div>
       <div class="head-row">
         <div class="head-left">
           <h1 id="rm-title"></h1>
           <p class="subtitle" id="rm-subtitle"></p>
         </div>
+        <button class="vis-btn" id="vision-toggle" type="button" style="display:none"><span>Vision</span><span class="vis-chev">▾</span></button>
       </div>
       <div id="company-vision"></div>
     </div>
@@ -3034,6 +3057,33 @@ function cardActs(card, buttons){
 }
 
 /* ---------- shared header ---------- */
+/* ---------- sidebar row "..." overflow menu ---------- */
+function closeRowMenu(){ ["rowmenu","rowmenu-back"].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); }); }
+function openRowMenu(anchorEl, items){
+  closeRowMenu();
+  const back = document.createElement("div"); back.className="rowmenu-back"; back.id="rowmenu-back"; back.onclick = closeRowMenu;
+  const menu = document.createElement("div"); menu.className="rowmenu"; menu.id="rowmenu";
+  items.forEach(it=>{
+    if(it.sep){ const sp=document.createElement("div"); sp.className="rowmenu-sep"; menu.appendChild(sp); return; }
+    const mb=document.createElement("button"); mb.className="rowmenu-item"+(it.danger?" danger":"");
+    mb.textContent=it.label;
+    mb.onclick=(ev)=>{ ev.stopPropagation(); closeRowMenu(); it.onClick(); };
+    menu.appendChild(mb);
+  });
+  document.body.appendChild(back); document.body.appendChild(menu);
+  const r = anchorEl.getBoundingClientRect();
+  menu.style.top = (r.bottom+4)+"px";
+  let left = r.right - menu.offsetWidth; if(left < 8) left = 8;
+  menu.style.left = left+"px";
+  if(r.bottom + menu.offsetHeight + 8 > window.innerHeight) menu.style.top = Math.max(8, r.top - menu.offsetHeight - 4)+"px";
+}
+function deleteRoadmap(m){
+  if(!confirm("Delete the roadmap \u201C"+m.name+"\u201D? The cards themselves are NOT deleted \u2014 only this timeline.")) return;
+  RMAPS.maps.splice(RMAPS.maps.indexOf(m),1);
+  if(activeRmap===m.id) activeRmap = RMAPS.maps.length ? RMAPS.maps[0].id : null;
+  if(!activeRmap) view = "roadmap";
+  saveRmaps(); toast("Roadmap deleted");
+}
 /* ---------- pane tabs: Summary + a view's sub-views (Jira-style) ---------- */
 let paneTab = "work";     // "summary" or "work"
 let _lastNavSig = "";
@@ -7882,6 +7932,8 @@ function renderAll(){
     } else { acc.style.display = "none"; }
   }
   renderCompanyVision();
+  if($("space-crumb")) $("space-crumb").textContent = view==="okr" ? "OKRs" : view==="admin" ? "Administration" : "Workspace";
+  if($("vision-toggle")) $("vision-toggle").style.display = (DATA.companyVision || editMode) ? "" : "none";
   const WORKSPACE_VIEWS = WORKSPACE_GROUPS.flatMap(g=>g.items);
   // top-right: Workspace vs OKRs, active one filled
   $("nav-a").classList.toggle("ghost", view==="okr");
@@ -7903,12 +7955,13 @@ function renderAll(){
       b.querySelector(".ws-n").textContent = m.items.length || "";
       b.onclick = ()=>{ view = "rmap"; activeRmap = m.id; renderAll(); };
       if(editMode){
-        const gear = document.createElement("span");
-        gear.className = "ws-gear";
-        gear.textContent = "\u2699";
-        gear.title = "Roadmap access & people";
-        gear.onclick = e=>{ e.stopPropagation(); openSpaceSettings(rmapRef(m)); };
-        b.appendChild(gear);
+        const menu = document.createElement("span");
+        menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
+        menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
+          {label:"Settings", onClick:()=> openSpaceSettings(rmapRef(m))},
+          {label:"Delete roadmap", danger:true, onClick:()=> deleteRoadmap(m)},
+        ]); };
+        b.appendChild(menu);
       }
       ws.appendChild(b);
     });
@@ -7938,24 +7991,15 @@ function renderAll(){
         b.querySelector("span:last-child").textContent = w.label;
         b.onclick = ()=>{ view = w.key; renderAll(); };
         if(editMode && canManagePeople()){
-          const gear = document.createElement("span");
-          gear.className = "ws-gear";
-          gear.textContent = "\u2699";
-          gear.title = "Space settings";
-          gear.onclick = e=>{
-            e.stopPropagation();
-            const ref = w.key==="bugs" ? {key:"bugs:main", obj:_bugsMainSpace(), name:"Bugs"}
-                       : {key:"dev:core", obj:_devSpaceObj(null), name:"Development"};
-            openSpaceSettings(ref);
-          };
-          b.appendChild(gear);
-          // delete (migrate-then-remove) the built-in
-          const del = document.createElement("span");
-          del.className = "ws-del";
-          del.textContent = "\u00d7";
-          del.title = "Move its data to another space and delete";
-          del.onclick = e=>{ e.stopPropagation(); if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); };
-          b.appendChild(del);
+          const ref = w.key==="bugs" ? {key:"bugs:main", obj:_bugsMainSpace(), name:"Bugs"}
+                     : {key:"dev:core", obj:_devSpaceObj(null), name:"Development"};
+          const menu = document.createElement("span");
+          menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
+          menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
+            {label:"Settings", onClick:()=> openSpaceSettings(ref)},
+            {label:"Delete\u2026", danger:true, onClick:()=> { if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); }},
+          ]); };
+          b.appendChild(menu);
         }
         ws.appendChild(b);
       });
@@ -7975,9 +8019,8 @@ function renderAll(){
           : (view==="dev" && devSpace===cs.devId);
         const b = document.createElement("button");
         b.className = "ws-item"+(active?" active":"");
-        b.innerHTML = '<span class="dot cs"></span><span></span><span class="ws-type"></span>';
+        b.innerHTML = '<span class="dot cs"></span><span></span>';
         b.querySelector("span:nth-child(2)").textContent = cs.name;
-        b.querySelector(".ws-type").textContent = cs.type==="scrum" ? "scrum" : cs.type==="discovery" ? "product" : cs.type==="content" ? "content" : cs.type==="module" ? "module" : cs.type==="research" ? "research" : cs.type==="competitor" ? "compete" : "bugs";
         b.onclick = ()=>{
           if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
           else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
@@ -7988,18 +8031,7 @@ function renderAll(){
           renderAll();
         };
         if(editMode){
-          const gear = document.createElement("span");
-          gear.className = "ws-gear";
-          gear.textContent = "\u2699";
-          gear.title = "Space settings";
-          gear.onclick = e=>{ e.stopPropagation(); openSpaceSettings({key:"cs:"+cs.id, obj:cs, name:cs.name}); };
-          b.appendChild(gear);
-          const del = document.createElement("span");
-          del.className = "ws-del";
-          del.textContent = "\u00d7";
-          del.title = "Remove this space";
-          del.onclick = e=>{
-            e.stopPropagation();
+          const doDelete = ()=>{
             const msg = cs.type==="bugs"
               ? "Remove \u201C"+cs.name+"\u201D? Its tickets are NOT deleted \u2014 they move to the main Bugs space."
               : cs.type==="discovery"
@@ -8032,9 +8064,15 @@ function renderAll(){
             CSPACES.list.splice(CSPACES.list.indexOf(cs),1);
             renderAll(); pushAll(); toast("Space removed");
           };
-          b.appendChild(del);
+          const menu = document.createElement("span");
+          menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
+          menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
+            {label:"Settings", onClick:()=> openSpaceSettings({key:"cs:"+cs.id, obj:cs, name:cs.name})},
+            {label:"Delete\u2026", danger:true, onClick: doDelete},
+          ]); };
+          b.appendChild(menu);
         }
-        if(editMode && canManagePeople()){
+                if(editMode && canManagePeople()){
           b.draggable = true;
           b.classList.add("ws-draggable");
           b.dataset.csid = cs.id;
@@ -8131,6 +8169,13 @@ $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
 if($("nav-account")){ $("nav-account").onclick = openAccount; }
 $("nav-home").onclick = ()=> navHome();
+if($("vision-toggle")){
+  $("vision-toggle").onclick = ()=>{
+    const cv=$("company-vision"), b=$("vision-toggle");
+    const open = cv.classList.toggle("vision-open");
+    b.classList.toggle("open", open);
+  };
+}
 function chooseAccess(name, onPick){
   let chosen = "open";
   const picked = {};   // email -> role for this new space
