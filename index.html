@@ -1140,6 +1140,27 @@ body{margin:0}
 .alllist-empty{color:var(--muted);padding:16px 12px;font-size:14px}
 .kdrop-before{box-shadow:0 -3px 0 0 var(--indigo)}
 .kdrop-after{box-shadow:0 3px 0 0 var(--indigo)}
+.kcard .note,.kcard .kn{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.kcard .title{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ===== card fields: assignee / priority / labels / due ===== */
+.k-assignee{width:20px;height:20px;border-radius:50%;background:var(--indigo);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.k-prio{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
+.prio-high{background:var(--blocked-bg);color:var(--blocked)}
+.prio-med{background:var(--progress-bg);color:var(--progress)}
+.prio-low{background:var(--planned-bg);color:var(--planned)}
+.k-label{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--indigo-soft);color:var(--indigo)}
+.k-due{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.assignee-pick{position:relative}
+.assignee-menu{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(23,35,58,.16);max-height:220px;overflow:auto;z-index:6}
+.assignee-opt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:none;padding:8px 10px;cursor:pointer;font:inherit}
+.assignee-opt:hover{background:var(--paper)}
+.assignee-opt .av{width:22px;height:22px;border-radius:50%;background:var(--indigo);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.assignee-opt .an{font-weight:600;font-size:13px;color:var(--ink)}
+.assignee-opt .ae{margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.dlg-labels-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.dlg-label-chip{display:inline-flex;align-items:center;gap:5px;background:var(--indigo-soft);color:var(--indigo);border-radius:99px;padding:3px 4px 3px 10px;font-size:12px}
+.dlg-label-chip button{border:none;background:none;color:var(--indigo);cursor:pointer;font-size:14px;line-height:1;padding:0 3px}
 </style>
 </head>
 <body>
@@ -1586,6 +1607,12 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="dlg-body">
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
+    <div class="field" id="f-assignee-wrap"><label>Assignee (optional)</label><div class="assignee-pick"><input id="f-assignee-search" placeholder="Search people…" autocomplete="off"><input type="hidden" id="f-assignee-val"><div id="f-assignee-menu" class="assignee-menu"></div></div></div>
+    <div class="field-row" id="f-pd-row" style="gap:12px">
+      <div class="field" id="f-priority-wrap" style="flex:1"><label for="f-priority">Priority</label><select id="f-priority"><option value="">None</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
+      <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
+    </div>
+    <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
       <div class="field"><label for="f-start">Start (optional)</label><input id="f-start" placeholder="e.g. 4th July"></div>
@@ -2718,6 +2745,22 @@ function renderDepPicker(){
   });
 }
 
+let dlgLabels = [];
+function assigneeMembers(){ return USERS.filter(u=> u.super || (u.teams && u.teams[TEAM])); }
+function applyCardFields(item, v){
+  if(v.assignee) item.assignee=v.assignee; else delete item.assignee;
+  if(v.duedate) item.duedate=v.duedate; else delete item.duedate;
+  if(v.priority) item.priority=v.priority; else delete item.priority;
+  if(v.labels && v.labels.length) item.labels=v.labels.slice(); else delete item.labels;
+}
+function renderDlgLabels(){
+  const box=$("f-labels-chips"); if(!box) return; box.innerHTML="";
+  dlgLabels.forEach((l,i)=>{ const c=document.createElement("span"); c.className="dlg-label-chip"; const t=document.createElement("span"); t.textContent=l; const x=document.createElement("button"); x.type="button"; x.textContent="\u00d7"; x.onclick=()=>{ dlgLabels.splice(i,1); renderDlgLabels(); }; c.append(t,x); box.appendChild(c); });
+}
+function assigneeAvatar(email){ const m=assigneeMembers().find(u=>u.email===email); const nm=m?userDisplayName(m):email; const s=document.createElement("span"); s.className="k-assignee"; s.title="Assignee: "+nm; s.textContent=(nm[0]||"?").toUpperCase(); return s; }
+function priorityBadge(p){ const s=document.createElement("span"); s.className="k-prio prio-"+p; s.textContent=(p==="high"?"High":p==="med"?"Med":"Low"); return s; }
+function labelChip(l){ const s=document.createElement("span"); s.className="k-label"; s.textContent=l; return s; }
+function dueChip(d){ const s=document.createElement("span"); s.className="k-due"; s.textContent="Due "+fmtD(d); return s; }
 function openDialog(title, values, onSave, opts={}){
   $("dlg-title").textContent = title;
   $("f-title").value = values.title || "";
@@ -2735,6 +2778,47 @@ function openDialog(title, values, onSave, opts={}){
   $("f-owner-wrap").style.display = opts.simple||opts.hideExtras||opts.noteOnly ? "none" : "";
   $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-note-wrap").querySelector("label").textContent = opts.noteLabel || "Note (optional)";
+  // assignee (searchable), priority, due date, labels
+  $("f-assignee-wrap").style.display = opts.assignee ? "" : "none";
+  if(opts.assignee){
+    const val = values.assignee || "";
+    $("f-assignee-val").value = val;
+    const m0 = assigneeMembers().find(u=>u.email===val);
+    $("f-assignee-search").value = m0 ? userDisplayName(m0) : "";
+    const menu = $("f-assignee-menu"); menu.style.display="none";
+    const draw = (q)=>{
+      menu.innerHTML="";
+      const ql=(q||"").toLowerCase();
+      [{email:"",unassigned:true}].concat(assigneeMembers())
+        .filter(m=> m.unassigned || !ql || userDisplayName(m).toLowerCase().includes(ql) || (m.email||"").toLowerCase().includes(ql))
+        .forEach(m=>{
+          const b=document.createElement("button"); b.type="button"; b.className="assignee-opt";
+          if(m.unassigned){ const an=document.createElement("span"); an.className="an"; an.textContent="\u2014 Unassigned \u2014"; an.style.color="var(--muted)"; b.appendChild(an); }
+          else {
+            const av=document.createElement("span"); av.className="av"; av.textContent=(userDisplayName(m)[0]||"?").toUpperCase();
+            const an=document.createElement("span"); an.className="an"; an.textContent=userDisplayName(m);
+            const ae=document.createElement("span"); ae.className="ae"; ae.textContent=m.email;
+            b.append(av,an,ae);
+          }
+          b.onclick=()=>{ $("f-assignee-val").value=m.email||""; $("f-assignee-search").value=m.email?userDisplayName(m):""; menu.style.display="none"; };
+          menu.appendChild(b);
+        });
+      menu.style.display="block";
+    };
+    $("f-assignee-search").oninput = ()=> draw($("f-assignee-search").value);
+    $("f-assignee-search").onfocus = ()=> draw($("f-assignee-search").value);
+  }
+  $("f-pd-row").style.display = (opts.priority||opts.duedate) ? "flex" : "none";
+  $("f-priority-wrap").style.display = opts.priority ? "" : "none";
+  $("f-priority").value = values.priority || "";
+  $("f-duedate-wrap").style.display = opts.duedate ? "" : "none";
+  $("f-duedate").value = values.duedate || "";
+  $("f-labels-wrap").style.display = opts.labels ? "" : "none";
+  if(opts.labels){
+    dlgLabels = Array.isArray(values.labels) ? values.labels.slice() : [];
+    renderDlgLabels();
+    $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
+  } else { dlgLabels = []; }
   $("f-metric-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-invert-wrap").style.display = opts.metric ? "flex" : "none";
   $("f-dates-wrap").style.display = (opts.dates || opts.dateOne) ? "flex" : "none";
@@ -2844,6 +2928,10 @@ $("dlg-save").onclick = ()=>{
     title: t,
     owner: $("f-owner").value.trim(),
     note: $("f-note").value.trim(),
+    assignee: $("f-assignee-val") ? $("f-assignee-val").value : "",
+    duedate: $("f-duedate") ? $("f-duedate").value : "",
+    priority: $("f-priority") ? $("f-priority").value : "",
+    labels: dlgLabels.slice(),
     current: $("f-current").value,
     target: $("f-target").value,
     unit: $("f-unit").value.trim(),
@@ -2858,6 +2946,7 @@ $("dlg-save").onclick = ()=>{
     photos: dlgPhotos.slice(),
   });
 };
+document.addEventListener("click", e=>{ const m=$("f-assignee-menu"); if(!m) return; const inside=e.target && e.target.closest && e.target.closest(".assignee-pick"); if(!inside) m.style.display="none"; });
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") $("overlay").classList.remove("show");
   if(e.key==="Enter" && $("overlay").classList.contains("show") && e.target.tagName!=="TEXTAREA") $("dlg-save").click();
@@ -6495,6 +6584,10 @@ function kanbanBoard(items, opts){
       const meta = document.createElement("div");
       meta.className = "kcard-meta";
       (opts.cardExtras ? opts.cardExtras(item) : []).forEach(x=>x && meta.appendChild(x));
+      if(item.priority){ meta.appendChild(priorityBadge(item.priority)); }
+      (item.labels||[]).forEach(l=> meta.appendChild(labelChip(l)));
+      if(item.duedate){ meta.appendChild(dueChip(item.duedate)); }
+      if(item.assignee){ meta.appendChild(assigneeAvatar(item.assignee)); }
       if(item.owner){
         const o = document.createElement("span"); o.className = "owner"; o.textContent = item.owner;
         meta.appendChild(o);
@@ -6714,18 +6807,20 @@ function devCardOpts(sprintId){
     cardExtras: c => [originChip(c), commentChip(c, ()=>saveDev())],
     onEdit: c => openDialog("Edit card", c, v=>{
       applyFields(c, v);
+      applyCardFields(c, v);
       if(v.photos && v.photos.length) c.photos = v.photos; else delete c.photos;
       saveDev();
-    }, {photos:true}),
+    }, {photos:true, assignee:true, duedate:true, priority:true, labels:true}),
     onDelete: c => { if(confirm("Delete this card?")){ DEV.cards.splice(DEV.cards.indexOf(c),1); saveDev(); toast("Deleted"); } },
     onAdd: colKey => openDialog("New card", {}, v=>{
       const _sp = DEV.sprints.find(x=>x.id===sprintId);
       const c = { id:"dv-"+Date.now().toString(36), title:v.title, col:colKey, sprint:sprintId, space:(_sp?_sp.space:currentSpace()) };
       if(v.owner) c.owner = v.owner;
       if(v.note) c.note = v.note;
+      applyCardFields(c, v);
       if(v.photos && v.photos.length) c.photos = v.photos;
       DEV.cards.push(c); saveDev(); toast("Card added");
-    }, {photos:true}),
+    }, {photos:true, assignee:true, duedate:true, priority:true, labels:true}),
   };
 }
 
@@ -8065,14 +8160,15 @@ function renderContentBugs(cs){
         saveBugs();
       });
     })],
-    onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos}, v=>{
+    onEdit: t => openDialog("Edit ticket", {title:t.title, note:t.note, owner:t.reporter, area:t.area, photos:t.photos, assignee:t.assignee, duedate:t.duedate, priority:t.priority, labels:t.labels}, v=>{
       t.title = v.title;
       t.note = v.note || "";
       t.reporter = v.owner || t.reporter;
       t.area = v.area;
+      applyCardFields(t, v);
       if(v.photos && v.photos.length) t.photos = v.photos; else delete t.photos;
       saveBugs();
-    }, {area:true, ownerLabel:"Reporter", photos:true}),
+    }, {area:true, ownerLabel:"Reporter", photos:true, assignee:true, duedate:true, priority:true, labels:true}),
     onDelete: t => { if(confirm("Delete ticket \u201c"+t.title+"\u201d?")){ BUGS.tickets.splice(BUGS.tickets.indexOf(t),1); saveBugs(); toast("Deleted"); } },
   }));
 }
