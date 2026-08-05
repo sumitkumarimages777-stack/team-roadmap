@@ -8524,6 +8524,7 @@ $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").cla
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
+$("account-overlay") && $("account-overlay").addEventListener("click", e=>{ if(e.target===$("account-overlay")) $("account-overlay").classList.remove("show"); });
 
 let pfColor = null, pfPhoto = null;
 function openProfile(){
