@@ -8688,6 +8688,14 @@ function renderAll(){
 
 /* ================= Our Product (hub + editable flow) ================= */
 const ppStatusMeta = { live:{c:"pp-s-live",l:"Live"}, dev:{c:"pp-s-dev",l:"Under development"}, idea:{c:"pp-s-idea",l:"Under ideation"} };
+/* naming tiers by depth: root children are Categories, then Solutions, then Modules, then Sub-modules */
+const PP_TIERS = [
+  { w:"category",   p:"categories",  c:"Categories",  ph:"e.g. For Users, For Teachers, For Internal Team" },
+  { w:"solution",   p:"solutions",   c:"Solutions",   ph:"e.g. App, Web, Admin Panel" },
+  { w:"module",     p:"modules",     c:"Modules",     ph:"e.g. Mock Test Practice, Authentication" },
+  { w:"sub-module", p:"sub-modules", c:"Sub-modules", ph:"e.g. a smaller piece of this module" }
+];
+function ppTier(depth){ return PP_TIERS[Math.max(0, Math.min(depth|0, PP_TIERS.length-1))]; }
 
 function ppid(){ return "p-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
 function ppEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -8722,9 +8730,9 @@ function ppRemoveById(id){
   function rm(list){ var i=list.findIndex(function(c){return c.id===id;}); if(i>=0){ list.splice(i,1); return true; } for(var k=0;k<list.length;k++){ if(rm(list[k].children||[])) return true; } return false; }
   return rm(PRODUCT.children);
 }
-function ppInsideChips(n){
+function ppInsideChips(n, childrenDepth){
   var a=[];
-  if(n.children&&n.children.length) a.push(n.children.length+(n.children.length>1?" solutions":" solution"));
+  if(n.children&&n.children.length){ var t=ppTier(childrenDepth); a.push(n.children.length+" "+(n.children.length>1?t.p:t.w)); }
   if(n.features&&n.features.length) a.push(n.features.length+" features");
   if(n.flow&&n.flow.steps&&n.flow.steps.length) a.push("Flow");
   if(!a.length) a.push("Empty");
@@ -8757,8 +8765,8 @@ function renderProductPage(){
   }
   $("pp-bc").innerHTML = bc;
 
-  var childWord = depth===0 ? "category" : "solution";
-  var childCap  = depth===0 ? "Categories" : "Solutions";
+  var childWord = ppTier(depth).w;
+  var childCap  = ppTier(depth).c;
   var html = "";
 
   // head
@@ -8781,7 +8789,7 @@ function renderProductPage(){
   if(kids.length || admin){
     html += '<div class="pp-section"><div class="pp-eyebrow">'+childCap+'</div><div class="pp-grid">';
     kids.forEach(function(ch){
-      var chips = ppInsideChips(ch).map(function(x){return '<span class="pp-chipx">'+x+'</span>';}).join("");
+      var chips = ppInsideChips(ch, depth+1).map(function(x){return '<span class="pp-chipx">'+x+'</span>';}).join("");
       html += '<div class="pp-cat" onclick="ppGo(\''+ch.id+'\')">'
         + (admin?'<button class="pp-cedit" title="Edit" onclick="event.stopPropagation();ppEditNode(\''+ch.id+'\')">✎</button>':'')
         + '<span class="pp-ci">'+ppEsc(ch.icon||"📁")+'</span>'
@@ -8879,9 +8887,9 @@ function ppIconPickHTML(cur){
 }
 function ppPickIcon(btn,e){ $("pp-f-icon").value=e; document.querySelectorAll("#pp-iconpick button").forEach(function(b){b.classList.remove("on");}); btn.classList.add("on"); }
 
-function ppNodeFormHTML(v){
+function ppNodeFormHTML(v, ph){
   v=v||{};
-  return '<div class="field"><label>Name</label><input id="pp-f-name" type="text" value="'+ppEsc(v.name||"")+'" placeholder="e.g. App, Web, Admin Panel"></div>'
+  return '<div class="field"><label>Name</label><input id="pp-f-name" type="text" value="'+ppEsc(v.name||"")+'" placeholder="'+ppEsc(ph||"e.g. App, Web, Admin Panel")+'"></div>'
    + '<div class="field"><label>Icon</label><div class="pp-iconpick" id="pp-iconpick">'+ppIconPickHTML(v.icon||"")+'</div><input type="hidden" id="pp-f-icon" value="'+ppEsc(v.icon||"")+'"></div>'
    + '<div class="field"><label>Short description</label><textarea id="pp-f-desc" placeholder="One line on what this is and who it is for">'+ppEsc(v.desc||"")+'</textarea></div>';
 }
@@ -8908,8 +8916,9 @@ function ppStepFormHTML(v){
 /* ---------- CRUD ---------- */
 function ppAddChild(){
   var parent = productNodeAt(productPath);
-  var word = productPath.length===0 ? "category" : "solution";
-  ppOpenDialog("Add "+word, ppNodeFormHTML({}), function(){
+  var tier = ppTier(productPath.length);
+  var word = tier.w;
+  ppOpenDialog("Add "+word, ppNodeFormHTML({}, tier.ph), function(){
     var name=$("pp-f-name").value.trim(); if(!name){ $("pp-f-name").focus(); return; }
     parent.children = parent.children || [];
     parent.children.push({ id:ppid(), name:name, icon:$("pp-f-icon").value, desc:$("pp-f-desc").value.trim(), children:[], features:[], flow:null });
