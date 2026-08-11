@@ -8732,7 +8732,7 @@ function ppRemoveById(id){
 }
 function ppInsideChips(n, childrenDepth){
   var a=[];
-  if(n.children&&n.children.length){ var t=ppTier(childrenDepth); a.push(n.children.length+" "+(n.children.length>1?t.p:t.w)); }
+  if(childrenDepth<=1 && n.children&&n.children.length){ var t=ppTier(childrenDepth); a.push(n.children.length+" "+(n.children.length>1?t.p:t.w)); }
   if(n.features&&n.features.length) a.push(n.features.length+" features");
   if(n.flow&&n.flow.steps&&n.flow.steps.length) a.push("Flow");
   if(!a.length) a.push("Empty");
@@ -8767,6 +8767,10 @@ function renderProductPage(){
 
   var childWord = ppTier(depth).w;
   var childCap  = ppTier(depth).c;
+  // three-tier model: Categories (d0) -> Solutions (d1) -> features+flow (d2+).
+  // Boxes are only added at category/solution levels; features & flow only at solution level.
+  var allowChildren = depth <= 1;
+  var allowContent  = depth >= 2;
   var html = "";
 
   // head
@@ -8775,18 +8779,18 @@ function renderProductPage(){
   html += '<h1>'+ppEsc(node.name)+'</h1></div><div class="pp-tools">';
   if(admin){
     html += '<button class="pp-btn" onclick="ppEditNode(\''+node.id+'\')">✎ Edit</button>';
-    html += '<button class="pp-btn primary" onclick="ppAddChild()">＋ Add '+childWord+'</button>';
-    if(depth>0 && !(node.features&&node.features.length)) html += '<button class="pp-btn" onclick="ppAddFeature(\''+node.id+'\')">＋ Add features</button>';
-    if(depth>0 && !node.flow) html += '<button class="pp-btn" onclick="ppAddFlow(\''+node.id+'\')">＋ Add flow</button>';
+    if(allowChildren) html += '<button class="pp-btn primary" onclick="ppAddChild()">＋ Add '+childWord+'</button>';
+    if(allowContent && !(node.features&&node.features.length)) html += '<button class="pp-btn" onclick="ppAddFeature(\''+node.id+'\')">＋ Add features</button>';
+    if(allowContent && !node.flow) html += '<button class="pp-btn" onclick="ppAddFlow(\''+node.id+'\')">＋ Add flow</button>';
   } else {
     html += '<span class="pp-lock">🔒 Only admins can edit</span>';
   }
   html += '</div></div>';
   if(node.desc) html += '<p class="pp-lead">'+ppEsc(node.desc)+'</p>';
 
-  // children
+  // children (category/solution boxes) — only at depth 0/1
   var kids = node.children||[];
-  if(kids.length || admin){
+  if(allowChildren && (kids.length || admin)){
     html += '<div class="pp-section"><div class="pp-eyebrow">'+childCap+'</div><div class="pp-grid">';
     kids.forEach(function(ch){
       var chips = ppInsideChips(ch, depth+1).map(function(x){return '<span class="pp-chipx">'+x+'</span>';}).join("");
@@ -8801,14 +8805,13 @@ function renderProductPage(){
     html += '</div></div>';
   }
 
-  // features
-  if(node.features && node.features.length) html += ppFeaturesHTML(node, admin);
-
-  // flow
-  if(node.flow && (node.flow.steps.length || admin)) html += ppFlowHTML(node, admin);
+  // features (module-grouped) & flow — only at solution level (depth >= 2)
+  if(allowContent && node.features && node.features.length) html += ppFeaturesHTML(node, admin);
+  if(allowContent && node.flow && (node.flow.steps.length || admin)) html += ppFlowHTML(node, admin);
 
   // empty (member only — admins always see add affordances above)
-  if(!admin && !kids.length && !(node.features&&node.features.length) && !(node.flow&&node.flow.steps.length)){
+  var hasShownContent = (allowChildren && kids.length) || (allowContent && ((node.features&&node.features.length) || (node.flow&&node.flow.steps.length)));
+  if(!admin && !hasShownContent){
     html += '<div class="pp-section"><div class="pp-empty"><div class="pp-et">Nothing here yet</div>This part of the product is still being written up.</div></div>';
   }
 
