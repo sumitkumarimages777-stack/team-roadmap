@@ -1490,6 +1490,40 @@ body{margin:0}
 .pf-addk,.pf-addr{color:var(--indigo);font-weight:600;font-size:13px;cursor:pointer;border:none;background:none;padding:4px 0}
 .pf-subh{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
 
+/* ===== Accountabilities (Ownership linked into org + matrix) ===== */
+#acc-tip{position:fixed;z-index:600;max-width:300px;background:#17233A;color:#fff;border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.5;box-shadow:0 8px 26px rgba(0,0,0,.28);pointer-events:none;opacity:0;transition:opacity .12s;font-family:var(--disp)}
+#acc-tip.show{opacity:1}
+#acc-tip .acc-tt{font-weight:700;font-size:13px;margin-bottom:2px}
+#acc-tip .acc-ts{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#AEB7C7;margin-bottom:7px}
+#acc-tip ul{list-style:none;margin:0;padding:0}
+#acc-tip li{position:relative;padding:3px 0 3px 14px}
+#acc-tip li:before{content:"";position:absolute;left:2px;top:10px;width:5px;height:5px;border-radius:50%;background:#5BD1A6}
+#acc-tip .acc-empty{color:#AEB7C7;font-style:italic}
+.mt-acc{margin-top:9px;display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--indigo);background:var(--indigo-soft);border:1px solid #C9D3F5;border-radius:99px;padding:3px 10px;cursor:pointer}
+.mt-acc:hover{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.mx-col.acc-hot,.mx-row.acc-hot{cursor:help}
+.mx-head-lead{display:block;font-family:var(--disp);font-weight:600;font-size:12px;color:var(--indigo);margin-top:3px;text-transform:none;letter-spacing:0}
+.mx-col .mx-head-lead{color:#fff;opacity:.92}
+.mx-row .mx-head-lead{color:var(--indigo)}
+.acc-hot.acc-has{text-decoration:underline dotted rgba(255,255,255,.5);text-underline-offset:3px}
+.mx-row.acc-has{text-decoration:underline dotted var(--line-strong);text-underline-offset:3px}
+.sq-chip.sq-lead{border-color:var(--indigo);background:var(--indigo-soft);font-weight:600}
+.sq-lead-star{color:var(--indigo);margin-right:3px}
+.sq-mlead{flex:none;width:20px;align-self:center;cursor:pointer}
+.sq-leadhint{font-size:11px;color:var(--muted);margin:2px 0 8px}
+/* accountability detail dialog */
+#acc-dialog .dialog{max-width:460px}
+.accd-role{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.accd-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.accd-nm{font-family:var(--disp);font-weight:700;font-size:17px}
+.accd-person{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:12px}
+.accd-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--done);margin-bottom:6px}
+.accd-items{list-style:none;margin:0;padding:0}
+.accd-items li{position:relative;padding:6px 0 6px 18px;font-size:13.5px;line-height:1.45;border-bottom:1px solid var(--line)}
+.accd-items li:last-child{border-bottom:none}
+.accd-items li:before{content:"";position:absolute;left:2px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--done)}
+.accd-none{color:var(--muted);font-style:italic;font-size:13px}
+
 </style>
 </head>
 <body>
@@ -1649,7 +1683,7 @@ body{margin:0}
       <div class="field"><label for="sq-f-mission">Mission</label><textarea id="sq-f-mission" placeholder="What this squad owns, in one line"></textarea></div>
       <div class="field"><label for="sq-f-metric">One metric</label><input id="sq-f-metric" type="text" placeholder="e.g. Weekly active learners" autocomplete="off"></div>
       <div class="field"><label>Colour</label><div class="mt-sw" id="sq-sw"></div><input type="hidden" id="sq-f-color"></div>
-      <div class="field"><label>Members</label><div id="sq-members-edit"></div><button type="button" class="sq-addmem" id="sq-addmem">＋ Add member</button></div>
+      <div class="field"><label>Members</label><div class="sq-leadhint">Tick the ● on the left to mark the squad lead (shown as the head on the Matrix).</div><div id="sq-members-edit"></div><button type="button" class="sq-addmem" id="sq-addmem">＋ Add member</button></div>
     </div>
     <div class="btns">
       <button class="mt-del" id="sq-del" style="display:none">Delete squad</button>
@@ -1659,6 +1693,15 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="acc-dialog" style="z-index:470">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <div class="accd-role"><span class="accd-dot" id="accd-dot"></span><span class="accd-nm" id="accd-nm"></span></div>
+    <div class="accd-person" id="accd-person"></div>
+    <div class="accd-lbl">Accountabilities</div>
+    <ul class="accd-items" id="accd-items"></ul>
+    <div class="btns"><button class="btn save" id="acc-close">Close</button></div>
+  </div>
+</div>
 <div class="overlay" id="mt-dialog" style="z-index:460">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:440px">
     <h3 id="mt-title">Add person</h3>
@@ -1666,6 +1709,7 @@ body{margin:0}
       <div class="field"><label for="mt-f-name">Name</label><input id="mt-f-name" type="text" placeholder="e.g. Aisha Khan" autocomplete="off"></div>
       <div class="field"><label for="mt-f-role">Role / title</label><input id="mt-f-role" type="text" placeholder="e.g. Product Designer" autocomplete="off"></div>
       <div class="field"><label for="mt-f-dept">Team / department (optional)</label><input id="mt-f-dept" type="text" placeholder="e.g. Product" autocomplete="off"></div>
+      <div class="field"><label for="mt-f-ownrole">Accountabilities (from Ownership)</label><select id="mt-f-ownrole"></select></div>
       <div class="field"><label>Avatar colour</label><div class="mt-sw" id="mt-sw"></div><input type="hidden" id="mt-f-color"></div>
     </div>
     <div class="btns">
@@ -9362,6 +9406,7 @@ function normalizeOrg(n){
     role: n.role?String(n.role):"",
     dept: n.dept?String(n.dept):"",
     color: n.color?String(n.color):"#3B5BDB",
+    ownRole: n.ownRole?String(n.ownRole):"",
     children: Array.isArray(n.children)?n.children.map(normalizeOrg).filter(Boolean):[]
   };
 }
@@ -9409,6 +9454,9 @@ function mtNodeHTML(n,isRoot,admin){
   if(n.role) h+='<span class="mt-role">'+mtEsc(n.role)+'</span>';
   if(n.dept) h+='<span class="mt-dept">'+mtEsc(n.dept)+'</span>';
   if(admin) h+='<span class="mt-addrep" onclick="mtAddReport(\''+n.id+'\')">＋ add report</span>';
+  var _acc=ownAccForNode(n);
+  if(_acc){ var _k='node-'+n.id; accRegisterFull(_k,(_acc.name||n.role||n.name),(_acc.person||n.name||''),_acc.items,(_acc.color||n.color));
+    h+='<span class="mt-acc"'+accAttrs(_k,true)+'>\u25C7 '+(_acc.items.length?_acc.items.length+' ':'')+'accountabilities</span>'; }
   h+='</div>';
   if(n.children&&n.children.length){ h+='<ul>'+n.children.map(function(c){return mtNodeHTML(c,false,admin);}).join('')+'</ul>'; }
   h+='</li>';
@@ -9428,18 +9476,20 @@ function mtOpenDlg(title, vals, onSave, showDel){
   $("mt-f-role").value=vals.role||"";
   $("mt-f-dept").value=vals.dept||"";
   mtSwatches(vals.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
+  mtFillOwnRole(vals.ownRole||"");
   mtSave=onSave;
   $("mt-del").style.display = showDel ? "inline" : "none";
   $("mt-dialog").classList.add("show");
   setTimeout(function(){ $("mt-f-name").focus(); }, 30);
 }
 function mtCloseDlg(){ $("mt-dialog").classList.remove("show"); mtSave=null; }
-function mtReadVals(){ return { name:$("mt-f-name").value.trim(), role:$("mt-f-role").value.trim(), dept:$("mt-f-dept").value.trim(), color:$("mt-f-color").value }; }
+function mtReadVals(){ return { name:$("mt-f-name").value.trim(), role:$("mt-f-role").value.trim(), dept:$("mt-f-dept").value.trim(), color:$("mt-f-color").value, ownRole:$("mt-f-ownrole").value }; }
+function mtFillOwnRole(cur){ var roles=(typeof TEAMOWN!=="undefined"&&TEAMOWN&&TEAMOWN.roles)?TEAMOWN.roles:[]; var o='<option value="">Auto-match by role name</option>'; roles.forEach(function(r){ o+='<option value="'+r.id+'"'+(r.id===cur?" selected":"")+'>'+mtEsc(r.name||"(unnamed role)")+'</option>'; }); o+='<option value="__none__"'+(cur==="__none__"?" selected":"")+'>None — hide accountabilities</option>'; $("mt-f-ownrole").innerHTML=o; $("mt-f-ownrole").value=cur||""; }
 
 function mtAddTop(){
   mtOpenDlg("Add top person", {}, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
-    TEAMORG = { id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, children:[] };
+    TEAMORG = { id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, children:[] };
     mtCloseDlg(); mtCommit();
   }, false);
 }
@@ -9448,7 +9498,7 @@ function mtAddReport(id){
   mtOpenDlg("Add report under "+f.node.name, {}, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
     f.node.children = f.node.children || [];
-    f.node.children.push({ id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, children:[] });
+    f.node.children.push({ id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, children:[] });
     mtCloseDlg(); mtCommit();
   }, false);
 }
@@ -9457,7 +9507,7 @@ function mtEdit(id){
   var isRoot = TEAMORG && id===TEAMORG.id;
   mtOpenDlg("Edit "+f.node.name, f.node, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
-    f.node.name=v.name; f.node.role=v.role; f.node.dept=v.dept; f.node.color=v.color;
+    f.node.name=v.name; f.node.role=v.role; f.node.dept=v.dept; f.node.color=v.color; f.node.ownRole=v.ownRole;
     mtCloseDlg(); mtCommit();
   }, !isRoot);
   $("mt-del").onclick = function(){ mtDel(id); };
@@ -9481,6 +9531,7 @@ function normalizeSquads(a){
     mission: s.mission?String(s.mission):"",
     metric: s.metric?String(s.metric):"",
     color: s.color?String(s.color):"#3B5BDB",
+    lead: s.lead?String(s.lead):"",
     members: Array.isArray(s.members)?s.members.map(function(m){ m=m||{}; return {name:m.name?String(m.name):"", role:m.role?String(m.role):""}; }).filter(function(m){return m.name;}):[]
   }; }).filter(function(s){ return s.name || s.members.length; });
 }
@@ -9491,6 +9542,7 @@ function mtSetView(v){ mtView=v; renderTeamPage(); }
 
 /* dispatcher — replaces the old single-view render */
 function renderTeamPage(){
+  ACC_REG={};
   var _pfAdmin=(typeof can==="function")?can("admin"):false;
   if($("mt-view-perf")) $("mt-view-perf").style.display=_pfAdmin?"":"none";
   if($("mt-view-org")) $("mt-view-org").classList.toggle("on", mtView==="org");
@@ -9509,6 +9561,81 @@ function renderTeamPage(){
     : "How the team is organised and who reports to whom. New joiners: this is where you fit in.";
   if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else renderOrgView();
 }
+
+/* ================= Accountabilities: Ownership linked into org + matrix ================= */
+var ACC_REG = {};
+function _accNorm(x){ return String(x==null?"":x).trim().toLowerCase(); }
+function ownAccMatch(label){
+  if(!label) return null;
+  var t=_accNorm(label);
+  if(!t) return null;
+  var roles=(typeof TEAMOWN!=="undefined" && TEAMOWN && TEAMOWN.roles) ? TEAMOWN.roles : [];
+  var i;
+  for(i=0;i<roles.length;i++){ if(_accNorm(roles[i].name)===t) return roles[i]; }
+  for(i=0;i<roles.length;i++){ if(roles[i].person && _accNorm(roles[i].person)===t) return roles[i]; }
+  for(i=0;i<roles.length;i++){ var n=_accNorm(roles[i].name); if(n && (n.indexOf(t)>=0 || t.indexOf(n)>=0)) return roles[i]; }
+  return null;
+}
+function ownAccForNode(n){
+  if(!n) return null;
+  if(n.ownRole==="__none__") return null;
+  if(n.ownRole && typeof ownFind==="function"){ var r=ownFind(n.ownRole); if(r) return r; }
+  return ownAccMatch(n.role) || ownAccMatch(n.name);
+}
+function sqLeadInfo(s){
+  if(!s || !s.lead) return null;
+  var m=(s.members||[]).filter(function(x){ return x.name===s.lead; })[0];
+  return { name:s.lead, role:m?m.role:"" };
+}
+/* register a payload and return the inline attributes to attach to an element */
+function accRegister(key, title, sub, items){
+  ACC_REG[key] = { title:title||"", sub:sub||"", items:(items||[]).slice() };
+}
+function accAttrs(key, clickable){
+  var a=' data-acc="'+key+'" onmouseenter="accEnter(event)" onmouseleave="accLeave()" onmousemove="accMove(event)"';
+  if(clickable) a+=' onclick="accOpen(\''+key+'\')"';
+  return a;
+}
+/* floating tooltip */
+function accTipEl(){
+  var t=document.getElementById("acc-tip");
+  if(!t){ t=document.createElement("div"); t.id="acc-tip"; document.body.appendChild(t); }
+  return t;
+}
+function accEnter(e){
+  var el=e.currentTarget, key=el.getAttribute("data-acc"); if(!key) return;
+  var p=ACC_REG[key]; if(!p) return;
+  var t=accTipEl();
+  var items = p.items.length ? '<ul>'+p.items.map(function(x){return '<li>'+mtEsc(x)+'</li>';}).join('')+'</ul>' : '<div class="acc-empty">No accountabilities listed yet — add them in Ownership.</div>';
+  t.innerHTML = '<div class="acc-tt">'+mtEsc(p.title)+'</div>'+(p.sub?'<div class="acc-ts">'+mtEsc(p.sub)+'</div>':'')+items;
+  t.classList.add("show");
+  accMove(e);
+}
+function accMove(e){
+  var t=document.getElementById("acc-tip"); if(!t||!t.classList.contains("show")) return;
+  var pad=14, w=t.offsetWidth||280, h=t.offsetHeight||120;
+  var x=e.clientX+pad, y=e.clientY+pad;
+  if(x+w>window.innerWidth-8) x=e.clientX-w-pad;
+  if(y+h>window.innerHeight-8) y=e.clientY-h-pad;
+  t.style.left=Math.max(8,x)+"px"; t.style.top=Math.max(8,y)+"px";
+}
+function accLeave(){ var t=document.getElementById("acc-tip"); if(t) t.classList.remove("show"); }
+/* click-through detail dialog (reporting chart) */
+function accOpen(key){
+  var p=ACC_REG[key]; if(!p) return;
+  accLeave();
+  $("accd-nm").textContent=p.title||"";
+  $("accd-person").textContent=p.sub||"";
+  $("accd-person").style.display=p.sub?"block":"none";
+  $("accd-dot").style.background=p.color||"#3B5BDB";
+  var box=$("accd-items");
+  if(p.items.length){ box.className="accd-items"; box.innerHTML=p.items.map(function(x){return '<li>'+mtEsc(x)+'</li>';}).join(''); }
+  else { box.className=""; box.innerHTML='<div class="accd-none">No accountabilities listed for this role yet. Add them in the Ownership tab.</div>'; }
+  $("acc-dialog").classList.add("show");
+}
+function accClose(){ $("acc-dialog").classList.remove("show"); }
+/* store colour too for the dialog dot */
+function accRegisterFull(key, title, sub, items, color){ accRegister(key,title,sub,items); ACC_REG[key].color=color||"#3B5BDB"; }
 
 /* ================= My Team — Ownership view (role cards) ================= */
 function ownid(){ return "w-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
@@ -9739,12 +9866,21 @@ function renderMatrixView(){
       + 'Add a few squads with members in the Squads tab and this fills in automatically — the view you grow into as the team scales.</div>';
     return;
   }
-  var h = '<div class="mx-wrap"><div class="mx-hint">Rows = functions (career / craft) · Columns = squads (mission). Each person sits where their function meets their squad. This view is generated from the Squads tab — nothing to fill in here.</div>';
+  var h = '<div class="mx-wrap"><div class="mx-hint">Rows = functions · Columns = squads. Column heads show each squad lead (set in the Squads tab); row heads match a role from Ownership. Hover any head to see what that position is accountable for.</div>';
   h += '<div class="mx-scroll"><table class="mx-tbl"><thead><tr><th class="mx-corner">Function \\ Squad</th>';
-  squads.forEach(function(s){ h += '<th class="mx-col"><span class="mx-dot" style="background:'+mtEsc(s.color||'#3B5BDB')+'"></span>'+mtEsc(s.name)+'</th>'; });
+  squads.forEach(function(s){
+    var li=sqLeadInfo(s);
+    var head=li ? (ownAccMatch(li.role)||ownAccMatch(li.name)) : null;
+    var cls='mx-col', attrs='';
+    if(li){ var k='mxcol-'+s.id; accRegisterFull(k, li.name+(li.role?' · '+li.role:''), s.name+' lead', head?head.items:[], (head&&head.color)||s.color); attrs=accAttrs(k,false); cls+=' acc-hot'+((head&&head.items.length)?' acc-has':''); }
+    h += '<th class="'+cls+'"'+attrs+'><span class="mx-dot" style="background:'+mtEsc(s.color||'#3B5BDB')+'"></span>'+mtEsc(s.name)+(li?'<span class="mx-head-lead">\u2605 '+mtEsc(li.name)+'</span>':'')+'</th>';
+  });
   h += '</tr></thead><tbody>';
   funcs.forEach(function(f){
-    h += '<tr><td class="mx-row">'+mtEsc(f)+'</td>';
+    var head=ownAccMatch(f);
+    var rcls='mx-row', rattrs='';
+    if(head){ var rk='mxrow-'+_accNorm(f).replace(/[^a-z0-9]+/g,'-'); accRegisterFull(rk, head.name||f, head.person||('Head of '+f), head.items, head.color); rattrs=accAttrs(rk,false); rcls+=' acc-hot'+(head.items.length?' acc-has':''); }
+    h += '<tr><td class="'+rcls+'"'+rattrs+'>'+mtEsc(f)+((head&&head.person)?'<span class="mx-head-lead">\u2605 '+mtEsc(head.person)+'</span>':'')+'</td>';
     squads.forEach(function(s){
       var people=(s.members||[]).filter(function(m){ return ((m.role||"").trim()||"Unassigned")===f; });
       h += '<td class="mx-cell">'+(people.length ? people.map(function(m){ return '<span class="mx-person">'+mtEsc(m.name)+'</span>'; }).join('') : '<span class="mx-none">·</span>')+'</td>';
@@ -9775,7 +9911,7 @@ function renderSquadsView(){
   c.innerHTML=h;
 }
 function sqCardHTML(s,admin){
-  var mem=(s.members||[]).map(function(m){ return '<span class="sq-chip"><b>'+mtEsc(m.name)+'</b>'+(m.role?' · '+mtEsc(m.role):'')+'</span>'; }).join('');
+  var mem=(s.members||[]).map(function(m){ var isL=(s.lead&&m.name===s.lead); return '<span class="sq-chip'+(isL?' sq-lead':'')+'">'+(isL?'<span class="sq-lead-star">\u2605</span>':'')+'<b>'+mtEsc(m.name)+'</b>'+(m.role?' · '+mtEsc(m.role):'')+'</span>'; }).join('');
   return '<div class="sq-card" style="border-top-color:'+mtEsc(s.color||'#3B5BDB')+'">'
     + '<div class="sq-h"><span class="sq-dot" style="background:'+mtEsc(s.color||'#3B5BDB')+'"></span><span class="sq-nm">'+mtEsc(s.name)+'</span>'
     + (admin?'<button class="sq-edit" title="Edit" onclick="sqEdit(\''+s.id+'\')">✎</button>':'')+'</div>'
@@ -9791,7 +9927,8 @@ function sqSwatches(cur){
   $("sq-f-color").value = cur || MT_COLORS[0];
 }
 function sqPickColor(b,c){ $("sq-f-color").value=c; document.querySelectorAll('#sq-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
-function sqMemberRowHTML(m){ m=m||{}; return '<div class="sq-mrow"><input class="sq-mname" type="text" placeholder="Name" value="'+mtEsc(m.name||'')+'"><input class="sq-mrole" type="text" placeholder="Function / role" value="'+mtEsc(m.role||'')+'"><button type="button" class="sq-mdel" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function sqMemberRowHTML(m,isLead){ m=m||{}; return '<div class="sq-mrow"><input type="radio" name="sqlead" class="sq-mlead" title="Set as squad lead"'+(isLead?' checked':'')+'><input class="sq-mname" type="text" placeholder="Name" value="'+mtEsc(m.name||'')+'"><input class="sq-mrole" type="text" placeholder="Function / role" value="'+mtEsc(m.role||'')+'"><button type="button" class="sq-mdel" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function sqReadLead(){ var r=$("sq-members-edit").querySelector('.sq-mlead:checked'); if(!r) return ""; var row=r.parentNode; var nm=row.querySelector('.sq-mname'); return nm?nm.value.trim():""; }
 function sqAddMemberRow(){ var w=$("sq-members-edit"); w.insertAdjacentHTML('beforeend', sqMemberRowHTML({})); var rows=w.querySelectorAll('.sq-mname'); if(rows.length) rows[rows.length-1].focus(); }
 function sqReadMembers(){ var out=[]; $("sq-members-edit").querySelectorAll('.sq-mrow').forEach(function(r){ var n=r.querySelector('.sq-mname').value.trim(); var role=r.querySelector('.sq-mrole').value.trim(); if(n) out.push({name:n, role:role}); }); return out; }
 function sqOpenDialog(title, s, showDel){
@@ -9802,7 +9939,7 @@ function sqOpenDialog(title, s, showDel){
   $("sq-f-metric").value=s.metric||"";
   sqSwatches(s.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
   var mw=$("sq-members-edit");
-  mw.innerHTML = (s.members&&s.members.length) ? s.members.map(sqMemberRowHTML).join('') : sqMemberRowHTML({});
+  mw.innerHTML = (s.members&&s.members.length) ? s.members.map(function(m){ return sqMemberRowHTML(m, s.lead&&m.name===s.lead); }).join('') : sqMemberRowHTML({});
   $("sq-del").style.display = showDel ? "inline" : "none";
   $("sq-dialog").classList.add("show");
   setTimeout(function(){ $("sq-f-name").focus(); }, 30);
@@ -9813,7 +9950,7 @@ function sqAdd(){
   sqOpenDialog("Add squad", {}, false);
   sqSave=function(){
     var name=$("sq-f-name").value.trim(); if(!name){ $("sq-f-name").focus(); return; }
-    TEAMSQUADS.push({ id:sqid(), name:name, mission:$("sq-f-mission").value.trim(), metric:$("sq-f-metric").value.trim(), color:$("sq-f-color").value, members:sqReadMembers() });
+    TEAMSQUADS.push({ id:sqid(), name:name, mission:$("sq-f-mission").value.trim(), metric:$("sq-f-metric").value.trim(), color:$("sq-f-color").value, lead:sqReadLead(), members:sqReadMembers() });
     sqCloseDialog(); sqCommit();
   };
 }
@@ -9822,7 +9959,7 @@ function sqEdit(id){
   sqOpenDialog("Edit squad", s, true);
   sqSave=function(){
     var name=$("sq-f-name").value.trim(); if(!name){ $("sq-f-name").focus(); return; }
-    s.name=name; s.mission=$("sq-f-mission").value.trim(); s.metric=$("sq-f-metric").value.trim(); s.color=$("sq-f-color").value; s.members=sqReadMembers();
+    s.name=name; s.mission=$("sq-f-mission").value.trim(); s.metric=$("sq-f-metric").value.trim(); s.color=$("sq-f-color").value; s.lead=sqReadLead(); s.members=sqReadMembers();
     sqCloseDialog(); sqCommit();
   };
   $("sq-del").onclick=function(){ sqDelete(id); };
@@ -9854,6 +9991,8 @@ if($("sq-addmem")){ $("sq-addmem").onclick = sqAddMemberRow; }
 if($("own-cancel")){ $("own-cancel").onclick = ownClose; }
 if($("own-save")){ $("own-save").onclick = function(){ if(ownSave) ownSave(); }; }
 if($("own-additem")){ $("own-additem").onclick = ownAddItemRow; }
+if($("acc-close")){ $("acc-close").onclick = accClose; }
+if($("acc-dialog")){ $("acc-dialog").onclick = function(e){ if(e.target.id==="acc-dialog") accClose(); }; }
 if($("pf-cancel")){ $("pf-cancel").onclick = pfClose; }
 if($("pf-save")){ $("pf-save").onclick = function(){ if(pfSave) pfSave(); }; }
 if($("pf-addkpi")){ $("pf-addkpi").onclick = pfAddKpiRow; }
