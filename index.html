@@ -1245,24 +1245,27 @@ body{margin:0}
 .pp-chip.active{color:var(--ink);border-color:var(--indigo);background:var(--indigo-soft)}
 .pp-tbl-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .pp-tbl{width:100%;border-collapse:collapse;font-size:14px}
-.pp-tbl thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:12px 16px;background:var(--paper);border-bottom:1px solid var(--line);font-weight:600}
-.pp-tbl tbody td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
-.pp-tbl tbody tr:last-child td{border-bottom:none}
-.pp-tbl tr.pp-modrow td{background:#FBFCFE;font-weight:700;font-size:12px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);padding:9px 16px}
+/* ---- spreadsheet look ---- */
+.pp-sheet{--pp-navy:#1E2A44}
+.pp-sheet thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#fff;text-align:left;padding:13px 16px;background:var(--pp-navy);font-weight:700;border-right:1px solid rgba(255,255,255,.12)}
+.pp-sheet thead th:last-child{border-right:none}
+.pp-sheet thead th.pp-sth{text-align:center}
+.pp-sheet tbody td{padding:11px 16px;border:1px solid var(--line);vertical-align:top}
+.pp-sheet tr.pp-alt td{background:#FAFBFD}
+.pp-sheet tr.pp-modrow td{background:var(--indigo-soft);font-weight:700;font-size:12px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);padding:9px 16px}
 .pp-addf{color:var(--indigo);font-weight:600;font-size:12px;margin-left:10px;text-transform:none;letter-spacing:0;font-family:var(--sans);cursor:pointer}
-.pp-pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
-.pp-s-live{color:var(--done);background:var(--done-bg)}
-.pp-s-dev{color:var(--progress);background:var(--progress-bg)}
-.pp-s-idea{color:var(--indigo);background:var(--indigo-soft)}
-.pp-tbl tr.pp-r-live td.pp-ftc{box-shadow:inset 3px 0 0 var(--done)}
-.pp-tbl tr.pp-r-dev td.pp-ftc{box-shadow:inset 3px 0 0 var(--progress)}
-.pp-tbl tr.pp-r-idea td.pp-ftc{box-shadow:inset 3px 0 0 var(--indigo)}
+/* status shown as a colour-filled cell (MoSCoW-style) */
+.pp-st{text-align:center;font-family:var(--mono);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.pp-st-live{background:var(--done-bg);color:var(--done)}
+.pp-st-dev{background:var(--progress-bg);color:var(--progress)}
+.pp-st-idea{background:var(--indigo-soft);color:var(--indigo)}
+.pp-editcell{width:34px;text-align:center}
 .pp-feat{font-weight:600}
 .pp-who{color:var(--muted);font-size:13px;white-space:nowrap}
 .pp-note{color:var(--muted);font-size:13.5px}
 .pp-rowedit{color:var(--muted);cursor:pointer;font-size:13px;opacity:0}
 .pp-tbl tbody tr:hover .pp-rowedit{opacity:1}
-.pp-tblfoot{display:flex;gap:16px;flex-wrap:wrap;padding:13px 16px;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--paper);border-top:1px solid var(--line)}
+.pp-tblfoot{display:flex;gap:18px;flex-wrap:wrap;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--muted);background:#FAFBFD;border-top:2px solid var(--line-strong)}
 .pp-tblfoot b{font-size:15px}
 .pp-fl{color:var(--done)}.pp-fd{color:var(--progress)}.pp-fi{color:var(--indigo)}
 
@@ -8826,7 +8829,8 @@ function ppFeaturesHTML(node, admin){
     var k=row[0],l=row[1],c=row[2];
     h += '<button class="pp-chip'+(productFilter===k?' active':'')+'" onclick="ppSetFilter(\''+k+'\')">'+(c?'<span class="pp-cd2" style="background:'+c+'"></span>':'')+l+'</button>';
   });
-  h += '</div></div><div class="pp-tbl-wrap"><table class="pp-tbl"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th><th>Status</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  h += '</div></div><div class="pp-tbl-wrap"><table class="pp-tbl pp-sheet"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th><th class="pp-sth">Status</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  var zeb=0;
   mods.forEach(function(m){
     var idxs=[];
     node.features.forEach(function(f,i){ if((f.module||"General")===m && (productFilter==="all"||f.status===productFilter)) idxs.push(i); });
@@ -8834,10 +8838,11 @@ function ppFeaturesHTML(node, admin){
     h += '<tr class="pp-modrow"><td colspan="'+(admin?5:4)+'">'+ppEsc(m)+(admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')+'</td></tr>';
     idxs.forEach(function(i){
       var f=node.features[i], s=ppStatusMeta[f.status];
-      h += '<tr class="pp-r-'+f.status+'"><td class="pp-ftc"><span class="pp-feat">'+ppEsc(f.feat)+'</span></td>'
+      var alt = (zeb++ % 2) ? ' pp-alt' : '';
+      h += '<tr class="pp-r-'+f.status+alt+'"><td class="pp-ftc"><span class="pp-feat">'+ppEsc(f.feat)+'</span></td>'
         + '<td class="pp-who">'+ppEsc(f.who)+'</td><td class="pp-note">'+ppEsc(f.solves)+'</td>'
-        + '<td><span class="pp-pill '+s.c+'">'+s.l+'</span></td>'
-        + (admin?'<td><span class="pp-rowedit" title="Edit" onclick="ppEditFeature(\''+node.id+'\','+i+')">✎</span></td>':'')
+        + '<td class="pp-st pp-st-'+f.status+'">'+s.l+'</td>'
+        + (admin?'<td class="pp-editcell"><span class="pp-rowedit" title="Edit" onclick="ppEditFeature(\''+node.id+'\','+i+')">✎</span></td>':'')
         + '</tr>';
     });
   });
