@@ -1402,6 +1402,47 @@ body{margin:0}
 .mx-person{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12.5px;margin:2px 3px 2px 0}
 .mx-none{color:var(--line-strong)}
 
+/* ================= My Team — Ownership view (who decides what) ================= */
+.own-wrap{margin-top:12px}
+.own-hint{font-size:12.5px;color:var(--muted);background:var(--indigo-soft);border:1px solid #C9D3F5;border-radius:10px;padding:10px 13px;margin-bottom:14px;line-height:1.5}
+.own-scroll{overflow-x:auto;border:1px solid var(--line-strong);border-radius:14px;background:var(--card)}
+.own-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.own-tbl th,.own-tbl td{border:1px solid var(--line);padding:11px 13px;text-align:left;vertical-align:top}
+.own-tbl thead th{background:#1E2A44;color:#fff;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.own-q{font-weight:600;white-space:nowrap}
+.own-val.own-owns{color:var(--done);font-weight:700}
+.own-val.own-dash{color:var(--line-strong)}
+.own-rowedit{color:var(--muted);cursor:pointer;opacity:0;font-size:12px}
+.own-tbl tbody tr:hover .own-rowedit{opacity:1}
+.own-editcell{width:34px;text-align:center}
+
+/* ===== Ownership role cards ===== */
+.ownc-hint{font-size:12.5px;color:var(--muted);background:var(--indigo-soft);border:1px solid #C9D3F5;border-radius:10px;padding:10px 13px;margin:12px 0 14px;line-height:1.5}
+.ownc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.ownc-card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--indigo);border-radius:14px;padding:14px 16px 16px}
+.ownc-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.ownc-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.ownc-ttl{display:flex;flex-direction:column;min-width:0}
+.ownc-nm{font-family:var(--disp);font-weight:700;font-size:16px}
+.ownc-person{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.ownc-edit{margin-left:auto;width:26px;height:26px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);cursor:pointer;font-size:12px}
+.ownc-edit:hover{color:var(--indigo);border-color:var(--indigo)}
+.ownc-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--done);margin-bottom:4px}
+.ownc-items{list-style:none;margin:0;padding:0}
+.ownc-items li{position:relative;padding:6px 0 6px 18px;font-size:13.5px;color:var(--ink);line-height:1.45;border-bottom:1px solid var(--line)}
+.ownc-items li:last-child{border-bottom:none}
+.ownc-items li:before{content:"";position:absolute;left:2px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--done)}
+.ownc-items li.ownc-empty{color:var(--muted);font-style:italic}
+.ownc-items li.ownc-empty:before{background:var(--line-strong)}
+.ownc-add{border:1.5px dashed var(--line-strong);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-weight:600;cursor:pointer;min-height:150px;background:var(--card)}
+.ownc-add:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.ownc-add .ownc-plus{font-size:26px}
+.ownc-irow{display:flex;gap:8px;margin-bottom:8px}
+.ownc-irow input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;color:var(--ink)}
+.ownc-idel{width:34px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
+.ownc-idel:hover{color:#C0362C;border-color:#C0362C}
+.ownc-additem{color:var(--indigo);font-weight:600;font-size:13px;cursor:pointer;border:none;background:none;padding:6px 0 0}
+
 </style>
 </head>
 <body>
@@ -1490,6 +1531,7 @@ body{margin:0}
         <button id="mt-view-org" class="on" onclick="mtSetView('org')">Reporting lines</button>
         <button id="mt-view-squads" onclick="mtSetView('squads')">Squads</button>
         <button id="mt-view-matrix" onclick="mtSetView('matrix')">Matrix</button>
+        <button id="mt-view-own" onclick="mtSetView('own')">Ownership</button>
       </div>
       <button class="mt-back" id="mt-back">← Back to workspace</button>
     </div>
@@ -1501,6 +1543,23 @@ body{margin:0}
       <div class="mt-tools" id="mt-tools"></div>
     </div>
     <div id="mt-canvas"></div>
+  </div>
+</div>
+
+<div class="overlay" id="own-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:480px">
+    <h3 id="own-title">Add role</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="own-f-name">Role</label><input id="own-f-name" type="text" placeholder="e.g. CTO, Squad lead, Head of Design" autocomplete="off"></div>
+      <div class="field"><label for="own-f-person">Person (optional)</label><input id="own-f-person" type="text" placeholder="who holds this role" autocomplete="off"></div>
+      <div class="field"><label>Colour</label><div class="mt-sw" id="own-sw"></div><input type="hidden" id="own-f-color"></div>
+      <div class="field"><label>What this role owns</label><div id="own-items"></div><button type="button" class="ownc-additem" id="own-additem">＋ Add responsibility</button></div>
+    </div>
+    <div class="btns">
+      <button class="mt-del" id="own-del" style="display:none">Delete role</button>
+      <button class="btn" id="own-cancel">Cancel</button>
+      <button class="btn save" id="own-save">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2692,6 +2751,7 @@ function teamPayload(){
     product: clean(PRODUCT),
     orgChart: (typeof TEAMORG!=="undefined" && TEAMORG) ? clean(TEAMORG) : null,
     squads: (typeof TEAMSQUADS!=="undefined") ? clean(TEAMSQUADS) : [],
+    ownership: (typeof TEAMOWN!=="undefined") ? clean(TEAMOWN) : null,
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2712,6 +2772,7 @@ function loadTeamData(t){
   PRODUCT = normalizeProduct(t.product);
   TEAMORG = normalizeOrg(t.orgChart);
   TEAMSQUADS = normalizeSquads(t.squads);
+  TEAMOWN = normalizeOwnership(t.ownership);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2729,6 +2790,8 @@ let mtSave = null;
 let mtView = "org";
 let TEAMSQUADS = [];
 let sqSave = null;
+let TEAMOWN = { roles:[] };
+let ownSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -9349,12 +9412,115 @@ function renderTeamPage(){
   if($("mt-view-org")) $("mt-view-org").classList.toggle("on", mtView==="org");
   if($("mt-view-squads")) $("mt-view-squads").classList.toggle("on", mtView==="squads");
   if($("mt-view-matrix")) $("mt-view-matrix").classList.toggle("on", mtView==="matrix");
+  if($("mt-view-own")) $("mt-view-own").classList.toggle("on", mtView==="own");
   if($("mt-sub")) $("mt-sub").textContent = (mtView==="squads")
     ? "Cross-functional squads — each with a mission, one metric, and its members."
     : (mtView==="matrix")
     ? "Functions x squads — auto-built from your squads. The view you grow into as you scale."
+    : (mtView==="own")
+    ? "Who decides what — work vs. career vs. pay. The rules, right next to the org."
     : "How the team is organised and who reports to whom. New joiners: this is where you fit in.";
-  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else renderOrgView();
+  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else renderOrgView();
+}
+
+/* ================= My Team — Ownership view (role cards) ================= */
+function ownid(){ return "w-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function normalizeOwnership(o){
+  o=o||{};
+  var roles = Array.isArray(o.roles) ? o.roles : [];
+  return { roles: roles.map(function(r){ r=r||{}; return {
+    id: r.id||ownid(),
+    name: r.name!=null?String(r.name):"",
+    person: r.person?String(r.person):"",
+    color: r.color?String(r.color):"#3B5BDB",
+    items: Array.isArray(r.items)?r.items.map(function(x){return x!=null?String(x):"";}).filter(function(x){return x.trim();}):[]
+  }; }).filter(function(r){ return r.name || r.items.length; }) };
+}
+function ownFind(id){ for(var i=0;i<TEAMOWN.roles.length;i++){ if(TEAMOWN.roles[i].id===id) return TEAMOWN.roles[i]; } return null; }
+function ownCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
+
+function renderOwnershipView(){
+  var admin = (typeof can==="function") ? can("admin") : false;
+  $("mt-tools").innerHTML = admin
+    ? '<button class="mt-btn primary" onclick="ownAdd()">＋ Add role</button>'
+    : '<span class="mt-lock">🔒 Only admins can edit</span>';
+  var c=$("mt-canvas"), roles=TEAMOWN.roles||[];
+  if(!roles.length){
+    c.innerHTML = '<div class="mt-empty"><div class="mt-et">No roles mapped yet</div>'
+      + (admin ? 'Add a card per role — CTO, squad lead, founder, design lead — and list what each one owns. Keeps "who decides what" clear as you hire.<br><br><button class="mt-btn primary" onclick="ownStarter()">Use starter template</button> &nbsp; <button class="mt-btn" onclick="ownAdd()">＋ Add a role</button>'
+               : 'Roles and responsibilities will show here soon.')
+      + '</div>';
+    return;
+  }
+  var h='<div class="ownc-hint">Each card is a role — and what that role <b>owns</b>. Work sits with squad leads; careers, reviews and pay sit with the CTO and you. Add as many roles as your team needs.</div><div class="ownc-grid">';
+  roles.forEach(function(r){ h+=ownCardHTML(r,admin); });
+  if(admin) h+='<div class="ownc-add" onclick="ownAdd()"><span class="ownc-plus">＋</span>Add role</div>';
+  h+='</div>';
+  c.innerHTML=h;
+}
+function ownCardHTML(r,admin){
+  var items=(r.items||[]).map(function(x){ return '<li>'+mtEsc(x)+'</li>'; }).join('');
+  return '<div class="ownc-card" style="border-top-color:'+mtEsc(r.color||'#3B5BDB')+'">'
+    + '<div class="ownc-h"><span class="ownc-dot" style="background:'+mtEsc(r.color||'#3B5BDB')+'"></span>'
+    + '<div class="ownc-ttl"><span class="ownc-nm">'+mtEsc(r.name)+'</span>'+(r.person?'<span class="ownc-person">'+mtEsc(r.person)+'</span>':'')+'</div>'
+    + (admin?'<button class="ownc-edit" title="Edit" onclick="ownEdit(\''+r.id+'\')">✎</button>':'')+'</div>'
+    + '<div class="ownc-lbl">Owns</div>'
+    + '<ul class="ownc-items">'+(items||'<li class="ownc-empty">Nothing listed yet</li>')+'</ul>'
+    + '</div>';
+}
+
+function ownStarter(){
+  TEAMOWN.roles=[
+    {id:ownid(), name:"CTO", person:"", color:"#1F7A4D", items:["Owns careers: reviews, promotions, pay","Sets code & architecture standards across products","Mentors engineers","Hands-on in the priority product"]},
+    {id:ownid(), name:"Squad lead", person:"", color:"#3B5BDB", items:["Owns the work: priorities & what ships","Runs the daily standup","Advocates for their devs at review time"]},
+    {id:ownid(), name:"Founder (you)", person:"", color:"#7C3AED", items:["Sets product vision & strategy","Signs off promotions & pay","Decides which product is the priority"]}
+  ];
+  ownCommit();
+}
+
+function ownSwatches(cur){
+  $("own-sw").innerHTML = MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?'on':'')+'" onclick="ownPickColor(this,\''+c+'\')"></button>'; }).join('');
+  $("own-f-color").value = cur || MT_COLORS[0];
+}
+function ownPickColor(b,c){ $("own-f-color").value=c; document.querySelectorAll('#own-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function ownItemRowHTML(v){ return '<div class="ownc-irow"><input class="ownc-iinput" type="text" placeholder="e.g. Owns performance reviews" value="'+mtEsc(v||'')+'"><button type="button" class="ownc-idel" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function ownAddItemRow(){ var w=$("own-items"); w.insertAdjacentHTML('beforeend', ownItemRowHTML('')); var ins=w.querySelectorAll('.ownc-iinput'); if(ins.length) ins[ins.length-1].focus(); }
+function ownReadItems(){ var out=[]; $("own-items").querySelectorAll('.ownc-irow').forEach(function(row){ var v=row.querySelector('.ownc-iinput').value.trim(); if(v) out.push(v); }); return out; }
+function ownOpen(title, r, showDel){
+  r=r||{};
+  $("own-title").textContent=title;
+  $("own-f-name").value=r.name||"";
+  $("own-f-person").value=r.person||"";
+  ownSwatches(r.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
+  var w=$("own-items"); w.innerHTML=(r.items&&r.items.length)?r.items.map(ownItemRowHTML).join(''):ownItemRowHTML('');
+  $("own-del").style.display=showDel?'inline':'none';
+  $("own-dialog").classList.add("show");
+  setTimeout(function(){ $("own-f-name").focus(); }, 30);
+}
+function ownClose(){ $("own-dialog").classList.remove("show"); ownSave=null; }
+function ownAdd(){
+  ownOpen("Add role", {}, false);
+  ownSave=function(){
+    var name=$("own-f-name").value.trim(); if(!name){ $("own-f-name").focus(); return; }
+    TEAMOWN.roles.push({ id:ownid(), name:name, person:$("own-f-person").value.trim(), color:$("own-f-color").value, items:ownReadItems() });
+    ownClose(); ownCommit();
+  };
+}
+function ownEdit(id){
+  var r=ownFind(id); if(!r) return;
+  ownOpen("Edit role", r, true);
+  ownSave=function(){
+    var name=$("own-f-name").value.trim(); if(!name){ $("own-f-name").focus(); return; }
+    r.name=name; r.person=$("own-f-person").value.trim(); r.color=$("own-f-color").value; r.items=ownReadItems();
+    ownClose(); ownCommit();
+  };
+  $("own-del").onclick=function(){ ownDelete(id); };
+}
+function ownDelete(id){
+  var r=ownFind(id); if(!r){ ownClose(); return; }
+  if(!window.confirm('Delete the "'+(r.name||"this")+'" role card?')) return;
+  TEAMOWN.roles = TEAMOWN.roles.filter(function(x){ return x.id!==id; });
+  ownClose(); ownCommit();
 }
 
 function renderMatrixView(){
@@ -9481,6 +9647,9 @@ if($("mt-save")){ $("mt-save").onclick = function(){ if(mtSave) mtSave(); }; }
 if($("sq-cancel")){ $("sq-cancel").onclick = sqCloseDialog; }
 if($("sq-save")){ $("sq-save").onclick = function(){ if(sqSave) sqSave(); }; }
 if($("sq-addmem")){ $("sq-addmem").onclick = sqAddMemberRow; }
+if($("own-cancel")){ $("own-cancel").onclick = ownClose; }
+if($("own-save")){ $("own-save").onclick = function(){ if(ownSave) ownSave(); }; }
+if($("own-additem")){ $("own-additem").onclick = ownAddItemRow; }
 $("nav-home").onclick = ()=> navHome();
 if($("vision-toggle")){
   $("vision-toggle").onclick = ()=>{
