@@ -1443,6 +1443,53 @@ body{margin:0}
 .ownc-idel:hover{color:#C0362C;border-color:#C0362C}
 .ownc-additem{color:var(--indigo);font-weight:600;font-size:13px;cursor:pointer;border:none;background:none;padding:6px 0 0}
 
+/* ================= My Team — Performance (KPIs + reviews) ================= */
+.pf-summary{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.pf-sum{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12.5px;color:var(--muted)}
+.pf-sum b{font-size:16px;margin-right:5px;color:var(--ink)}
+.pf-sum.promote b{color:var(--done)}
+.pf-sum.risk b{color:#C0362C}
+.pf-sum.meet b{color:var(--indigo)}
+.pf-hint{font-size:12.5px;color:var(--muted);background:var(--indigo-soft);border:1px solid #C9D3F5;border-radius:10px;padding:10px 13px;margin-bottom:14px;line-height:1.5}
+.pf-scroll{overflow-x:auto;border:1px solid var(--line-strong);border-radius:14px;background:var(--card)}
+.pf-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.pf-tbl thead th{background:#1E2A44;color:#fff;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;text-align:left;padding:11px 13px}
+.pf-tbl td{border-bottom:1px solid var(--line);padding:11px 13px;vertical-align:middle}
+.pf-tbl tbody tr:last-child td{border-bottom:none}
+.pf-rank{font-family:var(--mono);color:var(--muted);width:36px}
+.pf-nm{font-weight:700}
+.pf-role{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.pf-badge{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pf-b-green{background:var(--done-bg);color:var(--done)}
+.pf-b-blue{background:var(--indigo-soft);color:var(--indigo)}
+.pf-b-amber{background:var(--progress-bg);color:var(--progress)}
+.pf-b-red{background:#FBE9E7;color:#C0362C}
+.pf-b-grey{background:var(--paper);color:var(--muted)}
+.pf-kdot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;border:1px solid rgba(0,0,0,.06)}
+.pf-green{background:var(--done)}
+.pf-amber{background:var(--progress)}
+.pf-red{background:#D14343}
+.pf-grey{background:var(--line-strong)}
+.pf-none{color:var(--line-strong)}
+.pf-last{font-size:12.5px;color:var(--muted)}
+.pf-count{color:var(--indigo);font-family:var(--mono);font-size:11px}
+.pf-edit{width:28px;height:28px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);cursor:pointer}
+.pf-edit:hover{color:var(--indigo);border-color:var(--indigo)}
+.pf-editcell{width:44px;text-align:right}
+.pf-krow,.pf-rvrow{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.pf-krow input,.pf-rvrow input,.pf-krow select,.pf-rvrow select{padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;color:var(--ink)}
+.pf-klabel{flex:2;min-width:130px}
+.pf-ktarget{flex:1;min-width:80px}
+.pf-kstatus{flex:1;min-width:100px}
+.pf-rvdate{flex:1;min-width:140px}
+.pf-rvrating{flex:1;min-width:130px}
+.pf-rvdecision{flex:1;min-width:130px}
+.pf-rvnotes{flex:2;min-width:160px}
+.pf-del{width:30px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
+.pf-del:hover{color:#C0362C;border-color:#C0362C}
+.pf-addk,.pf-addr{color:var(--indigo);font-weight:600;font-size:13px;cursor:pointer;border:none;background:none;padding:4px 0}
+.pf-subh{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+
 </style>
 </head>
 <body>
@@ -1532,6 +1579,7 @@ body{margin:0}
         <button id="mt-view-squads" onclick="mtSetView('squads')">Squads</button>
         <button id="mt-view-matrix" onclick="mtSetView('matrix')">Matrix</button>
         <button id="mt-view-own" onclick="mtSetView('own')">Ownership</button>
+        <button id="mt-view-perf" onclick="mtSetView('perf')">Performance</button>
       </div>
       <button class="mt-back" id="mt-back">← Back to workspace</button>
     </div>
@@ -1543,6 +1591,36 @@ body{margin:0}
       <div class="mt-tools" id="mt-tools"></div>
     </div>
     <div id="mt-canvas"></div>
+  </div>
+</div>
+
+<div class="overlay" id="pf-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:660px">
+    <h3 id="pf-title">Add person</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="pf-f-name">Name</label><input id="pf-f-name" type="text" placeholder="Person's name" autocomplete="off"></div>
+      <div class="field"><label for="pf-f-role">Role</label><input id="pf-f-role" type="text" placeholder="e.g. Backend engineer" autocomplete="off"></div>
+      <div class="field"><label>Colour</label><div class="mt-sw" id="pf-sw"></div><input type="hidden" id="pf-f-color"></div>
+      <div class="field"><label for="pf-f-rating">Current rating</label><select id="pf-f-rating">
+        <option value="0">Unrated</option>
+        <option value="5">5 · Outstanding</option>
+        <option value="4">4 · Exceeds</option>
+        <option value="3">3 · Meets</option>
+        <option value="2">2 · Below</option>
+        <option value="1">1 · Poor</option>
+      </select></div>
+      <div class="pf-subh">KPIs (2–4)</div>
+      <div id="pf-kpis"></div>
+      <button type="button" class="pf-addk" id="pf-addkpi">＋ Add KPI</button>
+      <div class="pf-subh">Review log — one per quarter</div>
+      <div id="pf-reviews"></div>
+      <button type="button" class="pf-addr" id="pf-addreview">＋ Log a review</button>
+    </div>
+    <div class="btns">
+      <button class="mt-del" id="pf-del" style="display:none">Remove person</button>
+      <button class="btn" id="pf-cancel">Cancel</button>
+      <button class="btn save" id="pf-save">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2752,6 +2830,7 @@ function teamPayload(){
     orgChart: (typeof TEAMORG!=="undefined" && TEAMORG) ? clean(TEAMORG) : null,
     squads: (typeof TEAMSQUADS!=="undefined") ? clean(TEAMSQUADS) : [],
     ownership: (typeof TEAMOWN!=="undefined") ? clean(TEAMOWN) : null,
+    perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2773,6 +2852,7 @@ function loadTeamData(t){
   TEAMORG = normalizeOrg(t.orgChart);
   TEAMSQUADS = normalizeSquads(t.squads);
   TEAMOWN = normalizeOwnership(t.ownership);
+  TEAMPERF = normalizePerf(t.perf);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2792,6 +2872,8 @@ let TEAMSQUADS = [];
 let sqSave = null;
 let TEAMOWN = { roles:[] };
 let ownSave = null;
+let TEAMPERF = { people:[] };
+let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -9409,18 +9491,23 @@ function mtSetView(v){ mtView=v; renderTeamPage(); }
 
 /* dispatcher — replaces the old single-view render */
 function renderTeamPage(){
+  var _pfAdmin=(typeof can==="function")?can("admin"):false;
+  if($("mt-view-perf")) $("mt-view-perf").style.display=_pfAdmin?"":"none";
   if($("mt-view-org")) $("mt-view-org").classList.toggle("on", mtView==="org");
   if($("mt-view-squads")) $("mt-view-squads").classList.toggle("on", mtView==="squads");
   if($("mt-view-matrix")) $("mt-view-matrix").classList.toggle("on", mtView==="matrix");
   if($("mt-view-own")) $("mt-view-own").classList.toggle("on", mtView==="own");
+  if($("mt-view-perf")) $("mt-view-perf").classList.toggle("on", mtView==="perf");
   if($("mt-sub")) $("mt-sub").textContent = (mtView==="squads")
     ? "Cross-functional squads — each with a mission, one metric, and its members."
     : (mtView==="matrix")
     ? "Functions x squads — auto-built from your squads. The view you grow into as you scale."
     : (mtView==="own")
     ? "Who decides what — work vs. career vs. pay. The rules, right next to the org."
+    : (mtView==="perf")
+    ? "KPIs & reviews — ranked best to worst. A fair record for promotions and exits."
     : "How the team is organised and who reports to whom. New joiners: this is where you fit in.";
-  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else renderOrgView();
+  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else renderOrgView();
 }
 
 /* ================= My Team — Ownership view (role cards) ================= */
@@ -9521,6 +9608,123 @@ function ownDelete(id){
   if(!window.confirm('Delete the "'+(r.name||"this")+'" role card?')) return;
   TEAMOWN.roles = TEAMOWN.roles.filter(function(x){ return x.id!==id; });
   ownClose(); ownCommit();
+}
+
+/* ================= My Team — Performance ================= */
+function pfid(){ return "pf-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function normalizePerf(o){
+  o=o||{};
+  var ppl=Array.isArray(o.people)?o.people:[];
+  return { people: ppl.map(function(p){ p=p||{};
+    var r=parseInt(p.rating,10);
+    return {
+      id:p.id||pfid(),
+      name:p.name!=null?String(p.name):"",
+      role:p.role?String(p.role):"",
+      color:p.color?String(p.color):"#3B5BDB",
+      rating:(r>=1&&r<=5)?r:0,
+      kpis:Array.isArray(p.kpis)?p.kpis.map(function(k){ k=k||{}; var st=(k.status==="green"||k.status==="amber"||k.status==="red")?k.status:"green"; return {label:k.label?String(k.label):"",target:k.target?String(k.target):"",status:st}; }).filter(function(k){return k.label;}):[],
+      reviews:Array.isArray(p.reviews)?p.reviews.map(function(rv){ rv=rv||{}; var rr=parseInt(rv.rating,10); return {date:rv.date?String(rv.date):"",rating:(rr>=1&&rr<=5)?rr:0,decision:rv.decision?String(rv.decision):"",notes:rv.notes?String(rv.notes):""}; }):[]
+    };
+  }).filter(function(p){return p.name;}) };
+}
+function pfFind(id){ for(var i=0;i<TEAMPERF.people.length;i++){ if(TEAMPERF.people[i].id===id) return TEAMPERF.people[i]; } return null; }
+function pfCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
+function pfRatingMeta(n){ n=n||0; var m={5:{l:"Outstanding",k:"green"},4:{l:"Exceeds",k:"green"},3:{l:"Meets",k:"blue"},2:{l:"Below",k:"amber"},1:{l:"Poor",k:"red"},0:{l:"Unrated",k:"grey"}}; return m[n]||m[0]; }
+function pfDecisionLabel(d){ var m={keep:"Keep / grow",promote:"Promote",coach:"Coach",exit:"Exit"}; return m[d]||d; }
+
+function renderPerformanceView(){
+  var admin = (typeof can==="function") ? can("admin") : false;
+  if(!admin){
+    $("mt-tools").innerHTML="";
+    $("mt-canvas").innerHTML='<div class="mt-empty"><div class="mt-et">🔒 Admins only</div>Performance ratings and reviews are visible to owners and admins only.</div>';
+    return;
+  }
+  $("mt-tools").innerHTML='<button class="mt-btn primary" onclick="pfAdd()">＋ Add person</button>';
+  var ppl=(TEAMPERF.people||[]).slice();
+  if(!ppl.length){
+    $("mt-canvas").innerHTML='<div class="mt-empty"><div class="mt-et">No one tracked yet</div>Add each person, set 2–4 KPIs, and log a short review each quarter. Over time you get a clear best → worst picture — and a fair, no-surprise record for promotions and exits.<br><br><button class="mt-btn primary" onclick="pfAdd()">＋ Add your first person</button></div>';
+    return;
+  }
+  ppl.sort(function(a,b){ return (b.rating||0)-(a.rating||0); });
+  var promote=ppl.filter(function(p){return p.rating>=4;}).length;
+  var meet=ppl.filter(function(p){return p.rating===3;}).length;
+  var risk=ppl.filter(function(p){return p.rating>0&&p.rating<=2;}).length;
+  var unrated=ppl.filter(function(p){return !p.rating;}).length;
+  var h='<div class="pf-summary">'
+    +'<div class="pf-sum promote"><b>'+promote+'</b> promote-ready</div>'
+    +'<div class="pf-sum meet"><b>'+meet+'</b> meeting bar</div>'
+    +'<div class="pf-sum risk"><b>'+risk+'</b> at risk</div>'
+    +'<div class="pf-sum"><b>'+unrated+'</b> unrated</div></div>';
+  h+='<div class="pf-hint">Ranked best → worst by current rating. Rating comes from your reviews — "unrated" is a gap to close, not a verdict. The review log builds a history so promotions and exits are fair and no-surprise.</div>';
+  h+='<div class="pf-scroll"><table class="pf-tbl"><thead><tr><th>#</th><th>Person</th><th>Rating</th><th>KPIs</th><th>Last review</th><th></th></tr></thead><tbody>';
+  ppl.forEach(function(p,i){
+    var rm=pfRatingMeta(p.rating||0);
+    var kpis=(p.kpis||[]).map(function(k){ return '<span class="pf-kdot pf-'+(k.status||"grey")+'" title="'+mtEsc(k.label)+(k.target?": "+mtEsc(k.target):"")+'"></span>'; }).join('') || '<span class="pf-none">—</span>';
+    var last=(p.reviews&&p.reviews.length)? p.reviews[p.reviews.length-1] : null;
+    var lastTxt=last ? (mtEsc(last.date||"")+(last.decision?' · '+mtEsc(pfDecisionLabel(last.decision)):"")) : '<span class="pf-none">no review yet</span>';
+    h+='<tr>'
+      +'<td class="pf-rank">'+(i+1)+'</td>'
+      +'<td><div class="pf-nm">'+mtEsc(p.name)+'</div>'+(p.role?'<div class="pf-role">'+mtEsc(p.role)+'</div>':"")+'</td>'
+      +'<td><span class="pf-badge pf-b-'+rm.k+'">'+rm.l+'</span></td>'
+      +'<td>'+kpis+'</td>'
+      +'<td class="pf-last">'+lastTxt+((p.reviews&&p.reviews.length)?' <span class="pf-count">('+p.reviews.length+')</span>':"")+'</td>'
+      +'<td class="pf-editcell"><button class="pf-edit" title="Open" onclick="pfEdit(\''+p.id+'\')">✎</button></td>'
+      +'</tr>';
+  });
+  h+='</tbody></table></div>';
+  $("mt-canvas").innerHTML=h;
+}
+
+function pfSwatches(cur){ $("pf-sw").innerHTML=MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?"on":"")+'" onclick="pfPickColor(this,\''+c+'\')"></button>'; }).join(''); $("pf-f-color").value=cur||MT_COLORS[0]; }
+function pfPickColor(b,c){ $("pf-f-color").value=c; document.querySelectorAll('#pf-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function pfKpiRowHTML(k){ k=k||{}; var opt=[["green","On track"],["amber","At risk"],["red","Off track"]].map(function(o){ return '<option value="'+o[0]+'"'+(k.status===o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join(''); return '<div class="pf-krow"><input class="pf-klabel" type="text" placeholder="KPI (e.g. Features shipped)" value="'+mtEsc(k.label||"")+'"><input class="pf-ktarget" type="text" placeholder="Target" value="'+mtEsc(k.target||"")+'"><select class="pf-kstatus">'+opt+'</select><button type="button" class="pf-del" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function pfAddKpiRow(){ var w=$("pf-kpis"); w.insertAdjacentHTML('beforeend', pfKpiRowHTML({})); }
+function pfReadKpis(){ var out=[]; $("pf-kpis").querySelectorAll('.pf-krow').forEach(function(r){ var l=r.querySelector('.pf-klabel').value.trim(); if(!l) return; out.push({label:l, target:r.querySelector('.pf-ktarget').value.trim(), status:r.querySelector('.pf-kstatus').value}); }); return out; }
+function pfReviewRowHTML(rv){ rv=rv||{};
+  var ropt=[["","—"],["5","5 · Outstanding"],["4","4 · Exceeds"],["3","3 · Meets"],["2","2 · Below"],["1","1 · Poor"]].map(function(o){ return '<option value="'+o[0]+'"'+(String(rv.rating||"")===o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join('');
+  var dopt=[["","No decision"],["keep","Keep / grow"],["promote","Promote"],["coach","Coach"],["exit","Exit"]].map(function(o){ return '<option value="'+o[0]+'"'+(rv.decision===o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join('');
+  return '<div class="pf-rvrow"><input class="pf-rvdate" type="date" value="'+mtEsc(rv.date||"")+'"><select class="pf-rvrating">'+ropt+'</select><select class="pf-rvdecision">'+dopt+'</select><input class="pf-rvnotes" type="text" placeholder="Notes (wins / to improve)" value="'+mtEsc(rv.notes||"")+'"><button type="button" class="pf-del" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function pfAddReviewRow(){ var w=$("pf-reviews"); var today=new Date().toISOString().slice(0,10); w.insertAdjacentHTML('beforeend', pfReviewRowHTML({date:today})); }
+function pfReadReviews(){ var out=[]; $("pf-reviews").querySelectorAll('.pf-rvrow').forEach(function(r){ var rating=parseInt(r.querySelector('.pf-rvrating').value,10)||0; var date=r.querySelector('.pf-rvdate').value; var decision=r.querySelector('.pf-rvdecision').value; var notes=r.querySelector('.pf-rvnotes').value.trim(); if(!date&&!rating&&!notes&&!decision) return; out.push({date:date,rating:rating,decision:decision,notes:notes}); }); return out; }
+
+function pfOpen(title,p,showDel){
+  p=p||{};
+  $("pf-title").textContent=title;
+  $("pf-f-name").value=p.name||"";
+  $("pf-f-role").value=p.role||"";
+  pfSwatches(p.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
+  $("pf-f-rating").value=String(p.rating||0);
+  $("pf-kpis").innerHTML=(p.kpis&&p.kpis.length)?p.kpis.map(pfKpiRowHTML).join(''):pfKpiRowHTML({});
+  $("pf-reviews").innerHTML=(p.reviews&&p.reviews.length)?p.reviews.map(pfReviewRowHTML).join(''):'';
+  $("pf-del").style.display=showDel?"inline":"none";
+  $("pf-dialog").classList.add("show");
+  setTimeout(function(){ $("pf-f-name").focus(); },30);
+}
+function pfClose(){ $("pf-dialog").classList.remove("show"); pfSave=null; }
+function pfAdd(){
+  pfOpen("Add person",{},false);
+  pfSave=function(){
+    var name=$("pf-f-name").value.trim(); if(!name){ $("pf-f-name").focus(); return; }
+    TEAMPERF.people.push({ id:pfid(), name:name, role:$("pf-f-role").value.trim(), color:$("pf-f-color").value, rating:parseInt($("pf-f-rating").value,10)||0, kpis:pfReadKpis(), reviews:pfReadReviews() });
+    pfClose(); pfCommit();
+  };
+}
+function pfEdit(id){
+  var p=pfFind(id); if(!p) return;
+  pfOpen("Edit person",p,true);
+  pfSave=function(){
+    var name=$("pf-f-name").value.trim(); if(!name){ $("pf-f-name").focus(); return; }
+    p.name=name; p.role=$("pf-f-role").value.trim(); p.color=$("pf-f-color").value; p.rating=parseInt($("pf-f-rating").value,10)||0; p.kpis=pfReadKpis(); p.reviews=pfReadReviews();
+    pfClose(); pfCommit();
+  };
+  $("pf-del").onclick=function(){ pfDelete(id); };
+}
+function pfDelete(id){
+  var p=pfFind(id); if(!p){ pfClose(); return; }
+  if(!window.confirm('Remove '+(p.name||"this person")+' from performance tracking?')) return;
+  TEAMPERF.people=TEAMPERF.people.filter(function(x){ return x.id!==id; });
+  pfClose(); pfCommit();
 }
 
 function renderMatrixView(){
@@ -9650,6 +9854,10 @@ if($("sq-addmem")){ $("sq-addmem").onclick = sqAddMemberRow; }
 if($("own-cancel")){ $("own-cancel").onclick = ownClose; }
 if($("own-save")){ $("own-save").onclick = function(){ if(ownSave) ownSave(); }; }
 if($("own-additem")){ $("own-additem").onclick = ownAddItemRow; }
+if($("pf-cancel")){ $("pf-cancel").onclick = pfClose; }
+if($("pf-save")){ $("pf-save").onclick = function(){ if(pfSave) pfSave(); }; }
+if($("pf-addkpi")){ $("pf-addkpi").onclick = pfAddKpiRow; }
+if($("pf-addreview")){ $("pf-addreview").onclick = pfAddReviewRow; }
 $("nav-home").onclick = ()=> navHome();
 if($("vision-toggle")){
   $("vision-toggle").onclick = ()=>{
