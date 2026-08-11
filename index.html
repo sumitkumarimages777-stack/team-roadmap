@@ -236,10 +236,17 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 .corner-nav-wrap{position:absolute;top:28px;right:24px;display:flex;gap:8px;align-items:center}
 .corner-account{display:inline-flex;align-items:center;gap:7px}
 .corner-account .ca-av{width:20px;height:20px;border-radius:50%;background-size:cover;background-position:center;background:var(--indigo);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
-.corner-nav{font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;background:var(--indigo);border-radius:99px;padding:9px 16px;box-shadow:0 2px 10px rgba(59,91,219,.25);transition:background .15s}
-.corner-nav:hover{background:#3350C4}
-.corner-nav.ghost{background:var(--card);color:var(--indigo);border:1.5px solid var(--indigo);box-shadow:none}
-.corner-nav.ghost:hover{background:var(--indigo-soft)}
+.corner-nav{font-family:var(--disp);font-weight:600;font-size:13.5px;color:var(--ink);background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:8px 15px;box-shadow:none;transition:.15s;cursor:pointer}
+.corner-nav:hover{color:var(--indigo);background:var(--indigo-soft);border-color:var(--indigo)}
+/* the active view (no .ghost) is the only filled pill */
+.corner-nav:not(.ghost):not(.corner-account){background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 2px 8px rgba(59,91,219,.22)}
+.corner-nav:not(.ghost):not(.corner-account):hover{background:#3350C4;color:#fff}
+.corner-nav.ghost{background:var(--card);color:var(--ink);border-color:var(--line-strong)}
+.corner-nav.ghost:hover{color:var(--indigo);background:var(--indigo-soft);border-color:var(--indigo)}
+#nav-c{color:var(--indigo);border-color:var(--indigo)}
+#nav-c:hover{background:var(--indigo-soft)}
+.corner-account{color:var(--ink);border-color:var(--line)}
+.corner-account:hover{color:var(--ink);background:var(--paper);border-color:var(--line-strong)}
 
 /* workspace area switcher (sidebar) */
 #ws-switch{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
@@ -1185,6 +1192,111 @@ body{margin:0}
 .okr-los-step.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
 .okr-los-clear{border:none;background:none;color:var(--indigo);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:6px}
 .okr-los-arrow{color:var(--indigo);font-weight:700}
+/* ================= Our Product (pp-) ================= */
+.product-page{position:fixed;inset:0;z-index:390;background:var(--paper);overflow-y:auto}
+.pp-shell{max-width:1060px;margin:0 auto;padding:0 24px 90px}
+.pp-top{position:sticky;top:0;z-index:2;background:var(--paper);display:flex;align-items:center;gap:12px;padding:18px 0 14px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.pp-brand{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink)}
+.pp-brand .pp-bi{width:28px;height:28px;border-radius:8px;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:15px}
+.pp-back{margin-left:auto;padding:8px 14px;border:1px solid var(--line-strong);background:var(--card);border-radius:99px;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.pp-back:hover{background:var(--paper);border-color:var(--indigo);color:var(--indigo)}
+
+.pp-bc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px;margin-bottom:14px}
+.pp-bc button{color:var(--muted);font-weight:600;background:none;border:none;cursor:pointer;padding:0}
+.pp-bc button:hover{color:var(--indigo);text-decoration:underline}
+.pp-bc .pp-sep{color:var(--line-strong)}
+.pp-bc .pp-cur{color:var(--ink);font-weight:700}
+
+.pp-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+.pp-ttl{display:flex;align-items:center;gap:12px;min-width:0}
+.pp-ti{width:42px;height:42px;border-radius:11px;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.pp-head h1{font-family:var(--disp);font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.pp-tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pp-btn{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:7px 14px;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.pp-btn:hover{background:var(--paper);border-color:var(--indigo);color:var(--indigo)}
+.pp-btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.pp-btn.primary:hover{background:#3350C4;color:#fff}
+.pp-btn.tiny{padding:4px 9px;font-size:12px}
+.pp-lock{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px}
+.pp-lead{color:var(--muted);font-size:16px;max-width:700px;margin:10px 0 30px;line-height:1.55}
+
+.pp-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px 2px;font-weight:600}
+.pp-section{margin-bottom:38px}
+
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(246px,1fr));gap:14px}
+.pp-cat{position:relative;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;transition:.12s;cursor:pointer;min-height:158px}
+.pp-cat:hover{border-color:var(--indigo);box-shadow:0 6px 18px rgba(23,35,58,.08);transform:translateY(-1px)}
+.pp-cat .pp-ci{width:44px;height:44px;border-radius:11px;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.pp-cat .pp-cn{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--ink)}
+.pp-cat .pp-cd{color:var(--muted);font-size:13.5px;margin-top:5px;flex:1}
+.pp-cat .pp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.pp-cat .pp-chipx{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 9px}
+.pp-cat .pp-cedit{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--muted);display:none;align-items:center;justify-content:center;font-size:12px}
+.pp-cat:hover .pp-cedit{display:flex}
+.pp-cat .pp-cedit:hover{color:var(--indigo);border-color:var(--indigo)}
+.pp-add{border:1.5px dashed var(--line-strong);background:var(--card);color:var(--muted);border-radius:14px;align-items:center;justify-content:center;text-align:center;font-weight:600;min-height:158px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.pp-add:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.pp-add .pp-plus{font-size:26px}
+
+.pp-tblhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.pp-filters{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto}
+.pp-chip{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.pp-chip .pp-cd2{width:8px;height:8px;border-radius:99px}
+.pp-chip.active{color:var(--ink);border-color:var(--indigo);background:var(--indigo-soft)}
+.pp-tbl-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.pp-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.pp-tbl thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:12px 16px;background:var(--paper);border-bottom:1px solid var(--line);font-weight:600}
+.pp-tbl tbody td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+.pp-tbl tbody tr:last-child td{border-bottom:none}
+.pp-tbl tr.pp-modrow td{background:#FBFCFE;font-weight:700;font-size:12px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);padding:9px 16px}
+.pp-addf{color:var(--indigo);font-weight:600;font-size:12px;margin-left:10px;text-transform:none;letter-spacing:0;font-family:var(--sans);cursor:pointer}
+.pp-pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pp-s-live{color:var(--done);background:var(--done-bg)}
+.pp-s-dev{color:var(--progress);background:var(--progress-bg)}
+.pp-s-idea{color:var(--indigo);background:var(--indigo-soft)}
+.pp-tbl tr.pp-r-live td.pp-ftc{box-shadow:inset 3px 0 0 var(--done)}
+.pp-tbl tr.pp-r-dev td.pp-ftc{box-shadow:inset 3px 0 0 var(--progress)}
+.pp-tbl tr.pp-r-idea td.pp-ftc{box-shadow:inset 3px 0 0 var(--indigo)}
+.pp-feat{font-weight:600}
+.pp-who{color:var(--muted);font-size:13px;white-space:nowrap}
+.pp-note{color:var(--muted);font-size:13.5px}
+.pp-rowedit{color:var(--muted);cursor:pointer;font-size:13px;opacity:0}
+.pp-tbl tbody tr:hover .pp-rowedit{opacity:1}
+.pp-tblfoot{display:flex;gap:16px;flex-wrap:wrap;padding:13px 16px;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--paper);border-top:1px solid var(--line)}
+.pp-tblfoot b{font-size:15px}
+.pp-fl{color:var(--done)}.pp-fd{color:var(--progress)}.pp-fi{color:var(--indigo)}
+
+.pp-flow-scroll{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.pp-flow-row{display:flex;align-items:center;min-width:min-content}
+.pp-fnode{position:relative;min-width:150px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:12px;padding:11px 13px;flex:0 0 auto}
+.pp-fnode .pp-ft{font-weight:700;font-size:13.5px}
+.pp-fnode .pp-ftag{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.pp-fnode .pp-fctl{display:flex;gap:4px;margin-top:9px;border-top:1px dashed var(--line);padding-top:7px}
+.pp-fnode .pp-fctl button{width:24px;height:22px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--muted);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.pp-fnode .pp-fctl button:hover{color:var(--indigo);border-color:var(--indigo)}
+.pp-farrow{color:var(--indigo);font-size:20px;padding:0 12px;flex:0 0 auto}
+.pp-faddstep{min-width:120px;border:1.5px dashed var(--line-strong);border-radius:12px;padding:11px;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;background:var(--card);align-self:stretch;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.pp-faddstep:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.pp-floop{margin-top:14px;display:inline-flex;gap:9px;align-items:center;background:var(--done-bg);color:var(--done);border-radius:99px;padding:8px 15px;font-size:13px;font-weight:600}
+.pp-floop button{background:none;border:none;color:var(--done);cursor:pointer;font-size:12px;opacity:.7}
+.pp-floop button:hover{opacity:1}
+
+.pp-empty{background:var(--card);border:1.5px dashed var(--line-strong);border-radius:var(--radius);padding:30px;text-align:center;color:var(--muted)}
+.pp-empty .pp-et{font-weight:700;color:var(--ink);margin-bottom:5px;font-size:16px}
+.pp-empty .pp-eb{margin-top:14px;display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* icon picker in dialogs */
+.pp-iconpick{display:flex;flex-wrap:wrap;gap:6px}
+.pp-iconpick button{width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:17px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.pp-iconpick button.on{border-color:var(--indigo);background:var(--indigo-soft)}
+.pp-dlg-danger{margin-right:auto}
+.pp-dlg-danger button{color:var(--blocked);border:1px solid transparent;background:none;font-weight:600;font-size:13px;cursor:pointer;padding:8px 6px}
+.pp-dlg-danger button:hover{text-decoration:underline}
+
+/* header third pill */
+#nav-c{}
+@media(max-width:760px){.pp-shell{padding:0 16px 70px}.pp-head h1{font-size:23px}}
+
 </style>
 </head>
 <body>
@@ -1265,6 +1377,29 @@ body{margin:0}
   </div>
 </div>
 
+<div id="product-page" class="product-page" style="display:none">
+  <div class="pp-shell">
+    <div class="pp-top">
+      <div class="pp-brand"><span class="pp-bi">📦</span> Our Product</div>
+      <button class="pp-back" id="pp-back">← Back to workspace</button>
+    </div>
+    <div id="pp-bc" class="pp-bc"></div>
+    <div id="pp-main"></div>
+  </div>
+</div>
+
+<div class="overlay" id="pp-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:480px">
+    <h3 id="pp-dlg-title">Edit</h3>
+    <div class="dlg-body" id="pp-dlg-body"></div>
+    <div class="btns">
+      <div class="pp-dlg-danger" id="pp-dlg-danger"></div>
+      <button class="btn" id="pp-dlg-cancel">Cancel</button>
+      <button class="btn save" id="pp-dlg-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="admin-page" class="admin-page" style="display:none">
   <div class="admin-shell">
     <aside class="admin-side">
@@ -1310,6 +1445,7 @@ body{margin:0}
       <div class="corner-nav-wrap">
       <button class="corner-nav ghost" id="nav-a">Workspace</button>
       <button class="corner-nav" id="nav-b">OKRs</button>
+      <button class="corner-nav ghost" id="nav-c">Our Product</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -2390,6 +2526,7 @@ function teamPayload(){
     teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES),
     spaceMembers: clean(BUILTIN_SPACE_MEMBERS), builtinHidden: clean(BUILTIN_HIDDEN),
     spaceBg: clean(SPACE_BG),
+    product: clean(PRODUCT),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2407,6 +2544,7 @@ function loadTeamData(t){
   BUILTIN_HIDDEN = t.builtinHidden || { dev:false, bugs:false };
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   SPACE_BG = t.spaceBg || {};
+  PRODUCT = normalizeProduct(t.product);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2415,6 +2553,10 @@ let BUILTIN_SPACE_MEMBERS = { dev:{}, bugs:{} };
 let BUILTIN_HIDDEN = { dev:false, bugs:false };
 let BUGS_DEFAULT_BOARD = null;
 let SPACE_BG = {};   // per-space background, keyed by currentSpaceRef().key
+let PRODUCT = { children:[], desc:"" };   // Our Product hub tree (per team)
+let productPath = [];
+let productFilter = "all";
+let ppDlgSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -8544,12 +8686,346 @@ function renderAll(){
   noteRecent();
 }
 
+/* ================= Our Product (hub + editable flow) ================= */
+const ppStatusMeta = { live:{c:"pp-s-live",l:"Live"}, dev:{c:"pp-s-dev",l:"Under development"}, idea:{c:"pp-s-idea",l:"Under ideation"} };
+
+function ppid(){ return "p-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function ppEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function normalizeProduct(p){
+  function nd(n){ n=n||{}; return {
+    id:n.id||ppid(),
+    name:(n.name!=null?String(n.name):"Untitled"),
+    icon:n.icon?String(n.icon):"",
+    desc:n.desc?String(n.desc):"",
+    children:Array.isArray(n.children)?n.children.map(nd):[],
+    features:Array.isArray(n.features)?n.features.map(function(f){ f=f||{}; var st=(f.status==="live"||f.status==="dev"||f.status==="idea")?f.status:"idea"; return {module:f.module?String(f.module):"General",feat:f.feat?String(f.feat):"",who:f.who?String(f.who):"",solves:f.solves?String(f.solves):"",status:st}; }):[],
+    flow:(n.flow&&Array.isArray(n.flow.steps))?{steps:n.flow.steps.map(function(s){ s=s||{}; return {t:s.t?String(s.t):"",tag:s.tag?String(s.tag):""}; }),loop:n.flow.loop?String(n.flow.loop):""}:null
+  }; }
+  p=p||{};
+  return { desc:p.desc?String(p.desc):"", children:Array.isArray(p.children)?p.children.map(nd):[] };
+}
+
+function productNodeAt(pathArr){
+  var node = { id:"__root__", name:"Our Product", icon:"📦", desc:(PRODUCT&&PRODUCT.desc)||"", children:(PRODUCT&&PRODUCT.children)||[], __root:true };
+  var arr = pathArr||[];
+  for(var i=0;i<arr.length;i++){ var nx=(node.children||[]).find(function(c){return c.id===arr[i];}); if(!nx) break; node=nx; }
+  return node;
+}
+function ppNodeById(id){
+  if(id==="__root__") return productNodeAt([]);
+  var found=null;
+  (function walk(list){ (list||[]).forEach(function(c){ if(found) return; if(c.id===id){ found=c; return; } walk(c.children); }); })(PRODUCT.children);
+  return found;
+}
+function ppRemoveById(id){
+  function rm(list){ var i=list.findIndex(function(c){return c.id===id;}); if(i>=0){ list.splice(i,1); return true; } for(var k=0;k<list.length;k++){ if(rm(list[k].children||[])) return true; } return false; }
+  return rm(PRODUCT.children);
+}
+function ppInsideChips(n){
+  var a=[];
+  if(n.children&&n.children.length) a.push(n.children.length+(n.children.length>1?" solutions":" solution"));
+  if(n.features&&n.features.length) a.push(n.features.length+" features");
+  if(n.flow&&n.flow.steps&&n.flow.steps.length) a.push("Flow");
+  if(!a.length) a.push("Empty");
+  return a;
+}
+function ppModulesOf(node){ var m=[]; (node.features||[]).forEach(function(f){ var x=f.module||"General"; if(m.indexOf(x)<0) m.push(x); }); return m; }
+
+/* ---------- open / navigate ---------- */
+function openProduct(){ productPath=[]; productFilter="all"; renderProductPage(); $("product-page").style.display="block"; window.scrollTo(0,0); }
+function closeProduct(){ $("product-page").style.display="none"; }
+function ppGo(id){ productPath.push(id); productFilter="all"; renderProductPage(); }
+function ppCrumb(i){ productPath = i<0 ? [] : productPath.slice(0,i+1); productFilter="all"; renderProductPage(); }
+function ppSetFilter(f){ productFilter=f; renderProductPage(); }
+function ppCommit(){ renderProductPage(); if(typeof pushAll==="function") pushAll(); }
+
+/* ---------- render ---------- */
+function renderProductPage(){
+  var admin = (typeof can==="function") ? can("admin") : false;
+  var node = productNodeAt(productPath);
+  var depth = productPath.length;
+
+  // breadcrumb
+  var bc = '<button onclick="ppCrumb(-1)">📦 Our Product</button>';
+  for(var i=0;i<productPath.length;i++){
+    var n = productNodeAt(productPath.slice(0,i+1));
+    if(!n) break;
+    bc += '<span class="pp-sep">›</span>';
+    bc += (i===productPath.length-1) ? '<span class="pp-cur">'+ppEsc(n.name)+'</span>'
+                                     : '<button onclick="ppCrumb('+i+')">'+ppEsc(n.name)+'</button>';
+  }
+  $("pp-bc").innerHTML = bc;
+
+  var childWord = depth===0 ? "category" : "solution";
+  var childCap  = depth===0 ? "Categories" : "Solutions";
+  var html = "";
+
+  // head
+  html += '<div class="pp-head"><div class="pp-ttl">';
+  if(depth>0) html += '<span class="pp-ti">'+ppEsc(node.icon||"📁")+'</span>';
+  html += '<h1>'+ppEsc(node.name)+'</h1></div><div class="pp-tools">';
+  if(admin){
+    html += '<button class="pp-btn" onclick="ppEditNode(\''+node.id+'\')">✎ Edit</button>';
+    html += '<button class="pp-btn primary" onclick="ppAddChild()">＋ Add '+childWord+'</button>';
+    if(depth>0 && !(node.features&&node.features.length)) html += '<button class="pp-btn" onclick="ppAddFeature(\''+node.id+'\')">＋ Add features</button>';
+    if(depth>0 && !node.flow) html += '<button class="pp-btn" onclick="ppAddFlow(\''+node.id+'\')">＋ Add flow</button>';
+  } else {
+    html += '<span class="pp-lock">🔒 Only admins can edit</span>';
+  }
+  html += '</div></div>';
+  if(node.desc) html += '<p class="pp-lead">'+ppEsc(node.desc)+'</p>';
+
+  // children
+  var kids = node.children||[];
+  if(kids.length || admin){
+    html += '<div class="pp-section"><div class="pp-eyebrow">'+childCap+'</div><div class="pp-grid">';
+    kids.forEach(function(ch){
+      var chips = ppInsideChips(ch).map(function(x){return '<span class="pp-chipx">'+x+'</span>';}).join("");
+      html += '<div class="pp-cat" onclick="ppGo(\''+ch.id+'\')">'
+        + (admin?'<button class="pp-cedit" title="Edit" onclick="event.stopPropagation();ppEditNode(\''+ch.id+'\')">✎</button>':'')
+        + '<span class="pp-ci">'+ppEsc(ch.icon||"📁")+'</span>'
+        + '<span class="pp-cn">'+ppEsc(ch.name)+'</span>'
+        + '<span class="pp-cd">'+ppEsc(ch.desc||"")+'</span>'
+        + '<span class="pp-chips">'+chips+'</span></div>';
+    });
+    if(admin) html += '<div class="pp-add" onclick="ppAddChild()"><span class="pp-plus">＋</span>Add '+childWord+'</div>';
+    html += '</div></div>';
+  }
+
+  // features
+  if(node.features && node.features.length) html += ppFeaturesHTML(node, admin);
+
+  // flow
+  if(node.flow && (node.flow.steps.length || admin)) html += ppFlowHTML(node, admin);
+
+  // empty (member only — admins always see add affordances above)
+  if(!admin && !kids.length && !(node.features&&node.features.length) && !(node.flow&&node.flow.steps.length)){
+    html += '<div class="pp-section"><div class="pp-empty"><div class="pp-et">Nothing here yet</div>This part of the product is still being written up.</div></div>';
+  }
+
+  $("pp-main").innerHTML = html;
+}
+
+function ppFeaturesHTML(node, admin){
+  var counts={live:0,dev:0,idea:0}; node.features.forEach(function(f){counts[f.status]++;});
+  var mods=[]; node.features.forEach(function(f){ var m=f.module||"General"; if(mods.indexOf(m)<0) mods.push(m); });
+  var h = '<div class="pp-section"><div class="pp-tblhead"><div class="pp-eyebrow" style="margin:0">Features — by module</div><div class="pp-filters">';
+  [["all","All",""],["live","Live","var(--done)"],["dev","Under development","var(--progress)"],["idea","Under ideation","var(--indigo)"]].forEach(function(row){
+    var k=row[0],l=row[1],c=row[2];
+    h += '<button class="pp-chip'+(productFilter===k?' active':'')+'" onclick="ppSetFilter(\''+k+'\')">'+(c?'<span class="pp-cd2" style="background:'+c+'"></span>':'')+l+'</button>';
+  });
+  h += '</div></div><div class="pp-tbl-wrap"><table class="pp-tbl"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th><th>Status</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  mods.forEach(function(m){
+    var idxs=[];
+    node.features.forEach(function(f,i){ if((f.module||"General")===m && (productFilter==="all"||f.status===productFilter)) idxs.push(i); });
+    if(!idxs.length) return;
+    h += '<tr class="pp-modrow"><td colspan="'+(admin?5:4)+'">'+ppEsc(m)+(admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')+'</td></tr>';
+    idxs.forEach(function(i){
+      var f=node.features[i], s=ppStatusMeta[f.status];
+      h += '<tr class="pp-r-'+f.status+'"><td class="pp-ftc"><span class="pp-feat">'+ppEsc(f.feat)+'</span></td>'
+        + '<td class="pp-who">'+ppEsc(f.who)+'</td><td class="pp-note">'+ppEsc(f.solves)+'</td>'
+        + '<td><span class="pp-pill '+s.c+'">'+s.l+'</span></td>'
+        + (admin?'<td><span class="pp-rowedit" title="Edit" onclick="ppEditFeature(\''+node.id+'\','+i+')">✎</span></td>':'')
+        + '</tr>';
+    });
+  });
+  h += '</tbody></table><div class="pp-tblfoot"><span><b class="pp-fl">'+counts.live+'</b> live</span><span><b class="pp-fd">'+counts.dev+'</b> under development</span><span><b class="pp-fi">'+counts.idea+'</b> under ideation</span></div></div></div>';
+  return h;
+}
+
+function ppFlowHTML(node, admin){
+  var f=node.flow;
+  var h = '<div class="pp-section"><div class="pp-eyebrow">Product flow — how it works</div><div class="pp-flow-scroll"><div class="pp-flow-row">';
+  f.steps.forEach(function(st,i){
+    if(i>0) h += '<span class="pp-farrow">→</span>';
+    h += '<div class="pp-fnode"><div class="pp-ft">'+ppEsc(st.t)+'</div>';
+    if(st.tag) h += '<div class="pp-ftag">'+ppEsc(st.tag)+'</div>';
+    if(admin){
+      h += '<div class="pp-fctl">'
+        + '<button title="Move left" onclick="ppMoveStep(\''+node.id+'\','+i+',-1)"'+(i===0?' disabled':'')+'>◀</button>'
+        + '<button title="Move right" onclick="ppMoveStep(\''+node.id+'\','+i+',1)"'+(i===f.steps.length-1?' disabled':'')+'>▶</button>'
+        + '<button title="Edit" onclick="ppEditStep(\''+node.id+'\','+i+')">✎</button>'
+        + '</div>';
+    }
+    h += '</div>';
+  });
+  if(admin) h += '<div class="pp-faddstep" onclick="ppAddStep(\''+node.id+'\')">＋ Add step</div>';
+  h += '</div>';
+  if(f.loop){
+    h += '<div class="pp-floop">↻ '+ppEsc(f.loop)+(admin?' <button title="Edit loop" onclick="ppEditLoop(\''+node.id+'\')">✎</button>':'')+'</div>';
+  } else if(admin){
+    h += '<div style="margin-top:12px"><button class="pp-btn tiny" onclick="ppEditLoop(\''+node.id+'\')">＋ Add loop note</button></div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+/* ---------- dialog ---------- */
+function ppOpenDialog(title, bodyHTML, onSave, dangerHTML){
+  $("pp-dlg-title").textContent = title;
+  $("pp-dlg-body").innerHTML = bodyHTML;
+  $("pp-dlg-danger").innerHTML = dangerHTML || "";
+  ppDlgSave = onSave;
+  $("pp-dialog").classList.add("show");
+  var el = document.querySelector("#pp-dlg-body input, #pp-dlg-body textarea, #pp-dlg-body select");
+  if(el) setTimeout(function(){ el.focus(); }, 30);
+}
+function ppCloseDialog(){ $("pp-dialog").classList.remove("show"); ppDlgSave=null; }
+
+function ppIconPickHTML(cur){
+  var ic=["📦","👥","🎓","🛠️","📱","🌐","🗂️","📚","📊","💡","⚙️","🧩","🚀","🎯","📈","🔒"];
+  return ic.map(function(e){ return '<button type="button" class="'+(e===cur?"on":"")+'" onclick="ppPickIcon(this,\''+e+'\')">'+e+'</button>'; }).join("");
+}
+function ppPickIcon(btn,e){ $("pp-f-icon").value=e; document.querySelectorAll("#pp-iconpick button").forEach(function(b){b.classList.remove("on");}); btn.classList.add("on"); }
+
+function ppNodeFormHTML(v){
+  v=v||{};
+  return '<div class="field"><label>Name</label><input id="pp-f-name" type="text" value="'+ppEsc(v.name||"")+'" placeholder="e.g. App, Web, Admin Panel"></div>'
+   + '<div class="field"><label>Icon</label><div class="pp-iconpick" id="pp-iconpick">'+ppIconPickHTML(v.icon||"")+'</div><input type="hidden" id="pp-f-icon" value="'+ppEsc(v.icon||"")+'"></div>'
+   + '<div class="field"><label>Short description</label><textarea id="pp-f-desc" placeholder="One line on what this is and who it is for">'+ppEsc(v.desc||"")+'</textarea></div>';
+}
+function ppRootFormHTML(v){
+  v=v||{};
+  return '<div class="field"><label>Intro</label><textarea id="pp-f-desc" placeholder="A short welcome / what this hub is for. New joiners read this first.">'+ppEsc(v.desc||"")+'</textarea></div>';
+}
+function ppFeatureFormHTML(v, mods){
+  v=v||{};
+  var opt=[["live","Live"],["dev","Under development"],["idea","Under ideation"]].map(function(o){ return '<option value="'+o[0]+'"'+(v.status===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join("");
+  var dl=(mods||[]).map(function(m){ return '<option value="'+ppEsc(m)+'"></option>'; }).join("");
+  return '<div class="field"><label>Module</label><input id="pp-f-mod" type="text" list="pp-modlist" value="'+ppEsc(v.module||"")+'" placeholder="e.g. Practice Engine"><datalist id="pp-modlist">'+dl+'</datalist></div>'
+   + '<div class="field"><label>Feature</label><input id="pp-f-feat" type="text" value="'+ppEsc(v.feat||"")+'" placeholder="e.g. Adaptive practice"></div>'
+   + '<div class="field"><label>Built for</label><input id="pp-f-who" type="text" value="'+ppEsc(v.who||"")+'" placeholder="Users / Teachers / Internal / Both"></div>'
+   + '<div class="field"><label>What it solves</label><textarea id="pp-f-solves" placeholder="The problem this solves, in one line">'+ppEsc(v.solves||"")+'</textarea></div>'
+   + '<div class="field"><label>Status</label><select id="pp-f-status">'+opt+'</select></div>';
+}
+function ppStepFormHTML(v){
+  v=v||{};
+  return '<div class="field"><label>Step</label><input id="pp-f-step" type="text" value="'+ppEsc(v.t||"")+'" placeholder="e.g. Take a mock test"></div>'
+   + '<div class="field"><label>Tag / area (optional)</label><input id="pp-f-steptag" type="text" value="'+ppEsc(v.tag||"")+'" placeholder="e.g. Mock Tests"></div>';
+}
+
+/* ---------- CRUD ---------- */
+function ppAddChild(){
+  var parent = productNodeAt(productPath);
+  var word = productPath.length===0 ? "category" : "solution";
+  ppOpenDialog("Add "+word, ppNodeFormHTML({}), function(){
+    var name=$("pp-f-name").value.trim(); if(!name){ $("pp-f-name").focus(); return; }
+    parent.children = parent.children || [];
+    parent.children.push({ id:ppid(), name:name, icon:$("pp-f-icon").value, desc:$("pp-f-desc").value.trim(), children:[], features:[], flow:null });
+    ppCloseDialog(); ppCommit();
+  });
+}
+function ppEditNode(id){
+  var node = ppNodeById(id);
+  if(!node) return;
+  if(id==="__root__"){
+    ppOpenDialog("Edit Our Product", ppRootFormHTML({desc:PRODUCT.desc||""}), function(){
+      PRODUCT.desc = $("pp-f-desc").value.trim(); ppCloseDialog(); ppCommit();
+    });
+    return;
+  }
+  var danger = '<button onclick="ppDeleteNode(\''+id+'\')">Delete this</button>';
+  ppOpenDialog("Edit", ppNodeFormHTML(node), function(){
+    var name=$("pp-f-name").value.trim(); if(!name){ $("pp-f-name").focus(); return; }
+    node.name=name; node.icon=$("pp-f-icon").value; node.desc=$("pp-f-desc").value.trim();
+    ppCloseDialog(); ppCommit();
+  }, danger);
+}
+function ppDeleteNode(id){
+  var node=ppNodeById(id); if(!node){ ppCloseDialog(); return; }
+  if(!window.confirm('Delete "'+(node.name||"this")+'" and everything inside it? This cannot be undone.')) return;
+  ppRemoveById(id);
+  var i=productPath.indexOf(id); if(i>=0) productPath=productPath.slice(0,i);
+  ppCloseDialog(); ppCommit();
+}
+function ppAddFeature(nodeId, encMod){
+  var node = ppNodeById(nodeId); if(!node) return;
+  var preset = encMod ? decodeURIComponent(encMod) : "";
+  ppOpenDialog("Add feature", ppFeatureFormHTML({module:preset,status:"idea"}, ppModulesOf(node)), function(){
+    var feat=$("pp-f-feat").value.trim(); if(!feat){ $("pp-f-feat").focus(); return; }
+    node.features = node.features || [];
+    node.features.push({ module:$("pp-f-mod").value.trim()||"General", feat:feat, who:$("pp-f-who").value.trim(), solves:$("pp-f-solves").value.trim(), status:$("pp-f-status").value });
+    ppCloseDialog(); ppCommit();
+  });
+}
+function ppEditFeature(nodeId, idx){
+  var node = ppNodeById(nodeId); if(!node||!node.features||!node.features[idx]) return;
+  var f = node.features[idx];
+  var danger = '<button onclick="ppDeleteFeature(\''+nodeId+'\','+idx+')">Delete feature</button>';
+  ppOpenDialog("Edit feature", ppFeatureFormHTML(f, ppModulesOf(node)), function(){
+    var feat=$("pp-f-feat").value.trim(); if(!feat){ $("pp-f-feat").focus(); return; }
+    f.module=$("pp-f-mod").value.trim()||"General"; f.feat=feat; f.who=$("pp-f-who").value.trim(); f.solves=$("pp-f-solves").value.trim(); f.status=$("pp-f-status").value;
+    ppCloseDialog(); ppCommit();
+  }, danger);
+}
+function ppDeleteFeature(nodeId, idx){
+  var node=ppNodeById(nodeId); if(!node||!node.features) return;
+  node.features.splice(idx,1); ppCloseDialog(); ppCommit();
+}
+function ppAddFlow(nodeId){
+  var node=ppNodeById(nodeId); if(!node) return;
+  node.flow = node.flow || {steps:[],loop:""};
+  ppAddStep(nodeId);
+}
+function ppAddStep(nodeId){
+  var node=ppNodeById(nodeId); if(!node) return;
+  node.flow = node.flow || {steps:[],loop:""};
+  ppOpenDialog("Add step", ppStepFormHTML({}), function(){
+    var t=$("pp-f-step").value.trim(); if(!t){ $("pp-f-step").focus(); return; }
+    node.flow.steps.push({ t:t, tag:$("pp-f-steptag").value.trim() });
+    ppCloseDialog(); ppCommit();
+  });
+}
+function ppEditStep(nodeId, idx){
+  var node=ppNodeById(nodeId); if(!node||!node.flow||!node.flow.steps[idx]) return;
+  var st=node.flow.steps[idx];
+  var danger='<button onclick="ppDeleteStep(\''+nodeId+'\','+idx+')">Delete step</button>';
+  ppOpenDialog("Edit step", ppStepFormHTML(st), function(){
+    var t=$("pp-f-step").value.trim(); if(!t){ $("pp-f-step").focus(); return; }
+    st.t=t; st.tag=$("pp-f-steptag").value.trim(); ppCloseDialog(); ppCommit();
+  }, danger);
+}
+function ppDeleteStep(nodeId, idx){
+  var node=ppNodeById(nodeId); if(!node||!node.flow) return;
+  node.flow.steps.splice(idx,1);
+  if(!node.flow.steps.length && !node.flow.loop) node.flow=null;
+  ppCloseDialog(); ppCommit();
+}
+function ppMoveStep(nodeId, idx, dir){
+  var node=ppNodeById(nodeId); if(!node||!node.flow) return;
+  var s=node.flow.steps; var j=idx+dir;
+  if(j<0||j>=s.length) return;
+  var tmp=s[idx]; s[idx]=s[j]; s[j]=tmp; ppCommit();
+}
+function ppEditLoop(nodeId){
+  var node=ppNodeById(nodeId); if(!node) return;
+  node.flow = node.flow || {steps:[],loop:""};
+  var body = '<div class="field"><label>Loop note</label><textarea id="pp-f-loop" placeholder="e.g. Analytics sends students back to practise their weak areas">'+ppEsc(node.flow.loop||"")+'</textarea></div>';
+  var danger = node.flow.loop ? '<button onclick="ppClearLoop(\''+nodeId+'\')">Remove loop note</button>' : "";
+  ppOpenDialog("Loop note", body, function(){
+    node.flow.loop=$("pp-f-loop").value.trim();
+    if(!node.flow.steps.length && !node.flow.loop) node.flow=null;
+    ppCloseDialog(); ppCommit();
+  }, danger);
+}
+function ppClearLoop(nodeId){
+  var node=ppNodeById(nodeId); if(!node||!node.flow) return;
+  node.flow.loop="";
+  if(!node.flow.steps.length) node.flow=null;
+  ppCloseDialog(); ppCommit();
+}
+
 /* ---------- controls ---------- */
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
 if($("nav-account")){ $("nav-account").onclick = openAccount; }
+if($("nav-c")){ $("nav-c").onclick = openProduct; }
+if($("pp-back")){ $("pp-back").onclick = closeProduct; }
+if($("pp-dlg-cancel")){ $("pp-dlg-cancel").onclick = ppCloseDialog; }
+if($("pp-dlg-save")){ $("pp-dlg-save").onclick = function(){ if(ppDlgSave) ppDlgSave(); }; }
 $("nav-home").onclick = ()=> navHome();
 if($("vision-toggle")){
   $("vision-toggle").onclick = ()=>{
