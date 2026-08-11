@@ -1300,6 +1300,64 @@ body{margin:0}
 #nav-c{}
 @media(max-width:760px){.pp-shell{padding:0 16px 70px}.pp-head h1{font-size:23px}}
 
+/* ================= My Team (org chart) ================= */
+.team-page{position:fixed;inset:0;z-index:390;background:var(--paper);overflow-y:auto}
+.mt-shell{max-width:1200px;margin:0 auto;padding:0 24px 90px}
+.mt-top{position:sticky;top:0;z-index:2;background:var(--paper);display:flex;align-items:center;gap:12px;padding:18px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.mt-brand{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink)}
+.mt-brand .mt-bi{width:28px;height:28px;border-radius:8px;background:var(--indigo-soft);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:15px}
+.mt-back{margin-left:auto;padding:8px 14px;border:1px solid var(--line-strong);background:var(--card);border-radius:99px;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.mt-back:hover{background:var(--paper);border-color:var(--indigo);color:var(--indigo)}
+.mt-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:18px 0 6px}
+.mt-head h1{font-family:var(--disp);font-size:26px;letter-spacing:-.02em;margin:0}
+.mt-head .mt-sub{color:var(--muted);font-size:15px;margin-top:4px;max-width:660px;line-height:1.5}
+.mt-tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+.mt-btn{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:8px 15px;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+.mt-btn:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.mt-btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.mt-btn.primary:hover{background:#3350C4;color:#fff}
+.mt-lock{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px}
+
+.mt-scroll{overflow-x:auto;padding:26px 10px 10px}
+.mt-chart{display:inline-block;min-width:100%}
+.mt-chart ul{display:flex;justify-content:center;padding-top:26px;position:relative;margin:0;list-style:none}
+.mt-chart li{list-style:none;position:relative;padding:26px 10px 0;text-align:center}
+.mt-chart li::before,.mt-chart li::after{content:'';position:absolute;top:0;right:50%;width:50%;height:26px;border-top:2px solid var(--line-strong)}
+.mt-chart li::after{right:auto;left:50%;border-left:2px solid var(--line-strong)}
+.mt-chart li:only-child::before,.mt-chart li:only-child::after{display:none}
+.mt-chart li:only-child{padding-top:26px}
+.mt-chart li:first-child::before,.mt-chart li:last-child::after{border:0 none}
+.mt-chart li:last-child::before{border-right:2px solid var(--line-strong);border-radius:0 7px 0 0}
+.mt-chart li:first-child::after{border-radius:7px 0 0 0}
+.mt-chart ul ul::before{content:'';position:absolute;top:0;left:50%;width:0;height:26px;border-left:2px solid var(--line-strong)}
+
+.mt-node{display:inline-flex;flex-direction:column;align-items:center;gap:8px;position:relative;background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;padding:14px 16px 12px;min-width:172px;transition:.12s}
+.mt-node:hover{border-color:var(--indigo);box-shadow:0 6px 18px rgba(23,35,58,.08)}
+.mt-node.mt-root{border-color:var(--indigo);background:linear-gradient(180deg,var(--indigo-soft),var(--card))}
+.mt-node .mt-av{width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;font-family:var(--disp)}
+.mt-node .mt-nm{font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.2}
+.mt-node .mt-role{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.mt-node .mt-dept{margin-top:2px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);background:var(--indigo-soft);padding:2px 8px;border-radius:99px}
+.mt-node .mt-ctl{position:absolute;top:-12px;right:-12px;display:none;gap:4px}
+.mt-node:hover .mt-ctl{display:flex}
+.mt-node .mt-ctl button{width:26px;height:26px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(23,35,58,.10)}
+.mt-node .mt-ctl button:hover{color:var(--indigo);border-color:var(--indigo)}
+.mt-node .mt-addrep{margin-top:2px;font-size:11.5px;color:var(--indigo);font-weight:600;cursor:pointer;display:none}
+.mt-node:hover .mt-addrep{display:inline-block}
+
+.mt-empty{background:var(--card);border:1.5px dashed var(--line-strong);border-radius:var(--radius);padding:40px;text-align:center;color:var(--muted);margin-top:10px}
+.mt-empty .mt-et{font-weight:700;color:var(--ink);font-size:17px;margin-bottom:6px}
+
+.mt-sw{display:flex;gap:7px;flex-wrap:wrap}
+.mt-sw button{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer}
+.mt-sw button.on{border-color:var(--ink)}
+.mt-del{margin-right:auto;color:#C0362C;border:none;background:none;font-weight:600;cursor:pointer;font-size:13px}
+.mt-del:hover{text-decoration:underline}
+
+#nav-c,#nav-d{color:var(--indigo);border-color:var(--indigo)}
+#nav-c:hover,#nav-d:hover{background:var(--indigo-soft)}
+@media(max-width:760px){.mt-shell{padding:0 14px 70px}.mt-head h1{font-size:22px}}
+
 </style>
 </head>
 <body>
@@ -1380,6 +1438,40 @@ body{margin:0}
   </div>
 </div>
 
+<div id="team-page" class="team-page" style="display:none">
+  <div class="mt-shell">
+    <div class="mt-top">
+      <div class="mt-brand"><span class="mt-bi">👥</span> My Team</div>
+      <button class="mt-back" id="mt-back">← Back to workspace</button>
+    </div>
+    <div class="mt-head">
+      <div>
+        <h1 id="mt-title-h">Team structure</h1>
+        <div class="mt-sub">How the team is organised and who reports to whom. New joiners: this is where you fit in.</div>
+      </div>
+      <div class="mt-tools" id="mt-tools"></div>
+    </div>
+    <div id="mt-canvas"></div>
+  </div>
+</div>
+
+<div class="overlay" id="mt-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:440px">
+    <h3 id="mt-title">Add person</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="mt-f-name">Name</label><input id="mt-f-name" type="text" placeholder="e.g. Aisha Khan" autocomplete="off"></div>
+      <div class="field"><label for="mt-f-role">Role / title</label><input id="mt-f-role" type="text" placeholder="e.g. Product Designer" autocomplete="off"></div>
+      <div class="field"><label for="mt-f-dept">Team / department (optional)</label><input id="mt-f-dept" type="text" placeholder="e.g. Product" autocomplete="off"></div>
+      <div class="field"><label>Avatar colour</label><div class="mt-sw" id="mt-sw"></div><input type="hidden" id="mt-f-color"></div>
+    </div>
+    <div class="btns">
+      <button class="mt-del" id="mt-del" style="display:none">Delete</button>
+      <button class="btn" id="mt-cancel">Cancel</button>
+      <button class="btn save" id="mt-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="product-page" class="product-page" style="display:none">
   <div class="pp-shell">
     <div class="pp-top">
@@ -1449,6 +1541,7 @@ body{margin:0}
       <button class="corner-nav ghost" id="nav-a">Workspace</button>
       <button class="corner-nav" id="nav-b">OKRs</button>
       <button class="corner-nav ghost" id="nav-c">Our Product</button>
+      <button class="corner-nav ghost" id="nav-d">My Team</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -2530,6 +2623,7 @@ function teamPayload(){
     spaceMembers: clean(BUILTIN_SPACE_MEMBERS), builtinHidden: clean(BUILTIN_HIDDEN),
     spaceBg: clean(SPACE_BG),
     product: clean(PRODUCT),
+    orgChart: (typeof TEAMORG!=="undefined" && TEAMORG) ? clean(TEAMORG) : null,
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2548,6 +2642,7 @@ function loadTeamData(t){
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
+  TEAMORG = normalizeOrg(t.orgChart);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2560,6 +2655,8 @@ let PRODUCT = { children:[], desc:"" };   // Our Product hub tree (per team)
 let productPath = [];
 let productFilter = "all";
 let ppDlgSave = null;
+let TEAMORG = null;   // My Team org chart (per team)
+let mtSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -9033,6 +9130,130 @@ function ppClearLoop(nodeId){
   ppCloseDialog(); ppCommit();
 }
 
+/* ================= My Team (org chart) ================= */
+const MT_COLORS=["#3B5BDB","#1F7A4D","#B26A00","#7C3AED","#0EA5A5","#DB3B7B","#D4562B","#2563EB"];
+
+function mtid(){ return "o-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function mtEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function mtInitials(n){ n=(n||"").trim(); if(!n) return "?"; return n.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join("").toUpperCase(); }
+
+function normalizeOrg(n){
+  if(!n || typeof n!=="object") return null;
+  return {
+    id: n.id || mtid(),
+    name: n.name!=null?String(n.name):"",
+    role: n.role?String(n.role):"",
+    dept: n.dept?String(n.dept):"",
+    color: n.color?String(n.color):"#3B5BDB",
+    children: Array.isArray(n.children)?n.children.map(normalizeOrg).filter(Boolean):[]
+  };
+}
+function mtFind(id, node, parent){
+  node = (node===undefined) ? TEAMORG : node;
+  if(!node) return null;
+  if(node.id===id) return {node:node, parent:parent||null};
+  var kids=node.children||[];
+  for(var i=0;i<kids.length;i++){ var r=mtFind(id, kids[i], node); if(r) return r; }
+  return null;
+}
+
+function openTeam(){ renderTeamPage(); $("team-page").style.display="block"; window.scrollTo(0,0); }
+function closeTeam(){ $("team-page").style.display="none"; }
+function mtCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
+
+function renderTeamPage(){
+  var admin = (typeof can==="function") ? can("admin") : false;
+  var teamName = (typeof TEAMS!=="undefined" && TEAMS[TEAM] && TEAMS[TEAM].name) || (typeof TEAM!=="undefined" ? TEAM : "Team");
+  if($("mt-title-h")) $("mt-title-h").textContent = teamName + " — Team";
+  $("mt-tools").innerHTML = admin
+    ? (TEAMORG ? '<button class="mt-btn" onclick="mtEdit(\''+TEAMORG.id+'\')">✎ Edit top person</button>' : '')
+    : '<span class="mt-lock">🔒 Only admins can edit</span>';
+  var canvas=$("mt-canvas");
+  if(!TEAMORG){
+    canvas.innerHTML = '<div class="mt-empty"><div class="mt-et">No org chart yet</div>'
+      + (admin ? 'Start by adding the person at the top.<br><br><button class="mt-btn primary" onclick="mtAddTop()">＋ Add top person</button>'
+               : 'The team structure will show here soon.')
+      + '</div>';
+    return;
+  }
+  canvas.innerHTML = '<div class="mt-scroll"><div class="mt-chart"><ul>'+mtNodeHTML(TEAMORG,true,admin)+'</ul></div></div>';
+}
+function mtNodeHTML(n,isRoot,admin){
+  var h='<li><div class="mt-node'+(isRoot?' mt-root':'')+'">';
+  if(admin){
+    h+='<div class="mt-ctl">'
+      +'<button title="Add report" onclick="mtAddReport(\''+n.id+'\')">＋</button>'
+      +'<button title="Edit" onclick="mtEdit(\''+n.id+'\')">✎</button>'
+      +(isRoot?'':'<button title="Remove" onclick="mtDel(\''+n.id+'\')">×</button>')
+      +'</div>';
+  }
+  h+='<span class="mt-av" style="background:'+mtEsc(n.color||'#3B5BDB')+'">'+mtEsc(mtInitials(n.name))+'</span>';
+  h+='<span class="mt-nm">'+mtEsc(n.name)+'</span>';
+  if(n.role) h+='<span class="mt-role">'+mtEsc(n.role)+'</span>';
+  if(n.dept) h+='<span class="mt-dept">'+mtEsc(n.dept)+'</span>';
+  if(admin) h+='<span class="mt-addrep" onclick="mtAddReport(\''+n.id+'\')">＋ add report</span>';
+  h+='</div>';
+  if(n.children&&n.children.length){ h+='<ul>'+n.children.map(function(c){return mtNodeHTML(c,false,admin);}).join('')+'</ul>'; }
+  h+='</li>';
+  return h;
+}
+
+/* dialog */
+function mtSwatches(cur){
+  $("mt-sw").innerHTML = MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?'on':'')+'" onclick="mtPickColor(this,\''+c+'\')"></button>'; }).join('');
+  $("mt-f-color").value = cur || MT_COLORS[0];
+}
+function mtPickColor(b,c){ $("mt-f-color").value=c; document.querySelectorAll('#mt-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function mtOpenDlg(title, vals, onSave, showDel){
+  vals=vals||{};
+  $("mt-title").textContent=title;
+  $("mt-f-name").value=vals.name||"";
+  $("mt-f-role").value=vals.role||"";
+  $("mt-f-dept").value=vals.dept||"";
+  mtSwatches(vals.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
+  mtSave=onSave;
+  $("mt-del").style.display = showDel ? "inline" : "none";
+  $("mt-dialog").classList.add("show");
+  setTimeout(function(){ $("mt-f-name").focus(); }, 30);
+}
+function mtCloseDlg(){ $("mt-dialog").classList.remove("show"); mtSave=null; }
+function mtReadVals(){ return { name:$("mt-f-name").value.trim(), role:$("mt-f-role").value.trim(), dept:$("mt-f-dept").value.trim(), color:$("mt-f-color").value }; }
+
+function mtAddTop(){
+  mtOpenDlg("Add top person", {}, function(){
+    var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
+    TEAMORG = { id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, children:[] };
+    mtCloseDlg(); mtCommit();
+  }, false);
+}
+function mtAddReport(id){
+  var f=mtFind(id); if(!f) return;
+  mtOpenDlg("Add report under "+f.node.name, {}, function(){
+    var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
+    f.node.children = f.node.children || [];
+    f.node.children.push({ id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, children:[] });
+    mtCloseDlg(); mtCommit();
+  }, false);
+}
+function mtEdit(id){
+  var f=mtFind(id); if(!f) return;
+  var isRoot = TEAMORG && id===TEAMORG.id;
+  mtOpenDlg("Edit "+f.node.name, f.node, function(){
+    var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
+    f.node.name=v.name; f.node.role=v.role; f.node.dept=v.dept; f.node.color=v.color;
+    mtCloseDlg(); mtCommit();
+  }, !isRoot);
+  $("mt-del").onclick = function(){ mtDel(id); };
+}
+function mtDel(id){
+  var f=mtFind(id); if(!f){ mtCloseDlg(); return; }
+  var msg = f.node.children&&f.node.children.length ? 'Remove '+f.node.name+' and everyone reporting under them?' : 'Remove '+f.node.name+'?';
+  if(!window.confirm(msg)) return;
+  if(!f.parent){ TEAMORG=null; }              // removing the top person clears the chart
+  else { f.parent.children = f.parent.children.filter(function(c){return c.id!==id;}); }
+  mtCloseDlg(); mtCommit();
+}
+
 /* ---------- controls ---------- */
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
@@ -9043,6 +9264,10 @@ if($("nav-c")){ $("nav-c").onclick = openProduct; }
 if($("pp-back")){ $("pp-back").onclick = closeProduct; }
 if($("pp-dlg-cancel")){ $("pp-dlg-cancel").onclick = ppCloseDialog; }
 if($("pp-dlg-save")){ $("pp-dlg-save").onclick = function(){ if(ppDlgSave) ppDlgSave(); }; }
+if($("nav-d")){ $("nav-d").onclick = openTeam; }
+if($("mt-back")){ $("mt-back").onclick = closeTeam; }
+if($("mt-cancel")){ $("mt-cancel").onclick = mtCloseDlg; }
+if($("mt-save")){ $("mt-save").onclick = function(){ if(mtSave) mtSave(); }; }
 $("nav-home").onclick = ()=> navHome();
 if($("vision-toggle")){
   $("vision-toggle").onclick = ()=>{
