@@ -1358,6 +1358,50 @@ body{margin:0}
 #nav-c:hover,#nav-d:hover{background:var(--indigo-soft)}
 @media(max-width:760px){.mt-shell{padding:0 14px 70px}.mt-head h1{font-size:22px}}
 
+/* ================= My Team — Squads view ================= */
+.mt-viewtoggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:3px;margin-left:auto}
+.mt-viewtoggle button{border:none;background:none;border-radius:99px;padding:6px 14px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
+.mt-viewtoggle button.on{background:var(--indigo);color:#fff}
+.mt-top .mt-back{margin-left:0}
+
+.sq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:12px}
+.sq-card{background:var(--card);border:1px solid var(--line);border-top-width:3px;border-top-style:solid;border-radius:14px;padding:0 18px 16px}
+.sq-h{display:flex;align-items:center;gap:9px;padding-top:15px;margin-bottom:9px}
+.sq-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.sq-nm{font-family:var(--disp);font-weight:700;font-size:17px}
+.sq-edit{margin-left:auto;width:26px;height:26px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);cursor:pointer;font-size:12px}
+.sq-edit:hover{color:var(--indigo);border-color:var(--indigo)}
+.sq-mission{color:var(--muted);font-size:13.5px;line-height:1.5;margin-bottom:12px}
+.sq-metric{font-size:13px;background:var(--done-bg);color:var(--done);border-radius:8px;padding:8px 11px;margin-bottom:12px}
+.sq-mlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-right:6px;opacity:.9}
+.sq-members{display:flex;flex-wrap:wrap;gap:7px}
+.sq-chip{background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:12.5px;color:var(--ink)}
+.sq-chip b{font-weight:600}
+.sq-empty{color:var(--muted);font-size:12.5px;font-style:italic}
+.sq-add{border:1.5px dashed var(--line-strong);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-weight:600;cursor:pointer;min-height:150px;background:var(--card)}
+.sq-add:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.sq-add .sq-plus{font-size:26px}
+
+.sq-mrow{display:flex;gap:8px;margin-bottom:8px}
+.sq-mrow input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;color:var(--ink)}
+.sq-mdel{width:34px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
+.sq-mdel:hover{color:#C0362C;border-color:#C0362C}
+.sq-addmem{color:var(--indigo);font-weight:600;font-size:13px;cursor:pointer;border:none;background:none;padding:6px 0 0}
+
+/* ================= My Team — Matrix view (functions x squads) ================= */
+.mx-wrap{margin-top:12px}
+.mx-hint{font-size:12.5px;color:var(--muted);background:var(--indigo-soft);border:1px solid #C9D3F5;border-radius:10px;padding:10px 13px;margin-bottom:14px;line-height:1.5}
+.mx-scroll{overflow-x:auto;border:1px solid var(--line-strong);border-radius:14px;background:var(--card)}
+.mx-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.mx-tbl th,.mx-tbl td{border:1px solid var(--line-strong);padding:10px 12px;vertical-align:top}
+.mx-corner{background:#1E2A44;color:#fff;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;text-align:left;white-space:nowrap}
+.mx-col{background:var(--indigo-soft);color:var(--ink);text-align:left;font-weight:700;font-size:13px;white-space:nowrap}
+.mx-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.mx-row{background:#FAFBFD;font-weight:700;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+.mx-cell{min-width:120px}
+.mx-person{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12.5px;margin:2px 3px 2px 0}
+.mx-none{color:var(--line-strong)}
+
 </style>
 </head>
 <body>
@@ -1442,16 +1486,39 @@ body{margin:0}
   <div class="mt-shell">
     <div class="mt-top">
       <div class="mt-brand"><span class="mt-bi">👥</span> My Team</div>
+      <div class="mt-viewtoggle">
+        <button id="mt-view-org" class="on" onclick="mtSetView('org')">Reporting lines</button>
+        <button id="mt-view-squads" onclick="mtSetView('squads')">Squads</button>
+        <button id="mt-view-matrix" onclick="mtSetView('matrix')">Matrix</button>
+      </div>
       <button class="mt-back" id="mt-back">← Back to workspace</button>
     </div>
     <div class="mt-head">
       <div>
         <h1 id="mt-title-h">Team structure</h1>
-        <div class="mt-sub">How the team is organised and who reports to whom. New joiners: this is where you fit in.</div>
+        <div class="mt-sub" id="mt-sub">How the team is organised and who reports to whom. New joiners: this is where you fit in.</div>
       </div>
       <div class="mt-tools" id="mt-tools"></div>
     </div>
     <div id="mt-canvas"></div>
+  </div>
+</div>
+
+<div class="overlay" id="sq-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3 id="sq-title">Add squad</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="sq-f-name">Squad name</label><input id="sq-f-name" type="text" placeholder="e.g. Dubuddy squad" autocomplete="off"></div>
+      <div class="field"><label for="sq-f-mission">Mission</label><textarea id="sq-f-mission" placeholder="What this squad owns, in one line"></textarea></div>
+      <div class="field"><label for="sq-f-metric">One metric</label><input id="sq-f-metric" type="text" placeholder="e.g. Weekly active learners" autocomplete="off"></div>
+      <div class="field"><label>Colour</label><div class="mt-sw" id="sq-sw"></div><input type="hidden" id="sq-f-color"></div>
+      <div class="field"><label>Members</label><div id="sq-members-edit"></div><button type="button" class="sq-addmem" id="sq-addmem">＋ Add member</button></div>
+    </div>
+    <div class="btns">
+      <button class="mt-del" id="sq-del" style="display:none">Delete squad</button>
+      <button class="btn" id="sq-cancel">Cancel</button>
+      <button class="btn save" id="sq-save">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2624,6 +2691,7 @@ function teamPayload(){
     spaceBg: clean(SPACE_BG),
     product: clean(PRODUCT),
     orgChart: (typeof TEAMORG!=="undefined" && TEAMORG) ? clean(TEAMORG) : null,
+    squads: (typeof TEAMSQUADS!=="undefined") ? clean(TEAMSQUADS) : [],
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2643,6 +2711,7 @@ function loadTeamData(t){
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
   TEAMORG = normalizeOrg(t.orgChart);
+  TEAMSQUADS = normalizeSquads(t.squads);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2657,6 +2726,9 @@ let productFilter = "all";
 let ppDlgSave = null;
 let TEAMORG = null;   // My Team org chart (per team)
 let mtSave = null;
+let mtView = "org";
+let TEAMSQUADS = [];
+let sqSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
@@ -9157,11 +9229,11 @@ function mtFind(id, node, parent){
   return null;
 }
 
-function openTeam(){ renderTeamPage(); $("team-page").style.display="block"; window.scrollTo(0,0); }
+function openTeam(){ mtView="org"; renderTeamPage(); $("team-page").style.display="block"; window.scrollTo(0,0); }
 function closeTeam(){ $("team-page").style.display="none"; }
 function mtCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
 
-function renderTeamPage(){
+function renderOrgView(){
   var admin = (typeof can==="function") ? can("admin") : false;
   var teamName = (typeof TEAMS!=="undefined" && TEAMS[TEAM] && TEAMS[TEAM].name) || (typeof TEAM!=="undefined" ? TEAM : "Team");
   if($("mt-title-h")) $("mt-title-h").textContent = teamName + " — Team";
@@ -9254,6 +9326,144 @@ function mtDel(id){
   mtCloseDlg(); mtCommit();
 }
 
+/* ================= My Team — Squads view ================= */
+function sqid(){ return "s-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function normalizeSquads(a){
+  if(!Array.isArray(a)) return [];
+  return a.map(function(s){ s=s||{}; return {
+    id: s.id || sqid(),
+    name: s.name!=null?String(s.name):"",
+    mission: s.mission?String(s.mission):"",
+    metric: s.metric?String(s.metric):"",
+    color: s.color?String(s.color):"#3B5BDB",
+    members: Array.isArray(s.members)?s.members.map(function(m){ m=m||{}; return {name:m.name?String(m.name):"", role:m.role?String(m.role):""}; }).filter(function(m){return m.name;}):[]
+  }; }).filter(function(s){ return s.name || s.members.length; });
+}
+function sqFind(id){ for(var i=0;i<TEAMSQUADS.length;i++){ if(TEAMSQUADS[i].id===id) return TEAMSQUADS[i]; } return null; }
+function sqCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
+
+function mtSetView(v){ mtView=v; renderTeamPage(); }
+
+/* dispatcher — replaces the old single-view render */
+function renderTeamPage(){
+  if($("mt-view-org")) $("mt-view-org").classList.toggle("on", mtView==="org");
+  if($("mt-view-squads")) $("mt-view-squads").classList.toggle("on", mtView==="squads");
+  if($("mt-view-matrix")) $("mt-view-matrix").classList.toggle("on", mtView==="matrix");
+  if($("mt-sub")) $("mt-sub").textContent = (mtView==="squads")
+    ? "Cross-functional squads — each with a mission, one metric, and its members."
+    : (mtView==="matrix")
+    ? "Functions x squads — auto-built from your squads. The view you grow into as you scale."
+    : "How the team is organised and who reports to whom. New joiners: this is where you fit in.";
+  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else renderOrgView();
+}
+
+function renderMatrixView(){
+  $("mt-tools").innerHTML = '<span class="mt-lock">Auto-built from your squads</span>';
+  var c=$("mt-canvas");
+  var squads = TEAMSQUADS || [];
+  var funcs=[];
+  squads.forEach(function(s){ (s.members||[]).forEach(function(m){ var f=(m.role||"").trim()||"Unassigned"; if(funcs.indexOf(f)<0) funcs.push(f); }); });
+  if(!squads.length || !funcs.length){
+    c.innerHTML = '<div class="mt-empty"><div class="mt-et">Your matrix will build itself here</div>'
+      + 'This grid crosses your <b>functions</b> (the roles you give squad members) against your <b>squads</b>. '
+      + 'Add a few squads with members in the Squads tab and this fills in automatically — the view you grow into as the team scales.</div>';
+    return;
+  }
+  var h = '<div class="mx-wrap"><div class="mx-hint">Rows = functions (career / craft) · Columns = squads (mission). Each person sits where their function meets their squad. This view is generated from the Squads tab — nothing to fill in here.</div>';
+  h += '<div class="mx-scroll"><table class="mx-tbl"><thead><tr><th class="mx-corner">Function \\ Squad</th>';
+  squads.forEach(function(s){ h += '<th class="mx-col"><span class="mx-dot" style="background:'+mtEsc(s.color||'#3B5BDB')+'"></span>'+mtEsc(s.name)+'</th>'; });
+  h += '</tr></thead><tbody>';
+  funcs.forEach(function(f){
+    h += '<tr><td class="mx-row">'+mtEsc(f)+'</td>';
+    squads.forEach(function(s){
+      var people=(s.members||[]).filter(function(m){ return ((m.role||"").trim()||"Unassigned")===f; });
+      h += '<td class="mx-cell">'+(people.length ? people.map(function(m){ return '<span class="mx-person">'+mtEsc(m.name)+'</span>'; }).join('') : '<span class="mx-none">·</span>')+'</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div></div>';
+  c.innerHTML = h;
+}
+
+function renderSquadsView(){
+  var admin = (typeof can==="function") ? can("admin") : false;
+  $("mt-tools").innerHTML = admin
+    ? '<button class="mt-btn primary" onclick="sqAdd()">＋ Add squad</button>'
+    : '<span class="mt-lock">🔒 Only admins can edit</span>';
+  var c=$("mt-canvas");
+  if(!TEAMSQUADS.length){
+    c.innerHTML = '<div class="mt-empty"><div class="mt-et">No squads yet</div>'
+      + (admin ? 'A squad is a small cross-functional team with one mission and one metric.<br><br><button class="mt-btn primary" onclick="sqAdd()">＋ Add your first squad</button>'
+               : 'Squads will show here soon.')
+      + '</div>';
+    return;
+  }
+  var h='<div class="sq-grid">';
+  TEAMSQUADS.forEach(function(s){ h+=sqCardHTML(s,admin); });
+  if(admin) h+='<div class="sq-add" onclick="sqAdd()"><span class="sq-plus">＋</span>Add squad</div>';
+  h+='</div>';
+  c.innerHTML=h;
+}
+function sqCardHTML(s,admin){
+  var mem=(s.members||[]).map(function(m){ return '<span class="sq-chip"><b>'+mtEsc(m.name)+'</b>'+(m.role?' · '+mtEsc(m.role):'')+'</span>'; }).join('');
+  return '<div class="sq-card" style="border-top-color:'+mtEsc(s.color||'#3B5BDB')+'">'
+    + '<div class="sq-h"><span class="sq-dot" style="background:'+mtEsc(s.color||'#3B5BDB')+'"></span><span class="sq-nm">'+mtEsc(s.name)+'</span>'
+    + (admin?'<button class="sq-edit" title="Edit" onclick="sqEdit(\''+s.id+'\')">✎</button>':'')+'</div>'
+    + (s.mission?'<div class="sq-mission">'+mtEsc(s.mission)+'</div>':'')
+    + (s.metric?'<div class="sq-metric"><span class="sq-mlabel">Metric</span>'+mtEsc(s.metric)+'</div>':'')
+    + '<div class="sq-members">'+(mem||'<span class="sq-empty">No members yet</span>')+'</div>'
+    + '</div>';
+}
+
+/* dialog */
+function sqSwatches(cur){
+  $("sq-sw").innerHTML = MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?'on':'')+'" onclick="sqPickColor(this,\''+c+'\')"></button>'; }).join('');
+  $("sq-f-color").value = cur || MT_COLORS[0];
+}
+function sqPickColor(b,c){ $("sq-f-color").value=c; document.querySelectorAll('#sq-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function sqMemberRowHTML(m){ m=m||{}; return '<div class="sq-mrow"><input class="sq-mname" type="text" placeholder="Name" value="'+mtEsc(m.name||'')+'"><input class="sq-mrole" type="text" placeholder="Function / role" value="'+mtEsc(m.role||'')+'"><button type="button" class="sq-mdel" title="Remove" onclick="this.parentNode.remove()">×</button></div>'; }
+function sqAddMemberRow(){ var w=$("sq-members-edit"); w.insertAdjacentHTML('beforeend', sqMemberRowHTML({})); var rows=w.querySelectorAll('.sq-mname'); if(rows.length) rows[rows.length-1].focus(); }
+function sqReadMembers(){ var out=[]; $("sq-members-edit").querySelectorAll('.sq-mrow').forEach(function(r){ var n=r.querySelector('.sq-mname').value.trim(); var role=r.querySelector('.sq-mrole').value.trim(); if(n) out.push({name:n, role:role}); }); return out; }
+function sqOpenDialog(title, s, showDel){
+  s=s||{};
+  $("sq-title").textContent=title;
+  $("sq-f-name").value=s.name||"";
+  $("sq-f-mission").value=s.mission||"";
+  $("sq-f-metric").value=s.metric||"";
+  sqSwatches(s.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
+  var mw=$("sq-members-edit");
+  mw.innerHTML = (s.members&&s.members.length) ? s.members.map(sqMemberRowHTML).join('') : sqMemberRowHTML({});
+  $("sq-del").style.display = showDel ? "inline" : "none";
+  $("sq-dialog").classList.add("show");
+  setTimeout(function(){ $("sq-f-name").focus(); }, 30);
+}
+function sqCloseDialog(){ $("sq-dialog").classList.remove("show"); sqSave=null; }
+
+function sqAdd(){
+  sqOpenDialog("Add squad", {}, false);
+  sqSave=function(){
+    var name=$("sq-f-name").value.trim(); if(!name){ $("sq-f-name").focus(); return; }
+    TEAMSQUADS.push({ id:sqid(), name:name, mission:$("sq-f-mission").value.trim(), metric:$("sq-f-metric").value.trim(), color:$("sq-f-color").value, members:sqReadMembers() });
+    sqCloseDialog(); sqCommit();
+  };
+}
+function sqEdit(id){
+  var s=sqFind(id); if(!s) return;
+  sqOpenDialog("Edit squad", s, true);
+  sqSave=function(){
+    var name=$("sq-f-name").value.trim(); if(!name){ $("sq-f-name").focus(); return; }
+    s.name=name; s.mission=$("sq-f-mission").value.trim(); s.metric=$("sq-f-metric").value.trim(); s.color=$("sq-f-color").value; s.members=sqReadMembers();
+    sqCloseDialog(); sqCommit();
+  };
+  $("sq-del").onclick=function(){ sqDelete(id); };
+}
+function sqDelete(id){
+  var s=sqFind(id); if(!s){ sqCloseDialog(); return; }
+  if(!window.confirm('Delete "'+(s.name||"this squad")+'"?')) return;
+  TEAMSQUADS = TEAMSQUADS.filter(function(x){ return x.id!==id; });
+  sqCloseDialog(); sqCommit();
+}
+
 /* ---------- controls ---------- */
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
@@ -9268,6 +9478,9 @@ if($("nav-d")){ $("nav-d").onclick = openTeam; }
 if($("mt-back")){ $("mt-back").onclick = closeTeam; }
 if($("mt-cancel")){ $("mt-cancel").onclick = mtCloseDlg; }
 if($("mt-save")){ $("mt-save").onclick = function(){ if(mtSave) mtSave(); }; }
+if($("sq-cancel")){ $("sq-cancel").onclick = sqCloseDialog; }
+if($("sq-save")){ $("sq-save").onclick = function(){ if(sqSave) sqSave(); }; }
+if($("sq-addmem")){ $("sq-addmem").onclick = sqAddMemberRow; }
 $("nav-home").onclick = ()=> navHome();
 if($("vision-toggle")){
   $("vision-toggle").onclick = ()=>{
