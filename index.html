@@ -1354,8 +1354,8 @@ body{margin:0}
 .mt-del{margin-right:auto;color:#C0362C;border:none;background:none;font-weight:600;cursor:pointer;font-size:13px}
 .mt-del:hover{text-decoration:underline}
 
-#nav-c,#nav-d{color:var(--indigo);border-color:var(--indigo)}
-#nav-c:hover,#nav-d:hover{background:var(--indigo-soft)}
+#nav-c,#nav-d,#nav-e{color:var(--indigo);border-color:var(--indigo)}
+#nav-c:hover,#nav-d:hover,#nav-e:hover{background:var(--indigo-soft)}
 @media(max-width:760px){.mt-shell{padding:0 14px 70px}.mt-head h1{font-size:22px}}
 
 /* ================= My Team — Squads view ================= */
@@ -1524,6 +1524,87 @@ body{margin:0}
 .accd-items li:before{content:"";position:absolute;left:2px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--done)}
 .accd-none{color:var(--muted);font-style:italic;font-size:13px}
 
+/* ================= Docs (templates + documents) ================= */
+.docs-page{position:fixed;inset:0;background:var(--paper);z-index:390;overflow:auto}
+.dp-shell{max-width:960px;margin:0 auto;padding:22px 22px 80px}
+.dp-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.dp-brand{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:800;font-size:18px}
+.dp-bi{font-size:20px}
+.dp-back{margin-left:auto;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 16px;font-weight:600;font-size:13px;cursor:pointer}
+.dp-back:hover{border-color:var(--indigo);color:var(--indigo)}
+.dp-head{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.dp-h1{font-size:23px;letter-spacing:-.02em;margin:0 0 3px}
+.dp-sub{color:var(--muted);font-size:14px}
+
+/* library */
+.dl-bar{display:flex;gap:10px;align-items:center;margin:6px 0 20px;flex-wrap:wrap}
+.dl-search{flex:1;min-width:180px;padding:9px 13px;border:1px solid var(--line-strong);border-radius:10px;font:inherit;color:var(--ink)}
+.dl-sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.dl-tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.dl-tpl{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.dl-tpl:hover{border-color:var(--indigo);box-shadow:0 4px 14px rgba(59,91,219,.10)}
+.dl-tpl-ic{font-size:22px;margin-bottom:8px}
+.dl-tpl-nm{font-weight:700;font-size:14px;margin-bottom:3px}
+.dl-tpl-desc{font-size:12px;color:var(--muted);line-height:1.45}
+.dl-tpl-tag{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.dl-tpl.custom .dl-tpl-tag{color:var(--indigo)}
+.dl-docs{display:flex;flex-direction:column;gap:8px}
+.dl-doc{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:13px 15px;cursor:pointer}
+.dl-doc:hover{border-color:var(--indigo)}
+.dl-doc-ic{font-size:18px}
+.dl-doc-main{flex:1;min-width:0}
+.dl-doc-title{font-weight:700;font-size:14.5px}
+.dl-doc-meta{font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.dl-doc-del{width:30px;height:30px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer;opacity:0}
+.dl-doc:hover .dl-doc-del{opacity:1}
+.dl-doc-del:hover{color:#C0362C;border-color:#C0362C}
+.dl-empty{color:var(--muted);font-size:13.5px;padding:14px 0}
+
+/* doc view */
+.dv-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.dv-back{border:1px solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
+.dv-back:hover{border-color:var(--indigo);color:var(--indigo)}
+.dv-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.dv-title{font-size:26px;letter-spacing:-.02em;margin:2px 0 4px;font-weight:800}
+.dv-meta{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:22px}
+.doc-body{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 32px}
+.doc-h{font-size:17px;font-weight:700;margin:22px 0 9px;letter-spacing:-.01em}
+.doc-h:first-child{margin-top:0}
+.doc-p{font-size:14px;line-height:1.65;color:var(--ink);margin:0 0 14px;white-space:pre-wrap}
+.doc-p.empty{color:var(--line-strong);font-style:italic}
+.doc-ul{margin:0 0 14px;padding-left:20px}
+.doc-ul li{font-size:14px;line-height:1.6;margin-bottom:4px}
+.doc-ul .doc-ul-empty{color:var(--line-strong);font-style:italic;list-style:none;margin-left:-20px}
+.doc-fields{width:100%;border-collapse:collapse;margin:0 0 16px;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.doc-fields td{border:1px solid var(--line);padding:11px 13px;font-size:13.5px;vertical-align:top}
+.doc-fields td.dfl{background:#F5F7FA;font-weight:600;width:34%;white-space:nowrap}
+.doc-fields td.dfv{color:var(--ink)}
+.doc-fields td.dfv.empty{color:var(--line-strong)}
+
+/* doc edit */
+.doc-title-input{width:100%;font-size:26px;font-weight:800;border:none;border-bottom:2px solid var(--line);padding:4px 0 8px;margin-bottom:16px;font-family:var(--disp);color:var(--ink);background:transparent}
+.doc-title-input:focus{outline:none;border-color:var(--indigo)}
+.doc-edit-blk{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;background:#FCFCFE}
+.doc-blk-tb{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.doc-blk-type{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:auto}
+.doc-blk-tb button{width:26px;height:26px;border:1px solid var(--line-strong);border-radius:7px;background:var(--card);color:var(--muted);cursor:pointer;font-size:12px}
+.doc-blk-tb button:hover{color:var(--indigo);border-color:var(--indigo)}
+.doc-blk-tb button.del:hover{color:#C0362C;border-color:#C0362C}
+.doc-h-input,.doc-t-input,.doc-b-input{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;font:inherit;color:var(--ink)}
+.doc-h-input{font-weight:700;font-size:16px}
+.doc-t-input,.doc-b-input{min-height:70px;line-height:1.5;resize:vertical}
+.doc-b-hint,.doc-f-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.doc-f-rows{display:flex;flex-direction:column;gap:7px}
+.doc-f-row{display:flex;gap:7px}
+.doc-f-label{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;font-weight:600;color:var(--ink)}
+.doc-f-value{flex:2;min-width:0;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;color:var(--ink)}
+.doc-f-del{width:32px;flex:none;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
+.doc-f-del:hover{color:#C0362C;border-color:#C0362C}
+.doc-f-addrow{color:var(--indigo);font-weight:600;font-size:12.5px;cursor:pointer;border:none;background:none;padding:6px 0 0}
+.doc-addbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-strong)}
+.doc-addbar button{border:1px solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;font-weight:600;font-size:12.5px;cursor:pointer}
+.doc-addbar button:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+
 </style>
 </head>
 <body>
@@ -1601,6 +1682,16 @@ body{margin:0}
       <button class="btn" onclick="document.getElementById('invite-overlay').classList.remove('show')">Cancel</button>
       <button class="btn save" id="iv-add">Add / invite</button>
     </div>
+  </div>
+</div>
+
+<div id="docs-page" class="docs-page" style="display:none">
+  <div class="dp-shell">
+    <div class="dp-top">
+      <div class="dp-brand"><span class="dp-bi">📄</span> Docs</div>
+      <button class="dp-back" id="docs-back">← Back to workspace</button>
+    </div>
+    <div id="dp-body"></div>
   </div>
 </div>
 
@@ -1790,6 +1881,7 @@ body{margin:0}
       <button class="corner-nav" id="nav-b">OKRs</button>
       <button class="corner-nav ghost" id="nav-c">Our Product</button>
       <button class="corner-nav ghost" id="nav-d">My Team</button>
+      <button class="corner-nav ghost" id="nav-e">Docs</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -2875,6 +2967,7 @@ function teamPayload(){
     squads: (typeof TEAMSQUADS!=="undefined") ? clean(TEAMSQUADS) : [],
     ownership: (typeof TEAMOWN!=="undefined") ? clean(TEAMOWN) : null,
     perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
+    docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -2897,6 +2990,7 @@ function loadTeamData(t){
   TEAMSQUADS = normalizeSquads(t.squads);
   TEAMOWN = normalizeOwnership(t.ownership);
   TEAMPERF = normalizePerf(t.perf);
+  TEAMDOCS = normalizeDocs(t.docs);
   syncContentSpaces();
   syncModuleSpaces();
   loadRecent();
@@ -2917,6 +3011,11 @@ let sqSave = null;
 let TEAMOWN = { roles:[] };
 let ownSave = null;
 let TEAMPERF = { people:[] };
+let TEAMDOCS = { docs:[], templates:[] };
+let docOpenId = null;
+let docEditing = false;
+let docBackup = null;
+let docSearch = "";
 let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
@@ -9562,6 +9661,256 @@ function renderTeamPage(){
   if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else renderOrgView();
 }
 
+/* ================= Docs: templates + documents ================= */
+function docid(){ return "doc-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function blkid(){ return "b-"+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-2); }
+function tplid(){ return "tpl-"+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-2); }
+function docToday(){ return new Date().toISOString().slice(0,10); }
+
+/* ----- built-in templates ----- */
+function docBuiltins(){
+  return [
+    { id:"bi-blank", name:"Blank doc", icon:"📄", desc:"Start from an empty page.", blocks:[
+      {type:"heading",text:"Section title"},{type:"text",text:""}
+    ]},
+    { id:"bi-comp", name:"Competitive analysis", icon:"🏅", desc:"Document a competitor's offering and strategy.", blocks:[
+      {type:"heading",text:"Competitor profile"},
+      {type:"fields",rows:[{label:"Competitor",value:""},{label:"Date created",value:""},{label:"Analysis by",value:""},{label:"Tier (1–3)",value:""}]},
+      {type:"heading",text:"Company profile"},
+      {type:"fields",rows:[{label:"Company mission",value:""},{label:"Key objectives",value:""},{label:"Strengths",value:""},{label:"Weaknesses",value:""}]},
+      {type:"heading",text:"Notes"},{type:"text",text:""}
+    ]},
+    { id:"bi-1on1", name:"1-on-1 meeting", icon:"🗣️", desc:"Run a productive 1-on-1 and track follow-ups.", blocks:[
+      {type:"fields",rows:[{label:"Date",value:""},{label:"With",value:""}]},
+      {type:"heading",text:"Talking points"},{type:"bullets",items:[]},
+      {type:"heading",text:"Action items"},{type:"bullets",items:[]},
+      {type:"heading",text:"Notes"},{type:"text",text:""}
+    ]},
+    { id:"bi-status", name:"Business status update", icon:"📊", desc:"Update leadership on business and product.", blocks:[
+      {type:"fields",rows:[{label:"Date",value:""},{label:"Owner",value:""},{label:"Overall status",value:""}]},
+      {type:"heading",text:"Highlights"},{type:"bullets",items:[]},
+      {type:"heading",text:"Lowlights / risks"},{type:"bullets",items:[]},
+      {type:"heading",text:"Next steps"},{type:"bullets",items:[]}
+    ]},
+    { id:"bi-prd", name:"Product spec (PRD)", icon:"📝", desc:"Define what you're building and why.", blocks:[
+      {type:"fields",rows:[{label:"Product",value:""},{label:"Author",value:""},{label:"Status",value:""}]},
+      {type:"heading",text:"Problem"},{type:"text",text:""},
+      {type:"heading",text:"Goals"},{type:"bullets",items:[]},
+      {type:"heading",text:"Requirements"},{type:"bullets",items:[]},
+      {type:"heading",text:"Out of scope"},{type:"text",text:""}
+    ]},
+    { id:"bi-meeting", name:"Meeting notes", icon:"🗒️", desc:"Capture agenda, decisions and actions.", blocks:[
+      {type:"fields",rows:[{label:"Date",value:""},{label:"Attendees",value:""}]},
+      {type:"heading",text:"Agenda"},{type:"bullets",items:[]},
+      {type:"heading",text:"Decisions"},{type:"bullets",items:[]},
+      {type:"heading",text:"Action items"},{type:"bullets",items:[]}
+    ]},
+    { id:"bi-retro", name:"Retro", icon:"♻️", desc:"Reflect on what went well and what to change.", blocks:[
+      {type:"heading",text:"What went well"},{type:"bullets",items:[]},
+      {type:"heading",text:"What didn't"},{type:"bullets",items:[]},
+      {type:"heading",text:"Action items"},{type:"bullets",items:[]}
+    ]}
+  ];
+}
+
+/* ----- normalize / persistence ----- */
+function normalizeBlocks(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.map(function(b){ b=b||{};
+    if(b.type==="heading") return {id:b.id||blkid(),type:"heading",text:b.text!=null?String(b.text):""};
+    if(b.type==="text") return {id:b.id||blkid(),type:"text",text:b.text!=null?String(b.text):""};
+    if(b.type==="bullets") return {id:b.id||blkid(),type:"bullets",items:Array.isArray(b.items)?b.items.map(function(x){return x!=null?String(x):"";}).filter(function(x){return x.trim();}):[]};
+    if(b.type==="fields") return {id:b.id||blkid(),type:"fields",rows:Array.isArray(b.rows)?b.rows.map(function(r){r=r||{};return {label:r.label!=null?String(r.label):"",value:r.value!=null?String(r.value):""};}):[]};
+    return null;
+  }).filter(Boolean);
+}
+function normalizeDoc(d){
+  if(!d||typeof d!=="object") return null;
+  return { id:d.id||docid(), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", blocks:normalizeBlocks(d.blocks) };
+}
+function normalizeTpl(t){
+  if(!t||typeof t!=="object") return null;
+  return { id:t.id||tplid(), name:t.name?String(t.name):"Template", icon:t.icon?String(t.icon):"📄", desc:t.desc?String(t.desc):"", blocks:normalizeBlocks(t.blocks) };
+}
+function normalizeDocs(o){
+  o=o||{};
+  return { docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
+}
+function docsCommit(){ renderDocsPage(); if(typeof pushAll==="function") pushAll(); }
+function docCurrent(){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docOpenId) return TEAMDOCS.docs[i]; } return null; }
+function docCloneBlocks(blocks){ return normalizeBlocks((blocks||[]).map(function(b){ var c=JSON.parse(JSON.stringify(b)); c.id=blkid(); return c; })); }
+
+/* ----- navigation ----- */
+function openDocs(){ docOpenId=null; docEditing=false; docBackup=null; docSearch=""; renderDocsPage(); $("docs-page").style.display="block"; window.scrollTo(0,0); }
+function closeDocs(){ $("docs-page").style.display="none"; }
+
+function renderDocsPage(){
+  if(docOpenId && docCurrent()){ renderDocView(); } else { docOpenId=null; renderDocLibrary(); }
+}
+
+/* ----- library ----- */
+function renderDocLibrary(){
+  var admin=(typeof can==="function")?can("admin"):false;
+  var body=$("dp-body");
+  var tpls = docBuiltins().concat((TEAMDOCS.templates||[]).map(function(t){ t=Object.assign({},t); t._custom=true; return t; }));
+  var docs = (TEAMDOCS.docs||[]).slice().sort(function(a,b){ return (b.updated||b.created||"").localeCompare(a.updated||a.created||""); });
+  var q=(docSearch||"").trim().toLowerCase();
+  if(q) docs=docs.filter(function(d){ return (d.title||"").toLowerCase().indexOf(q)>=0; });
+
+  var h='<div class="dp-head"><h1 class="dp-h1">Docs</h1><div class="dp-sub">Your team\'s knowledge base — create documents from templates and keep them in one place.</div></div>';
+  h+='<div class="dl-bar"><input class="dl-search" id="dl-search" type="text" placeholder="Search docs by title…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)"></div>';
+
+  if(admin){
+    h+='<div class="dl-sec">Start a new doc</div><div class="dl-tpls">';
+    tpls.forEach(function(t){
+      h+='<div class="dl-tpl'+(t._custom?' custom':'')+'" onclick="docCreateFrom(\''+t.id+'\')">'
+        +'<div class="dl-tpl-ic">'+mtEsc(t.icon||"📄")+'</div>'
+        +'<div class="dl-tpl-nm">'+mtEsc(t.name)+'</div>'
+        +(t.desc?'<div class="dl-tpl-desc">'+mtEsc(t.desc)+'</div>':'')
+        +'<div class="dl-tpl-tag">'+(t._custom?"Your template":"Template")+'</div>'
+        +'</div>';
+    });
+    h+='</div>';
+  }
+
+  h+='<div class="dl-sec">'+(q?'Search results':'Your docs')+'</div>';
+  if(!docs.length){
+    h+='<div class="dl-empty">'+(q?'No docs match "'+mtEsc(q)+'".':(admin?'No docs yet — pick a template above to create your first one.':'No docs yet.'))+'</div>';
+  } else {
+    h+='<div class="dl-docs">';
+    docs.forEach(function(d){
+      h+='<div class="dl-doc" onclick="docOpen(\''+d.id+'\')">'
+        +'<span class="dl-doc-ic">'+mtEsc(d.icon||"📄")+'</span>'
+        +'<div class="dl-doc-main"><div class="dl-doc-title">'+mtEsc(d.title||"Untitled")+'</div>'
+        +'<div class="dl-doc-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div></div>'
+        +(admin?'<button class="dl-doc-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
+        +'</div>';
+    });
+    h+='</div>';
+  }
+  body.innerHTML=h;
+}
+function docSearchInput(v){ docSearch=v; var d=$("dl-search"); var pos=d?d.selectionStart:null; renderDocLibrary(); var n=$("dl-search"); if(n){ n.focus(); if(pos!=null){ try{n.setSelectionRange(pos,pos);}catch(e){} } } }
+
+function docCreateFrom(tplId){
+  var all=docBuiltins().concat(TEAMDOCS.templates||[]);
+  var t=all.filter(function(x){return x.id===tplId;})[0]; if(!t) return;
+  var d={ id:docid(), title:t.id==="bi-blank"?"Untitled":t.name, template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), blocks:docCloneBlocks(t.blocks) };
+  TEAMDOCS.docs.push(d);
+  docOpenId=d.id; docEditing=true; docBackup=JSON.parse(JSON.stringify(d));
+  docsCommit();
+}
+function docOpen(id){ docOpenId=id; docEditing=false; docBackup=null; renderDocsPage(); window.scrollTo(0,0); }
+function docBackToLibrary(){ docOpenId=null; docEditing=false; docBackup=null; renderDocsPage(); window.scrollTo(0,0); }
+function docDelete(id){
+  var d=null; for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===id) d=TEAMDOCS.docs[i]; }
+  if(!d) return;
+  if(!window.confirm('Delete "'+(d.title||"this doc")+'"?')) return;
+  TEAMDOCS.docs=TEAMDOCS.docs.filter(function(x){return x.id!==id;});
+  if(docOpenId===id) docOpenId=null;
+  docsCommit();
+}
+
+/* ----- doc view (read) ----- */
+function renderDocView(){
+  var admin=(typeof can==="function")?can("admin"):false;
+  var d=docCurrent(); if(!d){ docBackToLibrary(); return; }
+  if(docEditing){ renderDocEdit(d,admin); return; }
+  var body=$("dp-body");
+  var h='<div class="dv-top"><button class="dv-back" onclick="docBackToLibrary()">← All docs</button>';
+  if(admin){
+    h+='<div class="dv-actions">'
+      +'<button class="mt-btn" onclick="docStartEdit()">✎ Edit</button>'
+      +'<button class="mt-btn" onclick="docSaveAsTemplate()">Save as template</button>'
+      +'<button class="mt-btn" onclick="docDelete(\''+d.id+'\')">Delete</button>'
+      +'</div>';
+  }
+  h+='</div>';
+  h+='<h1 class="dv-title">'+mtEsc(d.title||"Untitled")+'</h1>';
+  h+='<div class="dv-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div>';
+  h+='<div class="doc-body">'+docBlocksReadHTML(d.blocks)+'</div>';
+  body.innerHTML=h;
+}
+function docBlocksReadHTML(blocks){
+  if(!blocks||!blocks.length) return '<div class="doc-p empty">This doc is empty.</div>';
+  return blocks.map(function(b){
+    if(b.type==="heading") return '<div class="doc-h">'+mtEsc(b.text||"")+'</div>';
+    if(b.type==="text") return b.text&&b.text.trim() ? '<p class="doc-p">'+mtEsc(b.text)+'</p>' : '<p class="doc-p empty">—</p>';
+    if(b.type==="bullets") return b.items&&b.items.length ? '<ul class="doc-ul">'+b.items.map(function(x){return '<li>'+mtEsc(x)+'</li>';}).join('')+'</ul>' : '<ul class="doc-ul"><li class="doc-ul-empty">—</li></ul>';
+    if(b.type==="fields") return '<table class="doc-fields"><tbody>'+(b.rows||[]).map(function(r){ return '<tr><td class="dfl">'+mtEsc(r.label||"")+'</td><td class="dfv'+((r.value&&r.value.trim())?'':' empty')+'">'+(r.value&&r.value.trim()?mtEsc(r.value):"—")+'</td></tr>'; }).join('')+'</tbody></table>';
+    return '';
+  }).join('');
+}
+
+/* ----- doc edit ----- */
+function docStartEdit(){ var d=docCurrent(); if(!d) return; docEditing=true; docBackup=JSON.parse(JSON.stringify(d)); renderDocsPage(); }
+function renderDocEdit(d,admin){
+  var body=$("dp-body");
+  var h='<div class="dv-top"><button class="dv-back" onclick="docCancelEdit()">← Cancel</button>'
+    +'<div class="dv-actions"><button class="mt-btn primary" onclick="docSaveEdit()">✓ Done</button></div></div>';
+  h+='<input class="doc-title-input" id="doc-title-input" type="text" value="'+mtEsc(d.title||"")+'" placeholder="Doc title">';
+  h+='<div id="doc-blocks">'+(d.blocks||[]).map(docBlockEditHTML).join('')+'</div>';
+  h+='<div class="doc-addbar">'
+    +'<button onclick="docAddBlock(\'heading\')">＋ Heading</button>'
+    +'<button onclick="docAddBlock(\'text\')">＋ Text</button>'
+    +'<button onclick="docAddBlock(\'fields\')">＋ Fields table</button>'
+    +'<button onclick="docAddBlock(\'bullets\')">＋ Bullet list</button>'
+    +'</div>';
+  body.innerHTML=h;
+}
+function docBlockEditHTML(b){
+  var tb='<div class="doc-blk-tb"><span class="doc-blk-type">'+b.type+'</span>'
+    +'<button title="Move up" onclick="docMoveBlock(\''+b.id+'\',-1)">↑</button>'
+    +'<button title="Move down" onclick="docMoveBlock(\''+b.id+'\',1)">↓</button>'
+    +'<button class="del" title="Delete block" onclick="docDelBlock(\''+b.id+'\')">×</button></div>';
+  var inner="";
+  if(b.type==="heading") inner='<input class="doc-h-input" type="text" value="'+mtEsc(b.text||"")+'" placeholder="Section heading">';
+  else if(b.type==="text") inner='<textarea class="doc-t-input" placeholder="Write here…">'+mtEsc(b.text||"")+'</textarea>';
+  else if(b.type==="bullets") inner='<textarea class="doc-b-input" placeholder="One bullet per line">'+mtEsc((b.items||[]).join("\n"))+'</textarea><div class="doc-b-hint">One bullet per line.</div>';
+  else if(b.type==="fields") inner='<div class="doc-f-rows">'+(b.rows||[]).map(docFieldRowEdit).join('')+'</div><button type="button" class="doc-f-addrow" onclick="docAddFieldRow(\''+b.id+'\')">＋ Add row</button>';
+  return '<div class="doc-edit-blk" data-blk="'+b.id+'">'+tb+inner+'</div>';
+}
+function docFieldRowEdit(r){ r=r||{}; return '<div class="doc-f-row"><input class="doc-f-label" type="text" placeholder="Label" value="'+mtEsc(r.label||"")+'"><input class="doc-f-value" type="text" placeholder="Value" value="'+mtEsc(r.value||"")+'"><button type="button" class="doc-f-del" title="Remove" onclick="this.closest(\'.doc-f-row\').remove()">×</button></div>'; }
+function docAddFieldRow(blkId){ var wrap=document.querySelector('[data-blk="'+blkId+'"] .doc-f-rows'); if(!wrap) return; wrap.insertAdjacentHTML('beforeend', docFieldRowEdit({})); }
+function docReadForm(){
+  var d=docCurrent(); if(!d) return;
+  var ti=$("doc-title-input"); if(ti) d.title=ti.value.trim()||"Untitled";
+  (d.blocks||[]).forEach(function(b){
+    var el=document.querySelector('[data-blk="'+b.id+'"]'); if(!el) return;
+    if(b.type==="heading"){ var i=el.querySelector('.doc-h-input'); if(i) b.text=i.value; }
+    else if(b.type==="text"){ var ta=el.querySelector('.doc-t-input'); if(ta) b.text=ta.value; }
+    else if(b.type==="bullets"){ var tb=el.querySelector('.doc-b-input'); if(tb) b.items=tb.value.split("\n").map(function(x){return x.trim();}).filter(Boolean); }
+    else if(b.type==="fields"){ b.rows=[]; el.querySelectorAll('.doc-f-row').forEach(function(r){ var lab=r.querySelector('.doc-f-label').value.trim(); var val=r.querySelector('.doc-f-value').value.trim(); if(lab||val) b.rows.push({label:lab,value:val}); }); }
+  });
+}
+function docAddBlock(type){
+  var d=docCurrent(); if(!d) return; docReadForm();
+  var b;
+  if(type==="heading") b={id:blkid(),type:"heading",text:"Section title"};
+  else if(type==="text") b={id:blkid(),type:"text",text:""};
+  else if(type==="bullets") b={id:blkid(),type:"bullets",items:[]};
+  else b={id:blkid(),type:"fields",rows:[{label:"",value:""}]};
+  d.blocks.push(b); renderDocsPage();
+}
+function docMoveBlock(id,dir){
+  var d=docCurrent(); if(!d) return; docReadForm();
+  var i=-1; for(var k=0;k<d.blocks.length;k++){ if(d.blocks[k].id===id) i=k; }
+  var j=i+dir; if(i<0||j<0||j>=d.blocks.length) return;
+  var tmp=d.blocks[i]; d.blocks[i]=d.blocks[j]; d.blocks[j]=tmp; renderDocsPage();
+}
+function docDelBlock(id){ var d=docCurrent(); if(!d) return; docReadForm(); d.blocks=d.blocks.filter(function(b){return b.id!==id;}); renderDocsPage(); }
+function docSaveEdit(){ var d=docCurrent(); if(!d) return; docReadForm(); d.updated=docToday(); docEditing=false; docBackup=null; docsCommit(); }
+function docCancelEdit(){
+  if(docBackup){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docBackup.id){ TEAMDOCS.docs[i]=normalizeDoc(docBackup); } } }
+  docEditing=false; docBackup=null; renderDocsPage();
+}
+function docSaveAsTemplate(){
+  var d=docCurrent(); if(!d) return;
+  var name=window.prompt("Template name:", d.title||"My template"); if(!name) return;
+  TEAMDOCS.templates.push({ id:tplid(), name:String(name).trim()||"My template", icon:d.icon||"📄", desc:"Custom template", blocks:docCloneBlocks(d.blocks) });
+  docsCommit();
+}
+
 /* ================= Accountabilities: Ownership linked into org + matrix ================= */
 var ACC_REG = {};
 function _accNorm(x){ return String(x==null?"":x).trim().toLowerCase(); }
@@ -9982,6 +10331,8 @@ if($("pp-back")){ $("pp-back").onclick = closeProduct; }
 if($("pp-dlg-cancel")){ $("pp-dlg-cancel").onclick = ppCloseDialog; }
 if($("pp-dlg-save")){ $("pp-dlg-save").onclick = function(){ if(ppDlgSave) ppDlgSave(); }; }
 if($("nav-d")){ $("nav-d").onclick = openTeam; }
+if($("nav-e")){ $("nav-e").onclick = openDocs; }
+if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("mt-back")){ $("mt-back").onclick = closeTeam; }
 if($("mt-cancel")){ $("mt-cancel").onclick = mtCloseDlg; }
 if($("mt-save")){ $("mt-save").onclick = function(){ if(mtSave) mtSave(); }; }
