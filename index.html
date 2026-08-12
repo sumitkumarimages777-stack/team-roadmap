@@ -1900,7 +1900,7 @@ body{margin:0}
 .okrtree-kradd{border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;font-family:var(--disp)}
 
 /* ===== people picker ===== */
-.pp{position:relative}
+.pp{position:relative;overflow:visible}
 .pp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;min-height:2px}
 .pp-chip{display:inline-flex;align-items:center;gap:5px;background:var(--indigo-soft,#EEF1FF);color:var(--indigo);border:1px solid var(--indigo);border-radius:99px;padding:3px 6px 3px 11px;font-size:12.5px;font-weight:600}
 .pp-chip button{border:none;background:none;color:var(--indigo);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:.7}
@@ -2566,7 +2566,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
     <div class="field" id="f-assignee-wrap"><label>Assignee (optional)</label><div class="assignee-pick"><input id="f-assignee-search" placeholder="Search people…" autocomplete="off"><input type="hidden" id="f-assignee-val"><div id="f-assignee-menu" class="assignee-menu"></div></div></div>
-    <div class="field" id="f-owners-wrap" style="display:none"><label>Owners (add as many as you like)</label><div id="f-owners-box" class="okrperm-people"></div></div>
+    <div class="field" id="f-owners-wrap" style="display:none"><label>Owners (add as many as you like)</label><div id="f-owners-box" class="pp"></div></div>
     <div class="field-row" id="f-pd-row" style="gap:12px">
       <div class="field" id="f-priority-wrap" style="flex:1"><label for="f-priority">Priority</label><select id="f-priority"><option value="">None</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
