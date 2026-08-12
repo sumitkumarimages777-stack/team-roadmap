@@ -1899,6 +1899,23 @@ body{margin:0}
 .okrtree-krupd:hover{border-color:var(--indigo);color:var(--indigo)}
 .okrtree-kradd{border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;font-family:var(--disp)}
 
+/* ===== people picker ===== */
+.pp{position:relative}
+.pp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;min-height:2px}
+.pp-chip{display:inline-flex;align-items:center;gap:5px;background:var(--indigo-soft,#EEF1FF);color:var(--indigo);border:1px solid var(--indigo);border-radius:99px;padding:3px 6px 3px 11px;font-size:12.5px;font-weight:600}
+.pp-chip button{border:none;background:none;color:var(--indigo);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:.7}
+.pp-chip button:hover{opacity:1}
+.pp-more{border:1px dashed var(--line-strong);background:var(--card);border-radius:99px;padding:3px 11px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.pp-more:hover{border-color:var(--indigo);color:var(--indigo)}
+.pp-empty{font-size:12.5px;color:var(--muted);font-style:italic}
+.pp-search{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;color:var(--ink,#172B4D);box-sizing:border-box}
+.pp-search:focus{outline:none;border-color:var(--indigo)}
+.pp-menu{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:60;background:var(--card);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 30px rgba(9,30,66,.18);padding:5px;max-height:200px;overflow:auto}
+.pp-opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13.5px;color:var(--ink,#172B4D)}
+.pp-opt:hover{background:var(--hover,#F1F2F4)}
+.pp-av{width:24px;height:24px;flex:none;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.pp-none{padding:9px;font-size:12.5px;color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -3757,11 +3774,7 @@ function openDialog(title, values, onSave, opts={}){
   $("f-owners-wrap").style.display = opts.owners ? "" : "none";
   if(opts.owners){
     var _cur = Array.isArray(values.owners) ? values.owners.slice() : (values.assignee?[values.assignee]:[]);
-    var _mem = assigneeMembers();
-    var _h = _mem.length ? "" : '<div class="okrperm-empty">No team members yet.</div>';
-    _mem.forEach(function(u){ var on=_cur.indexOf(u.email)>=0; _h += '<label class="okrperm-p'+(on?" on":"")+'"><input type="checkbox" class="f-owner-cb" value="'+mtEsc(u.email)+'"'+(on?" checked":"")+'>'+mtEsc(userDisplayName(u))+'</label>'; });
-    $("f-owners-box").innerHTML=_h;
-    $("f-owners-box").querySelectorAll(".f-owner-cb").forEach(function(cb){ cb.onchange=function(){ var l=cb.closest(".okrperm-p"); if(l) l.classList.toggle("on", cb.checked); }; });
+    $("f-owners-box").classList.add("pp"); ppInit("f-owners-box", _cur); ppRender("f-owners-box");
   }
   if(opts.assignee){
     const val = values.assignee || "";
@@ -3925,7 +3938,7 @@ $("dlg-save").onclick = ()=>{
     owner: $("f-owner").value.trim(),
     note: $("f-note").value.trim(),
     assignee: $("f-assignee-val") ? $("f-assignee-val").value : "",
-    owners: (function(){ var box=$("f-owners-box"); if(!box || $("f-owners-wrap").style.display==="none") return undefined; var out=[]; box.querySelectorAll(".f-owner-cb:checked").forEach(function(c){ out.push(c.value); }); return out; })(),
+    owners: ($("f-owners-wrap") && $("f-owners-wrap").style.display!=="none") ? ppGet("f-owners-box") : undefined,
     duedate: $("f-duedate") ? $("f-duedate").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
@@ -6758,30 +6771,56 @@ function okrPermList(kind){
   if(kind==="deleters") return Array.isArray(ob.deleters)?ob.deleters:[];
   return [];
 }
+/* ===== reusable searchable people multi-select ===== */
+var PP = {};
+function ppMemName(em){ var m=assigneeMembers().find(function(u){return u.email===em;}); return m?userDisplayName(m):em; }
+function ppInit(id, sel){ PP[id]={ sel:(sel||[]).slice(), q:"", open:false, expanded:false }; }
+function ppGet(id){ return PP[id]?PP[id].sel.slice():[]; }
+function ppRender(id){
+  var st=PP[id]; var mount=document.getElementById(id); if(!st||!mount) return;
+  var mem=assigneeMembers();
+  var CAP=4;
+  var shown = st.expanded ? st.sel : st.sel.slice(0,CAP);
+  var chips = shown.map(function(em){ return '<span class="pp-chip">'+mtEsc(ppMemName(em))+'<button type="button" title="Remove" onclick="ppRemove(\''+id+'\',\''+em+'\')">×</button></span>'; }).join('');
+  var extra = st.sel.length-CAP;
+  if(!st.expanded && extra>0) chips += '<button type="button" class="pp-more" onclick="ppToggle(\''+id+'\')">+'+extra+' more</button>';
+  else if(st.expanded && st.sel.length>CAP) chips += '<button type="button" class="pp-more" onclick="ppToggle(\''+id+'\')">Show less</button>';
+  if(!st.sel.length) chips = '<span class="pp-empty">No one added yet</span>';
+  var q=st.q.trim().toLowerCase();
+  var opts = mem.filter(function(u){ return st.sel.indexOf(u.email)<0 && (!q || userDisplayName(u).toLowerCase().indexOf(q)>=0 || (u.email||"").toLowerCase().indexOf(q)>=0); });
+  var menu='';
+  if(st.open){
+    menu='<div class="pp-menu">';
+    if(!mem.length) menu+='<div class="pp-none">No team members yet — add people in My Team / Admin.</div>';
+    else if(!opts.length) menu+='<div class="pp-none">'+(q?'No matches':'Everyone is already added')+'</div>';
+    opts.slice(0,60).forEach(function(u){ menu+='<button type="button" class="pp-opt" onmousedown="event.preventDefault()" onclick="ppAdd(\''+id+'\',\''+u.email+'\')"><span class="pp-av">'+mtEsc((userDisplayName(u)[0]||'?').toUpperCase())+'</span><span class="pp-nm">'+mtEsc(userDisplayName(u))+'</span></button>'; });
+    menu+='</div>';
+  }
+  mount.innerHTML='<div class="pp-chips">'+chips+'</div>'
+    +'<input class="pp-search" id="'+id+'-s" placeholder="Search people…" autocomplete="off" value="'+mtEsc(st.q)+'" oninput="ppSearch(\''+id+'\',this.value)" onfocus="ppOpen(\''+id+'\')">'
+    +menu;
+}
+function ppOpen(id){ if(!PP[id])return; PP[id].open=true; ppRender(id); var i=document.getElementById(id+'-s'); if(i) i.focus(); }
+function ppSearch(id,v){ if(!PP[id])return; PP[id].q=v; PP[id].open=true; ppRender(id); var i=document.getElementById(id+'-s'); if(i){ i.focus(); try{ i.setSelectionRange(i.value.length,i.value.length); }catch(e){} } }
+function ppAdd(id,em){ if(!PP[id])return; if(PP[id].sel.indexOf(em)<0) PP[id].sel.push(em); PP[id].q=""; ppRender(id); var i=document.getElementById(id+'-s'); if(i) i.focus(); }
+function ppRemove(id,em){ if(!PP[id])return; PP[id].sel=PP[id].sel.filter(function(x){return x!==em;}); ppRender(id); }
+function ppToggle(id){ if(!PP[id])return; PP[id].expanded=!PP[id].expanded; ppRender(id); }
+document.addEventListener("click", function(e){ var inside=e.target && e.target.closest && e.target.closest(".pp"); if(inside) return; var changed=false; for(var k in PP){ if(PP[k].open){ PP[k].open=false; changed=true; ppRender(k); } } });
+
+var OKRPERM_SECS=[["owners","Owners","Can edit this objective, add sub-objectives, and delete it."],["editors","Can also edit","Extra people who can edit (besides owners)."],["adders","Can add sub-objectives","People who may create children under this — but not edit it."],["deleters","Can delete","People allowed to delete this objective (besides owners)."]];
 function okrPermRender(){
   var ob=okrPermFind(); if(!ob) return;
-  var mem=assigneeMembers();
-  function sec(kind, label, hint){
-    var cur=okrPermList(kind);
-    var h='<div class="okrperm-sec"><div class="okrperm-h">'+label+'</div><div class="okrperm-hint">'+hint+'</div><div class="okrperm-people">';
-    if(!mem.length) h+='<div class="okrperm-empty">No team members yet — add people in My Team / Admin.</div>';
-    mem.forEach(function(u){ var on=cur.indexOf(u.email)>=0; h+='<label class="okrperm-p'+(on?' on':'')+'"><input type="checkbox" data-kind="'+kind+'" value="'+mtEsc(u.email)+'"'+(on?' checked':'')+'>'+mtEsc(userDisplayName(u))+'</label>'; });
-    h+='</div></div>';
-    return h;
-  }
-  $("okrperm-body").innerHTML =
-    sec("owners","Owners","Can edit this objective, add sub-objectives, and delete it.")
-   +sec("editors","Can also edit","Extra people who can edit (besides owners).")
-   +sec("adders","Can add sub-objectives","People who may create children under this — but not edit it.")
-   +sec("deleters","Can delete","People allowed to delete this objective (besides owners).");
+  var h="";
+  OKRPERM_SECS.forEach(function(sc){ h+='<div class="okrperm-sec"><div class="okrperm-h">'+sc[1]+'</div><div class="okrperm-hint">'+sc[2]+'</div><div class="pp" id="okrpp-'+sc[0]+'"></div></div>'; });
+  $("okrperm-body").innerHTML=h;
+  OKRPERM_SECS.forEach(function(sc){ ppInit("okrpp-"+sc[0], okrPermList(sc[0])); ppRender("okrpp-"+sc[0]); });
 }
 function okrPermSave(){
   var ob=okrPermFind(); if(!ob){ okrPermClose(); return; }
-  function read(kind){ var out=[]; $("okrperm-body").querySelectorAll('input[data-kind="'+kind+'"]:checked').forEach(function(c){ out.push(c.value); }); return out; }
-  var owners=read("owners"); ob.owners=owners; if(owners.length) ob.assignee=owners[0]; else delete ob.assignee;
-  var editors=read("editors"); if(editors.length) ob.editors=editors; else delete ob.editors;
-  var adders=read("adders"); if(adders.length) ob.adders=adders; else delete ob.adders;
-  var deleters=read("deleters"); if(deleters.length) ob.deleters=deleters; else delete ob.deleters;
+  var owners=ppGet("okrpp-owners"); ob.owners=owners; if(owners.length) ob.assignee=owners[0]; else delete ob.assignee;
+  var editors=ppGet("okrpp-editors"); if(editors.length) ob.editors=editors; else delete ob.editors;
+  var adders=ppGet("okrpp-adders"); if(adders.length) ob.adders=adders; else delete ob.adders;
+  var deleters=ppGet("okrpp-deleters"); if(deleters.length) ob.deleters=deleters; else delete ob.deleters;
   okrPermClose(); saveOkrs(); toast("Permissions saved");
 }
 
