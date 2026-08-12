@@ -1844,6 +1844,39 @@ body{margin:0}
 .docset-crumb{color:var(--cf-blue);cursor:pointer}
 .docset-crumb:hover{text-decoration:underline}
 
+/* ===== OKR org-tree mode ===== */
+.okr-modetg{display:inline-flex;gap:4px;background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:3px;margin-bottom:16px}
+.okr-modetg .okr-mode{border:none;background:none;border-radius:99px;padding:6px 15px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
+.okr-modetg .okr-mode.on{background:var(--indigo);color:#fff}
+.okrtree-scroll{overflow-x:auto;padding:8px 0 16px}
+.okrtree{display:inline-block;min-width:100%;text-align:center}
+.okrtree ul{display:flex;justify-content:center;gap:18px;list-style:none;margin:0;padding:26px 0 0;position:relative}
+.okrtree > ul{padding-top:0}
+.okrtree li{position:relative;padding:26px 8px 0;text-align:center}
+.okrtree li::before,.okrtree li::after{content:"";position:absolute;top:0;height:26px;width:50%;border-top:2px solid var(--line-strong)}
+.okrtree li::before{right:50%;border-right:2px solid var(--line-strong)}
+.okrtree li::after{left:50%}
+.okrtree li:only-child::before,.okrtree li:only-child::after{width:50%}
+.okrtree li:first-child::before,.okrtree li:last-child::after{border:0}
+.okrtree li:last-child::before{border-right:2px solid var(--line-strong)}
+.okrtree ul ul::before{content:"";position:absolute;top:0;left:50%;height:26px;border-left:2px solid var(--line-strong)}
+.okrtree > ul > li::before,.okrtree > ul > li::after{display:none}
+.okrtree-node{display:inline-block;min-width:196px;max-width:250px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--indigo);border-radius:12px;padding:12px 14px 13px;text-align:left;position:relative;vertical-align:top}
+.okrtree-lv{font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);margin-bottom:5px}
+.okrtree-mine{color:var(--done)}
+.okrtree-title{font-weight:700;font-size:14px;line-height:1.35;margin-bottom:9px}
+.okrtree-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.okrtree-owner{font-size:12px;color:var(--muted)}
+.okrtree-owner i{opacity:.7}
+.okrtree-pct{font-family:var(--mono);font-weight:700;font-size:12.5px}
+.okrtree-pct em{font-style:normal;font-size:8.5px;color:var(--muted);text-transform:uppercase;margin-left:2px}
+.okrtree-pct.score-low{color:var(--blocked)}.okrtree-pct.score-mid{color:var(--progress)}.okrtree-pct.score-high{color:var(--done)}
+.okrtree-acts{display:none;gap:3px;margin-top:9px;flex-wrap:wrap}
+.okrtree-node:hover .okrtree-acts{display:flex}
+.okrtree-mini{border:1px solid var(--line-strong);background:var(--card);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--muted);font-family:var(--disp)}
+.okrtree-mini:hover{border-color:var(--indigo);color:var(--indigo)}
+.okrtree-lock{margin-top:9px;font-size:10.5px;color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -2526,6 +2559,7 @@ let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, DEV = null, BUGS = 
 const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}, {key:"review",label:"In Review"}, {key:"done",label:"Done"} ];
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 let okrFilter = null;   // null = all levels; else a level key to focus
+let okrView2 = "list";   // "list" | "tree"
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
@@ -6538,6 +6572,92 @@ function okrAlignOptions(cyc, excludeId){
 }
 function okrChain(ob){ const chain=[]; let cur=ob, g=0; while(cur && cur.alignsTo && g++<12){ const p=findObjective(cur.alignsTo); if(!p) break; chain.push(p.ob); cur=p.ob; } return chain; }
 function okrLevelLabel(k){ return k==="individual" ? "My OKRs" : "My " + ((OKR_LEVELS.find(l=>l.key===k)||{}).label||"Team"); }
+/* ================= OKR org-tree mode (levels + roll-up + per-person ownership) ================= */
+function objRollupPct(ob){
+  if(ob && ob.rollup==="auto"){
+    var f=findObjective(ob.id); var cyc=f?f.cyc:null;
+    var kids=cyc?cyc.objectives.filter(function(o){return o.alignsTo===ob.id;}):[];
+    if(kids.length) return Math.round(kids.reduce(function(a,k){return a+objRollupPct(k);},0)/kids.length);
+    return objPct(ob);
+  }
+  return objPct(ob);
+}
+function okrOwnerName(email){ if(!email) return ""; var m=assigneeMembers().find(function(u){return u.email===email;}); return m?userDisplayName(m):email; }
+function okrCanEdit(ob){ return editMode || (SESSION && ob && ob.assignee===SESSION.email); }
+function okrChildLevel(parentId, cyc){ var p=cyc.objectives.find(function(o){return o.id===parentId;}); if(!p) return "team"; var i=OKR_LEVELS.findIndex(function(l){return l.key===(p.level||"team");}); return OKR_LEVELS[Math.min(i+1,OKR_LEVELS.length-1)].key; }
+function okrMini(txt,title,fn){ var b=document.createElement("button"); b.className="okrtree-mini"; b.textContent=txt; b.title=title; b.onclick=function(e){ e.stopPropagation(); fn(); }; return b; }
+
+function okrAddOwned(cyc, parentId){
+  var preset={ level: parentId ? okrChildLevel(parentId,cyc) : "company" };
+  openDialog("New objective", preset, function(v){
+    var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[], level:v.level||"team" };
+    if(v.note) ob.note=v.note;
+    var al = parentId || (v.alignsTo||"");
+    if(al) ob.alignsTo=al;
+    ob.assignee = editMode ? (v.assignee || (SESSION&&SESSION.email) || "") : ((SESSION&&SESSION.email)||"");
+    if(!ob.assignee) delete ob.assignee;
+    cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
+  }, {level:true, alignTo: !parentId, alignOptions: okrAlignOptions(cyc, null), assignee: !!editMode});
+}
+function okrEditNode(ob, cyc){
+  openDialog("Edit objective", ob, function(v){
+    applyFields(ob, v); ob.level=v.level||"team";
+    if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo;
+    if(editMode){ if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; }
+    saveOkrs();
+  }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee: !!editMode});
+}
+
+function renderOkrTree(cyc, wrap){
+  var objs=cyc.objectives;
+  if(!objs.length){
+    var e=document.createElement("div"); e.className="empty";
+    e.textContent="No objectives yet."+((editMode||SESSION)?" Add one below.":"");
+    wrap.appendChild(e);
+  } else {
+    var has=function(id){ return objs.some(function(o){return o.id===id;}); };
+    var roots=objs.filter(function(o){ return !o.alignsTo || !has(o.alignsTo); });
+    var scroll=document.createElement("div"); scroll.className="okrtree-scroll";
+    var root=document.createElement("div"); root.className="okrtree";
+    var ul=document.createElement("ul");
+    roots.forEach(function(r){ ul.appendChild(okrTreeNode(r, cyc, objs)); });
+    root.appendChild(ul); scroll.appendChild(root); wrap.appendChild(scroll);
+  }
+  if(editMode || SESSION){
+    var add=document.createElement("button"); add.className="addline"; add.style.padding="12px";
+    add.textContent = editMode ? "＋ Add company objective" : "＋ Add objective (owned by you)";
+    add.onclick=function(){ okrAddOwned(cyc, null); };
+    wrap.appendChild(add);
+  }
+}
+function okrTreeNode(ob, cyc, objs){
+  var li=document.createElement("li");
+  var card=document.createElement("div"); card.className="okrtree-node"; card.id="obj-"+ob.id;
+  var lv=(OKR_LEVELS.find(function(l){return l.key===(ob.level||"team");})||{}).label||"Team";
+  var p=objRollupPct(ob);
+  var auto=ob.rollup==="auto";
+  var mine=SESSION && ob.assignee===SESSION.email;
+  var ownerName=ob.assignee ? okrOwnerName(ob.assignee) : (ob.owner||"");
+  card.innerHTML='<div class="okrtree-lv lv-'+(ob.level||"team")+'">'+mtEsc(lv)+(mine?' · <span class="okrtree-mine">you</span>':'')+'</div>'
+    +'<div class="okrtree-title">'+mtEsc(ob.title)+'</div>'
+    +'<div class="okrtree-foot"><span class="okrtree-owner">'+(ownerName?mtEsc(ownerName):'<i>unassigned</i>')+'</span>'
+    +'<span class="okrtree-pct '+scoreClass(p)+'">'+p+'%'+(auto?' <em>auto</em>':'')+'</span></div>';
+  if(okrCanEdit(ob)){
+    var acts=document.createElement("div"); acts.className="okrtree-acts";
+    acts.appendChild(okrMini("＋","Add objective under this (owned by you)", function(){ okrAddOwned(cyc, ob.id); }));
+    acts.appendChild(okrMini("✎","Edit objective", function(){ okrEditNode(ob, cyc); }));
+    acts.appendChild(okrMini(auto?"Auto ✓":"Manual","Toggle progress: manual (from key results) vs auto (average of children)", function(){ if(auto) delete ob.rollup; else ob.rollup="auto"; saveOkrs(); }));
+    acts.appendChild(okrMini("×","Delete objective", function(){ if(confirm('Delete objective “'+ob.title+'”? Its children will be unlinked.')){ cyc.objectives.splice(cyc.objectives.indexOf(ob),1); objs.filter(function(o){return o.alignsTo===ob.id;}).forEach(function(o){ delete o.alignsTo; }); saveOkrs(); toast("Deleted"); } }));
+    card.appendChild(acts);
+  } else if(SESSION && !mine){
+    var lock=document.createElement("div"); lock.className="okrtree-lock"; lock.textContent="🔒 owner can edit"; card.appendChild(lock);
+  }
+  li.appendChild(card);
+  var kids=objs.filter(function(o){return o.alignsTo===ob.id;});
+  if(kids.length){ var ul=document.createElement("ul"); kids.forEach(function(k){ ul.appendChild(okrTreeNode(k, cyc, objs)); }); li.appendChild(ul); }
+  return li;
+}
+
 function renderContentOkr(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -6546,6 +6666,10 @@ function renderContentOkr(){
     wrap.innerHTML = '<div class="empty">No cycle selected. '+(editMode?'Add one from the left.':'Turn on Edit to add your first cycle (e.g. “Q3 2026”).')+'</div>';
     return;
   }
+  var _tg=document.createElement('div'); _tg.className='okr-modetg';
+  [['list','List'],['tree','Org tree']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
+  wrap.appendChild(_tg);
+  if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
   if(cyc.objectives.length){
     const _los = document.createElement("div"); _los.className="okr-los";
     const _lead=document.createElement("span"); _lead.className="okr-los-lead"; _lead.textContent="How your work ladders up"; _los.appendChild(_lead);
