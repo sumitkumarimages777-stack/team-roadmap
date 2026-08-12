@@ -1605,6 +1605,84 @@ body{margin:0}
 .doc-addbar button{border:1px solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;font-weight:600;font-size:12.5px;cursor:pointer}
 .doc-addbar button:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
 
+/* ===== Docs workspace (two-pane) ===== */
+.docw{display:flex;gap:0;height:calc(100vh - 96px);border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:var(--card)}
+.docw-side{width:270px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#FBFCFE}
+.docw-side-top{display:flex;align-items:center;gap:8px;padding:14px 14px 8px}
+.docw-mini{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.docw-create{margin-left:auto;border:none;background:var(--indigo);color:#fff;border-radius:8px;padding:6px 12px;font-weight:600;font-size:12.5px;cursor:pointer}
+.docw-create:hover{background:#2E48C0}
+.docw-search{margin:0 12px 8px;padding:8px 11px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;font-size:13px;color:var(--ink)}
+.docw-list{flex:1;overflow-y:auto;padding:4px 8px 12px}
+.docw-empty2{color:var(--muted);font-size:12.5px;padding:14px 8px;line-height:1.6}
+.docw-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;margin-bottom:2px}
+.docw-item:hover{background:var(--indigo-soft)}
+.docw-item.on{background:var(--indigo-soft);box-shadow:inset 2px 0 0 var(--indigo)}
+.docw-item-ic{font-size:15px;flex:none}
+.docw-item-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.docw-item-title{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docw-item-meta{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.docw-item-del{width:24px;height:24px;flex:none;border:none;background:none;color:var(--muted);cursor:pointer;border-radius:6px;opacity:0;font-size:15px}
+.docw-item:hover .docw-item-del{opacity:.7}
+.docw-item-del:hover{opacity:1;color:#C0362C;background:#FBE9E7}
+
+.docw-main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--card)}
+.doce-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:40px}
+.doce-empty-ic{font-size:34px;opacity:.5;margin-bottom:10px}
+.doce-empty-t{font-weight:700;font-size:16px;color:var(--ink);margin-bottom:4px}
+.doce-empty-s{font-size:13px}
+
+/* toolbar */
+.doce-toolbar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid var(--line);background:#FCFDFE;position:sticky;top:0;z-index:2}
+.doce-tb{border:1px solid transparent;background:none;border-radius:7px;padding:5px 9px;font-size:12.5px;color:var(--ink);cursor:pointer;font-family:var(--disp);min-width:30px}
+.doce-tb:hover{background:var(--indigo-soft);border-color:#C9D3F5;color:var(--indigo)}
+.doce-sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.doce-flex{flex:1}
+.doce-saved{font-size:11px;color:var(--muted);font-family:var(--mono);margin-right:6px}
+
+.doce-scroll{flex:1;overflow-y:auto;padding:26px 40px 80px}
+.doce-title{width:100%;font-size:30px;font-weight:800;border:none;padding:2px 0 6px;font-family:var(--disp);color:var(--ink);background:transparent;letter-spacing:-.02em}
+.doce-title:focus{outline:none}
+.doce-title[readonly]{cursor:default}
+.doce-meta{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:20px}
+
+/* editable content */
+.doce-area{font-size:15px;line-height:1.7;color:var(--ink);min-height:300px;outline:none}
+.doce-area:empty:before,.doce-area:has(>br:only-child):before{content:attr(data-ph);color:var(--line-strong)}
+.doce-area:focus{outline:none}
+.doce-area h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:22px 0 8px}
+.doce-area h2{font-size:20px;font-weight:700;margin:20px 0 7px}
+.doce-area h3{font-size:16px;font-weight:700;margin:16px 0 6px}
+.doce-area p{margin:0 0 12px}
+.doce-area ul,.doce-area ol{margin:0 0 12px;padding-left:24px}
+.doce-area li{margin-bottom:4px}
+.doce-area ul.doc-tasks{list-style:none;padding-left:4px}
+.doce-area ul.doc-tasks li{display:flex;align-items:flex-start;gap:8px}
+.doce-area ul.doc-tasks input.doc-tk{margin-top:5px;flex:none;width:15px;height:15px;cursor:pointer}
+.doce-area table.doc-tbl{border-collapse:collapse;width:100%;margin:6px 0 16px;border:1px solid var(--line-strong)}
+.doce-area table.doc-tbl th,.doce-area table.doc-tbl td{border:1px solid var(--line);padding:9px 11px;font-size:14px;vertical-align:top;min-width:40px}
+.doce-area table.doc-tbl th{background:#F5F7FA;font-weight:600;text-align:left}
+.doce-area a{color:var(--indigo)}
+
+/* table grid picker popover */
+.doce-tablepop{position:fixed;z-index:600;background:var(--card);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.16);padding:10px}
+.doce-grid{display:grid;grid-template-columns:repeat(8,18px);grid-auto-rows:18px;gap:3px}
+.doce-gc{border:1px solid var(--line-strong);border-radius:3px;background:var(--paper);cursor:pointer}
+.doce-gc.hot{background:var(--indigo);border-color:var(--indigo)}
+.doce-gridlbl{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+
+/* template picker dialog */
+#doc-tpl-dialog .dialog{max-width:640px}
+.doctp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:6px}
+.doctp{border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.doctp:hover{border-color:var(--indigo);box-shadow:0 4px 14px rgba(59,91,219,.10)}
+.doctp-ic{font-size:22px;margin-bottom:8px}
+.doctp-nm{font-weight:700;font-size:14px;margin-bottom:3px}
+.doctp-desc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.doctp-tag{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.doctp.custom .doctp-tag{color:var(--indigo)}
+@media(max-width:640px){ .docw{flex-direction:column;height:auto} .docw-side{width:auto;border-right:none;border-bottom:1px solid var(--line)} .docw-list{max-height:220px} }
+
 </style>
 </head>
 <body>
@@ -1685,6 +1763,13 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="doc-tpl-dialog" style="z-index:470">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:640px">
+    <h3>Start a new document</h3>
+    <div class="dlg-body"><div class="doctp-grid" id="doctp-grid"></div></div>
+    <div class="btns"><button class="btn" id="doctp-cancel">Cancel</button></div>
+  </div>
+</div>
 <div id="docs-page" class="docs-page" style="display:none">
   <div class="dp-shell">
     <div class="dp-top">
@@ -9661,13 +9746,14 @@ function renderTeamPage(){
   if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else renderOrgView();
 }
 
-/* ================= Docs: templates + documents ================= */
+/* ================= Docs: two-pane workspace + rich-text editor ================= */
 function docid(){ return "doc-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
 function blkid(){ return "b-"+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-2); }
 function tplid(){ return "tpl-"+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-2); }
 function docToday(){ return new Date().toISOString().slice(0,10); }
+function docByUpdated(a,b){ return (b.updated||b.created||"").localeCompare(a.updated||a.created||""); }
 
-/* ----- built-in templates ----- */
+/* ----- built-in templates (as blocks, converted to editor HTML) ----- */
 function docBuiltins(){
   return [
     { id:"bi-blank", name:"Blank doc", icon:"📄", desc:"Start from an empty page.", blocks:[
@@ -9678,6 +9764,11 @@ function docBuiltins(){
       {type:"fields",rows:[{label:"Competitor",value:""},{label:"Date created",value:""},{label:"Analysis by",value:""},{label:"Tier (1–3)",value:""}]},
       {type:"heading",text:"Company profile"},
       {type:"fields",rows:[{label:"Company mission",value:""},{label:"Key objectives",value:""},{label:"Strengths",value:""},{label:"Weaknesses",value:""}]},
+      {type:"heading",text:"Notes"},{type:"text",text:""}
+    ]},
+    { id:"bi-smart", name:"SMART team goals", icon:"🎯", desc:"Set goals that are specific, measurable, attainable, relevant, time-based.", blocks:[
+      {type:"heading",text:"SMART team goals"},
+      {type:"fields",rows:[{label:"Goal",value:""},{label:"Specific?",value:""},{label:"Measurable?",value:""},{label:"Attainable?",value:""},{label:"Relevant?",value:""},{label:"Time-based?",value:""}]},
       {type:"heading",text:"Notes"},{type:"text",text:""}
     ]},
     { id:"bi-1on1", name:"1-on-1 meeting", icon:"🗣️", desc:"Run a productive 1-on-1 and track follow-ups.", blocks:[
@@ -9724,191 +9815,188 @@ function normalizeBlocks(arr){
     return null;
   }).filter(Boolean);
 }
+function blocksToHtml(blocks){
+  return (blocks||[]).map(function(b){
+    if(b.type==="heading") return '<h2>'+mtEsc(b.text||"")+'</h2>';
+    if(b.type==="text") return '<p>'+(b.text&&b.text.trim()?mtEsc(b.text).replace(/\n/g,'<br>'):'<br>')+'</p>';
+    if(b.type==="bullets") return (b.items&&b.items.length)?'<ul>'+b.items.map(function(x){return '<li>'+mtEsc(x)+'</li>';}).join('')+'</ul>':'<ul><li><br></li></ul>';
+    if(b.type==="fields") return '<table class="doc-tbl"><tbody>'+(b.rows||[]).map(function(r){return '<tr><th>'+mtEsc(r.label||"")+'</th><td>'+(r.value?mtEsc(r.value):'<br>')+'</td></tr>';}).join('')+'</tbody></table>';
+    return '';
+  }).join('');
+}
 function normalizeDoc(d){
   if(!d||typeof d!=="object") return null;
-  return { id:d.id||docid(), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", blocks:normalizeBlocks(d.blocks) };
+  var html = (typeof d.html==="string") ? d.html : (Array.isArray(d.blocks)?blocksToHtml(normalizeBlocks(d.blocks)):"");
+  return { id:d.id||docid(), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
 }
 function normalizeTpl(t){
   if(!t||typeof t!=="object") return null;
-  return { id:t.id||tplid(), name:t.name?String(t.name):"Template", icon:t.icon?String(t.icon):"📄", desc:t.desc?String(t.desc):"", blocks:normalizeBlocks(t.blocks) };
+  var html = (typeof t.html==="string") ? t.html : (Array.isArray(t.blocks)?blocksToHtml(normalizeBlocks(t.blocks)):"");
+  return { id:t.id||tplid(), name:t.name?String(t.name):"Template", icon:t.icon?String(t.icon):"📄", desc:t.desc?String(t.desc):"", html:html };
 }
 function normalizeDocs(o){
   o=o||{};
   return { docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
 }
-function docsCommit(){ renderDocsPage(); if(typeof pushAll==="function") pushAll(); }
 function docCurrent(){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docOpenId) return TEAMDOCS.docs[i]; } return null; }
-function docCloneBlocks(blocks){ return normalizeBlocks((blocks||[]).map(function(b){ var c=JSON.parse(JSON.stringify(b)); c.id=blkid(); return c; })); }
+function docTplList(){
+  var b=docBuiltins().map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:blocksToHtml(normalizeBlocks(t.blocks)),_custom:false}; });
+  var c=(TEAMDOCS.templates||[]).map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:t.html,_custom:true}; });
+  return b.concat(c);
+}
 
-/* ----- navigation ----- */
-function openDocs(){ docOpenId=null; docEditing=false; docBackup=null; docSearch=""; renderDocsPage(); $("docs-page").style.display="block"; window.scrollTo(0,0); }
+/* ----- navigation / shell ----- */
+function openDocs(){
+  docSearch="";
+  if(!docOpenId || !docCurrent()){ docOpenId = TEAMDOCS.docs[0] ? TEAMDOCS.docs[0].id : null; }
+  buildDocsShell();
+  $("docs-page").style.display="block"; window.scrollTo(0,0);
+}
 function closeDocs(){ $("docs-page").style.display="none"; }
-
-function renderDocsPage(){
-  if(docOpenId && docCurrent()){ renderDocView(); } else { docOpenId=null; renderDocLibrary(); }
+function buildDocsShell(){
+  $("dp-body").innerHTML='<div class="docw"><div class="docw-side" id="docw-side"></div><div class="docw-main" id="docw-main"></div></div>';
+  renderDocSide(); renderDocMain();
 }
 
-/* ----- library ----- */
-function renderDocLibrary(){
+/* ----- left sidebar ----- */
+function renderDocSide(){
   var admin=(typeof can==="function")?can("admin"):false;
-  var body=$("dp-body");
-  var tpls = docBuiltins().concat((TEAMDOCS.templates||[]).map(function(t){ t=Object.assign({},t); t._custom=true; return t; }));
-  var docs = (TEAMDOCS.docs||[]).slice().sort(function(a,b){ return (b.updated||b.created||"").localeCompare(a.updated||a.created||""); });
+  var side=$("docw-side"); if(!side) return;
+  var docs=(TEAMDOCS.docs||[]).slice().sort(docByUpdated);
   var q=(docSearch||"").trim().toLowerCase();
-  if(q) docs=docs.filter(function(d){ return (d.title||"").toLowerCase().indexOf(q)>=0; });
-
-  var h='<div class="dp-head"><h1 class="dp-h1">Docs</h1><div class="dp-sub">Your team\'s knowledge base — create documents from templates and keep them in one place.</div></div>';
-  h+='<div class="dl-bar"><input class="dl-search" id="dl-search" type="text" placeholder="Search docs by title…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)"></div>';
-
-  if(admin){
-    h+='<div class="dl-sec">Start a new doc</div><div class="dl-tpls">';
-    tpls.forEach(function(t){
-      h+='<div class="dl-tpl'+(t._custom?' custom':'')+'" onclick="docCreateFrom(\''+t.id+'\')">'
-        +'<div class="dl-tpl-ic">'+mtEsc(t.icon||"📄")+'</div>'
-        +'<div class="dl-tpl-nm">'+mtEsc(t.name)+'</div>'
-        +(t.desc?'<div class="dl-tpl-desc">'+mtEsc(t.desc)+'</div>':'')
-        +'<div class="dl-tpl-tag">'+(t._custom?"Your template":"Template")+'</div>'
-        +'</div>';
-    });
-    h+='</div>';
-  }
-
-  h+='<div class="dl-sec">'+(q?'Search results':'Your docs')+'</div>';
-  if(!docs.length){
-    h+='<div class="dl-empty">'+(q?'No docs match "'+mtEsc(q)+'".':(admin?'No docs yet — pick a template above to create your first one.':'No docs yet.'))+'</div>';
-  } else {
-    h+='<div class="dl-docs">';
-    docs.forEach(function(d){
-      h+='<div class="dl-doc" onclick="docOpen(\''+d.id+'\')">'
-        +'<span class="dl-doc-ic">'+mtEsc(d.icon||"📄")+'</span>'
-        +'<div class="dl-doc-main"><div class="dl-doc-title">'+mtEsc(d.title||"Untitled")+'</div>'
-        +'<div class="dl-doc-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div></div>'
-        +(admin?'<button class="dl-doc-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
-        +'</div>';
-    });
-    h+='</div>';
-  }
-  body.innerHTML=h;
+  var list=q?docs.filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;}):docs;
+  var h='<div class="docw-side-top"><span class="docw-mini">Documents</span>'+(admin?'<button class="docw-create" onclick="docOpenTplPicker()">＋ New</button>':'')+'</div>';
+  h+='<input class="docw-search" id="docw-search" type="text" placeholder="Search docs…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)">';
+  h+='<div class="docw-list">';
+  if(!list.length){ h+='<div class="docw-empty2">'+(q?'No matches.':(admin?'No docs yet.<br>Click ＋ New to start.':'No docs yet.'))+'</div>'; }
+  else list.forEach(function(d){
+    h+='<div class="docw-item'+(d.id===docOpenId?' on':'')+'" onclick="docOpen(\''+d.id+'\')">'
+      +'<span class="docw-item-ic">'+mtEsc(d.icon||"📄")+'</span>'
+      +'<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span><span class="docw-item-meta">'+mtEsc(d.updated||d.created||"")+'</span></span>'
+      +(admin?'<button class="docw-item-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
+      +'</div>';
+  });
+  h+='</div>';
+  side.innerHTML=h;
 }
-function docSearchInput(v){ docSearch=v; var d=$("dl-search"); var pos=d?d.selectionStart:null; renderDocLibrary(); var n=$("dl-search"); if(n){ n.focus(); if(pos!=null){ try{n.setSelectionRange(pos,pos);}catch(e){} } } }
+function docSearchInput(v){ docSearch=v; renderDocSide(); var n=$("docw-search"); if(n){ n.focus(); try{ n.setSelectionRange(n.value.length,n.value.length); }catch(e){} } }
 
-function docCreateFrom(tplId){
-  var all=docBuiltins().concat(TEAMDOCS.templates||[]);
-  var t=all.filter(function(x){return x.id===tplId;})[0]; if(!t) return;
-  var d={ id:docid(), title:t.id==="bi-blank"?"Untitled":t.name, template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), blocks:docCloneBlocks(t.blocks) };
-  TEAMDOCS.docs.push(d);
-  docOpenId=d.id; docEditing=true; docBackup=JSON.parse(JSON.stringify(d));
-  docsCommit();
-}
-function docOpen(id){ docOpenId=id; docEditing=false; docBackup=null; renderDocsPage(); window.scrollTo(0,0); }
-function docBackToLibrary(){ docOpenId=null; docEditing=false; docBackup=null; renderDocsPage(); window.scrollTo(0,0); }
-function docDelete(id){
-  var d=null; for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===id) d=TEAMDOCS.docs[i]; }
-  if(!d) return;
-  if(!window.confirm('Delete "'+(d.title||"this doc")+'"?')) return;
-  TEAMDOCS.docs=TEAMDOCS.docs.filter(function(x){return x.id!==id;});
-  if(docOpenId===id) docOpenId=null;
-  docsCommit();
-}
-
-/* ----- doc view (read) ----- */
-function renderDocView(){
+/* ----- right editor pane ----- */
+function renderDocMain(){
   var admin=(typeof can==="function")?can("admin"):false;
-  var d=docCurrent(); if(!d){ docBackToLibrary(); return; }
-  if(docEditing){ renderDocEdit(d,admin); return; }
-  var body=$("dp-body");
-  var h='<div class="dv-top"><button class="dv-back" onclick="docBackToLibrary()">← All docs</button>';
+  var main=$("docw-main"); if(!main) return;
+  var d=docCurrent();
+  if(!d){
+    main.innerHTML='<div class="doce-empty"><div class="doce-empty-ic">📄</div><div class="doce-empty-t">No document open</div><div class="doce-empty-s">'+(admin?'Pick a doc on the left, or create a new one.':'Select a document on the left.')+'</div></div>';
+    return;
+  }
+  var h='';
   if(admin){
-    h+='<div class="dv-actions">'
-      +'<button class="mt-btn" onclick="docStartEdit()">✎ Edit</button>'
-      +'<button class="mt-btn" onclick="docSaveAsTemplate()">Save as template</button>'
-      +'<button class="mt-btn" onclick="docDelete(\''+d.id+'\')">Delete</button>'
+    h+='<div class="doce-toolbar">'
+      +'<button class="doce-tb" title="Normal text" onmousedown="event.preventDefault()" onclick="doceBlock(\'p\')">Text</button>'
+      +'<button class="doce-tb" title="Heading 1" onmousedown="event.preventDefault()" onclick="doceBlock(\'h1\')">H1</button>'
+      +'<button class="doce-tb" title="Heading 2" onmousedown="event.preventDefault()" onclick="doceBlock(\'h2\')">H2</button>'
+      +'<button class="doce-tb" title="Heading 3" onmousedown="event.preventDefault()" onclick="doceBlock(\'h3\')">H3</button>'
+      +'<span class="doce-sep"></span>'
+      +'<button class="doce-tb" title="Bold" onmousedown="event.preventDefault()" onclick="doceCmd(\'bold\')"><b>B</b></button>'
+      +'<button class="doce-tb" title="Italic" onmousedown="event.preventDefault()" onclick="doceCmd(\'italic\')"><i>I</i></button>'
+      +'<button class="doce-tb" title="Underline" onmousedown="event.preventDefault()" onclick="doceCmd(\'underline\')"><u>U</u></button>'
+      +'<span class="doce-sep"></span>'
+      +'<button class="doce-tb" title="Bulleted list" onmousedown="event.preventDefault()" onclick="doceCmd(\'insertUnorderedList\')">• List</button>'
+      +'<button class="doce-tb" title="Numbered list" onmousedown="event.preventDefault()" onclick="doceCmd(\'insertOrderedList\')">1. List</button>'
+      +'<button class="doce-tb" title="Task list" onmousedown="event.preventDefault()" onclick="doceTask()">☑ Task</button>'
+      +'<span class="doce-sep"></span>'
+      +'<button class="doce-tb" title="Insert table" onmousedown="event.preventDefault()" onclick="doceTableToggle(event)">▦ Table</button>'
+      +'<span class="doce-flex"></span>'
+      +'<span class="doce-saved" id="doce-saved">Saved</span>'
+      +'<button class="doce-tb" title="Save as template" onmousedown="event.preventDefault()" onclick="docSaveAsTemplate()">Save as template</button>'
       +'</div>';
   }
+  h+='<div class="doce-scroll">';
+  h+='<input class="doce-title" id="doce-title" type="text" value="'+mtEsc(d.title||"")+'" placeholder="Untitled" '+(admin?'oninput="docTitleInput(this.value)"':'readonly')+'>';
+  h+='<div class="doce-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div>';
+  h+='<div class="doce-area" id="doce-area" data-ph="Start writing…" '+(admin?'contenteditable="true" oninput="docEditorInput()"':'')+'>'+(d.html||"")+'</div>';
   h+='</div>';
-  h+='<h1 class="dv-title">'+mtEsc(d.title||"Untitled")+'</h1>';
-  h+='<div class="dv-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div>';
-  h+='<div class="doc-body">'+docBlocksReadHTML(d.blocks)+'</div>';
-  body.innerHTML=h;
-}
-function docBlocksReadHTML(blocks){
-  if(!blocks||!blocks.length) return '<div class="doc-p empty">This doc is empty.</div>';
-  return blocks.map(function(b){
-    if(b.type==="heading") return '<div class="doc-h">'+mtEsc(b.text||"")+'</div>';
-    if(b.type==="text") return b.text&&b.text.trim() ? '<p class="doc-p">'+mtEsc(b.text)+'</p>' : '<p class="doc-p empty">—</p>';
-    if(b.type==="bullets") return b.items&&b.items.length ? '<ul class="doc-ul">'+b.items.map(function(x){return '<li>'+mtEsc(x)+'</li>';}).join('')+'</ul>' : '<ul class="doc-ul"><li class="doc-ul-empty">—</li></ul>';
-    if(b.type==="fields") return '<table class="doc-fields"><tbody>'+(b.rows||[]).map(function(r){ return '<tr><td class="dfl">'+mtEsc(r.label||"")+'</td><td class="dfv'+((r.value&&r.value.trim())?'':' empty')+'">'+(r.value&&r.value.trim()?mtEsc(r.value):"—")+'</td></tr>'; }).join('')+'</tbody></table>';
-    return '';
-  }).join('');
+  main.innerHTML=h;
+  if(admin){ var ed=$("doce-area"); if(ed){ ed.addEventListener('change', doceChange); } }
 }
 
-/* ----- doc edit ----- */
-function docStartEdit(){ var d=docCurrent(); if(!d) return; docEditing=true; docBackup=JSON.parse(JSON.stringify(d)); renderDocsPage(); }
-function renderDocEdit(d,admin){
-  var body=$("dp-body");
-  var h='<div class="dv-top"><button class="dv-back" onclick="docCancelEdit()">← Cancel</button>'
-    +'<div class="dv-actions"><button class="mt-btn primary" onclick="docSaveEdit()">✓ Done</button></div></div>';
-  h+='<input class="doc-title-input" id="doc-title-input" type="text" value="'+mtEsc(d.title||"")+'" placeholder="Doc title">';
-  h+='<div id="doc-blocks">'+(d.blocks||[]).map(docBlockEditHTML).join('')+'</div>';
-  h+='<div class="doc-addbar">'
-    +'<button onclick="docAddBlock(\'heading\')">＋ Heading</button>'
-    +'<button onclick="docAddBlock(\'text\')">＋ Text</button>'
-    +'<button onclick="docAddBlock(\'fields\')">＋ Fields table</button>'
-    +'<button onclick="docAddBlock(\'bullets\')">＋ Bullet list</button>'
-    +'</div>';
-  body.innerHTML=h;
+/* ----- editor commands ----- */
+function doceCmd(cmd){ var ed=$("doce-area"); if(!ed) return; ed.focus(); try{ document.execCommand(cmd,false,null); }catch(e){} docEditorInput(); }
+function doceBlock(tag){ var ed=$("doce-area"); if(!ed) return; ed.focus(); try{ document.execCommand('formatBlock',false,tag); }catch(e){} docEditorInput(); }
+function doceTask(){
+  var ed=$("doce-area"); if(!ed) return; ed.focus();
+  try{ document.execCommand('insertUnorderedList',false,null); }catch(e){}
+  var sel=window.getSelection(); if(sel&&sel.rangeCount){ var node=sel.anchorNode, ul=node;
+    while(ul&&ul.nodeName!=="UL"){ ul=ul.parentNode; }
+    if(ul){ ul.classList.add('doc-tasks'); Array.prototype.forEach.call(ul.children,function(li){ if(li.nodeName==="LI"&&!li.querySelector('input.doc-tk')){ var cb=document.createElement('input'); cb.type='checkbox'; cb.className='doc-tk'; li.insertBefore(cb, li.firstChild); } }); }
+  }
+  docEditorInput();
 }
-function docBlockEditHTML(b){
-  var tb='<div class="doc-blk-tb"><span class="doc-blk-type">'+b.type+'</span>'
-    +'<button title="Move up" onclick="docMoveBlock(\''+b.id+'\',-1)">↑</button>'
-    +'<button title="Move down" onclick="docMoveBlock(\''+b.id+'\',1)">↓</button>'
-    +'<button class="del" title="Delete block" onclick="docDelBlock(\''+b.id+'\')">×</button></div>';
-  var inner="";
-  if(b.type==="heading") inner='<input class="doc-h-input" type="text" value="'+mtEsc(b.text||"")+'" placeholder="Section heading">';
-  else if(b.type==="text") inner='<textarea class="doc-t-input" placeholder="Write here…">'+mtEsc(b.text||"")+'</textarea>';
-  else if(b.type==="bullets") inner='<textarea class="doc-b-input" placeholder="One bullet per line">'+mtEsc((b.items||[]).join("\n"))+'</textarea><div class="doc-b-hint">One bullet per line.</div>';
-  else if(b.type==="fields") inner='<div class="doc-f-rows">'+(b.rows||[]).map(docFieldRowEdit).join('')+'</div><button type="button" class="doc-f-addrow" onclick="docAddFieldRow(\''+b.id+'\')">＋ Add row</button>';
-  return '<div class="doc-edit-blk" data-blk="'+b.id+'">'+tb+inner+'</div>';
+function doceInsertHTML(html){ var ed=$("doce-area"); if(!ed) return; ed.focus(); try{ document.execCommand('insertHTML',false,html); }catch(e){ ed.innerHTML+=html; } docEditorInput(); }
+function doceChange(e){ var t=e.target; if(t&&t.classList&&t.classList.contains('doc-tk')){ if(t.checked) t.setAttribute('checked','checked'); else t.removeAttribute('checked'); docEditorInput(); } }
+
+/* table grid picker */
+function doceTableToggle(e){
+  var ex=$("doce-tablepop"); if(ex){ ex.remove(); document.removeEventListener('mousedown',doceTableOutside); return; }
+  var pop=document.createElement('div'); pop.id='doce-tablepop'; pop.className='doce-tablepop';
+  var R=6,C=8,html='<div class="doce-grid">';
+  for(var r=1;r<=R;r++){ for(var c=1;c<=C;c++){ html+='<span class="doce-gc" data-r="'+r+'" data-c="'+c+'" onmouseover="doceGridHover('+r+','+c+')" onclick="doceInsertTable('+r+','+c+')"></span>'; } }
+  html+='</div><div class="doce-gridlbl" id="doce-gridlbl">Pick size</div>';
+  pop.innerHTML=html; document.body.appendChild(pop);
+  var rect=e.currentTarget.getBoundingClientRect();
+  pop.style.left=Math.min(rect.left, window.innerWidth-230)+'px'; pop.style.top=(rect.bottom+6)+'px';
+  setTimeout(function(){ document.addEventListener('mousedown',doceTableOutside); },0);
 }
-function docFieldRowEdit(r){ r=r||{}; return '<div class="doc-f-row"><input class="doc-f-label" type="text" placeholder="Label" value="'+mtEsc(r.label||"")+'"><input class="doc-f-value" type="text" placeholder="Value" value="'+mtEsc(r.value||"")+'"><button type="button" class="doc-f-del" title="Remove" onclick="this.closest(\'.doc-f-row\').remove()">×</button></div>'; }
-function docAddFieldRow(blkId){ var wrap=document.querySelector('[data-blk="'+blkId+'"] .doc-f-rows'); if(!wrap) return; wrap.insertAdjacentHTML('beforeend', docFieldRowEdit({})); }
-function docReadForm(){
-  var d=docCurrent(); if(!d) return;
-  var ti=$("doc-title-input"); if(ti) d.title=ti.value.trim()||"Untitled";
-  (d.blocks||[]).forEach(function(b){
-    var el=document.querySelector('[data-blk="'+b.id+'"]'); if(!el) return;
-    if(b.type==="heading"){ var i=el.querySelector('.doc-h-input'); if(i) b.text=i.value; }
-    else if(b.type==="text"){ var ta=el.querySelector('.doc-t-input'); if(ta) b.text=ta.value; }
-    else if(b.type==="bullets"){ var tb=el.querySelector('.doc-b-input'); if(tb) b.items=tb.value.split("\n").map(function(x){return x.trim();}).filter(Boolean); }
-    else if(b.type==="fields"){ b.rows=[]; el.querySelectorAll('.doc-f-row').forEach(function(r){ var lab=r.querySelector('.doc-f-label').value.trim(); var val=r.querySelector('.doc-f-value').value.trim(); if(lab||val) b.rows.push({label:lab,value:val}); }); }
-  });
+function doceTableOutside(e){ var pop=$("doce-tablepop"); if(pop&&!pop.contains(e.target)){ pop.remove(); document.removeEventListener('mousedown',doceTableOutside); } }
+function doceGridHover(r,c){ var gs=document.querySelectorAll('#doce-tablepop .doce-gc'); Array.prototype.forEach.call(gs,function(g){ var gr=+g.getAttribute('data-r'),gc=+g.getAttribute('data-c'); if(gr<=r&&gc<=c) g.classList.add('hot'); else g.classList.remove('hot'); }); var l=$("doce-gridlbl"); if(l) l.textContent=c+' × '+r; }
+function doceInsertTable(r,c){
+  var pop=$("doce-tablepop"); if(pop) pop.remove(); document.removeEventListener('mousedown',doceTableOutside);
+  var rows=''; for(var i=0;i<r;i++){ var cells=''; for(var j=0;j<c;j++){ cells+= (i===0?'<th><br></th>':'<td><br></td>'); } rows+='<tr>'+cells+'</tr>'; }
+  doceInsertHTML('<table class="doc-tbl"><tbody>'+rows+'</tbody></table><p><br></p>');
 }
-function docAddBlock(type){
-  var d=docCurrent(); if(!d) return; docReadForm();
-  var b;
-  if(type==="heading") b={id:blkid(),type:"heading",text:"Section title"};
-  else if(type==="text") b={id:blkid(),type:"text",text:""};
-  else if(type==="bullets") b={id:blkid(),type:"bullets",items:[]};
-  else b={id:blkid(),type:"fields",rows:[{label:"",value:""}]};
-  d.blocks.push(b); renderDocsPage();
+
+/* ----- persistence ----- */
+var docSaveTimer=null;
+function docSetSaved(s){ var el=$("doce-saved"); if(el) el.textContent = (s==="saving")?"Saving…":"Saved"; }
+function docScheduleSave(){ docSetSaved("saving"); if(docSaveTimer) clearTimeout(docSaveTimer); docSaveTimer=setTimeout(function(){ if(typeof pushAll==="function") pushAll(); docSetSaved("saved"); }, 1000); }
+function docEditorInput(){ var d=docCurrent(); if(!d) return; var ed=$("doce-area"); if(ed) d.html=ed.innerHTML; d.updated=docToday(); docScheduleSave(); }
+function docTitleInput(v){ var d=docCurrent(); if(!d) return; d.title=(v||"").trim()||"Untitled"; d.updated=docToday(); renderDocSide(); docScheduleSave(); }
+
+/* ----- create / open / delete ----- */
+function docOpenTplPicker(){
+  var tpls=docTplList();
+  $("doctp-grid").innerHTML=tpls.map(function(t){
+    return '<div class="doctp'+(t._custom?' custom':'')+'" onclick="docCreateFrom(\''+t.id+'\')">'
+      +'<div class="doctp-ic">'+mtEsc(t.icon||"📄")+'</div>'
+      +'<div class="doctp-nm">'+mtEsc(t.name)+'</div>'
+      +(t.desc?'<div class="doctp-desc">'+mtEsc(t.desc)+'</div>':'')
+      +'<div class="doctp-tag">'+(t._custom?"Your template":"Template")+'</div></div>';
+  }).join('');
+  $("doc-tpl-dialog").classList.add("show");
 }
-function docMoveBlock(id,dir){
-  var d=docCurrent(); if(!d) return; docReadForm();
-  var i=-1; for(var k=0;k<d.blocks.length;k++){ if(d.blocks[k].id===id) i=k; }
-  var j=i+dir; if(i<0||j<0||j>=d.blocks.length) return;
-  var tmp=d.blocks[i]; d.blocks[i]=d.blocks[j]; d.blocks[j]=tmp; renderDocsPage();
+function docCloseTplPicker(){ $("doc-tpl-dialog").classList.remove("show"); }
+function docCreateFrom(id){
+  var t=docTplList().filter(function(x){return x.id===id;})[0]; if(!t) return;
+  var d={ id:docid(), title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
+  TEAMDOCS.docs.push(d); docCloseTplPicker(); docOpenId=d.id; buildDocsShell();
+  if(typeof pushAll==="function") pushAll();
+  var ti=$("doce-title"); if(ti){ ti.focus(); ti.select(); }
 }
-function docDelBlock(id){ var d=docCurrent(); if(!d) return; docReadForm(); d.blocks=d.blocks.filter(function(b){return b.id!==id;}); renderDocsPage(); }
-function docSaveEdit(){ var d=docCurrent(); if(!d) return; docReadForm(); d.updated=docToday(); docEditing=false; docBackup=null; docsCommit(); }
-function docCancelEdit(){
-  if(docBackup){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docBackup.id){ TEAMDOCS.docs[i]=normalizeDoc(docBackup); } } }
-  docEditing=false; docBackup=null; renderDocsPage();
+function docOpen(id){ docOpenId=id; renderDocSide(); renderDocMain(); }
+function docDelete(id){
+  var d=null; TEAMDOCS.docs.forEach(function(x){ if(x.id===id) d=x; }); if(!d) return;
+  if(!window.confirm('Delete "'+(d.title||"this doc")+'"?')) return;
+  TEAMDOCS.docs=TEAMDOCS.docs.filter(function(x){ return x.id!==id; });
+  if(docOpenId===id){ docOpenId = TEAMDOCS.docs[0] ? TEAMDOCS.docs[0].id : null; }
+  renderDocSide(); renderDocMain();
+  if(typeof pushAll==="function") pushAll();
 }
 function docSaveAsTemplate(){
   var d=docCurrent(); if(!d) return;
   var name=window.prompt("Template name:", d.title||"My template"); if(!name) return;
-  TEAMDOCS.templates.push({ id:tplid(), name:String(name).trim()||"My template", icon:d.icon||"📄", desc:"Custom template", blocks:docCloneBlocks(d.blocks) });
-  docsCommit();
+  TEAMDOCS.templates.push({ id:tplid(), name:String(name).trim()||"My template", icon:d.icon||"📄", desc:"Custom template", html:d.html||"" });
+  if(typeof pushAll==="function") pushAll();
 }
 
 /* ================= Accountabilities: Ownership linked into org + matrix ================= */
@@ -10333,6 +10421,8 @@ if($("pp-dlg-save")){ $("pp-dlg-save").onclick = function(){ if(ppDlgSave) ppDlg
 if($("nav-d")){ $("nav-d").onclick = openTeam; }
 if($("nav-e")){ $("nav-e").onclick = openDocs; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
+if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
+if($("doc-tpl-dialog")){ $("doc-tpl-dialog").onclick = function(e){ if(e.target.id==="doc-tpl-dialog") docCloseTplPicker(); }; }
 if($("mt-back")){ $("mt-back").onclick = closeTeam; }
 if($("mt-cancel")){ $("mt-cancel").onclick = mtCloseDlg; }
 if($("mt-save")){ $("mt-save").onclick = function(){ if(mtSave) mtSave(); }; }
