@@ -1970,6 +1970,12 @@ body{margin:0}
 .okrb-card:hover .okrb-acts{display:flex}
 .okrb-lock{margin-top:11px;font-size:10.5px;color:var(--muted)}
 
+/* ===== OKR Board filter ===== */
+.okrb-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px}
+.okrb-filter{display:inline-flex;gap:3px;background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:3px}
+.okrb-fbtn{border:none;background:none;border-radius:99px;padding:6px 14px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
+.okrb-fbtn.on{background:var(--indigo);color:#fff}
+
 </style>
 </head>
 <body>
@@ -2661,6 +2667,7 @@ const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 let okrFilter = null;   // null = all levels; else a level key to focus
 let okrView2 = "list";   // "list" | "tree"
+let okrBoardMine = false;   // Board: filter to my OKRs (owned by me) + context
 let okrTreeExpanded = {};
 let okrPermId = null;
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
@@ -6907,8 +6914,33 @@ function okrPermSave(){
 
 /* ================= OKR Board view (vertical level bands + connectors) ================= */
 var _okrBoardResizeBound=false;
+function okrBoardScope(cyc){
+  // returns the id-set to show: my owned objectives + their parent chain + direct children.
+  var objs=cyc.objectives;
+  if(!okrBoardMine || !SESSION) return null; // null = show all
+  var byId={}; objs.forEach(function(o){ byId[o.id]=o; });
+  var keep={};
+  function addParents(o){ var g=0, cur=o; while(cur && cur.alignsTo && byId[cur.alignsTo] && g++<20){ var pa=byId[cur.alignsTo]; keep[pa.id]=true; cur=pa; } }
+  objs.forEach(function(o){
+    if(okrOwners(o).indexOf(SESSION.email)>=0){
+      keep[o.id]=true;
+      addParents(o);
+      objs.forEach(function(c){ if(c.alignsTo===o.id) keep[c.id]=true; }); // direct children
+    }
+  });
+  return keep;
+}
 function renderOkrBoard(cyc, wrap){
   var objs=cyc.objectives;
+  // filter toolbar (top-right)
+  var bar=document.createElement("div"); bar.className="okrb-toolbar";
+  var seg=document.createElement("div"); seg.className="okrb-filter";
+  [["all","All OKRs"],["mine","My OKRs"]].forEach(function(m){ var b=document.createElement("button"); b.className="okrb-fbtn"+((m[0]==="mine")===okrBoardMine?" on":""); b.textContent=m[1]; b.onclick=function(){ okrBoardMine=(m[0]==="mine"); renderAll(); }; seg.appendChild(b); });
+  bar.appendChild(seg); wrap.appendChild(bar);
+
+  var scope=okrBoardScope(cyc); // null => all
+  var vis = scope ? objs.filter(function(o){ return scope[o.id]; }) : objs;
+
   var root=document.createElement("div"); root.className="okrb";
   var svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.setAttribute("class","okrb-links"); root.appendChild(svg);
   var bands=document.createElement("div"); bands.className="okrb-bands"; root.appendChild(bands);
@@ -6916,15 +6948,15 @@ function renderOkrBoard(cyc, wrap){
   // group by admin levels order; unknown/blank -> "No level" band at the end
   var levels=okrLevelsList();
   var used=[];
-  levels.forEach(function(lv){ if(objs.some(function(o){return (o.level||"")===lv;})) used.push(lv); });
-  var hasBlank=objs.some(function(o){ var l=(o.level||""); return !l || levels.indexOf(l)<0; });
+  levels.forEach(function(lv){ if(vis.some(function(o){return (o.level||"")===lv;})) used.push(lv); });
+  var hasBlank=vis.some(function(o){ var l=(o.level||""); return !l || levels.indexOf(l)<0; });
   var order=used.slice(); if(hasBlank) order.push("");
 
-  if(!objs.length){
-    var e=document.createElement("div"); e.className="empty"; e.textContent="No objectives yet."+((editMode)?" Add one below.":""); bands.appendChild(e);
+  if(!vis.length){
+    var e=document.createElement("div"); e.className="empty"; e.textContent=(okrBoardMine? "No OKRs owned by you in this cycle." : "No objectives yet.")+((editMode&&!okrBoardMine)?" Add one below.":""); bands.appendChild(e);
   }
   order.forEach(function(lv){
-    var inBand = objs.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
+    var inBand = vis.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
     if(!inBand.length) return;
     var band=document.createElement("div"); band.className="okrb-band";
     var head=document.createElement("div"); head.className="okrb-bandhead"; head.textContent=(lv||"No level").toUpperCase(); band.appendChild(head);
