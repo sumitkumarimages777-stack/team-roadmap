@@ -1877,6 +1877,28 @@ body{margin:0}
 .okrtree-mini:hover{border-color:var(--indigo);color:var(--indigo)}
 .okrtree-lock{margin-top:9px;font-size:10.5px;color:var(--muted)}
 
+/* ===== OKR permissions modal + KR expander ===== */
+#okrperm-dialog .dialog{max-width:520px}
+.okrperm-sec{margin-bottom:16px}
+.okrperm-h{font-weight:700;font-size:13.5px;color:var(--ink,#172B4D);margin-bottom:2px}
+.okrperm-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
+.okrperm-people{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto;padding:2px}
+.okrperm-p{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:99px;padding:5px 11px;font-size:12.5px;cursor:pointer;color:var(--muted);user-select:none}
+.okrperm-p input{margin:0}
+.okrperm-p.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft,#EEF1FF)}
+.okrperm-empty{font-size:12.5px;color:var(--muted)}
+.okrtree-krtg{margin-top:9px;border:none;background:none;color:var(--indigo);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;font-family:var(--disp);text-align:left}
+.okrtree-krtg:hover{text-decoration:underline}
+.okrtree-krtg.empty{color:var(--muted)}
+.okrtree-krbox{margin-top:8px;border-top:1px dashed var(--line-strong);padding-top:8px;display:flex;flex-direction:column;gap:9px}
+.okrtree-kr-t{font-size:11.5px;font-weight:600;color:var(--ink,#172B4D);margin-bottom:3px}
+.okrtree-kr-bar{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:3px}
+.okrtree-kr-bar i{display:block;height:100%}
+.okrtree-kr-fig{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.okrtree-krupd{margin-top:4px;border:1px solid var(--line-strong);background:var(--card);border-radius:6px;padding:2px 9px;font-size:10.5px;cursor:pointer;color:var(--muted);font-family:var(--disp)}
+.okrtree-krupd:hover{border-color:var(--indigo);color:var(--indigo)}
+.okrtree-kradd{border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;font-family:var(--disp)}
+
 </style>
 </head>
 <body>
@@ -1957,6 +1979,13 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="okrperm-dialog" style="z-index:474">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3 id="okrperm-title">Permissions</h3>
+    <div class="dlg-body" id="okrperm-body"></div>
+    <div class="btns"><button class="btn" id="okrperm-cancel">Cancel</button><button class="btn save" id="okrperm-save">Save permissions</button></div>
+  </div>
+</div>
 <div class="overlay" id="docmove-dialog" style="z-index:472">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:420px">
     <h3 id="docmove-title">Move</h3>
@@ -2560,6 +2589,8 @@ const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 let okrFilter = null;   // null = all levels; else a level key to focus
 let okrView2 = "list";   // "list" | "tree"
+let okrTreeExpanded = {};
+let okrPermId = null;
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
 const STAGE_LABEL = {new:"New", review:"Under review", pipeline:"In pipeline", shipped:"Shipped", notnow:"Not now"};
 const STAGE_PTS = {new:1, review:1, pipeline:3, shipped:5, notnow:1};
@@ -3868,6 +3899,10 @@ $("f-photos").addEventListener("change", async e=>{
   }
 });
 $("dlg-cancel").onclick = ()=> $("overlay").classList.remove("show");
+if($("okrperm-cancel")) $("okrperm-cancel").onclick = okrPermClose;
+if($("okrperm-save")) $("okrperm-save").onclick = okrPermSave;
+if($("okrperm-dialog")) $("okrperm-dialog").onclick = function(e){ if(e.target.id==="okrperm-dialog") okrPermClose(); };
+if($("okrperm-body")) $("okrperm-body").addEventListener("change", function(e){ var l=e.target&&e.target.closest?e.target.closest(".okrperm-p"):null; if(l) l.classList.toggle("on", e.target.checked); });
 $("overlay").addEventListener("click", e=>{ if(e.target===$("overlay")) $("overlay").classList.remove("show"); });
 $("dlg-save").onclick = ()=>{
   const hideTitle = $("f-title-wrap").style.display === "none";
@@ -6583,8 +6618,11 @@ function objRollupPct(ob){
   return objPct(ob);
 }
 function okrOwnerName(email){ if(!email) return ""; var m=assigneeMembers().find(function(u){return u.email===email;}); return m?userDisplayName(m):email; }
-function okrCanEdit(ob){ return editMode || (SESSION && ob && ob.assignee===SESSION.email); }
-function okrChildLevel(parentId, cyc){ var p=cyc.objectives.find(function(o){return o.id===parentId;}); if(!p) return "team"; var i=OKR_LEVELS.findIndex(function(l){return l.key===(p.level||"team");}); return OKR_LEVELS[Math.min(i+1,OKR_LEVELS.length-1)].key; }
+function okrOwners(ob){ if(ob&&Array.isArray(ob.owners)&&ob.owners.length) return ob.owners.slice(); if(ob&&ob.assignee) return [ob.assignee]; return []; }
+function okrInList(list){ return !!(SESSION && Array.isArray(list) && list.indexOf(SESSION.email)>=0); }
+function okrCanEdit(ob){ if(editMode) return true; if(!SESSION||!ob) return false; return okrInList(okrOwners(ob)) || okrInList(ob.editors); }
+function okrCanAdd(ob){ if(editMode) return true; if(!SESSION||!ob) return false; return okrInList(okrOwners(ob)) || okrInList(ob.adders); }
+function okrTreeKrToggle(id){ okrTreeExpanded[id]=!okrTreeExpanded[id]; renderAll(); }
 function okrMini(txt,title,fn){ var b=document.createElement("button"); b.className="okrtree-mini"; b.textContent=txt; b.title=title; b.onclick=function(e){ e.stopPropagation(); fn(); }; return b; }
 
 function okrAddOwned(cyc, parentId){
@@ -6594,9 +6632,9 @@ function okrAddOwned(cyc, parentId){
     if(v.note) ob.note=v.note;
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
-    ob.assignee = editMode ? (v.assignee || (SESSION&&SESSION.email) || "") : ((SESSION&&SESSION.email)||"");
-    if(!ob.assignee) delete ob.assignee;
-    cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
+    var _own = editMode ? (v.assignee || (SESSION&&SESSION.email) || "") : ((SESSION&&SESSION.email)||"");
+    if(_own){ ob.owners=[_own]; ob.assignee=_own; }
+    cyc.objectives.push(ob); saveOkrs(); toast("Objective added — set permissions from the ⚙ on the card");
   }, {level:true, alignTo: !parentId, alignOptions: okrAlignOptions(cyc, null), assignee: !!editMode});
 }
 function okrEditNode(ob, cyc){
@@ -6623,9 +6661,9 @@ function renderOkrTree(cyc, wrap){
     roots.forEach(function(r){ ul.appendChild(okrTreeNode(r, cyc, objs)); });
     root.appendChild(ul); scroll.appendChild(root); wrap.appendChild(scroll);
   }
-  if(editMode || SESSION){
+  if(editMode){
     var add=document.createElement("button"); add.className="addline"; add.style.padding="12px";
-    add.textContent = editMode ? "＋ Add company objective" : "＋ Add objective (owned by you)";
+    add.textContent = "＋ Add top-level objective";
     add.onclick=function(){ okrAddOwned(cyc, null); };
     wrap.appendChild(add);
   }
@@ -6636,26 +6674,95 @@ function okrTreeNode(ob, cyc, objs){
   var lv=(ob.level||"").trim();
   var p=objRollupPct(ob);
   var auto=ob.rollup==="auto";
-  var mine=SESSION && ob.assignee===SESSION.email;
-  var ownerName=ob.assignee ? okrOwnerName(ob.assignee) : (ob.owner||"");
+  var owners=okrOwners(ob);
+  var mine=SESSION && owners.indexOf(SESSION.email)>=0;
+  var ownerNames=owners.map(okrOwnerName).filter(Boolean);
+  var ownerTxt = ownerNames.length ? mtEsc(ownerNames.join(", ")) : '<i>unassigned</i>';
+  var canEdit=okrCanEdit(ob), canAdd=okrCanAdd(ob);
+  var krExpanded=!!okrTreeExpanded[ob.id];
   card.innerHTML=((lv||mine)?'<div class="okrtree-lv">'+(lv?mtEsc(lv):'')+(mine?(lv?' · ':'')+'<span class="okrtree-mine">you</span>':'')+'</div>':'')
     +'<div class="okrtree-title">'+mtEsc(ob.title)+'</div>'
-    +'<div class="okrtree-foot"><span class="okrtree-owner">'+(ownerName?mtEsc(ownerName):'<i>unassigned</i>')+'</span>'
+    +'<div class="okrtree-foot"><span class="okrtree-owner">'+ownerTxt+'</span>'
     +'<span class="okrtree-pct '+scoreClass(p)+'">'+p+'%'+(auto?' <em>auto</em>':'')+'</span></div>';
-  if(okrCanEdit(ob)){
-    var acts=document.createElement("div"); acts.className="okrtree-acts";
-    acts.appendChild(okrMini("＋","Add objective under this (owned by you)", function(){ okrAddOwned(cyc, ob.id); }));
-    acts.appendChild(okrMini("✎","Edit objective", function(){ okrEditNode(ob, cyc); }));
-    acts.appendChild(okrMini(auto?"Auto ✓":"Manual","Toggle progress: manual (from key results) vs auto (average of children)", function(){ if(auto) delete ob.rollup; else ob.rollup="auto"; saveOkrs(); }));
-    acts.appendChild(okrMini("×","Delete objective", function(){ if(confirm('Delete objective “'+ob.title+'”? Its children will be unlinked.')){ cyc.objectives.splice(cyc.objectives.indexOf(ob),1); objs.filter(function(o){return o.alignsTo===ob.id;}).forEach(function(o){ delete o.alignsTo; }); saveOkrs(); toast("Deleted"); } }));
-    card.appendChild(acts);
-  } else if(SESSION && !mine){
-    var lock=document.createElement("div"); lock.className="okrtree-lock"; lock.textContent="🔒 owner can edit"; card.appendChild(lock);
+  // KR expander
+  if(ob.krs && ob.krs.length){
+    var tg=document.createElement("button"); tg.className="okrtree-krtg"; tg.textContent=(krExpanded?'▾':'▸')+' Key results ('+ob.krs.length+')';
+    tg.onclick=function(e){ e.stopPropagation(); okrTreeKrToggle(ob.id); };
+    card.appendChild(tg);
+    if(krExpanded){
+      var kb=document.createElement("div"); kb.className="okrtree-krbox";
+      ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
+        var row=document.createElement("div"); row.className="okrtree-kr";
+        row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+'</div>'
+          +'<div class="okrtree-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
+          +'<div class="okrtree-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
+        if(canEdit){ var up=document.createElement("button"); up.className="okrtree-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; row.appendChild(up); }
+        kb.appendChild(row);
+      });
+      if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true}); }; kb.appendChild(addkr); }
+      card.appendChild(kb);
+    }
+  } else if(canEdit){
+    var addkr0=document.createElement("button"); addkr0.className="okrtree-krtg empty"; addkr0.textContent="＋ Add key result";
+    addkr0.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true}); };
+    card.appendChild(addkr0);
   }
+  // actions
+  var acts=document.createElement("div"); acts.className="okrtree-acts";
+  if(canAdd) acts.appendChild(okrMini("＋","Add sub-objective under this (owned by you)", function(){ okrAddOwned(cyc, ob.id); }));
+  if(canEdit){
+    acts.appendChild(okrMini("✎","Edit objective", function(){ okrEditNode(ob, cyc); }));
+    acts.appendChild(okrMini("⚙","Permissions — who can edit / add under this", function(){ okrPermOpen(ob); }));
+    acts.appendChild(okrMini(auto?"Auto ✓":"Manual","Progress: manual (from KRs) vs auto (avg of children)", function(){ if(auto) delete ob.rollup; else ob.rollup="auto"; saveOkrs(); }));
+    acts.appendChild(okrMini("×","Delete objective", function(){ if(confirm('Delete objective “'+ob.title+'”? Its children will be unlinked.')){ cyc.objectives.splice(cyc.objectives.indexOf(ob),1); objs.filter(function(o){return o.alignsTo===ob.id;}).forEach(function(o){ delete o.alignsTo; }); saveOkrs(); toast("Deleted"); } }));
+  }
+  if(acts.children.length) card.appendChild(acts);
+  if(!canEdit && !canAdd && SESSION){ var lock=document.createElement("div"); lock.className="okrtree-lock"; lock.textContent="🔒 view only"; card.appendChild(lock); }
+  else if(!canEdit && canAdd && SESSION){ var lk=document.createElement("div"); lk.className="okrtree-lock"; lk.textContent="🔒 you can add under this, not edit it"; card.appendChild(lk); }
   li.appendChild(card);
   var kids=objs.filter(function(o){return o.alignsTo===ob.id;});
   if(kids.length){ var ul=document.createElement("ul"); kids.forEach(function(k){ ul.appendChild(okrTreeNode(k, cyc, objs)); }); li.appendChild(ul); }
   return li;
+}
+/* ---- permissions modal ---- */
+function okrPermOpen(ob){
+  okrPermId=ob.id;
+  $("okrperm-title").textContent='Permissions — '+ob.title;
+  okrPermRender();
+  $("okrperm-dialog").classList.add("show");
+}
+function okrPermClose(){ $("okrperm-dialog").classList.remove("show"); okrPermId=null; }
+function okrPermFind(){ var f=findObjective(okrPermId); return f?f.ob:null; }
+function okrPermList(kind){
+  var ob=okrPermFind(); if(!ob) return [];
+  if(kind==="owners") return okrOwners(ob);
+  if(kind==="editors") return Array.isArray(ob.editors)?ob.editors:[];
+  if(kind==="adders") return Array.isArray(ob.adders)?ob.adders:[];
+  return [];
+}
+function okrPermRender(){
+  var ob=okrPermFind(); if(!ob) return;
+  var mem=assigneeMembers();
+  function sec(kind, label, hint){
+    var cur=okrPermList(kind);
+    var h='<div class="okrperm-sec"><div class="okrperm-h">'+label+'</div><div class="okrperm-hint">'+hint+'</div><div class="okrperm-people">';
+    if(!mem.length) h+='<div class="okrperm-empty">No team members yet — add people in My Team / Admin.</div>';
+    mem.forEach(function(u){ var on=cur.indexOf(u.email)>=0; h+='<label class="okrperm-p'+(on?' on':'')+'"><input type="checkbox" data-kind="'+kind+'" value="'+mtEsc(u.email)+'"'+(on?' checked':'')+'>'+mtEsc(userDisplayName(u))+'</label>'; });
+    h+='</div></div>';
+    return h;
+  }
+  $("okrperm-body").innerHTML =
+    sec("owners","Owners","Can edit this objective and add sub-objectives under it.")
+   +sec("editors","Can also edit","Extra people who can edit (besides owners).")
+   +sec("adders","Can add sub-objectives","People who may create children under this — but not edit it.");
+}
+function okrPermSave(){
+  var ob=okrPermFind(); if(!ob){ okrPermClose(); return; }
+  function read(kind){ var out=[]; $("okrperm-body").querySelectorAll('input[data-kind="'+kind+'"]:checked').forEach(function(c){ out.push(c.value); }); return out; }
+  var owners=read("owners"); ob.owners=owners; if(owners.length) ob.assignee=owners[0]; else delete ob.assignee;
+  var editors=read("editors"); if(editors.length) ob.editors=editors; else delete ob.editors;
+  var adders=read("adders"); if(adders.length) ob.adders=adders; else delete ob.adders;
+  okrPermClose(); saveOkrs(); toast("Permissions saved");
 }
 
 function renderContentOkr(){
