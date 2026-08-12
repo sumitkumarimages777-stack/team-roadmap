@@ -1683,6 +1683,70 @@ body{margin:0}
 .doctp.custom .doctp-tag{color:var(--indigo)}
 @media(max-width:640px){ .docw{flex-direction:column;height:auto} .docw-side{width:auto;border-right:none;border-bottom:1px solid var(--line)} .docw-list{max-height:220px} }
 
+/* ===== Docs — Confluence-style overhaul (overrides) ===== */
+:root{ --cf-ink:#172B4D; --cf-sub:#626F86; --cf-line:#EBECF0; --cf-line2:#DFE1E6; --cf-bg:#F7F8F9; --cf-hover:#F1F2F4; --cf-selbg:#E9F2FF; --cf-blue:#0C66E4;
+  --cf-font:-apple-system,BlinkMacSystemFont,"Segoe UI","Roboto","Helvetica Neue",Inter,sans-serif; }
+
+/* full-screen app layout */
+.docs-page .dp-shell{max-width:none;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
+.docs-page .dp-top{padding:12px 22px;border-bottom:1px solid var(--cf-line);margin:0;align-items:center}
+.docs-page .dp-brand{font-size:16px;font-weight:700;color:var(--cf-ink)}
+.docs-page .dp-bi{font-size:18px}
+.docs-page .dp-back{padding:7px 15px;font-size:13px;border-color:var(--cf-line2);color:var(--cf-ink)}
+.docs-page #dp-body{flex:1;min-height:0}
+.docs-page .docw{height:100%;border:none;border-radius:0;gap:0}
+
+/* sidebar = page tree */
+.docs-page .docw-side{width:284px;background:var(--cf-bg);border-right:1px solid var(--cf-line);padding:0;font-family:var(--cf-font)}
+.docs-page .docw-side-top{padding:16px 16px 10px}
+.docs-page .docw-mini{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--cf-sub);text-transform:uppercase}
+.docs-page .docw-create{background:var(--cf-blue);border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600}
+.docs-page .docw-create:hover{background:#0055CC}
+.docs-page .docw-search{margin:0 12px 10px;padding:7px 12px;border:1px solid var(--cf-line2);border-radius:6px;font-size:13.5px;background:#fff;color:var(--cf-ink);font-family:var(--cf-font)}
+.docs-page .docw-search::placeholder{color:#8590A2}
+.docs-page .docw-search:focus{outline:none;border-color:var(--cf-blue);box-shadow:0 0 0 1px var(--cf-blue)}
+.docs-page .docw-list{padding:2px 8px 16px}
+.docs-page .docw-empty2{color:var(--cf-sub);font-size:13px;padding:12px 10px;line-height:1.6}
+.docs-page .docw-item{padding:7px 9px;border-radius:6px;gap:8px;margin-bottom:1px}
+.docs-page .docw-item:hover{background:var(--cf-hover)}
+.docs-page .docw-item.on{background:var(--cf-selbg);box-shadow:none}
+.docs-page .docw-item.on .docw-item-title{color:var(--cf-blue)}
+.docs-page .docw-item-ic{font-size:14px}
+.docs-page .docw-item-title{font-size:14px;font-weight:500;color:var(--cf-ink)}
+.docs-page .docw-item.on .docw-item-title{font-weight:600}
+.docs-page .docw-item-meta{font-size:11px;color:var(--cf-sub);font-family:var(--cf-font)}
+
+/* main + centered page column */
+.docs-page .docw-main{background:#fff}
+.docs-page .doce-toolbar{padding:7px 18px;border-bottom:1px solid var(--cf-line);background:#fff;gap:2px}
+.docs-page .doce-tb{color:#44546F;border-radius:5px;padding:5px 9px;font-size:13px;font-family:var(--cf-font)}
+.docs-page .doce-tb:hover{background:var(--cf-hover);border-color:transparent;color:var(--cf-ink)}
+.docs-page .doce-sep{background:var(--cf-line2);height:22px;margin:0 6px}
+.docs-page .doce-saved{color:var(--cf-sub)}
+.docs-page .doce-scroll{padding:0}
+.docs-page .doce-page{max-width:768px;margin:0 auto;padding:52px 40px 120px}
+.docs-page .doce-title{font-family:var(--cf-font);font-size:29px;font-weight:600;color:var(--cf-ink);letter-spacing:-.01em;padding:0 0 4px}
+.docs-page .doce-title::placeholder{color:#B3B9C4}
+.docs-page .doce-meta{font-family:var(--cf-font);color:var(--cf-sub);margin-bottom:26px;font-size:12.5px}
+.docs-page .doce-area{font-family:var(--cf-font);font-size:16px;line-height:1.714;color:var(--cf-ink)}
+.docs-page .doce-area:empty:before{color:#B3B9C4}
+.docs-page .doce-area h1{font-size:29px;font-weight:600;margin:28px 0 8px;letter-spacing:-.01em}
+.docs-page .doce-area h2{font-size:24px;font-weight:600;margin:24px 0 8px}
+.docs-page .doce-area h3{font-size:20px;font-weight:600;margin:20px 0 6px}
+.docs-page .doce-area p{margin:0 0 14px}
+.docs-page .doce-area ul,.docs-page .doce-area ol{margin:0 0 14px;padding-left:26px}
+.docs-page .doce-area li{margin-bottom:5px}
+.docs-page .doce-area table.doc-tbl{border:1px solid var(--cf-line2);margin:10px 0 18px}
+.docs-page .doce-area table.doc-tbl th,.docs-page .doce-area table.doc-tbl td{border:1px solid var(--cf-line);padding:10px 12px}
+.docs-page .doce-area table.doc-tbl th{background:#F7F8F9;color:var(--cf-ink)}
+.docs-page .doce-empty{font-family:var(--cf-font)}
+.docs-page .doce-empty-t{color:var(--cf-ink)}
+
+/* template picker in Confluence tone */
+#doc-tpl-dialog h3{font-family:var(--cf-font);color:var(--cf-ink)}
+.doctp{font-family:var(--cf-font)}
+.doctp-nm{color:var(--cf-ink)}
+
 </style>
 </head>
 <body>
@@ -9912,11 +9976,11 @@ function renderDocMain(){
       +'<button class="doce-tb" title="Save as template" onmousedown="event.preventDefault()" onclick="docSaveAsTemplate()">Save as template</button>'
       +'</div>';
   }
-  h+='<div class="doce-scroll">';
+  h+='<div class="doce-scroll"><div class="doce-page">';
   h+='<input class="doce-title" id="doce-title" type="text" value="'+mtEsc(d.title||"")+'" placeholder="Untitled" '+(admin?'oninput="docTitleInput(this.value)"':'readonly')+'>';
   h+='<div class="doce-meta">'+(d.template?mtEsc(d.template)+' · ':'')+'updated '+mtEsc(d.updated||d.created||"—")+'</div>';
   h+='<div class="doce-area" id="doce-area" data-ph="Start writing…" '+(admin?'contenteditable="true" oninput="docEditorInput()"':'')+'>'+(d.html||"")+'</div>';
-  h+='</div>';
+  h+='</div></div>';
   main.innerHTML=h;
   if(admin){ var ed=$("doce-area"); if(ed){ ed.addEventListener('change', doceChange); } }
 }
