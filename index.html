@@ -1803,6 +1803,47 @@ body{margin:0}
 #docmove-dialog .dialog{max-width:420px}
 #docmove-sel{width:100%;padding:9px 11px;border:1px solid var(--cf-line2);border-radius:8px;font:inherit;color:var(--cf-ink)}
 
+/* ===== Docs drag & drop indicators ===== */
+.docs-page .docw-item[draggable="true"]{cursor:grab}
+.docs-page .docw-item.drop-inside{background:var(--cf-selbg);box-shadow:inset 0 0 0 2px var(--cf-blue);border-radius:6px}
+.docs-page .docw-item.drop-before{box-shadow:inset 0 2px 0 var(--cf-blue)}
+.docs-page .docw-item.drop-after{box-shadow:inset 0 -2px 0 var(--cf-blue)}
+.docs-page .docw-list{min-height:60px}
+
+/* ===== Docs space settings + switcher opts ===== */
+.docsp-row{display:flex;align-items:center;gap:6px}
+.docsp-row .docsp-switch{flex:1}
+.docsp-opts{width:34px;height:42px;flex:none;border:1px solid var(--cf-line2);background:#fff;border-radius:8px;color:var(--cf-sub);cursor:pointer;font-size:16px;line-height:1}
+.docsp-opts:hover{background:var(--cf-hover);color:var(--cf-ink)}
+.docsp-filter{width:100%;margin:2px 0 8px;padding:7px 10px;border:1px solid var(--cf-line2);border-radius:7px;font:inherit;font-size:13px;color:var(--cf-ink);font-family:var(--cf-font)}
+.docsp-filter:focus{outline:none;border-color:var(--cf-blue)}
+.docsp-nomatch{color:var(--cf-sub);font-size:12.5px;padding:6px 8px}
+.docsp-optsmenu{position:absolute;left:12px;right:12px;top:60px;z-index:30;background:#fff;border:1px solid var(--cf-line2);border-radius:10px;box-shadow:0 10px 30px rgba(9,30,66,.18);padding:5px}
+.docsp-optsmenu button{display:block;width:100%;text-align:left;border:none;background:none;padding:8px 10px;border-radius:6px;font-size:13.5px;color:var(--cf-ink);cursor:pointer;font-family:var(--cf-font)}
+.docsp-optsmenu button:hover{background:var(--cf-hover)}
+.docsp-optsmenu button.danger{color:#C0362C}
+.docsp-optsmenu button.danger:hover{background:#FBE9E7}
+/* settings screen */
+.docset .dv-back{margin-bottom:4px}
+.docset-sec{font-family:var(--cf-font);font-weight:700;font-size:15px;color:var(--cf-ink);margin:26px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--cf-line)}
+.docset-note{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--cf-sub);font-weight:600;margin-left:8px}
+.docset-card{background:#FBFCFE;border:1px solid var(--cf-line);border-radius:12px;padding:16px 18px;max-width:520px}
+.docset-card .field label{color:var(--cf-ink)}
+.docset-card .field input{border:1px solid var(--cf-line2);color:var(--cf-ink)}
+.docset-actions{display:flex;gap:8px;margin-top:8px}
+.btn.danger{background:#fff;border:1px solid #E4A9A2;color:#C0362C}
+.btn.danger:hover{background:#FBE9E7}
+.docset-tplbar{margin-bottom:14px}
+.docset-rowacts{white-space:nowrap}
+.docset-ra{border:1px solid var(--cf-line2);background:#fff;color:var(--cf-ink);border-radius:7px;padding:5px 10px;font-size:12.5px;cursor:pointer;margin-right:6px;font-family:var(--cf-font)}
+.docset-ra:hover{border-color:var(--cf-blue);color:var(--cf-blue)}
+.docset-ra.danger:hover{border-color:#C0362C;color:#C0362C}
+.docset-tplmeta{display:flex;gap:8px;margin:2px 0 16px}
+.docset-tplmeta #doce-tpl-icon{width:56px;text-align:center;font-size:18px;border:1px solid var(--cf-line2);border-radius:8px;padding:7px}
+.docset-tplmeta #doce-tpl-desc{flex:1;border:1px solid var(--cf-line2);border-radius:8px;padding:7px 10px;font:inherit;color:var(--cf-ink);font-family:var(--cf-font)}
+.docset-crumb{color:var(--cf-blue);cursor:pointer}
+.docset-crumb:hover{text-decoration:underline}
+
 </style>
 </head>
 <body>
@@ -3246,6 +3287,12 @@ let docExpanded = {};
 let docNewParent = "";
 let docNewMenuFor = null;
 let docMoveId = null;
+let docDragId = null;
+let docDropTarget = null;
+let docPane = "content";
+let docSpaceOptsOpen = false;
+let docSpaceFilter = "";
+let docTplEditId = null;
 let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
@@ -9996,7 +10043,7 @@ function blocksToHtml(blocks){
 function normalizeDoc(d){
   if(!d||typeof d!=="object") return null;
   var html = (typeof d.html==="string") ? d.html : (Array.isArray(d.blocks)?blocksToHtml(normalizeBlocks(d.blocks)):"");
-  return { id:d.id||docid(), spaceId:d.spaceId?String(d.spaceId):"", parentId:d.parentId?String(d.parentId):"", kind:(d.kind==="folder"?"folder":"doc"), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
+  return { id:d.id||docid(), spaceId:d.spaceId?String(d.spaceId):"", parentId:d.parentId?String(d.parentId):"", kind:(d.kind==="folder"?"folder":"doc"), order:(typeof d.order==="number"?d.order:(d.order!=null&&!isNaN(parseInt(d.order,10))?parseInt(d.order,10):null)), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
 }
 function normalizeTpl(t){
   if(!t||typeof t!=="object") return null;
@@ -10029,16 +10076,68 @@ function openDocs(){
 }
 function closeDocs(){ $("docs-page").style.display="none"; }
 function buildDocsShell(){
+  docPane="content"; docSpaceOptsOpen=false;
   $("dp-body").innerHTML='<div class="docw"><div class="docw-side" id="docw-side"></div><div class="docw-main" id="docw-main"></div></div>';
   renderDocSide(); renderDocMain();
 }
 
 /* ----- left sidebar ----- */
 function docById(id){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===id) return TEAMDOCS.docs[i]; } return null; }
-function docChildren(parentId){ return docsInSpaceRaw().filter(function(d){ return (d.parentId||"")===(parentId||""); }); }
+function docChildren(parentId){ return docsInSpaceRaw().filter(function(d){ return (d.parentId||"")===(parentId||""); }).sort(function(a,b){ var ao=(typeof a.order==="number")?a.order:9999, bo=(typeof b.order==="number")?b.order:9999; if(ao!==bo) return ao-bo; return docByUpdated(a,b); }); }
 function docHasKids(id){ return docsInSpaceRaw().some(function(d){ return (d.parentId||"")===id; }); }
 function docDescendants(id){ var out=[]; (function rec(pid){ docsInSpaceRaw().forEach(function(d){ if((d.parentId||"")===pid){ out.push(d.id); rec(d.id); } }); })(id); return out; }
 function docExpandToggle(id){ docExpanded[id]=!docExpanded[id]; renderDocSide(); }
+
+/* ----- drag & drop + ordering ----- */
+function docNextOrder(parentId){ var m=-1; docsInSpaceRaw().forEach(function(d){ if((d.parentId||"")===(parentId||"") && typeof d.order==="number" && d.order>m) m=d.order; }); return m+1; }
+function docPlace(dragId, newParent, beforeId){
+  var d=docById(dragId); if(!d) return;
+  if(dragId===newParent) return;
+  var banned={}; banned[dragId]=true; docDescendants(dragId).forEach(function(x){ banned[x]=true; });
+  if(newParent && banned[newParent]) return;
+  d.parentId=newParent||"";
+  var sibs=docsInSpaceRaw().filter(function(x){ return (x.parentId||"")===(newParent||"") && x.id!==dragId; });
+  sibs.sort(function(a,b){ var ao=(typeof a.order==="number")?a.order:9999, bo=(typeof b.order==="number")?b.order:9999; return ao-bo; });
+  var idx=sibs.length;
+  if(beforeId){ for(var i=0;i<sibs.length;i++){ if(sibs[i].id===beforeId){ idx=i; break; } } }
+  sibs.splice(idx,0,d);
+  sibs.forEach(function(x,i){ x.order=i; });
+  d.updated=docToday();
+  if(newParent) docExpanded[newParent]=true;
+}
+function docNextSibling(id){ var d=docById(id); if(!d) return null; var sibs=docChildren(d.parentId||""); for(var i=0;i<sibs.length;i++){ if(sibs[i].id===id) return sibs[i+1]?sibs[i+1].id:null; } return null; }
+function docDragStart(e,id){ docDragId=id; docNewMenuFor=null; try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",id); }catch(_){} }
+function docDragEnd(){ docClearDrop(); docDragId=null; }
+function docClearDrop(){ var ns=document.querySelectorAll(".docw-item.drop-before,.docw-item.drop-after,.docw-item.drop-inside"); Array.prototype.forEach.call(ns,function(x){ x.classList.remove("drop-before","drop-after","drop-inside"); }); docDropTarget=null; }
+function docDragOver(e,targetId){
+  if(!docDragId) return;
+  e.preventDefault();
+  if(targetId===docDragId) return;
+  var banned={}; banned[docDragId]=true; docDescendants(docDragId).forEach(function(x){ banned[x]=true; });
+  if(banned[targetId]) return;
+  var row=e.currentTarget, r=row.getBoundingClientRect(), y=e.clientY-r.top, h=r.height;
+  var zone = y<h*0.30 ? "before" : (y>h*0.70 ? "after" : "inside");
+  docClearDrop();
+  docDropTarget={id:targetId,zone:zone};
+  row.classList.add("drop-"+zone);
+}
+function docDrop(e,targetId){
+  e.preventDefault();
+  var info=docDropTarget; docClearDrop();
+  if(!docDragId){ return; }
+  var tgt=docById(targetId);
+  if(!tgt || targetId===docDragId){ docDragId=null; return; }
+  var banned={}; banned[docDragId]=true; docDescendants(docDragId).forEach(function(x){ banned[x]=true; });
+  if(banned[targetId]){ docDragId=null; return; }
+  var zone=(info && info.id===targetId)?info.zone:"inside";
+  if(zone==="inside") docPlace(docDragId, targetId, null);
+  else if(zone==="before") docPlace(docDragId, tgt.parentId||"", targetId);
+  else docPlace(docDragId, tgt.parentId||"", docNextSibling(targetId));
+  docDragId=null;
+  renderDocSide(); if(typeof pushAll==="function") pushAll();
+}
+function docListDragOver(e){ if(docDragId){ e.preventDefault(); } }
+function docListDrop(e){ if(!docDragId) return; e.preventDefault(); docClearDrop(); docPlace(docDragId,"",null); docDragId=null; renderDocSide(); if(typeof pushAll==="function") pushAll(); }
 
 function renderDocSide(){
   var admin=(typeof can==="function")?can("admin"):false;
@@ -10048,10 +10147,17 @@ function renderDocSide(){
   var h='';
   h+='<div class="docsp-wrap">';
   if(spaces.length){
+    h+='<div class="docsp-row">';
     h+='<button class="docsp-switch" onclick="docSpaceMenuToggle()"><span class="docsp-ic" style="background:'+mtEsc((cur&&cur.color)||"#3B5BDB")+'">'+mtEsc((cur&&cur.icon)||"📁")+'</span><span class="docsp-nm">'+mtEsc(cur?cur.name:"Select a space")+'</span><span class="docsp-cv">▾</span></button>';
+    if(admin) h+='<button class="docsp-opts" title="Space options" onclick="docSpaceOptsToggle(event)">⋯</button>';
+    h+='</div>';
     if(docSpaceMenuOpen){
+      var fq=(docSpaceFilter||"").trim().toLowerCase();
       h+='<div class="docsp-menu"><div class="docsp-menu-h">Spaces</div>';
-      spaces.forEach(function(sp){
+      h+='<input class="docsp-filter" id="docsp-filter" placeholder="Search spaces…" value="'+mtEsc(docSpaceFilter||"")+'" oninput="docSpaceFilterInput(this.value)">';
+      var shown=spaces.filter(function(sp){ return !fq || (sp.name||"").toLowerCase().indexOf(fq)>=0; });
+      if(!shown.length) h+='<div class="docsp-nomatch">No spaces match.</div>';
+      shown.forEach(function(sp){
         h+='<div class="docsp-mitem'+(sp.id===docSpaceId?' on':'')+'" onclick="docSelectSpace(\''+sp.id+'\')">'
           +'<span class="docsp-ic sm" style="background:'+mtEsc(sp.color||"#3B5BDB")+'">'+mtEsc(sp.icon||"📁")+'</span>'
           +'<span class="docsp-mname">'+mtEsc(sp.name)+'</span>'
@@ -10061,6 +10167,13 @@ function renderDocSide(){
       if(admin) h+='<div class="docsp-div"></div><button class="docsp-new" onclick="docSpaceAdd()">＋ New space</button>';
       h+='</div>';
     }
+    if(docSpaceOptsOpen && admin){
+      h+='<div class="docsp-optsmenu">'
+        +'<button onclick="docOpenSettings()">⚙️ Space settings</button>'
+        +'<button onclick="docSpaceEdit(\''+docSpaceId+'\')">✎ Edit details</button>'
+        +'<button class="danger" onclick="docSpaceDelete(\''+docSpaceId+'\')">🗑 Delete space</button>'
+        +'</div>';
+    }
   } else {
     h+='<div class="docsp-none">'+(admin?'<div class="docsp-none-t">No spaces yet</div>Spaces group your documents.<br><button class="docw-create" style="margin-top:10px" onclick="docSpaceAdd()">＋ Create a space</button>':'No spaces yet.')+'</div>';
   }
@@ -10069,7 +10182,7 @@ function renderDocSide(){
   if(spaces.length && cur){
     h+='<div class="docw-side-top"><span class="docw-mini">Content</span>'+(admin?'<span class="docw-newwrap"><button class="docw-create" onclick="docNewMenuToggle(\'root\',event)">＋ New</button>'+docNewMenuHTML("root")+'</span>':'')+'</div>';
     h+='<input class="docw-search" id="docw-search" type="text" placeholder="Search docs…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)">';
-    h+='<div class="docw-list">';
+    h+='<div class="docw-list" ondragover="docListDragOver(event)" ondrop="docListDrop(event)">';
     var q=(docSearch||"").trim().toLowerCase();
     if(q){
       var flat=docsInSpaceRaw().filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;});
@@ -10097,7 +10210,8 @@ function docRowHTML(d, depth, admin, flat){
   var pad=6+depth*15;
   var chev=(!flat && hasKids) ? '<button class="docw-chev" onclick="event.stopPropagation();docExpandToggle(\''+d.id+'\')">'+(open?'▾':'▸')+'</button>' : '<span class="docw-chev sp"></span>';
   var ic=isFolder ? (open?'📂':'📁') : (d.icon||'📄');
-  return '<div class="docw-item'+(d.id===docOpenId?' on':'')+'" style="padding-left:'+pad+'px" onclick="docRowClick(\''+d.id+'\')">'
+  var drag = (admin && !flat) ? ' draggable="true" ondragstart="docDragStart(event,\''+d.id+'\')" ondragend="docDragEnd()" ondragover="docDragOver(event,\''+d.id+'\')" ondrop="event.stopPropagation();docDrop(event,\''+d.id+'\')"' : '';
+  return '<div class="docw-item'+(d.id===docOpenId?' on':'')+'" style="padding-left:'+pad+'px"'+drag+' onclick="docRowClick(\''+d.id+'\')">'
     + chev
     + '<span class="docw-item-ic">'+mtEsc(ic)+'</span>'
     + '<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span></span>'
@@ -10122,7 +10236,7 @@ function docStartCreate(parentId){ docNewParent=parentId||""; docNewMenuFor=null
 function docCreateFolder(parentId){
   docNewMenuFor=null;
   var name=window.prompt("Folder name:","New folder"); if(!name){ renderDocSide(); return; }
-  var f={ id:docid(), spaceId:docSpaceId, parentId:parentId||"", kind:"folder", title:String(name).trim()||"New folder", icon:"📁", template:"", created:docToday(), updated:docToday(), html:"" };
+  var f={ id:docid(), spaceId:docSpaceId, parentId:parentId||"", kind:"folder", order:docNextOrder(parentId||""), title:String(name).trim()||"New folder", icon:"📁", template:"", created:docToday(), updated:docToday(), html:"" };
   TEAMDOCS.docs.push(f); if(parentId) docExpanded[parentId]=true; docOpenId=f.id;
   renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll();
 }
@@ -10148,10 +10262,102 @@ function docMoveOpen(id){
   $("docmove-title").textContent='Move "'+(d.title||"item")+'"';
   $("docmove-dialog").classList.add("show");
 }
-function docMoveSaveFn(){ var d=docById(docMoveId); if(!d){ docMoveClose(); return; } var np=$("docmove-sel").value||""; d.parentId=np; if(np) docExpanded[np]=true; docMoveClose(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }
+function docMoveSaveFn(){ var d=docById(docMoveId); if(!d){ docMoveClose(); return; } var np=$("docmove-sel").value||""; docPlace(docMoveId, np, null); docMoveClose(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }
 function docMoveClose(){ $("docmove-dialog").classList.remove("show"); docMoveId=null; }
 
-function docSpaceMenuToggle(){ docSpaceMenuOpen=!docSpaceMenuOpen; renderDocSide(); }
+function docSpaceMenuToggle(){ docSpaceMenuOpen=!docSpaceMenuOpen; docSpaceOptsOpen=false; if(!docSpaceMenuOpen) docSpaceFilter=""; renderDocSide(); if(docSpaceMenuOpen){ var f=$("docsp-filter"); if(f) f.focus(); } }
+function docSpaceOptsToggle(e){ if(e&&e.stopPropagation)e.stopPropagation(); docSpaceOptsOpen=!docSpaceOptsOpen; docSpaceMenuOpen=false; renderDocSide(); }
+function docSpaceFilterInput(v){ docSpaceFilter=v; renderDocSide(); var f=$("docsp-filter"); if(f){ f.focus(); try{ f.setSelectionRange(f.value.length,f.value.length); }catch(_){} } }
+function docOpenSettings(){ docSpaceOptsOpen=false; docSpaceMenuOpen=false; docPane="settings"; docTplEditId=null; renderDocSide(); renderDocMain(); }
+function docCloseSettings(){ docPane="content"; renderDocSide(); renderDocMain(); }
+/* ----- space settings + template manager ----- */
+function docTplEditing(){ for(var i=0;i<TEAMDOCS.templates.length;i++){ if(TEAMDOCS.templates[i].id===docTplEditId) return TEAMDOCS.templates[i]; } return null; }
+function renderSpaceSettings(admin){
+  var main=$("docw-main"); var sp=docCurrentSpace();
+  var tpls=TEAMDOCS.templates||[];
+  var h='<div class="doce-scroll"><div class="doce-page docset">';
+  h+='<button class="dv-back" onclick="docCloseSettings()">← Back to content</button>';
+  h+='<h1 class="dv-title" style="margin-top:12px">Space settings</h1>';
+  h+='<div class="doce-meta">'+mtEsc(sp?sp.name:"")+'</div>';
+
+  // Space details
+  h+='<div class="docset-sec">Space details</div>';
+  if(sp){
+    h+='<div class="docset-card">';
+    h+='<div class="field"><label for="docset-name">Name</label><input id="docset-name" type="text" value="'+mtEsc(sp.name||"")+'"></div>';
+    h+='<div class="field"><label for="docset-icon">Icon</label><input id="docset-icon" type="text" value="'+mtEsc(sp.icon||"📁")+'" maxlength="3" style="width:70px;text-align:center;font-size:20px"></div>';
+    h+='<div class="field"><label>Colour</label><div class="mt-sw" id="docset-sw"></div><input type="hidden" id="docset-color" value="'+mtEsc(sp.color||"#3B5BDB")+'"></div>';
+    h+='<div class="docset-actions"><button class="btn save" onclick="docSettingsSaveDetails()">Save details</button><button class="btn danger" onclick="docSpaceDelete(\''+sp.id+'\')">Delete space</button></div>';
+    h+='</div>';
+  }
+
+  // Templates
+  h+='<div class="docset-sec">Templates <span class="docset-note">Shared across all spaces</span></div>';
+  h+='<div class="docset-tplbar"><button class="btn save" onclick="docCreateTemplate()">＋ Create a new template</button></div>';
+  h+='<table class="docfv-tbl"><thead><tr><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
+  if(!tpls.length){ h+='<tr><td colspan="3" class="docfv-empty">No custom templates yet. Create one, or use “Save as template” from any doc.</td></tr>'; }
+  else tpls.forEach(function(t){
+    h+='<tr><td class="docfv-name"><span>'+mtEsc(t.icon||"📄")+'</span> '+mtEsc(t.name||"Template")+'</td>'
+      +'<td class="docfv-meta">'+mtEsc(t.desc||"—")+'</td>'
+      +'<td class="docset-rowacts"><button class="docset-ra" title="Edit" onclick="docEditTemplate(\''+t.id+'\')">✎ Edit</button><button class="docset-ra danger" title="Delete" onclick="docDeleteTemplate(\''+t.id+'\')">🗑 Delete</button></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  main.innerHTML=h;
+  if(sp){ docSettingsSwatches(sp.color||"#3B5BDB"); }
+}
+function docSettingsSwatches(cur){ var w=$("docset-sw"); if(!w) return; w.innerHTML=MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?"on":"")+'" onclick="docSettingsPick(this,\''+c+'\')"></button>'; }).join(''); $("docset-color").value=cur||MT_COLORS[0]; }
+function docSettingsPick(b,c){ $("docset-color").value=c; document.querySelectorAll('#docset-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function docSettingsSaveDetails(){ var sp=docCurrentSpace(); if(!sp) return; var nm=$("docset-name").value.trim(); if(!nm){ $("docset-name").focus(); return; } sp.name=nm; sp.icon=$("docset-icon").value.trim()||"📁"; sp.color=$("docset-color").value; renderDocSide(); renderSpaceSettings(true); if(typeof pushAll==="function") pushAll(); }
+
+/* template create / edit */
+function docCreateTemplate(){
+  var t={ id:tplid(), name:"New template", icon:"📄", desc:"", html:"<h2>Start with a title</h2><p><br></p>" };
+  TEAMDOCS.templates.push(t); docTplEditId=t.id; docPane="tpledit"; renderDocMain();
+  if(typeof pushAll==="function") pushAll();
+}
+function docEditTemplate(id){ docTplEditId=id; docPane="tpledit"; renderDocMain(); }
+function docDeleteTemplate(id){
+  var t=null; TEAMDOCS.templates.forEach(function(x){if(x.id===id)t=x;}); if(!t) return;
+  if(!window.confirm('Delete template "'+(t.name||"this")+'"?')) return;
+  TEAMDOCS.templates=TEAMDOCS.templates.filter(function(x){ return x.id!==id; });
+  renderSpaceSettings(true); if(typeof pushAll==="function") pushAll();
+}
+function renderTplEditor(admin){
+  var main=$("docw-main"); var t=docTplEditing();
+  if(!t){ docPane="settings"; renderSpaceSettings(admin); return; }
+  var h='<div class="doce-toolbar">'
+    +'<button class="doce-tb" title="Normal text" onmousedown="event.preventDefault()" onclick="doceBlock(\'p\')">Text</button>'
+    +'<button class="doce-tb" title="Heading 1" onmousedown="event.preventDefault()" onclick="doceBlock(\'h1\')">H1</button>'
+    +'<button class="doce-tb" title="Heading 2" onmousedown="event.preventDefault()" onclick="doceBlock(\'h2\')">H2</button>'
+    +'<button class="doce-tb" title="Heading 3" onmousedown="event.preventDefault()" onclick="doceBlock(\'h3\')">H3</button>'
+    +'<span class="doce-sep"></span>'
+    +'<button class="doce-tb" title="Bold" onmousedown="event.preventDefault()" onclick="doceCmd(\'bold\')"><b>B</b></button>'
+    +'<button class="doce-tb" title="Italic" onmousedown="event.preventDefault()" onclick="doceCmd(\'italic\')"><i>I</i></button>'
+    +'<button class="doce-tb" title="Underline" onmousedown="event.preventDefault()" onclick="doceCmd(\'underline\')"><u>U</u></button>'
+    +'<span class="doce-sep"></span>'
+    +'<button class="doce-tb" title="Bulleted list" onmousedown="event.preventDefault()" onclick="doceCmd(\'insertUnorderedList\')">• List</button>'
+    +'<button class="doce-tb" title="Numbered list" onmousedown="event.preventDefault()" onclick="doceCmd(\'insertOrderedList\')">1. List</button>'
+    +'<button class="doce-tb" title="Task list" onmousedown="event.preventDefault()" onclick="doceTask()">☑ Task</button>'
+    +'<span class="doce-sep"></span>'
+    +'<button class="doce-tb" title="Insert table" onmousedown="event.preventDefault()" onclick="doceTableToggle(event)">▦ Table</button>'
+    +'<span class="doce-flex"></span>'
+    +'<span class="doce-saved" id="doce-saved">Saved</span>'
+    +'<button class="doce-tb" onmousedown="event.preventDefault()" onclick="docTplEditorDone()">✓ Done</button>'
+    +'</div>';
+  h+='<div class="doce-scroll"><div class="doce-page">';
+  h+='<div class="doce-meta"><a class="docset-crumb" onclick="docTplEditorDone()">Templates</a> / editing template</div>';
+  h+='<input class="doce-title" id="doce-title" type="text" value="'+mtEsc(t.name||"")+'" placeholder="Template name" oninput="docTplTitleInput(this.value)">';
+  h+='<div class="docset-tplmeta"><input id="doce-tpl-icon" type="text" value="'+mtEsc(t.icon||"📄")+'" maxlength="3" title="Icon" oninput="docTplIconInput(this.value)"><input id="doce-tpl-desc" type="text" value="'+mtEsc(t.desc||"")+'" placeholder="Short description (optional)" oninput="docTplDescInput(this.value)"></div>';
+  h+='<div class="doce-area" id="doce-area" data-ph="Design your template…" contenteditable="true" oninput="docEditorInput()">'+(t.html||"")+'</div>';
+  h+='</div></div>';
+  main.innerHTML=h;
+  var ed=$("doce-area"); if(ed){ ed.addEventListener('change', doceChange); }
+}
+function docTplTitleInput(v){ var t=docTplEditing(); if(!t) return; t.name=(v||"").trim()||"Untitled template"; docScheduleSave(); }
+function docTplIconInput(v){ var t=docTplEditing(); if(!t) return; t.icon=(v||"").trim()||"📄"; docScheduleSave(); }
+function docTplDescInput(v){ var t=docTplEditing(); if(!t) return; t.desc=v||""; docScheduleSave(); }
+function docTplEditorDone(){ docPane="settings"; docTplEditId=null; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }
+
 function docSelectSpace(id){ docSpaceId=id; docSpaceMenuOpen=false; docSearch=""; var roots=docChildren(""); docOpenId = roots[0]?roots[0].id:null; renderDocSide(); renderDocMain(); }
 function docSpaceAdd(){ docSpaceOpenDlg("Create space", {}, false); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } var sp={ id:spid(), name:name, icon:$("docsp-f-icon").value.trim()||"📁", color:$("docsp-f-color").value }; TEAMDOCS.spaces.push(sp); docSpaceCloseDlg(); docSpaceId=sp.id; docSpaceMenuOpen=false; docOpenId=null; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }; }
 function docSpaceEdit(id){ var sp=null; TEAMDOCS.spaces.forEach(function(x){if(x.id===id)sp=x;}); if(!sp) return; docSpaceOpenDlg("Edit space", sp, true); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } sp.name=name; sp.icon=$("docsp-f-icon").value.trim()||"📁"; sp.color=$("docsp-f-color").value; docSpaceCloseDlg(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }; $("docsp-del").onclick=function(){ docSpaceDelete(id); }; }
@@ -10166,6 +10372,9 @@ function docSearchInput(v){ docSearch=v; renderDocSide(); var n=$("docw-search")
 function renderDocMain(){
   var admin=(typeof can==="function")?can("admin"):false;
   var main=$("docw-main"); if(!main) return;
+  if((docPane==="settings"||docPane==="tpledit") && !admin) docPane="content";
+  if(docPane==="settings"){ renderSpaceSettings(admin); return; }
+  if(docPane==="tpledit"){ renderTplEditor(admin); return; }
   var d=docCurrent();
   if(!d){
     main.innerHTML='<div class="doce-empty"><div class="doce-empty-ic">📄</div><div class="doce-empty-t">No document open</div><div class="doce-empty-s">'+(admin?'Pick a doc on the left, or create a new one.':'Select a document on the left.')+'</div></div>';
@@ -10242,7 +10451,7 @@ function doceInsertTable(r,c){
 var docSaveTimer=null;
 function docSetSaved(s){ var el=$("doce-saved"); if(el) el.textContent = (s==="saving")?"Saving…":"Saved"; }
 function docScheduleSave(){ docSetSaved("saving"); if(docSaveTimer) clearTimeout(docSaveTimer); docSaveTimer=setTimeout(function(){ if(typeof pushAll==="function") pushAll(); docSetSaved("saved"); }, 1000); }
-function docEditorInput(){ var d=docCurrent(); if(!d) return; var ed=$("doce-area"); if(ed) d.html=ed.innerHTML; d.updated=docToday(); docScheduleSave(); }
+function docEditorInput(){ var ed=$("doce-area"); if(!ed) return; if(docPane==="tpledit"){ var t=docTplEditing(); if(t) t.html=ed.innerHTML; docScheduleSave(); return; } var d=docCurrent(); if(!d) return; d.html=ed.innerHTML; d.updated=docToday(); docScheduleSave(); }
 function docTitleInput(v){ var d=docCurrent(); if(!d) return; d.title=(v||"").trim()||"Untitled"; d.updated=docToday(); renderDocSide(); docScheduleSave(); }
 
 /* ----- create / open / delete ----- */
@@ -10262,7 +10471,7 @@ function docCreateFrom(id){
   var t=docTplList().filter(function(x){return x.id===id;})[0]; if(!t) return;
   if(!docSpaceId){ if(typeof toast==="function") toast("Create a space first"); docCloseTplPicker(); return; }
   var pid=docNewParent||"";
-  var d={ id:docid(), spaceId:docSpaceId, parentId:pid, kind:"doc", title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
+  var d={ id:docid(), spaceId:docSpaceId, parentId:pid, kind:"doc", order:docNextOrder(pid), title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
   TEAMDOCS.docs.push(d); docCloseTplPicker(); if(pid) docExpanded[pid]=true; docNewParent=""; docOpenId=d.id; buildDocsShell();
   if(typeof pushAll==="function") pushAll();
   var ti=$("doce-title"); if(ti){ ti.focus(); ti.select(); }
