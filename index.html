@@ -2506,7 +2506,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
-    <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"><option value="company">Company</option><option value="department">Department</option><option value="team">Team</option><option value="subteam">Sub-team</option><option value="individual">Individual</option></select></div>
+    <div class="field" id="f-level-wrap"><label for="f-level">Level</label><input id="f-level" type="text" placeholder="e.g. Team, Backend pod — leave blank if none" autocomplete="off"></div>
     <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
@@ -3762,7 +3762,7 @@ function openDialog(title, values, onSave, opts={}){
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
   $("f-level-wrap").style.display = opts.level ? "" : "none";
-  $("f-level").value = values.level || "team";
+  $("f-level").value = values.level || "";
   $("f-alignsto-wrap").style.display = opts.alignTo ? "" : "none";
   if(opts.alignTo){
     const _asel=$("f-alignsto"); _asel.innerHTML="";
@@ -6588,9 +6588,9 @@ function okrChildLevel(parentId, cyc){ var p=cyc.objectives.find(function(o){ret
 function okrMini(txt,title,fn){ var b=document.createElement("button"); b.className="okrtree-mini"; b.textContent=txt; b.title=title; b.onclick=function(e){ e.stopPropagation(); fn(); }; return b; }
 
 function okrAddOwned(cyc, parentId){
-  var preset={ level: parentId ? okrChildLevel(parentId,cyc) : "company" };
+  var preset={ level: "" };
   openDialog("New objective", preset, function(v){
-    var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[], level:v.level||"team" };
+    var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[] }; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
     if(v.note) ob.note=v.note;
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
@@ -6601,7 +6601,7 @@ function okrAddOwned(cyc, parentId){
 }
 function okrEditNode(ob, cyc){
   openDialog("Edit objective", ob, function(v){
-    applyFields(ob, v); ob.level=v.level||"team";
+    applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level;
     if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo;
     if(editMode){ if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; }
     saveOkrs();
@@ -6633,12 +6633,12 @@ function renderOkrTree(cyc, wrap){
 function okrTreeNode(ob, cyc, objs){
   var li=document.createElement("li");
   var card=document.createElement("div"); card.className="okrtree-node"; card.id="obj-"+ob.id;
-  var lv=(OKR_LEVELS.find(function(l){return l.key===(ob.level||"team");})||{}).label||"Team";
+  var lv=(ob.level||"").trim();
   var p=objRollupPct(ob);
   var auto=ob.rollup==="auto";
   var mine=SESSION && ob.assignee===SESSION.email;
   var ownerName=ob.assignee ? okrOwnerName(ob.assignee) : (ob.owner||"");
-  card.innerHTML='<div class="okrtree-lv lv-'+(ob.level||"team")+'">'+mtEsc(lv)+(mine?' · <span class="okrtree-mine">you</span>':'')+'</div>'
+  card.innerHTML=((lv||mine)?'<div class="okrtree-lv">'+(lv?mtEsc(lv):'')+(mine?(lv?' · ':'')+'<span class="okrtree-mine">you</span>':'')+'</div>':'')
     +'<div class="okrtree-title">'+mtEsc(ob.title)+'</div>'
     +'<div class="okrtree-foot"><span class="okrtree-owner">'+(ownerName?mtEsc(ownerName):'<i>unassigned</i>')+'</span>'
     +'<span class="okrtree-pct '+scoreClass(p)+'">'+p+'%'+(auto?' <em>auto</em>':'')+'</span></div>';
@@ -6670,26 +6670,12 @@ function renderContentOkr(){
   [['list','List'],['tree','Org tree']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
   wrap.appendChild(_tg);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
-  if(cyc.objectives.length){
-    const _los = document.createElement("div"); _los.className="okr-los";
-    const _lead=document.createElement("span"); _lead.className="okr-los-lead"; _lead.textContent="How your work ladders up"; _los.appendChild(_lead);
-    ["individual","subteam","team","department","company"].forEach((lvk,i)=>{
-      if(i){ const arr=document.createElement("span"); arr.className="okr-los-arrow"; arr.textContent="\u2192"; _los.appendChild(arr); }
-      const st=document.createElement("button"); st.className="okr-los-step"+(okrFilter===lvk?" active":""); st.textContent=okrLevelLabel(lvk);
-      const _cnt=cyc.objectives.filter(o=>(o.level||"team")===lvk).length;
-      st.title=_cnt+" objective(s) \u2014 click to focus this level";
-      st.onclick=()=>{ okrFilter=(okrFilter===lvk?null:lvk); renderAll(); };
-      _los.appendChild(st);
-    });
-    if(okrFilter){ const clr=document.createElement("button"); clr.className="okr-los-clear"; clr.textContent="Show all"; clr.onclick=()=>{ okrFilter=null; renderAll(); }; _los.appendChild(clr); }
-    wrap.appendChild(_los);
-  }
-  const _lvRank = ob => { const i=OKR_LEVELS.findIndex(l=>l.key===(ob.level||"team")); return i<0?2:i; };
-  const _ordered = cyc.objectives.slice().filter(o=> !okrFilter || (o.level||"team")===okrFilter).sort((a,b)=> _lvRank(a)-_lvRank(b));
+  const _order=[]; cyc.objectives.forEach(o=>{ const k=(o.level||"").trim(); if(_order.indexOf(k)<0) _order.push(k); });
+  const _ordered = cyc.objectives.slice().sort((a,b)=> _order.indexOf((a.level||"").trim()) - _order.indexOf((b.level||"").trim()));
   let _lastLv=null, _dispNum=0;
   _ordered.forEach(ob=>{
-    const _lvKey = ob.level || "team";
-    if(_lvKey!==_lastLv){ _lastLv=_lvKey; const _lh=document.createElement("div"); _lh.className="okr-level-hdr"; _lh.textContent=okrLevelLabel(_lvKey); wrap.appendChild(_lh); }
+    const _lvKey = (ob.level||"").trim();
+    if(_lvKey!==_lastLv){ _lastLv=_lvKey; if(_lvKey){ const _lh=document.createElement("div"); _lh.className="okr-level-hdr"; _lh.textContent=_lvKey; wrap.appendChild(_lh); } }
     _dispNum++;
     const oi = cyc.objectives.indexOf(ob);
     const card = document.createElement("section");
@@ -6700,8 +6686,8 @@ function renderContentOkr(){
     tag.className = "obj-tag"; tag.textContent = "O"+_dispNum;
     const title = document.createElement("div");
     title.className = "obj-title"; title.textContent = ob.title;
-    const _lvBadge = document.createElement("span"); _lvBadge.className="okr-lv-badge lv-"+(ob.level||"team"); _lvBadge.textContent=((OKR_LEVELS.find(l=>l.key===(ob.level||"team"))||{}).label||"Team");
-    head.append(tag, _lvBadge, title);
+    const _lvTxt=(ob.level||"").trim();
+    if(_lvTxt){ const _lvBadge = document.createElement("span"); _lvBadge.className="okr-lv-badge"; _lvBadge.textContent=_lvTxt; head.append(tag, _lvBadge, title); } else { head.append(tag, title); }
     if(ob.assignee) head.appendChild(assigneeAvatar(ob.assignee));
     if(ob.alignsTo){ const _chain=okrChain(ob); if(_chain.length){ const _al=document.createElement("button"); _al.className="okr-aligns"; _al.textContent="\u2191 "+_chain.map(o=>o.title).join(" \u203A "); _al.title="Rolls up to: "+_chain.map(o=>o.title).join(" \u203A "); _al.onclick=()=>{ const el=document.getElementById("obj-"+ob.alignsTo); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("okr-flash"); setTimeout(()=>el.classList.remove("okr-flash"),1200); } }; head.appendChild(_al); } }
     const _kids = cyc.objectives.filter(o=>o.alignsTo===ob.id);
@@ -6718,7 +6704,7 @@ function renderContentOkr(){
     if(editMode){
       const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
       acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
-        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); ob.level=v.level||"team"; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee:true})));
+        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee:true})));
       acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
         if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
           cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
@@ -6791,9 +6777,9 @@ function renderContentOkr(){
     const add = document.createElement("button");
     add.className = "addline";
     add.style.padding = "12px";
-    add.textContent = okrFilter ? ("＋ Add "+okrLevelLabel(okrFilter)+" objective") : ("＋ Add objective to "+cyc.name);
-    add.onclick = ()=> openDialog("New objective", {level: okrFilter || "team"}, v=>{
-      const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[], level:v.level||"team"};
+    add.textContent = "＋ Add objective to "+cyc.name;
+    add.onclick = ()=> openDialog("New objective", {}, v=>{
+      const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[]}; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
       if(v.owner) ob.owner = v.owner;
       if(v.note) ob.note = v.note;
       if(v.alignsTo) ob.alignsTo = v.alignsTo;
