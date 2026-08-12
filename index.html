@@ -1916,6 +1916,24 @@ body{margin:0}
 .pp-av{width:24px;height:24px;flex:none;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
 .pp-none{padding:9px;font-size:12.5px;color:var(--muted)}
 
+/* ===== admin OKR levels ===== */
+.okrlv-list{max-width:560px;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.okrlv-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.okrlv-row:last-child{border-bottom:none}
+.okrlv-rank{width:22px;height:22px;flex:none;border-radius:6px;background:var(--indigo-soft,#EEF1FF);color:var(--indigo);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+.okrlv-name{flex:1;font-size:14px;font-weight:600;color:var(--ink)}
+.okrlv-acts{display:flex;gap:4px}
+.okrlv-btn{width:30px;height:30px;border:1px solid var(--line-strong);background:var(--card);border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px}
+.okrlv-btn:hover:not(:disabled){border-color:var(--indigo);color:var(--indigo)}
+.okrlv-btn:disabled{opacity:.35;cursor:default}
+.okrlv-btn.danger:hover{border-color:#C0362C;color:#C0362C}
+.okrlv-empty{padding:18px 14px;color:var(--muted);font-size:13.5px;font-style:italic}
+.okrlv-add{display:flex;gap:8px;max-width:560px}
+.okrlv-input{flex:1;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;color:var(--ink)}
+.okrlv-input:focus{outline:none;border-color:var(--indigo)}
+.okrlv-addbtn{border:none;background:var(--indigo);color:#fff;border-radius:9px;padding:10px 16px;font-weight:600;cursor:pointer;font-family:var(--disp)}
+.okrlv-addbtn:hover{filter:brightness(1.05)}
+
 </style>
 </head>
 <body>
@@ -2553,7 +2571,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
-    <div class="field" id="f-level-wrap"><label for="f-level">Level</label><input id="f-level" type="text" placeholder="e.g. Team, Backend pod — leave blank if none" autocomplete="off"></div>
+    <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"></select></div>
     <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
@@ -2903,6 +2921,7 @@ function normalize(d){
 function normalizeOkrs(o){
   o = o || {};
   o.cycles = o.cycles || [];
+  if(!("levels" in o) || !Array.isArray(o.levels)){ o.levels = ["Company","Department","Team","Sub-team","Individual"]; }
   o.cycles.forEach(c => {
     c.objectives = c.objectives || [];
     c.objectives.forEach((ob,i) => {
@@ -2913,6 +2932,8 @@ function normalizeOkrs(o){
   });
   return o;
 }
+function okrLevelsList(){ return (OKRS && Array.isArray(OKRS.levels)) ? OKRS.levels.slice() : []; }
+function okrLevelsSave(){ OKRS.updated = todayStr(); if(typeof pushAll==="function") pushAll(); }
 function findObjective(id){
   for(const c of OKRS.cycles){
     const i = c.objectives.findIndex(ob=>ob.id===id);
@@ -3816,7 +3837,13 @@ function openDialog(title, values, onSave, opts={}){
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
   $("f-level-wrap").style.display = opts.level ? "" : "none";
-  $("f-level").value = values.level || "";
+  if(opts.level){
+    var _lvsel=$("f-level"); var _lvs=okrLevelsList(); var _cur=values.level||"";
+    var _opts='<option value="">— none —</option>';
+    _lvs.forEach(function(nm){ _opts+='<option value="'+mtEsc(nm)+'">'+mtEsc(nm)+'</option>'; });
+    if(_cur && _lvs.indexOf(_cur)<0){ _opts+='<option value="'+mtEsc(_cur)+'">'+mtEsc(_cur)+' (custom)</option>'; }
+    _lvsel.innerHTML=_opts; _lvsel.value=_cur;
+  }
   $("f-alignsto-wrap").style.display = opts.alignTo ? "" : "none";
   if(opts.alignTo){
     const _asel=$("f-alignsto"); _asel.innerHTML="";
@@ -11586,7 +11613,7 @@ function renderAdminPage(){
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"]].forEach(([k,ico,lbl])=>{
+  [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]].forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
     b.className = "admin-navitem" + (adminView===k ? " active" : "");
     b.innerHTML = '<span></span><span></span>';
@@ -11601,17 +11628,57 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : "Users");
   main.appendChild(crumb);
   if(adminView === "permissions") renderAdminPermissions(main);
+  else if(adminView === "okrlevels") renderAdminOkrLevels(main);
   else renderAdminUsers(main);
 }
+function renderAdminOkrLevels(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "OKR levels";
+  head.appendChild(h2); wrap.appendChild(head);
+  const intro = document.createElement("div"); intro.className="hint"; intro.style.margin="0 0 18px";
+  intro.textContent = "Only admins define these. When anyone creates an objective, the Level field lets them pick from this list (or “— none —”) — they can’t invent their own.";
+  wrap.appendChild(intro);
+
+  const levels = okrLevelsList();
+  const list = document.createElement("div"); list.className="okrlv-list";
+  if(!levels.length){
+    const e=document.createElement("div"); e.className="okrlv-empty"; e.textContent="No levels yet. Add your first below (e.g. Company)."; list.appendChild(e);
+  }
+  levels.forEach(function(nm, i){
+    const row=document.createElement("div"); row.className="okrlv-row";
+    const rank=document.createElement("span"); rank.className="okrlv-rank"; rank.textContent=(i+1); row.appendChild(rank);
+    const name=document.createElement("span"); name.className="okrlv-name"; name.textContent=nm; row.appendChild(name);
+    const acts=document.createElement("div"); acts.className="okrlv-acts";
+    const up=document.createElement("button"); up.className="okrlv-btn"; up.textContent="↑"; up.title="Move up"; up.disabled=(i===0);
+    up.onclick=function(){ if(i>0){ var a=OKRS.levels; var t=a[i-1]; a[i-1]=a[i]; a[i]=t; okrLevelsSave(); renderAdminPage(); } };
+    const dn=document.createElement("button"); dn.className="okrlv-btn"; dn.textContent="↓"; dn.title="Move down"; dn.disabled=(i===levels.length-1);
+    dn.onclick=function(){ var a=OKRS.levels; if(i<a.length-1){ var t=a[i+1]; a[i+1]=a[i]; a[i]=t; okrLevelsSave(); renderAdminPage(); } };
+    const ren=document.createElement("button"); ren.className="okrlv-btn"; ren.textContent="✎"; ren.title="Rename";
+    ren.onclick=function(){ var v=window.prompt("Rename level:", nm); if(v===null) return; v=v.trim(); if(!v) return; if(OKRS.levels.indexOf(v)>=0 && v!==nm){ toast("A level with that name already exists"); return; } OKRS.levels[i]=v; okrLevelsSave(); renderAdminPage(); };
+    const del=document.createElement("button"); del.className="okrlv-btn danger"; del.textContent="🗑"; del.title="Delete";
+    del.onclick=function(){ if(window.confirm('Delete level “'+nm+'”? Objectives already using it keep their label until you change them.')){ OKRS.levels.splice(i,1); okrLevelsSave(); renderAdminPage(); } };
+    acts.append(up,dn,ren,del); row.appendChild(acts);
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  const add=document.createElement("div"); add.className="okrlv-add";
+  const inp=document.createElement("input"); inp.className="okrlv-input"; inp.placeholder="Add a level (e.g. Sub-team)"; inp.autocomplete="off";
+  const btn=document.createElement("button"); btn.className="okrlv-addbtn"; btn.textContent="＋ Add level";
+  function doAdd(){ var v=inp.value.trim(); if(!v) return; if(OKRS.levels.indexOf(v)>=0){ toast("That level already exists"); return; } OKRS.levels.push(v); okrLevelsSave(); renderAdminPage(); }
+  btn.onclick=doAdd; inp.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); doAdd(); } };
+  add.append(inp, btn); wrap.appendChild(add);
+}
+
 function renderAdminSidebar(){
   const wrap = $("mods");
   wrap.innerHTML = "";
   $("side-title").style.display = "";
   $("side-title").textContent = "Administration";
-  [["users","\uD83D\uDC65 Users"],["permissions","\uD83D\uDD10 Permissions"]].forEach(([k,lbl])=>{
+  [["users","\uD83D\uDC65 Users"],["permissions","\uD83D\uDD10 Permissions"],["okrlevels","\uD83E\uDE9C OKR levels"]].forEach(([k,lbl])=>{
     const b = document.createElement("button");
     b.className = "mod" + (adminView===k ? " active" : "");
     b.innerHTML = '<span class="name"></span>';
