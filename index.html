@@ -1747,6 +1747,33 @@ body{margin:0}
 .doctp{font-family:var(--cf-font)}
 .doctp-nm{color:var(--cf-ink)}
 
+/* ===== Docs spaces ===== */
+.docsp-wrap{position:relative;padding:12px 12px 6px}
+.docsp-switch{width:100%;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--cf-line2);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:var(--cf-font)}
+.docsp-switch:hover{background:var(--cf-hover)}
+.docsp-ic{width:26px;height:26px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.docsp-ic.sm{width:22px;height:22px;font-size:12px;border-radius:5px}
+.docsp-nm{flex:1;min-width:0;text-align:left;font-weight:600;font-size:14px;color:var(--cf-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docsp-cv{color:var(--cf-sub);font-size:11px}
+.docsp-menu{position:absolute;left:12px;right:12px;top:52px;z-index:20;background:#fff;border:1px solid var(--cf-line2);border-radius:10px;box-shadow:0 10px 30px rgba(9,30,66,.18);padding:6px}
+.docsp-menu-h{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--cf-sub);padding:6px 8px 4px}
+.docsp-mitem{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer}
+.docsp-mitem:hover{background:var(--cf-hover)}
+.docsp-mitem.on{background:var(--cf-selbg)}
+.docsp-mname{flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--cf-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docsp-mitem.on .docsp-mname{color:var(--cf-blue);font-weight:600}
+.docsp-edit{width:24px;height:24px;flex:none;border:none;background:none;color:var(--cf-sub);cursor:pointer;border-radius:6px;opacity:0;font-size:12px}
+.docsp-mitem:hover .docsp-edit{opacity:.8}
+.docsp-edit:hover{opacity:1;color:var(--cf-blue);background:#fff}
+.docsp-div{height:1px;background:var(--cf-line);margin:6px 4px}
+.docsp-new{width:100%;text-align:left;border:none;background:none;color:var(--cf-blue);font-weight:600;font-size:13.5px;padding:8px;cursor:pointer;border-radius:7px;font-family:var(--cf-font)}
+.docsp-new:hover{background:var(--cf-hover)}
+.docsp-none{padding:14px 12px;color:var(--cf-sub);font-size:13px;line-height:1.6}
+.docsp-none-t{font-weight:700;color:var(--cf-ink);font-size:14px;margin-bottom:2px}
+#docspace-dialog .dialog{max-width:420px}
+.docsp-iconrow{display:flex;gap:8px;align-items:center}
+.docsp-iconrow input{width:64px;text-align:center;font-size:20px}
+
 </style>
 </head>
 <body>
@@ -1827,6 +1854,17 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="docspace-dialog" style="z-index:470">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:420px">
+    <h3 id="docsp-title">Create space</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="docsp-f-name">Space name</label><input id="docsp-f-name" type="text" placeholder="e.g. Engineering, Dubuddy, Marketing" autocomplete="off"></div>
+      <div class="field"><label for="docsp-f-icon">Icon</label><div class="docsp-iconrow"><input id="docsp-f-icon" type="text" value="📁" maxlength="3"><span style="font-size:12px;color:var(--cf-sub)">paste any emoji</span></div></div>
+      <div class="field"><label>Colour</label><div class="mt-sw" id="docsp-sw"></div><input type="hidden" id="docsp-f-color"></div>
+    </div>
+    <div class="btns"><button class="mt-del" id="docsp-del" style="display:none">Delete space</button><button class="btn" id="docsp-cancel">Cancel</button><button class="btn save" id="docsp-save">Save</button></div>
+  </div>
+</div>
 <div class="overlay" id="doc-tpl-dialog" style="z-index:470">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:640px">
     <h3>Start a new document</h3>
@@ -3160,11 +3198,14 @@ let sqSave = null;
 let TEAMOWN = { roles:[] };
 let ownSave = null;
 let TEAMPERF = { people:[] };
-let TEAMDOCS = { docs:[], templates:[] };
+let TEAMDOCS = { spaces:[], docs:[], templates:[] };
 let docOpenId = null;
 let docEditing = false;
 let docBackup = null;
 let docSearch = "";
+let docSpaceId = null;
+let docSpaceMenuOpen = false;
+let docSpaceSave = null;
 let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
@@ -9891,17 +9932,21 @@ function blocksToHtml(blocks){
 function normalizeDoc(d){
   if(!d||typeof d!=="object") return null;
   var html = (typeof d.html==="string") ? d.html : (Array.isArray(d.blocks)?blocksToHtml(normalizeBlocks(d.blocks)):"");
-  return { id:d.id||docid(), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
+  return { id:d.id||docid(), spaceId:d.spaceId?String(d.spaceId):"", title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
 }
 function normalizeTpl(t){
   if(!t||typeof t!=="object") return null;
   var html = (typeof t.html==="string") ? t.html : (Array.isArray(t.blocks)?blocksToHtml(normalizeBlocks(t.blocks)):"");
   return { id:t.id||tplid(), name:t.name?String(t.name):"Template", icon:t.icon?String(t.icon):"📄", desc:t.desc?String(t.desc):"", html:html };
 }
+function spid(){ return "sp-"+Math.random().toString(36).slice(2,7)+Date.now().toString(36).slice(-2); }
+function normalizeSpace(sp){ if(!sp||typeof sp!=="object") return null; var n=sp.name!=null?String(sp.name):""; if(!n) return null; return { id:sp.id||spid(), name:n, icon:sp.icon?String(sp.icon):"📁", color:sp.color?String(sp.color):"#3B5BDB" }; }
 function normalizeDocs(o){
   o=o||{};
-  return { docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
+  return { spaces:Array.isArray(o.spaces)?o.spaces.map(normalizeSpace).filter(Boolean):[], docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
 }
+function docCurrentSpace(){ for(var i=0;i<TEAMDOCS.spaces.length;i++){ if(TEAMDOCS.spaces[i].id===docSpaceId) return TEAMDOCS.spaces[i]; } return null; }
+function docsInSpaceRaw(){ return (TEAMDOCS.docs||[]).filter(function(d){ return d.spaceId===docSpaceId; }).sort(docByUpdated); }
 function docCurrent(){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docOpenId) return TEAMDOCS.docs[i]; } return null; }
 function docTplList(){
   var b=docBuiltins().map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:blocksToHtml(normalizeBlocks(t.blocks)),_custom:false}; });
@@ -9911,8 +9956,10 @@ function docTplList(){
 
 /* ----- navigation / shell ----- */
 function openDocs(){
-  docSearch="";
-  if(!docOpenId || !docCurrent()){ docOpenId = TEAMDOCS.docs[0] ? TEAMDOCS.docs[0].id : null; }
+  docSearch=""; docSpaceMenuOpen=false;
+  if(!docCurrentSpace()){ docSpaceId = TEAMDOCS.spaces[0] ? TEAMDOCS.spaces[0].id : null; }
+  var inSp=docsInSpaceRaw();
+  if(!docOpenId || !docCurrent() || docCurrent().spaceId!==docSpaceId){ docOpenId = inSp[0] ? inSp[0].id : null; }
   buildDocsShell();
   $("docs-page").style.display="block"; window.scrollTo(0,0);
 }
@@ -9926,23 +9973,58 @@ function buildDocsShell(){
 function renderDocSide(){
   var admin=(typeof can==="function")?can("admin"):false;
   var side=$("docw-side"); if(!side) return;
-  var docs=(TEAMDOCS.docs||[]).slice().sort(docByUpdated);
-  var q=(docSearch||"").trim().toLowerCase();
-  var list=q?docs.filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;}):docs;
-  var h='<div class="docw-side-top"><span class="docw-mini">Documents</span>'+(admin?'<button class="docw-create" onclick="docOpenTplPicker()">＋ New</button>':'')+'</div>';
-  h+='<input class="docw-search" id="docw-search" type="text" placeholder="Search docs…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)">';
-  h+='<div class="docw-list">';
-  if(!list.length){ h+='<div class="docw-empty2">'+(q?'No matches.':(admin?'No docs yet.<br>Click ＋ New to start.':'No docs yet.'))+'</div>'; }
-  else list.forEach(function(d){
-    h+='<div class="docw-item'+(d.id===docOpenId?' on':'')+'" onclick="docOpen(\''+d.id+'\')">'
-      +'<span class="docw-item-ic">'+mtEsc(d.icon||"📄")+'</span>'
-      +'<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span><span class="docw-item-meta">'+mtEsc(d.updated||d.created||"")+'</span></span>'
-      +(admin?'<button class="docw-item-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
-      +'</div>';
-  });
+  var spaces=TEAMDOCS.spaces||[];
+  var cur=docCurrentSpace();
+  var h='';
+  // space switcher
+  h+='<div class="docsp-wrap">';
+  if(spaces.length){
+    h+='<button class="docsp-switch" onclick="docSpaceMenuToggle()"><span class="docsp-ic" style="background:'+mtEsc((cur&&cur.color)||"#3B5BDB")+'">'+mtEsc((cur&&cur.icon)||"📁")+'</span><span class="docsp-nm">'+mtEsc(cur?cur.name:"Select a space")+'</span><span class="docsp-cv">▾</span></button>';
+    if(docSpaceMenuOpen){
+      h+='<div class="docsp-menu">';
+      h+='<div class="docsp-menu-h">Spaces</div>';
+      spaces.forEach(function(sp){
+        h+='<div class="docsp-mitem'+(sp.id===docSpaceId?' on':'')+'" onclick="docSelectSpace(\''+sp.id+'\')">'
+          +'<span class="docsp-ic sm" style="background:'+mtEsc(sp.color||"#3B5BDB")+'">'+mtEsc(sp.icon||"📁")+'</span>'
+          +'<span class="docsp-mname">'+mtEsc(sp.name)+'</span>'
+          +(admin?'<button class="docsp-edit" title="Edit space" onclick="event.stopPropagation();docSpaceEdit(\''+sp.id+'\')">✎</button>':'')
+          +'</div>';
+      });
+      if(admin) h+='<div class="docsp-div"></div><button class="docsp-new" onclick="docSpaceAdd()">＋ New space</button>';
+      h+='</div>';
+    }
+  } else {
+    h+='<div class="docsp-none">'+(admin?'<div class="docsp-none-t">No spaces yet</div>Spaces group your documents.<br><button class="docw-create" style="margin-top:10px" onclick="docSpaceAdd()">＋ Create a space</button>':'No spaces yet.')+'</div>';
+  }
   h+='</div>';
+
+  if(spaces.length && cur){
+    h+='<div class="docw-side-top"><span class="docw-mini">Documents</span>'+(admin?'<button class="docw-create" onclick="docOpenTplPicker()">＋ New</button>':'')+'</div>';
+    h+='<input class="docw-search" id="docw-search" type="text" placeholder="Search docs…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)">';
+    var q=(docSearch||"").trim().toLowerCase();
+    var list=docsInSpaceRaw(); if(q) list=list.filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;});
+    h+='<div class="docw-list">';
+    if(!list.length){ h+='<div class="docw-empty2">'+(q?'No matches.':(admin?'No docs in this space yet.<br>Click ＋ New to start.':'No docs yet.'))+'</div>'; }
+    else list.forEach(function(d){
+      h+='<div class="docw-item'+(d.id===docOpenId?' on':'')+'" onclick="docOpen(\''+d.id+'\')">'
+        +'<span class="docw-item-ic">'+mtEsc(d.icon||"📄")+'</span>'
+        +'<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span><span class="docw-item-meta">'+mtEsc(d.updated||d.created||"")+'</span></span>'
+        +(admin?'<button class="docw-item-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
+        +'</div>';
+    });
+    h+='</div>';
+  }
   side.innerHTML=h;
 }
+function docSpaceMenuToggle(){ docSpaceMenuOpen=!docSpaceMenuOpen; renderDocSide(); }
+function docSelectSpace(id){ docSpaceId=id; docSpaceMenuOpen=false; docSearch=""; var inSp=docsInSpaceRaw(); docOpenId = inSp[0]?inSp[0].id:null; renderDocSide(); renderDocMain(); }
+function docSpaceAdd(){ docSpaceOpenDlg("Create space", {}, false); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } var sp={ id:spid(), name:name, icon:$("docsp-f-icon").value.trim()||"📁", color:$("docsp-f-color").value }; TEAMDOCS.spaces.push(sp); docSpaceCloseDlg(); docSpaceId=sp.id; docSpaceMenuOpen=false; docOpenId=null; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }; }
+function docSpaceEdit(id){ var sp=null; TEAMDOCS.spaces.forEach(function(x){if(x.id===id)sp=x;}); if(!sp) return; docSpaceOpenDlg("Edit space", sp, true); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } sp.name=name; sp.icon=$("docsp-f-icon").value.trim()||"📁"; sp.color=$("docsp-f-color").value; docSpaceCloseDlg(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }; $("docsp-del").onclick=function(){ docSpaceDelete(id); }; }
+function docSpaceDelete(id){ var sp=null; TEAMDOCS.spaces.forEach(function(x){if(x.id===id)sp=x;}); if(!sp) return; var n=(TEAMDOCS.docs||[]).filter(function(d){return d.spaceId===id;}).length; if(!window.confirm(n? 'Delete "'+sp.name+'" and its '+n+' document'+(n>1?'s':'')+'?' : 'Delete "'+sp.name+'"?')) return; TEAMDOCS.docs=TEAMDOCS.docs.filter(function(d){return d.spaceId!==id;}); TEAMDOCS.spaces=TEAMDOCS.spaces.filter(function(x){return x.id!==id;}); docSpaceCloseDlg(); if(docSpaceId===id){ docSpaceId=TEAMDOCS.spaces[0]?TEAMDOCS.spaces[0].id:null; docOpenId=null; } docSpaceMenuOpen=false; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }
+function docSpaceSwatches(cur){ $("docsp-sw").innerHTML=MT_COLORS.map(function(c){ return '<button type="button" style="background:'+c+'" class="'+(c===cur?"on":"")+'" onclick="docSpacePick(this,\''+c+'\')"></button>'; }).join(''); $("docsp-f-color").value=cur||MT_COLORS[0]; }
+function docSpacePick(b,c){ $("docsp-f-color").value=c; document.querySelectorAll('#docsp-sw button').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }
+function docSpaceOpenDlg(title, sp, showDel){ sp=sp||{}; $("docsp-title").textContent=title; $("docsp-f-name").value=sp.name||""; $("docsp-f-icon").value=sp.icon||"📁"; docSpaceSwatches(sp.color||MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]); $("docsp-del").style.display=showDel?"inline":"none"; $("docspace-dialog").classList.add("show"); setTimeout(function(){ $("docsp-f-name").focus(); },30); }
+function docSpaceCloseDlg(){ $("docspace-dialog").classList.remove("show"); docSpaceSave=null; }
 function docSearchInput(v){ docSearch=v; renderDocSide(); var n=$("docw-search"); if(n){ n.focus(); try{ n.setSelectionRange(n.value.length,n.value.length); }catch(e){} } }
 
 /* ----- right editor pane ----- */
@@ -10042,7 +10124,8 @@ function docOpenTplPicker(){
 function docCloseTplPicker(){ $("doc-tpl-dialog").classList.remove("show"); }
 function docCreateFrom(id){
   var t=docTplList().filter(function(x){return x.id===id;})[0]; if(!t) return;
-  var d={ id:docid(), title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
+  if(!docSpaceId){ if(typeof toast==="function") toast("Create a space first"); docCloseTplPicker(); return; }
+  var d={ id:docid(), spaceId:docSpaceId, title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
   TEAMDOCS.docs.push(d); docCloseTplPicker(); docOpenId=d.id; buildDocsShell();
   if(typeof pushAll==="function") pushAll();
   var ti=$("doce-title"); if(ti){ ti.focus(); ti.select(); }
@@ -10486,6 +10569,9 @@ if($("nav-d")){ $("nav-d").onclick = openTeam; }
 if($("nav-e")){ $("nav-e").onclick = openDocs; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
+if($("docsp-cancel")){ $("docsp-cancel").onclick = docSpaceCloseDlg; }
+if($("docsp-save")){ $("docsp-save").onclick = function(){ if(docSpaceSave) docSpaceSave(); }; }
+if($("docspace-dialog")){ $("docspace-dialog").onclick = function(e){ if(e.target.id==="docspace-dialog") docSpaceCloseDlg(); }; }
 if($("doc-tpl-dialog")){ $("doc-tpl-dialog").onclick = function(e){ if(e.target.id==="doc-tpl-dialog") docCloseTplPicker(); }; }
 if($("mt-back")){ $("mt-back").onclick = closeTeam; }
 if($("mt-cancel")){ $("mt-cancel").onclick = mtCloseDlg; }
