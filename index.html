@@ -1910,6 +1910,7 @@ body{margin:0}
 .pp-empty{font-size:12.5px;color:var(--muted);font-style:italic}
 .pp-search{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;color:var(--ink,#172B4D);box-sizing:border-box}
 .pp-search:focus{outline:none;border-color:var(--indigo)}
+.pp-menuwrap{position:static}
 .pp-menu{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:60;background:var(--card);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 30px rgba(9,30,66,.18);padding:5px;max-height:200px;overflow:auto}
 .pp-opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13.5px;color:var(--ink,#172B4D)}
 .pp-opt:hover{background:var(--hover,#F1F2F4)}
@@ -6823,16 +6824,34 @@ function ppRender(id){
     opts.slice(0,60).forEach(function(u){ menu+='<button type="button" class="pp-opt" onmousedown="event.preventDefault()" onclick="ppAdd(\''+id+'\',\''+u.email+'\')"><span class="pp-av">'+mtEsc((userDisplayName(u)[0]||'?').toUpperCase())+'</span><span class="pp-nm">'+mtEsc(userDisplayName(u))+'</span></button>'; });
     menu+='</div>';
   }
+  // Build chips + a STABLE input (never rebuilt while typing) + a separate menu container.
   mount.innerHTML='<div class="pp-chips">'+chips+'</div>'
-    +'<input class="pp-search" id="'+id+'-s" placeholder="Search people…" autocomplete="off" value="'+mtEsc(st.q)+'" oninput="ppSearch(\''+id+'\',this.value)" onfocus="ppOpen(\''+id+'\')">'
-    +menu;
+    +'<input class="pp-search" id="'+id+'-s" placeholder="Search people…" autocomplete="off" oninput="ppSearch(\''+id+'\',this.value)" onfocus="ppOpen(\''+id+'\')">'
+    +'<div class="pp-menuwrap" id="'+id+'-m"></div>';
+  var inp0=document.getElementById(id+'-s'); if(inp0 && inp0.value!==st.q) inp0.value=st.q;  // set via property, not re-rendered HTML
+  ppRenderMenu(id);
 }
-function ppOpen(id){ if(!PP[id])return; PP[id].open=true; ppRender(id); var i=document.getElementById(id+'-s'); if(i) i.focus(); }
-function ppSearch(id,v){ if(!PP[id])return; PP[id].q=v; PP[id].open=true; ppRender(id); var i=document.getElementById(id+'-s'); if(i){ i.focus(); try{ i.setSelectionRange(i.value.length,i.value.length); }catch(e){} } }
+function ppRenderMenu(id){
+  var st=PP[id]; var wrap=document.getElementById(id+'-m'); if(!st||!wrap) return;
+  var mem=assigneeMembers();
+  var q=(st.q||"").trim().toLowerCase();
+  var opts = mem.filter(function(u){ return st.sel.indexOf(u.email)<0 && (!q || userDisplayName(u).toLowerCase().indexOf(q)>=0 || (u.email||"").toLowerCase().indexOf(q)>=0); });
+  var menu='';
+  if(st.open){
+    menu='<div class="pp-menu">';
+    if(!mem.length) menu+='<div class="pp-none">No team members yet — add people in My Team / Admin.</div>';
+    else if(!opts.length) menu+='<div class="pp-none">'+(q?'No matches':'Everyone is already added')+'</div>';
+    opts.slice(0,60).forEach(function(u){ menu+='<button type="button" class="pp-opt" onmousedown="event.preventDefault()" onclick="ppAdd(\''+id+'\',\''+u.email+'\')"><span class="pp-av">'+mtEsc((userDisplayName(u)[0]||'?').toUpperCase())+'</span><span class="pp-nm">'+mtEsc(userDisplayName(u))+'</span></button>'; });
+    menu+='</div>';
+  }
+  wrap.innerHTML=menu;
+}
+function ppOpen(id){ if(!PP[id])return; PP[id].open=true; ppRenderMenu(id); }
+function ppSearch(id,v){ if(!PP[id])return; PP[id].q=v; PP[id].open=true; ppRenderMenu(id); }  /* input NOT rebuilt -> caret & IME stay intact */
 function ppAdd(id,em){ if(!PP[id])return; if(PP[id].sel.indexOf(em)<0) PP[id].sel.push(em); PP[id].q=""; ppRender(id); var i=document.getElementById(id+'-s'); if(i) i.focus(); }
 function ppRemove(id,em){ if(!PP[id])return; PP[id].sel=PP[id].sel.filter(function(x){return x!==em;}); ppRender(id); }
 function ppToggle(id){ if(!PP[id])return; PP[id].expanded=!PP[id].expanded; ppRender(id); }
-document.addEventListener("click", function(e){ var inside=e.target && e.target.closest && e.target.closest(".pp"); if(inside) return; var changed=false; for(var k in PP){ if(PP[k].open){ PP[k].open=false; changed=true; ppRender(k); } } });
+document.addEventListener("click", function(e){ var inside=e.target && e.target.closest && e.target.closest(".pp"); if(inside) return; for(var k in PP){ if(PP[k].open){ PP[k].open=false; ppRenderMenu(k); } } });
 
 var OKRPERM_SECS=[["owners","Owners","Can edit this objective, add sub-objectives, and delete it."],["editors","Can also edit","Extra people who can edit (besides owners)."],["adders","Can add sub-objectives","People who may create children under this — but not edit it."],["deleters","Can delete","People allowed to delete this objective (besides owners)."]];
 function okrPermRender(){
