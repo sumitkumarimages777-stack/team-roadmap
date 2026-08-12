@@ -1935,6 +1935,41 @@ body{margin:0}
 .okrlv-addbtn{border:none;background:var(--indigo);color:#fff;border-radius:9px;padding:10px 16px;font-weight:600;cursor:pointer;font-family:var(--disp)}
 .okrlv-addbtn:hover{filter:brightness(1.05)}
 
+/* ===== OKR Board view ===== */
+.okrb{position:relative;padding:6px 0 8px}
+.okrb-links{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
+.okrb-bands{position:relative;z-index:1;display:flex;flex-direction:column;gap:26px}
+.okrb-band{position:relative}
+.okrb-bandhead{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:6px 18px;margin-bottom:14px}
+.okrb-row{display:flex;flex-wrap:wrap;gap:18px}
+.okrb-card{width:300px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px 14px;position:relative;box-shadow:0 1px 2px rgba(9,30,66,.05)}
+.okrb-top{display:flex;align-items:flex-start;gap:8px}
+.okrb-title{flex:1;font-weight:700;font-size:14.5px;line-height:1.35;color:var(--ink)}
+.okrb-meta{margin:9px 0 10px;font-size:12.5px;color:var(--muted)}
+.okrb-owner i{opacity:.7}
+.okrb-you{color:var(--done);font-weight:600}
+.okrb-barw{display:flex;align-items:center;gap:9px}
+.okrb-bar{flex:1;height:7px;border-radius:99px;background:var(--line);overflow:hidden}
+.okrb-bar i{display:block;height:100%}
+.okrb-pct{font-family:var(--mono);font-weight:700;font-size:12px;min-width:34px;text-align:right}
+.okrb-pct em{font-style:normal;font-size:8px;color:var(--muted);text-transform:uppercase;display:block;line-height:1}
+.okrb-pct.score-low{color:var(--blocked)}.okrb-pct.score-mid{color:var(--progress)}.okrb-pct.score-high{color:var(--done)}
+.okrb-krtg{margin-top:11px;border:none;background:none;color:var(--indigo);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:var(--disp);text-align:left}
+.okrb-krtg:hover{text-decoration:underline}
+.okrb-krtg.empty{color:var(--muted)}
+.okrb-krbox{margin-top:10px;border-top:1px dashed var(--line-strong);padding-top:10px;display:flex;flex-direction:column;gap:11px}
+.okrb-kr-t{font-size:12px;color:var(--ink);margin-bottom:5px;display:flex;gap:7px;align-items:flex-start}
+.okrb-kr-tag{flex:none;font-family:var(--mono);font-size:9px;font-weight:700;color:var(--indigo);background:var(--indigo-soft,#EEF1FF);border-radius:5px;padding:2px 5px}
+.okrb-kr-bar{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:4px}
+.okrb-kr-bar i{display:block;height:100%}
+.okrb-kr-fig{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.okrb-krupd{margin-top:5px;border:1px solid var(--line-strong);background:var(--card);border-radius:6px;padding:2px 9px;font-size:10.5px;cursor:pointer;color:var(--muted);font-family:var(--disp)}
+.okrb-krupd:hover{border-color:var(--indigo);color:var(--indigo)}
+.okrb-kradd{border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;font-family:var(--disp)}
+.okrb-acts{display:none;gap:4px;margin-top:12px;flex-wrap:wrap}
+.okrb-card:hover .okrb-acts{display:flex}
+.okrb-lock{margin-top:11px;font-size:10.5px;color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -6870,6 +6905,126 @@ function okrPermSave(){
   okrPermClose(); saveOkrs(); toast("Permissions saved");
 }
 
+/* ================= OKR Board view (vertical level bands + connectors) ================= */
+var _okrBoardResizeBound=false;
+function renderOkrBoard(cyc, wrap){
+  var objs=cyc.objectives;
+  var root=document.createElement("div"); root.className="okrb";
+  var svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.setAttribute("class","okrb-links"); root.appendChild(svg);
+  var bands=document.createElement("div"); bands.className="okrb-bands"; root.appendChild(bands);
+
+  // group by admin levels order; unknown/blank -> "No level" band at the end
+  var levels=okrLevelsList();
+  var used=[];
+  levels.forEach(function(lv){ if(objs.some(function(o){return (o.level||"")===lv;})) used.push(lv); });
+  var hasBlank=objs.some(function(o){ var l=(o.level||""); return !l || levels.indexOf(l)<0; });
+  var order=used.slice(); if(hasBlank) order.push("");
+
+  if(!objs.length){
+    var e=document.createElement("div"); e.className="empty"; e.textContent="No objectives yet."+((editMode)?" Add one below.":""); bands.appendChild(e);
+  }
+  order.forEach(function(lv){
+    var inBand = objs.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
+    if(!inBand.length) return;
+    var band=document.createElement("div"); band.className="okrb-band";
+    var head=document.createElement("div"); head.className="okrb-bandhead"; head.textContent=(lv||"No level").toUpperCase(); band.appendChild(head);
+    var row=document.createElement("div"); row.className="okrb-row";
+    inBand.forEach(function(ob){ row.appendChild(okrBoardCard(ob, cyc, objs)); });
+    band.appendChild(row); bands.appendChild(band);
+  });
+  wrap.appendChild(root);
+
+  if(editMode){
+    var add=document.createElement("button"); add.className="addline"; add.style.padding="12px"; add.style.marginTop="12px";
+    add.textContent="＋ Add top-level objective"; add.onclick=function(){ okrAddOwned(cyc, null); };
+    wrap.appendChild(add);
+  }
+
+  // draw connectors after layout
+  if(typeof requestAnimationFrame==="function") requestAnimationFrame(function(){ okrDrawLinks(root); });
+  else okrDrawLinks(root);
+  if(!_okrBoardResizeBound){ _okrBoardResizeBound=true; window.addEventListener("resize", function(){ var r=document.querySelector(".okrb"); if(r) okrDrawLinks(r); }); }
+}
+function okrBoardCard(ob, cyc, objs){
+  var card=document.createElement("div"); card.className="okrb-card"; card.id="okrb-"+ob.id;
+  var p=objRollupPct(ob), auto=ob.rollup==="auto";
+  var owners=okrOwners(ob); var mine=SESSION && owners.indexOf(SESSION.email)>=0;
+  var ownerTxt = owners.map(okrOwnerName).filter(Boolean).join(", ") || "unassigned";
+  var canEdit=okrCanEdit(ob), canAdd=okrCanAdd(ob), canDel=okrCanDelete(ob);
+  var krExpanded=!!okrTreeExpanded[ob.id];
+
+  var top=document.createElement("div"); top.className="okrb-top";
+  var title=document.createElement("div"); title.className="okrb-title"; title.textContent=ob.title; top.appendChild(title);
+  card.appendChild(top);
+
+  var meta=document.createElement("div"); meta.className="okrb-meta";
+  meta.innerHTML='<span class="okrb-owner">'+(owners.length?mtEsc(ownerTxt):'<i>unassigned</i>')+(mine?' <span class="okrb-you">· you</span>':'')+'</span>';
+  card.appendChild(meta);
+
+  var barw=document.createElement("div"); barw.className="okrb-barw";
+  barw.innerHTML='<div class="okrb-bar"><i style="width:'+p+'%;background:'+scoreColor(p)+'"></i></div><span class="okrb-pct '+scoreClass(p)+'">'+p+'%'+(auto?' <em>auto</em>':'')+'</span>';
+  card.appendChild(barw);
+
+  // KR expander
+  if(ob.krs && ob.krs.length){
+    var tg=document.createElement("button"); tg.className="okrb-krtg"; tg.textContent=ob.krs.length+" key result"+(ob.krs.length>1?"s":"")+" "+(krExpanded?"▾":"▸");
+    tg.onclick=function(e){ e.stopPropagation(); okrTreeKrToggle(ob.id); };
+    card.appendChild(tg);
+    if(krExpanded){
+      var kb=document.createElement("div"); kb.className="okrb-krbox";
+      ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
+        var r=document.createElement("div"); r.className="okrb-kr";
+        r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+'</div>'
+          +'<div class="okrb-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
+          +'<div class="okrb-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
+        if(canEdit){ var up=document.createElement("button"); up.className="okrb-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; r.appendChild(up); }
+        kb.appendChild(r);
+      });
+      if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true}); }; kb.appendChild(ak); }
+      card.appendChild(kb);
+    }
+  } else if(canEdit){
+    var ak0=document.createElement("button"); ak0.className="okrb-krtg empty"; ak0.textContent="＋ Add key result";
+    ak0.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true}); };
+    card.appendChild(ak0);
+  }
+
+  // actions
+  var acts=document.createElement("div"); acts.className="okrb-acts";
+  if(canAdd) acts.appendChild(okrMini("＋","Add sub-objective (owned by you)", function(){ okrAddOwned(cyc, ob.id); }));
+  if(canEdit){
+    acts.appendChild(okrMini("✎","Edit", function(){ okrEditNode(ob, cyc); }));
+    acts.appendChild(okrMini("⚙","Permissions", function(){ okrPermOpen(ob); }));
+    acts.appendChild(okrMini(auto?"Auto ✓":"Manual","Progress: manual vs auto (avg of children)", function(){ if(auto) delete ob.rollup; else ob.rollup="auto"; saveOkrs(); }));
+  }
+  if(canDel) acts.appendChild(okrMini("×","Delete", function(){ if(confirm('Delete objective “'+ob.title+'”? Its children will be unlinked.')){ cyc.objectives.splice(cyc.objectives.indexOf(ob),1); objs.filter(function(o){return o.alignsTo===ob.id;}).forEach(function(o){ delete o.alignsTo; }); saveOkrs(); toast("Deleted"); } }));
+  if(acts.children.length) card.appendChild(acts);
+  if(!canEdit && !canAdd && SESSION){ var lk=document.createElement("div"); lk.className="okrb-lock"; lk.textContent="🔒 view only"; card.appendChild(lk); }
+  else if(!canEdit && canAdd && SESSION){ var lk2=document.createElement("div"); lk2.className="okrb-lock"; lk2.textContent="🔒 add under, can’t edit"; card.appendChild(lk2); }
+  return card;
+}
+function okrDrawLinks(root){
+  var svg=root.querySelector(".okrb-links"); if(!svg) return;
+  var cyc=OKRS.cycles.find(function(c){return c.key===activeCycle;}); if(!cyc){ svg.innerHTML=""; return; }
+  var rb=root.getBoundingClientRect();
+  var W=Math.max(1, Math.round(rb.width)), H=Math.max(1, Math.round(rb.height));
+  svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var out="";
+  cyc.objectives.forEach(function(o){
+    if(!o.alignsTo) return;
+    var pe=document.getElementById("okrb-"+o.alignsTo), ce=document.getElementById("okrb-"+o.id);
+    if(!pe||!ce) return;
+    var pr=pe.getBoundingClientRect(), cr=ce.getBoundingClientRect();
+    var x1=pr.left+pr.width/2-rb.left, y1=pr.bottom-rb.top;
+    var x2=cr.left+cr.width/2-rb.left, y2=cr.top-rb.top;
+    if(!(isFinite(x1)&&isFinite(y1)&&isFinite(x2)&&isFinite(y2))) return;
+    var midY=(y1+y2)/2;
+    out+='<path d="M'+x1+','+y1+' C'+x1+','+midY+' '+x2+','+midY+' '+x2+','+y2+'" fill="none" stroke="var(--line-strong)" stroke-width="2" opacity="0.75"/>';
+    out+='<circle cx="'+x2+'" cy="'+y2+'" r="3.5" fill="var(--card)" stroke="var(--indigo)" stroke-width="2"/>';
+  });
+  svg.innerHTML=out;
+}
+
 function renderContentOkr(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -6879,9 +7034,10 @@ function renderContentOkr(){
     return;
   }
   var _tg=document.createElement('div'); _tg.className='okr-modetg';
-  [['list','List'],['tree','Org tree']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
+  [['list','List'],['tree','Org tree'],['board','Board']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
   wrap.appendChild(_tg);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
+  if(okrView2==='board'){ renderOkrBoard(cyc, wrap); return; }
   const _order=[]; cyc.objectives.forEach(o=>{ const k=(o.level||"").trim(); if(_order.indexOf(k)<0) _order.push(k); });
   const _ordered = cyc.objectives.slice().sort((a,b)=> _order.indexOf((a.level||"").trim()) - _order.indexOf((b.level||"").trim()));
   let _lastLv=null, _dispNum=0;
