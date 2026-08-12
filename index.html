@@ -9876,6 +9876,30 @@ function docBuiltins(){
       {type:"fields",rows:[{label:"Goal",value:""},{label:"Specific?",value:""},{label:"Measurable?",value:""},{label:"Attainable?",value:""},{label:"Relevant?",value:""},{label:"Time-based?",value:""}]},
       {type:"heading",text:"Notes"},{type:"text",text:""}
     ]},
+    { id:"bi-5whys", name:"5 Whys analysis", icon:"🔍", desc:"Find the root cause of a team problem and track solutions.", html:
+      "<h2>📋 Overview</h2>"+
+      "<p>Discover and resolve problems with your team using the 5 Whys analysis. Ask &quot;why&quot; repeatedly until you reach the root cause.</p>"+
+      "<table class='doc-tbl'><tbody>"+
+      "<tr><th>Team</th><td>e.g., Team All-Stars</td></tr>"+
+      "<tr><th>Team members</th><td>@ mention team members</td></tr>"+
+      "<tr><th>Date</th><td><br></td></tr>"+
+      "</tbody></table>"+
+      "<h2>🤔 Problem statements</h2>"+
+      "<table class='doc-tbl'><tbody>"+
+      "<tr><th style='background:#FFF7D6'>Problem 1</th><th style='background:#FFF7D6'>Problem 2</th><th style='background:#FFF7D6'>Problem 3</th><th style='background:#FFF7D6'>Problem 4</th><th style='background:#FFF7D6'>Problem 5</th></tr>"+
+      "<tr><td>State the problem your team needs to address in 1-2 sentences</td><td><br></td><td><br></td><td><br></td><td><br></td></tr>"+
+      "<tr><th style='background:#FFF7D6'>Whys</th><th style='background:#FFF7D6'>Whys</th><th style='background:#FFF7D6'>Whys</th><th style='background:#FFF7D6'>Whys</th><th style='background:#FFF7D6'>Whys</th></tr>"+
+      "<tr><td>List answers that explain why the problem happened</td><td><br></td><td><br></td><td><br></td><td><br></td></tr>"+
+      "<tr><th colspan='5' style='background:#FFF7D6'>Final problem statement</th></tr>"+
+      "<tr><td colspan='5'>Add a final statement that identifies the root cause of the team problem</td></tr>"+
+      "</tbody></table>"+
+      "<h2>🌱 Solutions</h2>"+
+      "<p>Choose solutions your team can work on and use this page to track progress.</p>"+
+      "<table class='doc-tbl'><tbody>"+
+      "<tr><th style='background:#E3FCEF'>Solution</th><th style='background:#E3FCEF'>Owner</th><th style='background:#E3FCEF'>Status</th><th style='background:#E3FCEF'>Action items</th></tr>"+
+      "<tr><td><br></td><td>@ owner</td><td>In progress / Complete</td><td><br></td></tr>"+
+      "<tr><td><br></td><td><br></td><td><br></td><td><br></td></tr>"+
+      "</tbody></table>" },
     { id:"bi-1on1", name:"1-on-1 meeting", icon:"🗣️", desc:"Run a productive 1-on-1 and track follow-ups.", blocks:[
       {type:"fields",rows:[{label:"Date",value:""},{label:"With",value:""}]},
       {type:"heading",text:"Talking points"},{type:"bullets",items:[]},
@@ -9949,7 +9973,7 @@ function docCurrentSpace(){ for(var i=0;i<TEAMDOCS.spaces.length;i++){ if(TEAMDO
 function docsInSpaceRaw(){ return (TEAMDOCS.docs||[]).filter(function(d){ return d.spaceId===docSpaceId; }).sort(docByUpdated); }
 function docCurrent(){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===docOpenId) return TEAMDOCS.docs[i]; } return null; }
 function docTplList(){
-  var b=docBuiltins().map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:blocksToHtml(normalizeBlocks(t.blocks)),_custom:false}; });
+  var b=docBuiltins().map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:(t.html||blocksToHtml(normalizeBlocks(t.blocks))),_custom:false}; });
   var c=(TEAMDOCS.templates||[]).map(function(t){ return {id:t.id,name:t.name,icon:t.icon,desc:t.desc,html:t.html,_custom:true}; });
   return b.concat(c);
 }
