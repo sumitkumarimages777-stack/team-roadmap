@@ -2530,6 +2530,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
     <div class="field" id="f-assignee-wrap"><label>Assignee (optional)</label><div class="assignee-pick"><input id="f-assignee-search" placeholder="Search people…" autocomplete="off"><input type="hidden" id="f-assignee-val"><div id="f-assignee-menu" class="assignee-menu"></div></div></div>
+    <div class="field" id="f-owners-wrap" style="display:none"><label>Owners (add as many as you like)</label><div id="f-owners-box" class="okrperm-people"></div></div>
     <div class="field-row" id="f-pd-row" style="gap:12px">
       <div class="field" id="f-priority-wrap" style="flex:1"><label for="f-priority">Priority</label><select id="f-priority"><option value="">None</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
@@ -3752,7 +3753,16 @@ function openDialog(title, values, onSave, opts={}){
   $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-note-wrap").querySelector("label").textContent = opts.noteLabel || "Note (optional)";
   // assignee (searchable), priority, due date, labels
-  $("f-assignee-wrap").style.display = opts.assignee ? "" : "none";
+  $("f-assignee-wrap").style.display = (opts.assignee && !opts.owners) ? "" : "none";
+  $("f-owners-wrap").style.display = opts.owners ? "" : "none";
+  if(opts.owners){
+    var _cur = Array.isArray(values.owners) ? values.owners.slice() : (values.assignee?[values.assignee]:[]);
+    var _mem = assigneeMembers();
+    var _h = _mem.length ? "" : '<div class="okrperm-empty">No team members yet.</div>';
+    _mem.forEach(function(u){ var on=_cur.indexOf(u.email)>=0; _h += '<label class="okrperm-p'+(on?" on":"")+'"><input type="checkbox" class="f-owner-cb" value="'+mtEsc(u.email)+'"'+(on?" checked":"")+'>'+mtEsc(userDisplayName(u))+'</label>'; });
+    $("f-owners-box").innerHTML=_h;
+    $("f-owners-box").querySelectorAll(".f-owner-cb").forEach(function(cb){ cb.onchange=function(){ var l=cb.closest(".okrperm-p"); if(l) l.classList.toggle("on", cb.checked); }; });
+  }
   if(opts.assignee){
     const val = values.assignee || "";
     $("f-assignee-val").value = val;
@@ -3915,6 +3925,7 @@ $("dlg-save").onclick = ()=>{
     owner: $("f-owner").value.trim(),
     note: $("f-note").value.trim(),
     assignee: $("f-assignee-val") ? $("f-assignee-val").value : "",
+    owners: (function(){ var box=$("f-owners-box"); if(!box || $("f-owners-wrap").style.display==="none") return undefined; var out=[]; box.querySelectorAll(".f-owner-cb:checked").forEach(function(c){ out.push(c.value); }); return out; })(),
     duedate: $("f-duedate") ? $("f-duedate").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
@@ -6622,28 +6633,32 @@ function okrOwners(ob){ if(ob&&Array.isArray(ob.owners)&&ob.owners.length) retur
 function okrInList(list){ return !!(SESSION && Array.isArray(list) && list.indexOf(SESSION.email)>=0); }
 function okrCanEdit(ob){ if(editMode) return true; if(!SESSION||!ob) return false; return okrInList(okrOwners(ob)) || okrInList(ob.editors); }
 function okrCanAdd(ob){ if(editMode) return true; if(!SESSION||!ob) return false; return okrInList(okrOwners(ob)) || okrInList(ob.adders); }
+function okrCanDelete(ob){ if(editMode) return true; if(!SESSION||!ob) return false; return okrInList(okrOwners(ob)) || okrInList(ob.deleters); }
 function okrTreeKrToggle(id){ okrTreeExpanded[id]=!okrTreeExpanded[id]; renderAll(); }
 function okrMini(txt,title,fn){ var b=document.createElement("button"); b.className="okrtree-mini"; b.textContent=txt; b.title=title; b.onclick=function(e){ e.stopPropagation(); fn(); }; return b; }
 
 function okrAddOwned(cyc, parentId){
-  var preset={ level: "" };
+  var preset={ level: "", owners: (SESSION?[SESSION.email]:[]) };
   openDialog("New objective", preset, function(v){
     var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[] }; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
     if(v.note) ob.note=v.note;
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
-    var _own = editMode ? (v.assignee || (SESSION&&SESSION.email) || "") : ((SESSION&&SESSION.email)||"");
-    if(_own){ ob.owners=[_own]; ob.assignee=_own; }
-    cyc.objectives.push(ob); saveOkrs(); toast("Objective added — set permissions from the ⚙ on the card");
-  }, {level:true, alignTo: !parentId, alignOptions: okrAlignOptions(cyc, null), assignee: !!editMode});
+    var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
+    if(!_owners.length && SESSION) _owners=[SESSION.email];
+    if(_owners.length){ ob.owners=_owners; ob.assignee=_owners[0]; }
+    cyc.objectives.push(ob); saveOkrs(); toast("Objective added — fine-tune access from the ⚙ on the card");
+  }, {level:true, alignTo: !parentId, alignOptions: okrAlignOptions(cyc, null), owners:true});
 }
 function okrEditNode(ob, cyc){
-  openDialog("Edit objective", ob, function(v){
+  var vals = {}; for(var k in ob){ vals[k]=ob[k]; } vals.owners = okrOwners(ob);
+  openDialog("Edit objective", vals, function(v){
     applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level;
     if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo;
-    if(editMode){ if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; }
+    var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
+    if(_owners.length){ ob.owners=_owners; ob.assignee=_owners[0]; } else { delete ob.owners; delete ob.assignee; }
     saveOkrs();
-  }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee: !!editMode});
+  }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true});
 }
 
 function renderOkrTree(cyc, wrap){
@@ -6712,8 +6727,10 @@ function okrTreeNode(ob, cyc, objs){
   if(canAdd) acts.appendChild(okrMini("＋","Add sub-objective under this (owned by you)", function(){ okrAddOwned(cyc, ob.id); }));
   if(canEdit){
     acts.appendChild(okrMini("✎","Edit objective", function(){ okrEditNode(ob, cyc); }));
-    acts.appendChild(okrMini("⚙","Permissions — who can edit / add under this", function(){ okrPermOpen(ob); }));
+    acts.appendChild(okrMini("⚙","Permissions — who can edit / add / delete", function(){ okrPermOpen(ob); }));
     acts.appendChild(okrMini(auto?"Auto ✓":"Manual","Progress: manual (from KRs) vs auto (avg of children)", function(){ if(auto) delete ob.rollup; else ob.rollup="auto"; saveOkrs(); }));
+  }
+  if(okrCanDelete(ob)){
     acts.appendChild(okrMini("×","Delete objective", function(){ if(confirm('Delete objective “'+ob.title+'”? Its children will be unlinked.')){ cyc.objectives.splice(cyc.objectives.indexOf(ob),1); objs.filter(function(o){return o.alignsTo===ob.id;}).forEach(function(o){ delete o.alignsTo; }); saveOkrs(); toast("Deleted"); } }));
   }
   if(acts.children.length) card.appendChild(acts);
@@ -6738,6 +6755,7 @@ function okrPermList(kind){
   if(kind==="owners") return okrOwners(ob);
   if(kind==="editors") return Array.isArray(ob.editors)?ob.editors:[];
   if(kind==="adders") return Array.isArray(ob.adders)?ob.adders:[];
+  if(kind==="deleters") return Array.isArray(ob.deleters)?ob.deleters:[];
   return [];
 }
 function okrPermRender(){
@@ -6752,9 +6770,10 @@ function okrPermRender(){
     return h;
   }
   $("okrperm-body").innerHTML =
-    sec("owners","Owners","Can edit this objective and add sub-objectives under it.")
+    sec("owners","Owners","Can edit this objective, add sub-objectives, and delete it.")
    +sec("editors","Can also edit","Extra people who can edit (besides owners).")
-   +sec("adders","Can add sub-objectives","People who may create children under this — but not edit it.");
+   +sec("adders","Can add sub-objectives","People who may create children under this — but not edit it.")
+   +sec("deleters","Can delete","People allowed to delete this objective (besides owners).");
 }
 function okrPermSave(){
   var ob=okrPermFind(); if(!ob){ okrPermClose(); return; }
@@ -6762,6 +6781,7 @@ function okrPermSave(){
   var owners=read("owners"); ob.owners=owners; if(owners.length) ob.assignee=owners[0]; else delete ob.assignee;
   var editors=read("editors"); if(editors.length) ob.editors=editors; else delete ob.editors;
   var adders=read("adders"); if(adders.length) ob.adders=adders; else delete ob.adders;
+  var deleters=read("deleters"); if(deleters.length) ob.deleters=deleters; else delete ob.deleters;
   okrPermClose(); saveOkrs(); toast("Permissions saved");
 }
 
