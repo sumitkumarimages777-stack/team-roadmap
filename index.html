@@ -1774,6 +1774,35 @@ body{margin:0}
 .docsp-iconrow{display:flex;gap:8px;align-items:center}
 .docsp-iconrow input{width:64px;text-align:center;font-size:20px}
 
+/* ===== Docs tree (folders + nesting) ===== */
+.docs-page .docw-item{position:relative;padding-top:6px;padding-bottom:6px}
+.docw-chev{width:15px;height:18px;flex:none;border:none;background:none;color:var(--cf-sub);cursor:pointer;font-size:9px;padding:0;line-height:18px;text-align:center}
+.docw-chev:hover{color:var(--cf-ink)}
+.docw-chev.sp{visibility:hidden}
+.docw-rowacts{display:none;align-items:center;gap:1px;margin-left:auto}
+.docw-item:hover .docw-rowacts{display:flex}
+.docw-ra{width:22px;height:22px;flex:none;border:none;background:none;color:var(--cf-sub);cursor:pointer;border-radius:5px;font-size:13px;line-height:1}
+.docw-ra:hover{background:#fff;color:var(--cf-blue)}
+.docw-newwrap{position:relative;margin-left:auto}
+.docw-newmenu{position:absolute;right:0;top:32px;z-index:40;background:#fff;border:1px solid var(--cf-line2);border-radius:9px;box-shadow:0 10px 26px rgba(9,30,66,.18);padding:5px;min-width:160px}
+.docw-newmenu button{display:block;width:100%;text-align:left;border:none;background:none;padding:8px 10px;border-radius:6px;font-size:13.5px;color:var(--cf-ink);cursor:pointer;font-family:var(--cf-font)}
+.docw-newmenu button:hover{background:var(--cf-hover)}
+/* folder view (right pane) */
+.docfv-h{display:flex;align-items:center;gap:10px}
+.docfv-ic{font-size:26px}
+.docfv-actions{margin:12px 0 20px;display:flex;gap:8px;flex-wrap:wrap}
+.docfv-tbl{width:100%;border-collapse:collapse;font-family:var(--cf-font)}
+.docfv-tbl thead th{text-align:left;font-size:12px;color:var(--cf-sub);border-bottom:2px solid var(--cf-line);padding:9px 6px;font-weight:600}
+.docfv-tbl td{border-bottom:1px solid var(--cf-line);padding:12px 6px;font-size:14px;color:var(--cf-ink);cursor:pointer}
+.docfv-tbl tr:hover td{background:var(--cf-hover)}
+.docfv-name{font-weight:500}
+.docfv-name span{margin-right:6px}
+.docfv-meta{color:var(--cf-sub);font-size:12.5px}
+.docfv-empty{color:var(--cf-sub);font-style:italic;cursor:default}
+.docfv-tbl tr:hover .docfv-empty{background:none}
+#docmove-dialog .dialog{max-width:420px}
+#docmove-sel{width:100%;padding:9px 11px;border:1px solid var(--cf-line2);border-radius:8px;font:inherit;color:var(--cf-ink)}
+
 </style>
 </head>
 <body>
@@ -1854,6 +1883,13 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="docmove-dialog" style="z-index:472">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:420px">
+    <h3 id="docmove-title">Move</h3>
+    <div class="dlg-body"><div class="field"><label for="docmove-sel">Move under</label><select id="docmove-sel"></select></div></div>
+    <div class="btns"><button class="btn" id="docmove-cancel">Cancel</button><button class="btn save" id="docmove-save">Move</button></div>
+  </div>
+</div>
 <div class="overlay" id="docspace-dialog" style="z-index:470">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:420px">
     <h3 id="docsp-title">Create space</h3>
@@ -3206,6 +3242,10 @@ let docSearch = "";
 let docSpaceId = null;
 let docSpaceMenuOpen = false;
 let docSpaceSave = null;
+let docExpanded = {};
+let docNewParent = "";
+let docNewMenuFor = null;
+let docMoveId = null;
 let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
@@ -9956,7 +9996,7 @@ function blocksToHtml(blocks){
 function normalizeDoc(d){
   if(!d||typeof d!=="object") return null;
   var html = (typeof d.html==="string") ? d.html : (Array.isArray(d.blocks)?blocksToHtml(normalizeBlocks(d.blocks)):"");
-  return { id:d.id||docid(), spaceId:d.spaceId?String(d.spaceId):"", title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
+  return { id:d.id||docid(), spaceId:d.spaceId?String(d.spaceId):"", parentId:d.parentId?String(d.parentId):"", kind:(d.kind==="folder"?"folder":"doc"), title:d.title!=null?String(d.title):"Untitled", template:d.template?String(d.template):"", icon:d.icon?String(d.icon):"📄", created:d.created?String(d.created):"", updated:d.updated?String(d.updated):"", html:html };
 }
 function normalizeTpl(t){
   if(!t||typeof t!=="object") return null;
@@ -9982,8 +10022,8 @@ function docTplList(){
 function openDocs(){
   docSearch=""; docSpaceMenuOpen=false;
   if(!docCurrentSpace()){ docSpaceId = TEAMDOCS.spaces[0] ? TEAMDOCS.spaces[0].id : null; }
-  var inSp=docsInSpaceRaw();
-  if(!docOpenId || !docCurrent() || docCurrent().spaceId!==docSpaceId){ docOpenId = inSp[0] ? inSp[0].id : null; }
+  var roots=docChildren("");
+  if(!docOpenId || !docCurrent() || docCurrent().spaceId!==docSpaceId){ docOpenId = roots[0] ? roots[0].id : null; }
   buildDocsShell();
   $("docs-page").style.display="block"; window.scrollTo(0,0);
 }
@@ -9994,19 +10034,23 @@ function buildDocsShell(){
 }
 
 /* ----- left sidebar ----- */
+function docById(id){ for(var i=0;i<TEAMDOCS.docs.length;i++){ if(TEAMDOCS.docs[i].id===id) return TEAMDOCS.docs[i]; } return null; }
+function docChildren(parentId){ return docsInSpaceRaw().filter(function(d){ return (d.parentId||"")===(parentId||""); }); }
+function docHasKids(id){ return docsInSpaceRaw().some(function(d){ return (d.parentId||"")===id; }); }
+function docDescendants(id){ var out=[]; (function rec(pid){ docsInSpaceRaw().forEach(function(d){ if((d.parentId||"")===pid){ out.push(d.id); rec(d.id); } }); })(id); return out; }
+function docExpandToggle(id){ docExpanded[id]=!docExpanded[id]; renderDocSide(); }
+
 function renderDocSide(){
   var admin=(typeof can==="function")?can("admin"):false;
   var side=$("docw-side"); if(!side) return;
   var spaces=TEAMDOCS.spaces||[];
   var cur=docCurrentSpace();
   var h='';
-  // space switcher
   h+='<div class="docsp-wrap">';
   if(spaces.length){
     h+='<button class="docsp-switch" onclick="docSpaceMenuToggle()"><span class="docsp-ic" style="background:'+mtEsc((cur&&cur.color)||"#3B5BDB")+'">'+mtEsc((cur&&cur.icon)||"📁")+'</span><span class="docsp-nm">'+mtEsc(cur?cur.name:"Select a space")+'</span><span class="docsp-cv">▾</span></button>';
     if(docSpaceMenuOpen){
-      h+='<div class="docsp-menu">';
-      h+='<div class="docsp-menu-h">Spaces</div>';
+      h+='<div class="docsp-menu"><div class="docsp-menu-h">Spaces</div>';
       spaces.forEach(function(sp){
         h+='<div class="docsp-mitem'+(sp.id===docSpaceId?' on':'')+'" onclick="docSelectSpace(\''+sp.id+'\')">'
           +'<span class="docsp-ic sm" style="background:'+mtEsc(sp.color||"#3B5BDB")+'">'+mtEsc(sp.icon||"📁")+'</span>'
@@ -10023,25 +10067,92 @@ function renderDocSide(){
   h+='</div>';
 
   if(spaces.length && cur){
-    h+='<div class="docw-side-top"><span class="docw-mini">Documents</span>'+(admin?'<button class="docw-create" onclick="docOpenTplPicker()">＋ New</button>':'')+'</div>';
+    h+='<div class="docw-side-top"><span class="docw-mini">Content</span>'+(admin?'<span class="docw-newwrap"><button class="docw-create" onclick="docNewMenuToggle(\'root\',event)">＋ New</button>'+docNewMenuHTML("root")+'</span>':'')+'</div>';
     h+='<input class="docw-search" id="docw-search" type="text" placeholder="Search docs…" value="'+mtEsc(docSearch||"")+'" oninput="docSearchInput(this.value)">';
-    var q=(docSearch||"").trim().toLowerCase();
-    var list=docsInSpaceRaw(); if(q) list=list.filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;});
     h+='<div class="docw-list">';
-    if(!list.length){ h+='<div class="docw-empty2">'+(q?'No matches.':(admin?'No docs in this space yet.<br>Click ＋ New to start.':'No docs yet.'))+'</div>'; }
-    else list.forEach(function(d){
-      h+='<div class="docw-item'+(d.id===docOpenId?' on':'')+'" onclick="docOpen(\''+d.id+'\')">'
-        +'<span class="docw-item-ic">'+mtEsc(d.icon||"📄")+'</span>'
-        +'<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span><span class="docw-item-meta">'+mtEsc(d.updated||d.created||"")+'</span></span>'
-        +(admin?'<button class="docw-item-del" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>':'')
-        +'</div>';
-    });
+    var q=(docSearch||"").trim().toLowerCase();
+    if(q){
+      var flat=docsInSpaceRaw().filter(function(d){return (d.title||"").toLowerCase().indexOf(q)>=0;});
+      if(!flat.length) h+='<div class="docw-empty2">No matches.</div>';
+      else flat.forEach(function(d){ h+=docRowHTML(d,0,admin,true); });
+    } else {
+      var roots=docChildren("");
+      if(!roots.length) h+='<div class="docw-empty2">'+(admin?'No content yet.<br>Click ＋ New to add a doc or folder.':'No docs yet.')+'</div>';
+      else h+=docTreeHTML("",0,admin);
+    }
     h+='</div>';
   }
   side.innerHTML=h;
 }
+function docTreeHTML(parentId, depth, admin){
+  var kids=docChildren(parentId), h='';
+  kids.forEach(function(d){
+    h+=docRowHTML(d,depth,admin,false);
+    if(docHasKids(d.id) && docExpanded[d.id]) h+=docTreeHTML(d.id, depth+1, admin);
+  });
+  return h;
+}
+function docRowHTML(d, depth, admin, flat){
+  var hasKids=docHasKids(d.id), isFolder=d.kind==="folder", open=!!docExpanded[d.id];
+  var pad=6+depth*15;
+  var chev=(!flat && hasKids) ? '<button class="docw-chev" onclick="event.stopPropagation();docExpandToggle(\''+d.id+'\')">'+(open?'▾':'▸')+'</button>' : '<span class="docw-chev sp"></span>';
+  var ic=isFolder ? (open?'📂':'📁') : (d.icon||'📄');
+  return '<div class="docw-item'+(d.id===docOpenId?' on':'')+'" style="padding-left:'+pad+'px" onclick="docRowClick(\''+d.id+'\')">'
+    + chev
+    + '<span class="docw-item-ic">'+mtEsc(ic)+'</span>'
+    + '<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span></span>'
+    + (admin?'<span class="docw-rowacts">'
+        +'<button class="docw-ra" title="Add inside" onclick="event.stopPropagation();docNewMenuToggle(\''+d.id+'\',event)">＋</button>'
+        +'<button class="docw-ra" title="Move" onclick="event.stopPropagation();docMoveOpen(\''+d.id+'\')">⇄</button>'
+        +'<button class="docw-ra" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>'
+      +'</span>'+(docNewMenuFor===d.id?docNewMenuHTML(d.id):'') :'')
+    + '</div>';
+}
+function docNewMenuHTML(target){
+  if(docNewMenuFor!==target) return '';
+  var pid=(target==="root"?"":target);
+  return '<div class="docw-newmenu">'
+    +'<button onclick="event.stopPropagation();docStartCreate(\''+pid+'\')">📄 Document</button>'
+    +'<button onclick="event.stopPropagation();docCreateFolder(\''+pid+'\')">📁 Folder</button>'
+    +'</div>';
+}
+function docNewMenuToggle(target,e){ if(e&&e.stopPropagation)e.stopPropagation(); docNewMenuFor=(docNewMenuFor===target?null:target); renderDocSide(); }
+function docRowClick(id){ var d=docById(id); if(!d) return; docNewMenuFor=null; if(d.kind==="folder"){ docExpanded[id]=true; docOpenId=id; renderDocSide(); renderDocMain(); } else { docOpen(id); } }
+function docStartCreate(parentId){ docNewParent=parentId||""; docNewMenuFor=null; docOpenTplPicker(); }
+function docCreateFolder(parentId){
+  docNewMenuFor=null;
+  var name=window.prompt("Folder name:","New folder"); if(!name){ renderDocSide(); return; }
+  var f={ id:docid(), spaceId:docSpaceId, parentId:parentId||"", kind:"folder", title:String(name).trim()||"New folder", icon:"📁", template:"", created:docToday(), updated:docToday(), html:"" };
+  TEAMDOCS.docs.push(f); if(parentId) docExpanded[parentId]=true; docOpenId=f.id;
+  renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll();
+}
+function renderDocFolderView(d,admin){
+  var main=$("docw-main"); var kids=docChildren(d.id);
+  var h='<div class="doce-scroll"><div class="doce-page">';
+  h+='<div class="docfv-h"><span class="docfv-ic">'+mtEsc(docExpanded[d.id]?'📂':'📁')+'</span><input class="doce-title" id="doce-title" type="text" value="'+mtEsc(d.title||"")+'" placeholder="Folder name" '+(admin?'oninput="docFolderTitleInput(this.value)"':'readonly')+'></div>';
+  h+='<div class="doce-meta">Folder · '+kids.length+' item'+(kids.length!==1?'s':'')+'</div>';
+  if(admin){ h+='<div class="docfv-actions"><button class="mt-btn primary" onclick="docStartCreate(\''+d.id+'\')">＋ New document</button><button class="mt-btn" onclick="docCreateFolder(\''+d.id+'\')">＋ New folder</button></div>'; }
+  h+='<table class="docfv-tbl"><thead><tr><th>Name</th><th>Last edited</th></tr></thead><tbody>';
+  if(!kids.length) h+='<tr><td colspan="2" class="docfv-empty">There is nothing in this folder yet.</td></tr>';
+  else kids.forEach(function(k){ h+='<tr onclick="docRowClick(\''+k.id+'\')"><td class="docfv-name"><span>'+mtEsc(k.kind==="folder"?"📁":(k.icon||"📄"))+'</span> '+mtEsc(k.title||"Untitled")+'</td><td class="docfv-meta">'+mtEsc(k.updated||k.created||"")+'</td></tr>'; });
+  h+='</tbody></table></div></div>';
+  main.innerHTML=h;
+}
+function docFolderTitleInput(v){ var d=docCurrent(); if(!d) return; d.title=(v||"").trim()||"Untitled"; d.updated=docToday(); renderDocSide(); docScheduleSave(); }
+function docMoveOpen(id){
+  var d=docById(id); if(!d) return; docMoveId=id;
+  var banned={}; banned[id]=true; docDescendants(id).forEach(function(x){banned[x]=true;});
+  var opts='<option value="">— Top level —</option>';
+  docsInSpaceRaw().forEach(function(x){ if(banned[x.id]) return; opts+='<option value="'+x.id+'"'+(x.id===(d.parentId||"")?' selected':'')+'>'+mtEsc((x.kind==="folder"?"📁 ":"📄 ")+(x.title||"Untitled"))+'</option>'; });
+  $("docmove-sel").innerHTML=opts;
+  $("docmove-title").textContent='Move "'+(d.title||"item")+'"';
+  $("docmove-dialog").classList.add("show");
+}
+function docMoveSaveFn(){ var d=docById(docMoveId); if(!d){ docMoveClose(); return; } var np=$("docmove-sel").value||""; d.parentId=np; if(np) docExpanded[np]=true; docMoveClose(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }
+function docMoveClose(){ $("docmove-dialog").classList.remove("show"); docMoveId=null; }
+
 function docSpaceMenuToggle(){ docSpaceMenuOpen=!docSpaceMenuOpen; renderDocSide(); }
-function docSelectSpace(id){ docSpaceId=id; docSpaceMenuOpen=false; docSearch=""; var inSp=docsInSpaceRaw(); docOpenId = inSp[0]?inSp[0].id:null; renderDocSide(); renderDocMain(); }
+function docSelectSpace(id){ docSpaceId=id; docSpaceMenuOpen=false; docSearch=""; var roots=docChildren(""); docOpenId = roots[0]?roots[0].id:null; renderDocSide(); renderDocMain(); }
 function docSpaceAdd(){ docSpaceOpenDlg("Create space", {}, false); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } var sp={ id:spid(), name:name, icon:$("docsp-f-icon").value.trim()||"📁", color:$("docsp-f-color").value }; TEAMDOCS.spaces.push(sp); docSpaceCloseDlg(); docSpaceId=sp.id; docSpaceMenuOpen=false; docOpenId=null; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }; }
 function docSpaceEdit(id){ var sp=null; TEAMDOCS.spaces.forEach(function(x){if(x.id===id)sp=x;}); if(!sp) return; docSpaceOpenDlg("Edit space", sp, true); docSpaceSave=function(){ var name=$("docsp-f-name").value.trim(); if(!name){ $("docsp-f-name").focus(); return; } sp.name=name; sp.icon=$("docsp-f-icon").value.trim()||"📁"; sp.color=$("docsp-f-color").value; docSpaceCloseDlg(); renderDocSide(); if(typeof pushAll==="function") pushAll(); }; $("docsp-del").onclick=function(){ docSpaceDelete(id); }; }
 function docSpaceDelete(id){ var sp=null; TEAMDOCS.spaces.forEach(function(x){if(x.id===id)sp=x;}); if(!sp) return; var n=(TEAMDOCS.docs||[]).filter(function(d){return d.spaceId===id;}).length; if(!window.confirm(n? 'Delete "'+sp.name+'" and its '+n+' document'+(n>1?'s':'')+'?' : 'Delete "'+sp.name+'"?')) return; TEAMDOCS.docs=TEAMDOCS.docs.filter(function(d){return d.spaceId!==id;}); TEAMDOCS.spaces=TEAMDOCS.spaces.filter(function(x){return x.id!==id;}); docSpaceCloseDlg(); if(docSpaceId===id){ docSpaceId=TEAMDOCS.spaces[0]?TEAMDOCS.spaces[0].id:null; docOpenId=null; } docSpaceMenuOpen=false; renderDocSide(); renderDocMain(); if(typeof pushAll==="function") pushAll(); }
@@ -10060,6 +10171,7 @@ function renderDocMain(){
     main.innerHTML='<div class="doce-empty"><div class="doce-empty-ic">📄</div><div class="doce-empty-t">No document open</div><div class="doce-empty-s">'+(admin?'Pick a doc on the left, or create a new one.':'Select a document on the left.')+'</div></div>';
     return;
   }
+  if(d.kind==="folder"){ renderDocFolderView(d,admin); return; }
   var h='';
   if(admin){
     h+='<div class="doce-toolbar">'
@@ -10149,17 +10261,21 @@ function docCloseTplPicker(){ $("doc-tpl-dialog").classList.remove("show"); }
 function docCreateFrom(id){
   var t=docTplList().filter(function(x){return x.id===id;})[0]; if(!t) return;
   if(!docSpaceId){ if(typeof toast==="function") toast("Create a space first"); docCloseTplPicker(); return; }
-  var d={ id:docid(), spaceId:docSpaceId, title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
-  TEAMDOCS.docs.push(d); docCloseTplPicker(); docOpenId=d.id; buildDocsShell();
+  var pid=docNewParent||"";
+  var d={ id:docid(), spaceId:docSpaceId, parentId:pid, kind:"doc", title:(id==="bi-blank"?"Untitled":t.name), template:t.name, icon:t.icon||"📄", created:docToday(), updated:docToday(), html:t.html||"" };
+  TEAMDOCS.docs.push(d); docCloseTplPicker(); if(pid) docExpanded[pid]=true; docNewParent=""; docOpenId=d.id; buildDocsShell();
   if(typeof pushAll==="function") pushAll();
   var ti=$("doce-title"); if(ti){ ti.focus(); ti.select(); }
 }
 function docOpen(id){ docOpenId=id; renderDocSide(); renderDocMain(); }
 function docDelete(id){
-  var d=null; TEAMDOCS.docs.forEach(function(x){ if(x.id===id) d=x; }); if(!d) return;
-  if(!window.confirm('Delete "'+(d.title||"this doc")+'"?')) return;
-  TEAMDOCS.docs=TEAMDOCS.docs.filter(function(x){ return x.id!==id; });
-  if(docOpenId===id){ docOpenId = TEAMDOCS.docs[0] ? TEAMDOCS.docs[0].id : null; }
+  var d=docById(id); if(!d) return;
+  var desc=docDescendants(id), total=desc.length;
+  var msg = total ? 'Delete "'+(d.title||"this")+'" and its '+total+' item'+(total>1?'s':'')+'?' : 'Delete "'+(d.title||"this")+'"?';
+  if(!window.confirm(msg)) return;
+  var kill={}; kill[id]=true; desc.forEach(function(x){ kill[x]=true; });
+  TEAMDOCS.docs=TEAMDOCS.docs.filter(function(x){ return !kill[x.id]; });
+  if(kill[docOpenId]){ var roots=docChildren(""); docOpenId = roots[0] ? roots[0].id : null; }
   renderDocSide(); renderDocMain();
   if(typeof pushAll==="function") pushAll();
 }
@@ -10594,6 +10710,9 @@ if($("nav-e")){ $("nav-e").onclick = openDocs; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
 if($("docsp-cancel")){ $("docsp-cancel").onclick = docSpaceCloseDlg; }
+if($("docmove-cancel")){ $("docmove-cancel").onclick = docMoveClose; }
+if($("docmove-save")){ $("docmove-save").onclick = docMoveSaveFn; }
+if($("docmove-dialog")){ $("docmove-dialog").onclick = function(e){ if(e.target.id==="docmove-dialog") docMoveClose(); }; }
 if($("docsp-save")){ $("docsp-save").onclick = function(){ if(docSpaceSave) docSpaceSave(); }; }
 if($("docspace-dialog")){ $("docspace-dialog").onclick = function(e){ if(e.target.id==="docspace-dialog") docSpaceCloseDlg(); }; }
 if($("doc-tpl-dialog")){ $("doc-tpl-dialog").onclick = function(e){ if(e.target.id==="doc-tpl-dialog") docCloseTplPicker(); }; }
