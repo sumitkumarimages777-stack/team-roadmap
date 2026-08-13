@@ -2153,6 +2153,9 @@ body{margin:0}
 .soc-sub-add{margin-top:6px;border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;font-family:var(--sans)}
 .soc-sub-add:hover{text-decoration:underline}
 
+.soc-day-over{border-color:var(--indigo)!important;background:var(--indigo-soft,#EEF1FF)}
+.soc-ev[draggable="true"]{cursor:grab}
+.soc-ev.soc-ev-dragging{opacity:.45}
 </style>
 </head>
 <body>
@@ -3425,6 +3428,7 @@ let pdtBoardId = { dev:null, qa:null, bugs:null };
 let pdtNavOpen = { dev:true, qa:false, bugs:false };
 let pdtDragId = null;
 let socDragId = null;
+let socEvDragId = null;
 let socMonth = (new Date()).toISOString().slice(0,7);
 let adminView = "users";  // Administration page: "users" | "permissions"
 // capability matrix shown on the Permissions reference page (what each role can do)
@@ -10116,6 +10120,14 @@ function socFmtDay(iso){
   }catch(_){ return iso; }
 }
 function socToggleSub(cs, card, st){ st.done=!st.done; saveSocial(); }
+/* take a scheduled post off the calendar and put it back in the bucket */
+function socUnschedule(cs, ev){
+  const card = (cs.cards||[]).find(function(c){ return c.id===ev.cardId || c.eventId===ev.id; });
+  cs.events = (cs.events||[]).filter(function(x){ return x.id!==ev.id; });
+  if(card){ card.bucket = true; delete card.eventId; }
+  saveSocial();
+  toast(card ? "Back in the schedule bucket" : "Removed from the calendar");
+}
 function socIdeaToProcess(cs, idea){
   cs.cards = cs.cards || [];
   if(cs.cards.some(c=>c.fromIdea===idea.id)){ toast("Already in Content Process"); return; }
@@ -10328,14 +10340,35 @@ function socSchedulePane(cs){
   for(let d=1; d<=daysIn; d++){
     const iso = year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
     const cell = document.createElement("div"); cell.className="soc-day"+(iso===todayISO?" soc-today":"");
+    if(editMode){
+      cell.addEventListener("dragover", function(e){ if(socEvDragId){ e.preventDefault(); cell.classList.add("soc-day-over"); } });
+      cell.addEventListener("dragleave", function(){ cell.classList.remove("soc-day-over"); });
+      cell.addEventListener("drop", function(e){
+        e.preventDefault(); cell.classList.remove("soc-day-over");
+        if(!socEvDragId) return;
+        const moving=(cs.events||[]).find(function(x){ return x.id===socEvDragId; });
+        socEvDragId=null;
+        if(moving && moving.date!==iso){ moving.date=iso; saveSocial(); toast("Moved to "+socFmtDay(iso)); }
+      });
+    }
     const dnum = document.createElement("div"); dnum.className="soc-daynum"; dnum.textContent=d; cell.appendChild(dnum);
     (cs.events||[]).filter(ev=>ev.date===iso).forEach(ev=>{
       const pill=document.createElement("div"); pill.className="soc-ev";
       pill.innerHTML='<span class="soc-ev-t">'+(ev.time?'<b class="soc-ev-time">'+mtEsc(ev.time)+'</b> ':'')+mtEsc(ev.title)+'</span>'+(ev.channel?'<span class="soc-ev-c">'+mtEsc(ev.channel)+'</span>':'');
       if(editMode){
         pill.onclick=(e)=>{ e.stopPropagation(); socEditEvent(cs, ev); };
-        const x=document.createElement("button"); x.className="soc-ev-del"; x.textContent="×"; x.title="Delete";
-        x.onclick=(e)=>{ e.stopPropagation(); if(confirm('Delete "'+ev.title+'"?')){ cs.events = cs.events.filter(y=>y.id!==ev.id); saveSocial(); } };
+        pill.draggable = true;
+        pill.addEventListener("dragstart", function(e){ socEvDragId=ev.id; pill.classList.add("soc-ev-dragging"); try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain", ev.id); }catch(_){} });
+        pill.addEventListener("dragend", function(){ pill.classList.remove("soc-ev-dragging"); socEvDragId=null; document.querySelectorAll(".soc-day-over").forEach(function(n){ n.classList.remove("soc-day-over"); }); });
+        const linked = (cs.cards||[]).some(function(c){ return c.id===ev.cardId || c.eventId===ev.id; });
+        const x=document.createElement("button"); x.className="soc-ev-del";
+        if(linked){
+          x.textContent="↩"; x.title="Send back to the schedule bucket (delete it from Content Process)";
+          x.onclick=(e)=>{ e.stopPropagation(); socUnschedule(cs, ev); };
+        } else {
+          x.textContent="×"; x.title="Remove this calendar-only post";
+          x.onclick=(e)=>{ e.stopPropagation(); if(confirm('Remove "'+ev.title+'" from the calendar?')){ cs.events = cs.events.filter(y=>y.id!==ev.id); saveSocial(); } };
+        }
         pill.appendChild(x);
       }
       cell.appendChild(pill);
