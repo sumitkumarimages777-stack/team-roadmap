@@ -2070,6 +2070,23 @@ body{margin:0}
 .danger-btn{border:1px solid #C0362C;background:#C0362C;color:#fff;border-radius:10px;padding:10px 18px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:var(--sans)}
 .danger-btn:hover{filter:brightness(1.08)}
 
+/* ===== Q/A status + mapping ===== */
+.pdt-qastat{font-size:10px;font-weight:700;border-radius:99px;padding:2px 9px}
+.pdt-qastat.incoming{background:#F1F2F4;color:#626F86}
+.pdt-qastat.testing{background:#FFF4E5;color:#B65C02}
+.pdt-qastat.passed{background:#E3FCEF;color:#1F845A}
+.pdt-qaboard{font-size:10px;color:var(--muted)}
+.pdt-sprintdates{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.pdt-mapsec{font-weight:800;font-size:14px;color:var(--ink);margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.pdt-mapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.pdt-maprow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:5px 0}
+.pdt-maprow.sub{padding-left:16px;border-top:1px dashed var(--line);margin-top:6px;padding-top:9px}
+.pdt-maplbl{font-weight:600;font-size:13px;color:var(--ink);min-width:190px}
+.pdt-maplbl em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:6px}
+.pdt-maparrow{font-size:11.5px;color:var(--muted)}
+.pdt-mapsel{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;color:var(--ink)}
+.pdt-mapsel:disabled{opacity:.6}
+
 </style>
 </head>
 <body>
@@ -2717,6 +2734,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="field" id="f-owners-wrap" style="display:none"><label>Owners (add as many as you like)</label><div id="f-owners-box" class="pp"></div></div>
     <div class="field-row" id="f-pd-row" style="gap:12px">
       <div class="field" id="f-priority-wrap" style="flex:1"><label for="f-priority">Priority</label><select id="f-priority"><option value="">None</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
+      <div class="field" id="f-startdate-wrap" style="flex:1;display:none"><label for="f-startdate">Start date</label><input type="date" id="f-startdate"></div>
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
@@ -4020,7 +4038,8 @@ function openDialog(title, values, onSave, opts={}){
     $("f-assignee-search").oninput = ()=> draw($("f-assignee-search").value);
     $("f-assignee-search").onfocus = ()=> draw($("f-assignee-search").value);
   }
-  $("f-pd-row").style.display = (opts.priority||opts.duedate) ? "flex" : "none";
+  $("f-pd-row").style.display = (opts.priority||opts.duedate||opts.startdate) ? "flex" : "none";
+  if($("f-startdate-wrap")){ $("f-startdate-wrap").style.display = opts.startdate ? "" : "none"; $("f-startdate").value = values.startdate || ""; }
   $("f-priority-wrap").style.display = opts.priority ? "" : "none";
   $("f-priority").value = values.priority || "";
   $("f-duedate-wrap").style.display = opts.duedate ? "" : "none";
@@ -4163,6 +4182,7 @@ $("dlg-save").onclick = ()=>{
     owners: ($("f-owners-wrap") && $("f-owners-wrap").style.display!=="none") ? ppGet("f-owners-box") : undefined,
     channel: ($("f-channel") && $("f-channel-wrap") && $("f-channel-wrap").style.display!=="none") ? $("f-channel").value : "",
     duedate: $("f-duedate") ? $("f-duedate").value : "",
+    startdate: ($("f-startdate") && $("f-startdate-wrap") && $("f-startdate-wrap").style.display!=="none") ? $("f-startdate").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
     level: $("f-level") ? $("f-level").value : "",
@@ -9564,7 +9584,7 @@ const PDT_BUG_COLS = [
 ];
 function currentPdt(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="pdt") || null; }
 function savePdt(){ renderAll(); pushAll(); }
-function pdtSectionLabel(k){ return k==="dev" ? "Development" : k==="qa" ? "Q/A Testing" : k==="bugs" ? "Bugs" : k==="timeline" ? "Timeline" : "Ideation"; }
+function pdtSectionLabel(k){ return k==="dev" ? "Development" : k==="qa" ? "Q/A Testing" : k==="bugs" ? "Bugs" : k==="timeline" ? "Timeline" : k==="mapping" ? "Board mapping" : "Ideation"; }
 function pdtBoards(cs, lane){
   cs.boards = cs.boards || [];
   return lane ? cs.boards.filter(b=>(b.lane||"dev")===lane) : cs.boards;
@@ -9589,6 +9609,7 @@ function renderContentPdt(){
   if(pdtView === "bugs")  return pdtBugsPane(cs);
   if(pdtView === "ideation-roadmap") return discRoadmapPane(cs);
   if(pdtView === "timeline") return discTimelinePane(cs);
+  if(pdtView === "mapping")  return pdtMappingPane(cs);
   return discIdeasPane(cs);
 }
 
@@ -9597,7 +9618,7 @@ function pdtKanban(cs, cols, filterFn, opts){
   opts = opts || {};
   const board = document.createElement("div"); board.className="soc-board";
   cols.forEach(col=>{
-    const inCol = pdtItems(cs).filter(it=> filterFn(it) && it.col===col.key);
+    const inCol = pdtItems(cs).filter(it=> filterFn(it) && ((opts.lane==="qa" ? (it.qaCol||"incoming") : it.col)===col.key));
     const cw = document.createElement("div"); cw.className="soc-col";
     const chd = document.createElement("div"); chd.className="soc-colhead";
     chd.innerHTML = '<span class="soc-colname">'+mtEsc(col.label)+'</span><span class="soc-colcount">'+inCol.length+'</span>';
@@ -9626,22 +9647,53 @@ function pdtKanban(cs, cols, filterFn, opts){
 /* moving an item — this is where Dev → QA hand-off happens */
 function pdtMoveItem(cs, it, colKey, lane){
   if(lane==="dev" && colKey==="qa"){
-    // auto hand-off: leaves the dev board and lands on the current Q/A board
-    const qb = pdtActiveBoard(cs, "qa");
-    it.fromBoard = it.board || null;
-    it.lane = "qa"; it.col = "incoming"; it.board = qb ? qb.id : null;
-    savePdt(); toast("Sent to "+((qb&&qb.name)||"Q/A Testing"));
+    // hand-off: the card STAYS on the dev board's last column and is mirrored onto a Q/A board
+    const qb = pdtQaTargetFor(cs, it);
+    it.col = "qa";
+    it.qaBoard = qb ? qb.id : null;
+    it.qaCol = it.qaCol || "incoming";
+    delete it.failed;
+    savePdt(); toast("Sent to "+((qb&&qb.name)||"Q/A"));
     return;
   }
+  if(lane==="dev" && it.col==="qa" && colKey!=="qa"){
+    // pulled back out of the Q/A column -> drop the Q/A link
+    delete it.qaBoard; delete it.qaCol;
+  }
+  if(lane==="qa"){ it.qaCol = colKey; savePdt(); return; }
   it.col = colKey;
   savePdt();
 }
 function pdtSendBack(cs, it){
   it.lane = "dev";
-  it.board = it.fromBoard || (pdtActiveBoard(cs,"dev")||{}).id || null;
   it.col = "progress";
   it.failed = true;
+  delete it.qaBoard; delete it.qaCol;
   savePdt(); toast("Sent back to Development");
+}
+/* where should this dev card go for testing? sprint mapping wins, then its board's mapping, then the active Q/A board */
+function pdtQaTargetFor(cs, it){
+  const qaBoards = pdtBoards(cs, "qa");
+  const byId = id => qaBoards.find(b=>b.id===id);
+  const devBoard = (cs.boards||[]).find(b=>b.id===it.board);
+  if(devBoard && it.sprint){
+    const sp = (devBoard.sprints||[]).find(x=>x.id===it.sprint);
+    if(sp && sp.qaTarget && byId(sp.qaTarget)) return byId(sp.qaTarget);
+  }
+  if(devBoard && devBoard.qaTarget && byId(devBoard.qaTarget)) return byId(devBoard.qaTarget);
+  return pdtActiveBoard(cs, "qa");
+}
+function pdtQaStatusLabel(k){ return k==="testing" ? "In testing" : k==="passed" ? "Passed" : "Testing not started"; }
+/* move a bug into a Development backlog, using the bugs board's mapping */
+function pdtBugToBacklog(cs, it){
+  const devBoards = pdtBoards(cs, "dev");
+  if(!devBoards.length){ toast("Create a scrum board first"); return; }
+  const bugBoard = (cs.boards||[]).find(b=>b.id===it.board);
+  let target = bugBoard && bugBoard.devTarget ? devBoards.find(b=>b.id===bugBoard.devTarget) : null;
+  if(!target) target = pdtActiveBoard(cs, "dev") || devBoards[0];
+  it.lane = "dev"; it.board = target.id; it.sprint = null; it.col = "todo";
+  delete it.qaBoard; delete it.qaCol;
+  savePdt(); toast("Moved to "+target.name+" backlog");
 }
 function pdtCardEl(cs, it, opts){
   const el = document.createElement("div"); el.className="soc-card";
@@ -9652,6 +9704,12 @@ function pdtCardEl(cs, it, opts){
   }
   let meta = "";
   if(it.failed && it.lane==="dev") meta += '<span class="pdt-flag">↩ sent back by Q/A</span>';
+  if(it.lane==="dev" && it.col==="qa"){
+    const st = it.qaCol || "incoming";
+    meta += '<span class="pdt-qastat '+st+'">'+mtEsc(pdtQaStatusLabel(st))+'</span>';
+    const qb = (cs.boards||[]).find(b=>b.id===it.qaBoard);
+    if(qb) meta += '<span class="pdt-qaboard">'+mtEsc(qb.name)+'</span>';
+  }
   if(it.due) meta += '<span class="soc-due">📅 '+mtEsc(it.due)+'</span>';
   el.innerHTML = '<div class="soc-card-t">'+mtEsc(it.title)+'</div>'
     + (meta?'<div class="soc-card-m">'+meta+'</div>':'')
@@ -9663,13 +9721,20 @@ function pdtCardEl(cs, it, opts){
     acts.append(ed, del); el.appendChild(acts);
   }
   // Q/A actions: pass on / send back
-  if(editMode && it.lane==="qa"){
+  if(editMode && (opts && opts.lane==="qa")){
     const row=document.createElement("div"); row.className="pdt-qaacts";
     const back=document.createElement("button"); back.className="pdt-qabtn back"; back.textContent="↩ Send back";
     back.title="Not done — return this to the Development board";
     back.onclick=e=>{ e.stopPropagation(); pdtSendBack(cs, it); };
     row.appendChild(back);
     el.appendChild(row);
+  }
+  if(editMode && (opts && opts.lane==="bugs")){
+    const row=document.createElement("div"); row.className="pdt-qaacts";
+    const mv=document.createElement("button"); mv.className="pdt-qabtn"; mv.textContent="→ Dev backlog";
+    mv.title="Send this bug to the mapped Development backlog";
+    mv.onclick=e=>{ e.stopPropagation(); pdtBugToBacklog(cs, it); };
+    row.appendChild(mv); el.appendChild(row);
   }
   return el;
 }
@@ -9752,6 +9817,55 @@ function pdtActiveSprint(b){
   if(!sp){ sp = ss[0]; b.activeSprint = sp.id; }
   return sp;
 }
+function pdtMappingPane(cs){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h=document.createElement("h2"); h.textContent="Board mapping";
+  head.appendChild(h); block.appendChild(head);
+  const intro=document.createElement("div"); intro.className="hint"; intro.style.margin="0 0 16px";
+  intro.textContent="Decide where work flows: which Q/A board each scrum board (or individual sprint) sends to, and which Development backlog each bugs board feeds.";
+  block.appendChild(intro);
+
+  const qaBoards = pdtBoards(cs,"qa"), devBoards = pdtBoards(cs,"dev"), bugBoards = pdtBoards(cs,"bugs");
+  function sel(cur, list, blankLabel, onPick){
+    const s=document.createElement("select"); s.className="pdt-mapsel";
+    s.innerHTML='<option value="">'+mtEsc(blankLabel)+'</option>'+list.map(b=>'<option value="'+b.id+'">'+mtEsc(b.name)+'</option>').join("");
+    s.value=cur||""; s.disabled=!editMode;
+    s.onchange=()=>{ onPick(s.value); savePdt(); };
+    return s;
+  }
+  // Development -> Q/A
+  const s1=document.createElement("div"); s1.className="pdt-mapsec"; s1.textContent="Development → Q/A"; block.appendChild(s1);
+  if(!devBoards.length){ const e=document.createElement("div"); e.className="hint"; e.textContent="No scrum boards yet."; block.appendChild(e); }
+  devBoards.forEach(b=>{
+    const card=document.createElement("div"); card.className="pdt-mapcard";
+    const r=document.createElement("div"); r.className="pdt-maprow";
+    r.innerHTML='<span class="pdt-maplbl">🏃 '+mtEsc(b.name)+'</span><span class="pdt-maparrow">sends testing to</span>';
+    r.appendChild(sel(b.qaTarget, qaBoards, "— current Q/A board —", v=>{ if(v) b.qaTarget=v; else delete b.qaTarget; }));
+    card.appendChild(r);
+    (b.sprints||[]).filter(x=>!x.done).forEach(sp=>{
+      const sr=document.createElement("div"); sr.className="pdt-maprow sub";
+      sr.innerHTML='<span class="pdt-maplbl">↳ '+mtEsc(sp.name)+(sp.start||sp.end?' <em>'+mtEsc(sp.start||"…")+" → "+mtEsc(sp.end||"…")+'</em>':'')+'</span><span class="pdt-maparrow">overrides to</span>';
+      sr.appendChild(sel(sp.qaTarget, qaBoards, "— use board setting —", v=>{ if(v) sp.qaTarget=v; else delete sp.qaTarget; }));
+      card.appendChild(sr);
+    });
+    block.appendChild(card);
+  });
+  // Bugs -> Development backlog
+  const s2=document.createElement("div"); s2.className="pdt-mapsec"; s2.textContent="Bugs → Development backlog"; block.appendChild(s2);
+  if(!bugBoards.length){ const e=document.createElement("div"); e.className="hint"; e.textContent="No bugs boards yet."; block.appendChild(e); }
+  bugBoards.forEach(b=>{
+    const card=document.createElement("div"); card.className="pdt-mapcard";
+    const r=document.createElement("div"); r.className="pdt-maprow";
+    r.innerHTML='<span class="pdt-maplbl">🐞 '+mtEsc(b.name)+'</span><span class="pdt-maparrow">feeds backlog of</span>';
+    r.appendChild(sel(b.devTarget, devBoards, "— current scrum board —", v=>{ if(v) b.devTarget=v; else delete b.devTarget; }));
+    card.appendChild(r);
+    block.appendChild(card);
+  });
+  if(!editMode){ const n=document.createElement("div"); n.className="hint"; n.style.marginTop="12px"; n.textContent="Turn on Edit to change the mapping."; block.appendChild(n); }
+  wrap.appendChild(block);
+}
 function pdtDevPane(cs){
   const wrap = $("content");
   const block = document.createElement("section"); block.className="block";
@@ -9773,12 +9887,17 @@ function pdtDevPane(cs){
     const n = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===x.id).length;
     const dn = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===x.id&&i.col==="qa").length;
     chip.textContent = x.name+" ("+dn+"/"+n+")"+(x.done?" ✓":"");
+    if(x.start||x.end) chip.title = (x.start||"…")+" → "+(x.end||"…");
     chip.onclick=()=>{ if(x.done) return; b.activeSprint=x.id; savePdt(); };
     sbar.appendChild(chip);
   });
   if(editMode){
     const ns=document.createElement("button"); ns.className="pdt-boardadd"; ns.textContent="＋ New sprint";
-    ns.onclick=()=>openDialog("New sprint", {}, v=>{ const x={id:"ps-"+Date.now().toString(36), name:v.title}; pdtSprints(b).push(x); b.activeSprint=x.id; savePdt(); }, {hideExtras:true});
+    ns.onclick=()=>openDialog("New sprint", {}, v=>{
+      const x={id:"ps-"+Date.now().toString(36), name:v.title};
+      if(v.startdate) x.start=v.startdate; if(v.duedate) x.end=v.duedate;
+      pdtSprints(b).push(x); b.activeSprint=x.id; savePdt();
+    }, {startdate:true, duedate:true});
     sbar.appendChild(ns);
   }
   block.appendChild(sbar);
@@ -9787,7 +9906,20 @@ function pdtDevPane(cs){
     const sh=document.createElement("div"); sh.className="pdt-sprinthead";
     const done = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===sp.id&&i.col==="qa").length;
     const tot  = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===sp.id).length;
-    sh.innerHTML='<span class="pdt-sprintname">'+mtEsc(sp.name)+'</span><span class="pdt-sprintcount">'+done+'/'+tot+' sent to Q/A</span>';
+    let _dates="";
+    if(sp.start || sp.end) _dates='<span class="pdt-sprintdates">'+mtEsc(sp.start||"…")+' → '+mtEsc(sp.end||"…")+'</span>';
+    sh.innerHTML='<span class="pdt-sprintname">'+mtEsc(sp.name)+'</span>'+_dates+'<span class="pdt-sprintcount">'+done+'/'+tot+' sent to Q/A</span>';
+    if(editMode){
+      const eb=document.createElement("button"); eb.className="pdt-complete"; eb.style.marginLeft="0"; eb.textContent="✎ Dates";
+      eb.title="Set the sprint start and end";
+      eb.onclick=()=>openDialog("Sprint dates", {title:sp.name, startdate:sp.start||"", duedate:sp.end||""}, v=>{
+        sp.name=v.title||sp.name;
+        if(v.startdate) sp.start=v.startdate; else delete sp.start;
+        if(v.duedate) sp.end=v.duedate; else delete sp.end;
+        savePdt();
+      }, {startdate:true, duedate:true});
+      sh.appendChild(eb);
+    }
     if(editMode){
       const cb=document.createElement("button"); cb.className="pdt-complete"; cb.textContent="✓ Complete sprint";
       cb.onclick=()=>{ if(confirm('Complete "'+sp.name+'"? Unfinished cards move back to the backlog.')){
@@ -9847,7 +9979,25 @@ function pdtDevPane(cs){
   }
   wrap.appendChild(bl);
 }
-function pdtQaPane(cs){   pdtLanePane(cs, "qa",   "Q/A Testing", PDT_QA_COLS,  "Items arrive here automatically from Development. Use “↩ Send back” if something isn’t done."); }
+function pdtQaPane(cs){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h = document.createElement("h2"); h.textContent = "Q/A Testing";
+  head.appendChild(h); block.appendChild(head);
+  const b = pdtBoardBar(cs, "qa", block);
+  if(!b){
+    const e=document.createElement("div"); e.className="empty";
+    e.textContent = editMode ? "No Q/A boards yet — create your first one above." : "No Q/A boards yet.";
+    block.appendChild(e); wrap.appendChild(block); return;
+  }
+  const n=document.createElement("div"); n.className="hint"; n.style.margin="0 0 10px";
+  n.textContent="Cards stay on their Development board too — moving them here updates the status shown there. Use “↩ Send back” if something isn’t done.";
+  block.appendChild(n);
+  // mirrored cards: dev items sitting in "Send for Q/A Testing" pointed at this board
+  block.appendChild(pdtKanban(cs, PDT_QA_COLS, it=> it.lane==="dev" && it.col==="qa" && it.qaBoard===b.id, {lane:"qa", qaBoard:b.id}));
+  wrap.appendChild(block);
+}
 function pdtBugsPane(cs){ pdtLanePane(cs, "bugs", "Bugs",        PDT_BUG_COLS, null); }
 
 function renderContentSocial(){
@@ -10518,7 +10668,7 @@ function renderAll(){
         ws.appendChild(b);
         /* Social Media space: three sub-sections in the sidebar */
         if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
-          [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
+          [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"],["mapping","⚙️ Board mapping"]].forEach(([k,lbl])=>{
             const hasBoards = (k==="dev"||k==="qa"||k==="bugs");
             const row=document.createElement("div"); row.className="ws-subrow";
             const sub=document.createElement("button");
