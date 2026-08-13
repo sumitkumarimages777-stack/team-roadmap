@@ -2231,6 +2231,8 @@ body{margin:0}
 .ppmap-fsolves{font-size:10.5px;color:var(--muted);line-height:1.4}
 
 .kr-own{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--indigo);background:var(--indigo-soft,#EEF1FF);border-radius:99px;padding:2px 8px;vertical-align:middle}
+.strat-x{border:none;background:none;color:#8A6A12;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.65;flex:none}
+.strat-x:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -4292,7 +4294,7 @@ function openDialog(title, values, onSave, opts={}){
   $("f-budget").value = values.budget || "";
   $("f-title-wrap").style.display = opts.hideTitle ? "none" : "";
   $("f-title-wrap").querySelector("label").textContent = opts.titleLabel || "Title";
-  $("f-owner-wrap").style.display = opts.simple||opts.hideExtras||opts.noteOnly ? "none" : "";
+  $("f-owner-wrap").style.display = (opts.simple||opts.hideExtras||opts.noteOnly||opts.owners) ? "none" : "";
   if($("f-channel-wrap")){
     $("f-channel-wrap").style.display = opts.channel ? "" : "none";
     if(opts.channel){ var _ch=values.channel||""; $("f-channel").innerHTML='<option value="">— none —</option>'+SOC_CHANNELS.map(function(c){ return '<option value="'+mtEsc(c)+'">'+mtEsc(c)+'</option>'; }).join(""); $("f-channel").value=_ch; }
@@ -7139,9 +7141,9 @@ function krEl(kr, ob, ki, oi){
   body.className = "body";
   const t = document.createElement("div");
   t.className = "title"; t.textContent = kr.title;
-  if(kr.owner){
+  if(krOwners(kr).length){
     const ow = document.createElement("span"); ow.className="kr-own"; ow.textContent = krOwnerName(kr);
-    ow.title = "Key result owner";
+    ow.title = "Key result owner(s)";
     t.appendChild(ow);
   }
   body.appendChild(t);
@@ -7208,7 +7210,12 @@ function objRollupPct(ob){
   }
   return objPct(ob);
 }
-function krOwnerName(kr){ return (kr && kr.owner) ? okrOwnerName(kr.owner) : ""; }
+function krOwners(kr){
+  if(kr && Array.isArray(kr.owners) && kr.owners.length) return kr.owners.slice();
+  if(kr && kr.owner) return [kr.owner];
+  return [];
+}
+function krOwnerName(kr){ return krOwners(kr).map(okrOwnerName).filter(Boolean).join(", "); }
 function okrOwnerName(email){ if(!email) return ""; var m=assigneeMembers().find(function(u){return u.email===email;}); return m?userDisplayName(m):email; }
 function okrOwners(ob){ if(ob&&Array.isArray(ob.owners)&&ob.owners.length) return ob.owners.slice(); if(ob&&ob.assignee) return [ob.assignee]; return []; }
 function okrInList(list){ return !!(SESSION && Array.isArray(list) && list.indexOf(SESSION.email)>=0); }
@@ -7290,18 +7297,18 @@ function okrTreeNode(ob, cyc, objs){
       var kb=document.createElement("div"); kb.className="okrtree-krbox";
       ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
         var row=document.createElement("div"); row.className="okrtree-kr";
-        row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+(kr.owner?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
+        row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+(krOwners(kr).length?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrtree-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrtree-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
         if(canEdit){ var up=document.createElement("button"); up.className="okrtree-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; row.appendChild(up); }
         kb.appendChild(row);
       });
-      if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); }; kb.appendChild(addkr); }
+      if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); }; kb.appendChild(addkr); }
       card.appendChild(kb);
     }
   } else if(canEdit){
     var addkr0=document.createElement("button"); addkr0.className="okrtree-krtg empty"; addkr0.textContent="＋ Add key result";
-    addkr0.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); };
+    addkr0.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); };
     card.appendChild(addkr0);
   }
   // actions
@@ -7415,7 +7422,7 @@ function okrPermSave(){
 var _okrBoardResizeBound=false;
 function okrOwnsKr(ob){
   if(!SESSION || !ob || !ob.krs) return false;
-  return ob.krs.some(function(k){ return k && k.owner===SESSION.email; });
+  return ob.krs.some(function(k){ return krOwners(k).indexOf(SESSION.email)>=0; });
 }
 function okrBoardScope(cyc){
   // returns the id-set to show: what I own (objective OR one of its key results),
@@ -7506,18 +7513,18 @@ function okrBoardCard(ob, cyc, objs){
       var kb=document.createElement("div"); kb.className="okrb-krbox";
       ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
         var r=document.createElement("div"); r.className="okrb-kr";
-        r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+(kr.owner?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
+        r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+(krOwners(kr).length?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrb-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrb-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
         if(canEdit){ var up=document.createElement("button"); up.className="okrb-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; r.appendChild(up); }
         kb.appendChild(r);
       });
-      if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); }; kb.appendChild(ak); }
+      if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); }; kb.appendChild(ak); }
       card.appendChild(kb);
     }
   } else if(canEdit){
     var ak0=document.createElement("button"); ak0.className="okrb-krtg empty"; ak0.textContent="＋ Add key result";
-    ak0.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); };
+    ak0.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); };
     card.appendChild(ak0);
   }
 
@@ -7617,7 +7624,7 @@ function renderContentOkr(){
     if(editMode){
       const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
       acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
-        openDialog("Edit objective", ob, v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; if(v.assignee) ob.assignee=v.assignee; else delete ob.assignee; saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), assignee:true})));
+        openDialog("Edit objective", (function(){ var _v={}; for(var k in ob){ _v[k]=ob[k]; } _v.owners=okrOwners(ob); return _v; })(), v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; var _ow=Array.isArray(v.owners)?v.owners.slice():[]; if(_ow.length){ ob.owners=_ow; ob.assignee=_ow[0]; } else { delete ob.owners; delete ob.assignee; } saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true})));
       acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
         if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
           cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
@@ -7636,32 +7643,29 @@ function renderContentOkr(){
     ob.krs.forEach((kr,ki)=> krs.appendChild(krEl(kr, ob, ki, oi)));
     card.appendChild(krs);
 
-    const lw = linkedWork(ob.id);
-    if(lw.length){
+    // which spaces / boards say they are working toward this objective
+    const linkedSpaces = (CSPACES && CSPACES.list ? CSPACES.list : []).filter(function(cs){
+      return cs.okr && cs.okr.objective === ob.id && canViewSpace(csRef(cs));
+    });
+    if(linkedSpaces.length){
       const box = document.createElement("div");
       box.className = "lw";
-      const doneCount = lw.filter(x=>x.pct>=100).length;
       const h = document.createElement("div");
       h.className = "lw-head";
-      h.textContent = "Linked work · "+doneCount+"/"+lw.length+" done";
+      h.textContent = "Linked spaces · " + linkedSpaces.length;
       box.appendChild(h);
-      lw.forEach(item=>{
+      linkedSpaces.forEach(function(cs){
         const r = document.createElement("button");
         r.className = "lw-row";
         const pill = document.createElement("span");
-        if(item.status){
-          pill.className = "pill "+item.status;
-          pill.textContent = STATUS_LABEL[item.status];
-        } else {
-          pill.className = "mini";
-          pill.textContent = item.pct+"%";
-        }
+        pill.className = "mini"; pill.textContent = csTypeLabel(cs.type);
         const t = document.createElement("span");
-        t.className = "t"; t.textContent = item.title;
+        t.className = "t"; t.textContent = cs.name;
         const w = document.createElement("span");
-        w.className = "lw-where"; w.textContent = item.where;
+        w.className = "lw-where";
+        w.textContent = (cs.okr && cs.okr.kr!=null && ob.krs && ob.krs[cs.okr.kr]) ? ("KR"+(cs.okr.kr+1)) : "whole objective";
         r.append(pill, t, w);
-        r.onclick = ()=>{ item.nav(); renderAll(); };
+        r.onclick = function(){ navToSpace(cs); renderAll(); };
         box.appendChild(r);
       });
       card.appendChild(box);
@@ -7673,7 +7677,7 @@ function renderContentOkr(){
       add.textContent = "＋ Add key result";
       add.onclick = ()=> openDialog("New key result", {current:0, target:100, unit:"%"}, v=>{
         const kr = {title:v.title, current:Number(v.current)||0, target:Number(v.target)||0, unit:v.unit};
-        if(v.owner) kr.owner = v.owner;
+        if(v.owners && v.owners.length) kr.owners = v.owners.slice();
         if(v.note) kr.note = v.note;
         if(v.invert){ kr.invert = true; kr.start = Number(v.current)||0; }
         ob.krs.push(kr); saveOkrs(); toast("Key result added");
@@ -7693,12 +7697,12 @@ function renderContentOkr(){
     add.textContent = "＋ Add objective to "+cyc.name;
     add.onclick = ()=> openDialog("New objective", {}, v=>{
       const ob = {id: "ob-" + cyc.key + "-" + Date.now().toString(36), title:v.title, krs:[]}; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
-      if(v.owner) ob.owner = v.owner;
       if(v.note) ob.note = v.note;
       if(v.alignsTo) ob.alignsTo = v.alignsTo;
-      if(v.assignee) ob.assignee = v.assignee;
+      var _ow = Array.isArray(v.owners) ? v.owners.slice() : [];
+      if(_ow.length){ ob.owners = _ow; ob.assignee = _ow[0]; }
       cyc.objectives.push(ob); saveOkrs(); toast("Objective added — now add its key results");
-    }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, null), assignee:true});
+    }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, null), owners:true});
     wrap.appendChild(add);
   } else if(!cyc.objectives.length){
     wrap.innerHTML += '<div class="empty">No objectives in this cycle yet. Turn on Edit to add some.</div>';
@@ -12171,13 +12175,31 @@ function docStrategyChip(){
   b.onclick = docOpenStrategy;
   return b;
 }
+/* The banner is a one-time nudge per person: once they dismiss it, only the
+   sidebar pin remains. Pinning a NEW strategy shows it again (new key).      */
+function stratSeenKey(id){
+  const who = (SESSION && SESSION.email) ? SESSION.email : "anon";
+  return "cf-strat-seen:"+TEAM+":"+id+":"+who;
+}
+function stratDismissed(id){
+  try{ return localStorage.getItem(stratSeenKey(id))==="1"; }catch(_){ return false; }
+}
+function stratDismiss(id){
+  try{ localStorage.setItem(stratSeenKey(id),"1"); }catch(_){ }
+  renderAll();
+}
 function docStrategyBanner(){
   const d = docStrategy(); if(!d) return null;
+  if(stratDismissed(d.id)) return null;          // seen once — never nag again
   const wrap = document.createElement("div"); wrap.className="strat-banner";
   wrap.innerHTML = '<span class="strat-ic">📌</span><span class="strat-txt"><b>'+mtEsc(d.title||"Strategy")+'</b> — our plan for the year</span>';
   const go = document.createElement("button"); go.className="strat-go"; go.textContent="Read";
-  go.onclick = docOpenStrategy;
+  go.onclick = function(){ stratDismiss(d.id); docOpenStrategy(); };
   wrap.appendChild(go);
+  const x = document.createElement("button"); x.className="strat-x"; x.textContent="×";
+  x.title = "Hide this — it stays in the sidebar";
+  x.onclick = function(e){ e.stopPropagation(); stratDismiss(d.id); };
+  wrap.appendChild(x);
   return wrap;
 }
 function docCopyLink(){
