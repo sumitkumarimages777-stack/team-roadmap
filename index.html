@@ -9838,6 +9838,9 @@ function pdtMappingPane(cs){
   const head = document.createElement("div"); head.className="block-head";
   const h=document.createElement("h2"); h.textContent="Board mapping";
   head.appendChild(h); block.appendChild(head);
+  const back=document.createElement("button"); back.className="dv-back"; back.textContent="← Back to Development";
+  back.onclick=()=>{ pdtView="dev"; renderAll(); };
+  block.insertBefore(back, block.firstChild);
   const intro=document.createElement("div"); intro.className="hint"; intro.style.margin="0 0 16px";
   intro.textContent="Decide where work flows: which Q/A board each scrum board (or individual sprint) sends to, and which Development backlog each bugs board feeds.";
   block.appendChild(intro);
@@ -10649,11 +10652,13 @@ function renderAll(){
           };
           const menu = document.createElement("span");
           menu.className = "ws-menu-btn"; menu.textContent = "\u22ef"; menu.title = "More";
-          menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
+          menu.onclick = e=>{ e.stopPropagation(); const _items = [
             {label:"Settings", onClick:()=> openSpaceSettings({key:"cs:"+cs.id, obj:cs, name:cs.name})},
             {label:"Set background", onClick:()=> openBgPicker({key:"cs:"+cs.id, obj:cs, name:cs.name})},
-            {label:"Delete\u2026", danger:true, onClick: doDelete},
-          ]); };
+          ];
+          if(cs.type==="pdt") _items.push({label:"Board mapping", onClick:()=>{ view="pdt"; activeCspace=cs.id; pdtView="mapping"; renderAll(); }});
+          _items.push({label:"Delete\u2026", danger:true, onClick: doDelete});
+          openRowMenu(menu, _items); };
           b.appendChild(menu);
         }
                 if(editMode && canManagePeople()){
@@ -10683,7 +10688,7 @@ function renderAll(){
         ws.appendChild(b);
         /* Social Media space: three sub-sections in the sidebar */
         if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
-          [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"],["mapping","⚙️ Board mapping"]].forEach(([k,lbl])=>{
+          [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
             const hasBoards = (k==="dev"||k==="qa"||k==="bugs");
             const row=document.createElement("div"); row.className="ws-subrow";
             const sub=document.createElement("button");
