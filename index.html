@@ -2034,6 +2034,34 @@ body{margin:0}
 .pdt-qabtn{border:1px solid var(--line-strong);background:var(--card);border-radius:7px;padding:3px 9px;font-size:10.5px;font-weight:600;cursor:pointer;color:var(--muted);font-family:var(--sans)}
 .pdt-qabtn.back:hover{border-color:#C0362C;color:#C0362C}
 
+/* ===== Product tree nav + scrum ===== */
+.ws-subrow{display:block}
+.ws-sub{display:flex;align-items:center;gap:6px}
+.ws-chev{display:inline-block;width:12px;font-size:9px;color:var(--muted)}
+.ws-chev:hover{color:var(--indigo)}
+.ws-sub2{display:block;width:100%;text-align:left;border:none;background:none;padding:6px 12px 6px 48px;font-size:12.5px;color:var(--muted);cursor:pointer;border-radius:8px;font-family:var(--sans)}
+.ws-sub2:hover{background:var(--hover,#F1F2F4);color:var(--ink)}
+.ws-sub2.active{color:var(--indigo);font-weight:700;background:var(--indigo-soft,#EEF1FF)}
+.ws-sub2add{color:var(--muted);font-style:italic}
+.ws-sub2add:hover{color:var(--indigo);font-style:normal}
+.pdt-sprints{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.pdt-sprintchip{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.pdt-sprintchip:hover{border-color:var(--indigo);color:var(--indigo)}
+.pdt-sprintchip.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.pdt-sprintchip.done{opacity:.55;cursor:default}
+.pdt-sprinthead{display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.pdt-sprintname{font-weight:800;font-size:17px;color:var(--ink)}
+.pdt-sprintcount{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.pdt-complete{margin-left:auto;border:1px solid var(--line-strong);background:var(--card);border-radius:9px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.pdt-complete:hover{border-color:var(--done);color:var(--done)}
+.pdt-backlog{display:flex;flex-direction:column;gap:8px}
+.pdt-blrow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.pdt-bltitle{flex:1;font-size:13.5px;font-weight:600;color:var(--ink)}
+.pdt-blowner{font-size:11.5px;color:var(--muted)}
+.pdt-blacts{display:flex;gap:5px}
+.pdt-blbtn{border:1px solid var(--line-strong);background:var(--card);border-radius:7px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--muted);font-family:var(--sans)}
+.pdt-blbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+
 </style>
 </head>
 <body>
@@ -3298,6 +3326,7 @@ let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap 
 let socialView = "ideation";   // Social Media space: ideation | ideation-roadmap | process | schedule
 let pdtView = "ideation";      // Product space: ideation | ideation-roadmap | dev | qa | bugs
 let pdtBoardId = { dev:null, qa:null, bugs:null };
+let pdtNavOpen = { dev:true, qa:false, bugs:false };
 let pdtDragId = null;
 let socDragId = null;
 let socMonth = (new Date()).toISOString().slice(0,7);
@@ -9527,7 +9556,7 @@ const PDT_BUG_COLS = [
 ];
 function currentPdt(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="pdt") || null; }
 function savePdt(){ renderAll(); pushAll(); }
-function pdtSectionLabel(k){ return k==="dev" ? "Development" : k==="qa" ? "Q/A Testing" : k==="bugs" ? "Bugs" : "Ideation"; }
+function pdtSectionLabel(k){ return k==="dev" ? "Development" : k==="qa" ? "Q/A Testing" : k==="bugs" ? "Bugs" : k==="timeline" ? "Timeline" : "Ideation"; }
 function pdtBoards(cs, lane){
   cs.boards = cs.boards || [];
   return lane ? cs.boards.filter(b=>(b.lane||"dev")===lane) : cs.boards;
@@ -9551,6 +9580,7 @@ function renderContentPdt(){
   if(pdtView === "qa")    return pdtQaPane(cs);
   if(pdtView === "bugs")  return pdtBugsPane(cs);
   if(pdtView === "ideation-roadmap") return discRoadmapPane(cs);
+  if(pdtView === "timeline") return discTimelinePane(cs);
   return discIdeasPane(cs);
 }
 
@@ -9639,6 +9669,7 @@ function pdtNewItem(cs, colKey, opts){
   openDialog("New item", {}, v=>{
     const it = { id:"pi-"+Date.now().toString(36), title:v.title, lane:(opts&&opts.lane)||"dev", col:colKey };
     const _ln=(opts&&opts.lane)||"dev"; const _b=pdtActiveBoard(cs,_ln); it.board = _b?_b.id:null;
+    if(_ln==="dev") it.sprint = (opts&&opts.sprint) || null;
     if(v.owner) it.owner=v.owner;
     if(v.duedate) it.due=v.duedate;
     pdtItems(cs).push(it); savePdt();
@@ -9705,7 +9736,109 @@ function pdtLanePane(cs, lane, heading, cols, note){
   block.appendChild(pdtKanban(cs, cols, it=> it.lane===lane && it.board===b.id, {lane:lane}));
   wrap.appendChild(block);
 }
-function pdtDevPane(cs){  pdtLanePane(cs, "dev",  "Development", PDT_DEV_COLS, "Cards dropped into “Send for Q/A Testing” move to the current Q/A board automatically."); }
+function pdtSprints(b){ b.sprints = b.sprints || []; return b.sprints; }
+function pdtActiveSprint(b){
+  const ss = pdtSprints(b).filter(x=>!x.done);
+  if(!ss.length) return null;
+  let sp = ss.find(x=>x.id===b.activeSprint);
+  if(!sp){ sp = ss[0]; b.activeSprint = sp.id; }
+  return sp;
+}
+function pdtDevPane(cs){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h = document.createElement("h2"); h.textContent = "Development";
+  head.appendChild(h); block.appendChild(head);
+  const b = pdtBoardBar(cs, "dev", block);
+  if(!b){
+    const e=document.createElement("div"); e.className="empty";
+    e.textContent = editMode ? "No scrum boards yet — create your first one above." : "No scrum boards yet.";
+    block.appendChild(e); wrap.appendChild(block); return;
+  }
+  // ---- sprint switcher ----
+  const sbar=document.createElement("div"); sbar.className="pdt-sprints";
+  const sp = pdtActiveSprint(b);
+  pdtSprints(b).forEach(x=>{
+    const chip=document.createElement("button");
+    chip.className="pdt-sprintchip"+(sp&&sp.id===x.id?" on":"")+(x.done?" done":"");
+    const n = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===x.id).length;
+    const dn = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===x.id&&i.col==="qa").length;
+    chip.textContent = x.name+" ("+dn+"/"+n+")"+(x.done?" ✓":"");
+    chip.onclick=()=>{ if(x.done) return; b.activeSprint=x.id; savePdt(); };
+    sbar.appendChild(chip);
+  });
+  if(editMode){
+    const ns=document.createElement("button"); ns.className="pdt-boardadd"; ns.textContent="＋ New sprint";
+    ns.onclick=()=>openDialog("New sprint", {}, v=>{ const x={id:"ps-"+Date.now().toString(36), name:v.title}; pdtSprints(b).push(x); b.activeSprint=x.id; savePdt(); }, {hideExtras:true});
+    sbar.appendChild(ns);
+  }
+  block.appendChild(sbar);
+
+  if(sp){
+    const sh=document.createElement("div"); sh.className="pdt-sprinthead";
+    const done = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===sp.id&&i.col==="qa").length;
+    const tot  = pdtItems(cs).filter(i=>i.lane==="dev"&&i.board===b.id&&i.sprint===sp.id).length;
+    sh.innerHTML='<span class="pdt-sprintname">'+mtEsc(sp.name)+'</span><span class="pdt-sprintcount">'+done+'/'+tot+' sent to Q/A</span>';
+    if(editMode){
+      const cb=document.createElement("button"); cb.className="pdt-complete"; cb.textContent="✓ Complete sprint";
+      cb.onclick=()=>{ if(confirm('Complete "'+sp.name+'"? Unfinished cards move back to the backlog.')){
+        pdtItems(cs).forEach(i=>{ if(i.lane==="dev"&&i.board===b.id&&i.sprint===sp.id&&i.col!=="qa") i.sprint=null; });
+        sp.done=true; b.activeSprint=null; savePdt(); toast("Sprint completed");
+      } };
+      sh.appendChild(cb);
+    }
+    block.appendChild(sh);
+    const note=document.createElement("div"); note.className="hint"; note.style.margin="0 0 10px";
+    note.textContent="Cards dropped into “Send for Q/A Testing” move to the current Q/A board automatically.";
+    block.appendChild(note);
+    block.appendChild(pdtKanban(cs, PDT_DEV_COLS, it=> it.lane==="dev" && it.board===b.id && it.sprint===sp.id, {lane:"dev", sprint:sp.id}));
+  } else {
+    const e=document.createElement("div"); e.className="empty";
+    e.textContent = editMode ? "No active sprint — create one above, then pull items from the backlog." : "No active sprint.";
+    block.appendChild(e);
+  }
+  wrap.appendChild(block);
+
+  // ---- backlog ----
+  const bl=document.createElement("section"); bl.className="block";
+  const bh=document.createElement("div"); bh.className="block-head";
+  const bt=document.createElement("h2"); bt.textContent="Backlog";
+  bh.appendChild(bt);
+  const items = pdtItems(cs).filter(i=> i.lane==="dev" && i.board===b.id && !i.sprint);
+  const bc=document.createElement("span"); bc.className="hint"; bc.style.marginLeft="10px"; bc.textContent=items.length+" item(s)";
+  bh.appendChild(bc); bl.appendChild(bh);
+  if(!items.length){
+    const e=document.createElement("div"); e.className="empty"; e.textContent="Backlog is empty — add items below."; bl.appendChild(e);
+  } else {
+    const list=document.createElement("div"); list.className="pdt-backlog";
+    items.forEach(it=>{
+      const row=document.createElement("div"); row.className="pdt-blrow";
+      row.innerHTML='<span class="pdt-bltitle">'+mtEsc(it.title)+'</span>'+(it.owner?'<span class="pdt-blowner">'+mtEsc(it.owner)+'</span>':'');
+      if(editMode){
+        const acts=document.createElement("div"); acts.className="pdt-blacts";
+        if(sp){ const mv=document.createElement("button"); mv.className="pdt-blbtn"; mv.textContent="→ "+sp.name;
+          mv.title="Pull into the active sprint"; mv.onclick=()=>{ it.sprint=sp.id; it.col="todo"; savePdt(); }; acts.appendChild(mv); }
+        const ed=document.createElement("button"); ed.className="pdt-blbtn"; ed.textContent="✎"; ed.onclick=()=>pdtEditItem(cs,it); acts.appendChild(ed);
+        const dl=document.createElement("button"); dl.className="pdt-blbtn"; dl.textContent="×";
+        dl.onclick=()=>{ if(confirm('Delete "'+it.title+'"?')){ cs.items=pdtItems(cs).filter(x=>x.id!==it.id); savePdt(); } }; acts.appendChild(dl);
+        row.appendChild(acts);
+      }
+      list.appendChild(row);
+    });
+    bl.appendChild(list);
+  }
+  if(editMode){
+    const add=document.createElement("button"); add.className="addline"; add.style.padding="11px"; add.textContent="＋ Add to backlog";
+    add.onclick=()=>openDialog("New backlog item", {}, v=>{
+      const it={id:"pi-"+Date.now().toString(36), title:v.title, lane:"dev", board:b.id, col:"todo", sprint:null};
+      if(v.owner) it.owner=v.owner; if(v.duedate) it.due=v.duedate;
+      pdtItems(cs).push(it); savePdt();
+    }, {duedate:true});
+    bl.appendChild(add);
+  }
+  wrap.appendChild(bl);
+}
 function pdtQaPane(cs){   pdtLanePane(cs, "qa",   "Q/A Testing", PDT_QA_COLS,  "Items arrive here automatically from Development. Use “↩ Send back” if something isn’t done."); }
 function pdtBugsPane(cs){ pdtLanePane(cs, "bugs", "Bugs",        PDT_BUG_COLS, null); }
 
@@ -10377,13 +10510,40 @@ function renderAll(){
         ws.appendChild(b);
         /* Social Media space: three sub-sections in the sidebar */
         if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
-          [["ideation","💡 Ideation & Roadmap"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
+          [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
+            const hasBoards = (k==="dev"||k==="qa"||k==="bugs");
+            const row=document.createElement("div"); row.className="ws-subrow";
             const sub=document.createElement("button");
             const on = (k==="ideation") ? (pdtView==="ideation"||pdtView==="ideation-roadmap") : pdtView===k;
             sub.className="ws-sub"+(on?" active":"");
-            sub.textContent=lbl;
-            sub.onclick=()=>{ pdtView=k; renderAll(); };
-            ws.appendChild(sub);
+            if(hasBoards){
+              const cv=document.createElement("span"); cv.className="ws-chev";
+              cv.textContent = pdtNavOpen[k] ? "▾" : "▸";
+              cv.onclick=(e)=>{ e.stopPropagation(); pdtNavOpen[k]=!pdtNavOpen[k]; renderAll(); };
+              sub.appendChild(cv);
+            }
+            const txt=document.createElement("span"); txt.textContent=lbl; sub.appendChild(txt);
+            sub.onclick=()=>{ pdtView=k; if(hasBoards) pdtNavOpen[k]=true; renderAll(); };
+            row.appendChild(sub); ws.appendChild(row);
+            if(hasBoards && pdtNavOpen[k]){
+              pdtBoards(cs, k).forEach(bd=>{
+                const bb=document.createElement("button");
+                const bon = pdtView===k && (pdtActiveBoard(cs,k)||{}).id===bd.id;
+                bb.className="ws-sub2"+(bon?" active":"");
+                bb.textContent=bd.name;
+                bb.onclick=()=>{ pdtView=k; pdtBoardId[k]=bd.id; renderAll(); };
+                ws.appendChild(bb);
+              });
+              if(editMode){
+                const ab=document.createElement("button"); ab.className="ws-sub2 ws-sub2add";
+                ab.textContent="＋ New "+pdtLaneNoun(k);
+                ab.onclick=()=>{ openDialog("New "+pdtLaneNoun(k), {}, v=>{
+                  const nb={id:"pb-"+Date.now().toString(36), name:v.title, lane:k};
+                  cs.boards.push(nb); pdtBoardId[k]=nb.id; pdtView=k; savePdt();
+                }, {hideExtras:true}); };
+                ws.appendChild(ab);
+              }
+            }
           });
         }
         if(cs.type==="social" && view==="social" && activeCspace===cs.id){
