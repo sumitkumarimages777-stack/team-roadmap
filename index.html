@@ -10610,7 +10610,8 @@ function discRoadmapPane(cs){
       card.className = "kcard";
       const t = document.createElement("div"); t.className = "kt"; t.textContent = idea.title;
       card.appendChild(t);
-      if(idea.note){ const n = document.createElement("div"); n.className = "kn"; n.textContent = idea.note; card.appendChild(n); }
+      if(idea.note && cs.type!=="social"){ const n = document.createElement("div"); n.className = "kn"; n.textContent = idea.note; card.appendChild(n); }
+      if(idea.note && cs.type==="social") card.title = idea.note;   // keep it available on hover
       const meta = document.createElement("div"); meta.className = "kcard-meta disc-meta";
       meta.appendChild(discThemeChip(idea, cs));
       if(cs.type!=="social") meta.appendChild(discStateChip(idea));
