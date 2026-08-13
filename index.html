@@ -2062,6 +2062,14 @@ body{margin:0}
 .pdt-blbtn{border:1px solid var(--line-strong);background:var(--card);border-radius:7px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--muted);font-family:var(--sans)}
 .pdt-blbtn:hover{border-color:var(--indigo);color:var(--indigo)}
 
+/* ===== Danger zone ===== */
+.danger-card{max-width:600px;border:1px solid #E4A9A2;background:#FFF8F7;border-radius:14px;padding:20px 22px}
+.danger-t{font-weight:800;font-size:16px;color:#C0362C;margin-bottom:6px}
+.danger-p{font-size:13.5px;color:var(--ink);line-height:1.6;margin-bottom:10px}
+.danger-list{margin:0 0 16px;padding-left:20px;color:var(--muted);font-size:12.5px;line-height:1.9}
+.danger-btn{border:1px solid #C0362C;background:#C0362C;color:#fff;border-radius:10px;padding:10px 18px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:var(--sans)}
+.danger-btn:hover{filter:brightness(1.08)}
+
 </style>
 </head>
 <body>
@@ -12537,7 +12545,9 @@ function renderAdminPage(){
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]].forEach(([k,ico,lbl])=>{
+  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
+  if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
+  _navItems.forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
     b.className = "admin-navitem" + (adminView===k ? " active" : "");
     b.innerHTML = '<span></span><span></span>';
@@ -12552,11 +12562,63 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
+  if(adminView === "danger" && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
   else if(adminView === "okrlevels") renderAdminOkrLevels(main);
+  else if(adminView === "danger") renderAdminDanger(main);
   else renderAdminUsers(main);
+}
+function renderAdminDanger(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Danger zone";
+  head.appendChild(h2); wrap.appendChild(head);
+
+  const name = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
+  const card = document.createElement("div"); card.className = "danger-card";
+  const t = document.createElement("div"); t.className="danger-t"; t.textContent = "Delete this team";
+  const p = document.createElement("div"); p.className="danger-p";
+  p.textContent = "Permanently deletes “"+name+"” and everything in it — roadmaps, spaces, boards, docs, OKRs and its people’s roles for this team. This cannot be undone.";
+  const list = document.createElement("ul"); list.className="danger-list";
+  ["Roadmaps and timelines","Spaces and every board inside them","Docs, spaces and templates","OKR cycles, objectives and key results","My Team org chart, squads, ownership and reviews"].forEach(x=>{
+    const li=document.createElement("li"); li.textContent=x; list.appendChild(li);
+  });
+  const btn = document.createElement("button"); btn.className="danger-btn"; btn.textContent="Delete “"+name+"” permanently";
+  btn.onclick = ()=> deleteTeamFlow();
+  card.append(t,p,list,btn);
+  wrap.appendChild(card);
+
+  const note = document.createElement("div"); note.className="hint"; note.style.marginTop="14px";
+  note.textContent = "Only a super-admin sees this. Download a Backup first if you might want the data later.";
+  wrap.appendChild(note);
+}
+function deleteTeamFlow(){
+  if(!(currentUser() && currentUser().super)){ alert("Only a super-admin can delete a team."); return; }
+  const slug = TEAM;
+  const name = (TEAMS[slug] && TEAMS[slug].name) || slug;
+  if(Object.keys(TEAMS).length <= 1){ alert("This is your only team — create another one before deleting this."); return; }
+  const typed = prompt('This permanently deletes "'+name+'" and everything in it.\n\nType the team name to confirm:');
+  if(typed===null) return;
+  if(typed.trim() !== String(name).trim()){ alert("That didn't match — nothing was deleted."); return; }
+  (async ()=>{
+    try{
+      if(configured && db){
+        const rec = migrateRecord(await fetchAll());
+        rec.teams = rec.teams || {};
+        delete rec.teams[slug];
+        (rec.users||[]).forEach(u=>{ if(u.teams) delete u.teams[slug]; });
+        rec.users = rec.users || USERS;
+        await putRecord(rec);
+        lastRecord = rec; TEAMS = teamsIndex(rec);
+      } else {
+        delete TEAMS[slug];
+      }
+      const left = Object.keys(TEAMS);
+      alert('"'+name+'" was deleted.');
+      if(left.length) navTeam(left[0]); else location.href = location.pathname;
+    }catch(e){ alert("Couldn't delete the team: "+e.message); }
+  })();
 }
 function renderAdminOkrLevels(wrap){
   const head = document.createElement("div"); head.className = "module-head";
