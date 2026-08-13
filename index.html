@@ -3580,8 +3580,10 @@ const BIN_HEADERS = { "Content-Type":"application/json", "X-Access-Key": JSONBIN
 let saving = false;
 let lastSnapshot = "";
 
-async function pushAll(){
+async function pushNow(){
   if(!db) { renderAll(); return; }
+  if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; }
+  _pushDirty = false;
   saving = true;
   try{
     // merge-safe: re-fetch, replace only OUR team's branch, write the whole record back.
@@ -3596,6 +3598,28 @@ async function pushAll(){
   }catch(e){ toast("Save failed: "+e.message+" — check your internet, then try again"); }
   saving = false;
 }
+/* ---- request-saving layer -------------------------------------------------
+   Every write costs 2 API calls (re-fetch + put). Firing one per click burns a
+   free-tier quota fast, so edits are coalesced into a single save a few seconds
+   later, and skipped entirely when nothing actually changed.                */
+let _pushTimer = null, _pushDirty = false;
+const PUSH_DELAY = 6000;
+function pushAll(){
+  renderAll();
+  if(!db) return;
+  // nothing really changed for this team? then don't spend a request at all
+  try{
+    if(typeof lastSnapshot==="string" && JSON.stringify(teamPayload())===lastSnapshot && !_pushDirty) return;
+  }catch(_){ }
+  _pushDirty = true;
+  if(_pushTimer) clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(()=>{ _pushTimer=null; pushNow(); }, PUSH_DELAY);
+}
+function pushFlush(){ if(_pushDirty || _pushTimer){ pushNow(); } }
+window.addEventListener("beforeunload", function(e){
+  if(_pushDirty || _pushTimer){ pushFlush(); e.preventDefault(); e.returnValue = ""; return ""; }
+});
+document.addEventListener("visibilitychange", function(){ if(document.hidden) pushFlush(); });
 function syncModuleSpaces(){
   // top-level Product-roadmap modules live directly under SPACES — one module-space each
   CSPACES.list = CSPACES.list || [];
@@ -3848,7 +3872,14 @@ async function start(){
       rerouteOrphanBugs();
       syncLinkedBugs();
       // pick up teammates' changes when you come back to the tab
-      document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(false); });
+      let _lastRefresh = Date.now();
+      document.addEventListener("visibilitychange", ()=>{
+        if(document.hidden) return;
+        // only pull teammates' changes at most once every 2 minutes
+        if(Date.now() - _lastRefresh < 120000) return;
+        _lastRefresh = Date.now();
+        refresh(false);
+      });
     }catch(e){
       showBanner("Couldn't reach JSONBin ("+e.message+"). Check the Bin ID and Access Key in index.html. Changes won't be saved.");
     }
