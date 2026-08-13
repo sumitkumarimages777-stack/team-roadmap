@@ -2156,6 +2156,7 @@ body{margin:0}
 .soc-day-over{border-color:var(--indigo)!important;background:var(--indigo-soft,#EEF1FF)}
 .soc-ev[draggable="true"]{cursor:grab}
 .soc-ev.soc-ev-dragging{opacity:.45}
+.dt-row.dt-nostate{grid-template-columns:minmax(220px,2.4fr) 62px minmax(150px,1.4fr) minmax(100px,1fr) minmax(70px,auto)}
 </style>
 </head>
 <body>
@@ -3372,9 +3373,14 @@ function normalizeCspaces(c){
         else if(c.subtasks!==undefined) delete c.subtasks; });
       x.events.forEach(e=>{ if(!e.id) e.id="se-"+Math.random().toString(36).slice(2,8); });
       x.culture = typeof x.culture==="string" ? x.culture : "";
+      if(x.themes!==undefined && !Array.isArray(x.themes)) delete x.themes;
     }
     if(x.type === "discovery" || x.type === "social" || x.type === "pdt"){
       x.ideas = x.ideas || [];
+      if(Array.isArray(x.themes)){
+        x.themes = x.themes.filter(function(t){ return t && (t.label||t.key); })
+          .map(function(t,i){ return { key: t.key || ("th-"+i), label: String(t.label||t.key) }; });
+      }
       // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
       x.tl = x.tl || {};
       if(!x.tl.id) x.tl.id = "rmtl-" + x.id;
@@ -9566,19 +9572,43 @@ function openDiscPick(anchor, cfg){
   setTimeout(()=> document.addEventListener("mousedown", dpickCloser, true), 0);
 }
 
+function discThemeLabel(cs){ return (cs && cs.type==="social") ? "Video type" : "Theme"; }
+function discThemeList(cs){
+  if(cs && Array.isArray(cs.themes) && cs.themes.length) return cs.themes;
+  if(cs && cs.type==="social") return [];                 // social starts blank — you define the types
+  return DISC_THEMES;
+}
+function discAddTheme(cs, label, cb){
+  const txt=(label||"").trim(); if(!txt) return;
+  cs.themes = Array.isArray(cs.themes) ? cs.themes : (cs.type==="social" ? [] : DISC_THEMES.slice());
+  const key = "th-"+txt.toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,20)+"-"+Math.random().toString(36).slice(2,5);
+  cs.themes.push({key:key, label:txt});
+  if(cb) cb(key);
+  saveDisc();
+}
 function discThemeChip(idea, cs){
-  const t = DISC_THEMES.find(x=>x.key===idea.theme);
+  const list = discThemeList(cs);
+  const noun = discThemeLabel(cs).toLowerCase();
+  const t = list.find(x=>x.key===idea.theme);
   const c = document.createElement("button");
   c.className = "disc-chip theme" + (t ? " has" : "");
-  c.textContent = t ? t.label : "+ theme";
-  c.title = editMode ? "Click to pick a theme" : (t ? t.label : "No theme");
+  c.textContent = t ? t.label : ("+ "+noun);
+  c.title = editMode ? ("Click to pick a "+noun) : (t ? t.label : "No "+noun);
   c.onclick = e=>{
     e.stopPropagation();
     if(!editMode) return;
+    const opts = discThemeList(cs).map(x=>({key:x.key, label:x.label, cls:"theme has"}));
+    opts.push({key:"__new__", label:"\uFF0B New "+noun, cls:"theme"});
     openDiscPick(c, {
       search: true, allowClear: true, current: idea.theme,
-      options: DISC_THEMES.map(x=>({key:x.key, label:x.label, cls:"theme has"})),
-      onPick: k=>{ if(k) idea.theme = k; else delete idea.theme; saveDisc(); },
+      options: opts,
+      onPick: k=>{
+        if(k==="__new__"){
+          openDialog("New "+noun, {}, v=>{ discAddTheme(cs, v.title, nk=>{ idea.theme = nk; }); }, {hideExtras:true, titleLabel:discThemeLabel(cs)});
+          return;
+        }
+        if(k) idea.theme = k; else delete idea.theme; saveDisc();
+      },
     });
   };
   return c;
@@ -10481,7 +10511,9 @@ function discIdeasPane(cs){
 
   const hr = document.createElement("div");
   hr.className = "dt-row dt-head";
-  ["Summary","\uD83D\uDCAC","Theme","Roadmap","State",""].forEach(t=>{
+  const _noState = (cs && cs.type==="social");
+  if(_noState) hr.classList.add("dt-nostate");
+  (_noState ? ["Summary","\uD83D\uDCAC",discThemeLabel(cs),"Roadmap",""] : ["Summary","\uD83D\uDCAC",discThemeLabel(cs),"Roadmap","State",""]).forEach(t=>{
     const c = document.createElement("div");
     c.className = "dt-cell";
     c.textContent = t;
@@ -10508,13 +10540,18 @@ function discIdeasPane(cs){
     const cStage = document.createElement("div");
     cStage.className = "dt-cell";
     cStage.appendChild(discStageChip(idea));
-    const cState = document.createElement("div");
-    cState.className = "dt-cell";
-    cState.appendChild(discStateChip(idea));
     const cActs = document.createElement("div");
     cActs.className = "dt-cell dt-acts";
     if(editMode) cActs.appendChild(discIdeaActs(cs, idea));
-    r.append(cSum, cCmt, cTheme, cStage, cState, cActs);
+    if(_noState){
+      r.classList.add("dt-nostate");
+      r.append(cSum, cCmt, cTheme, cStage, cActs);
+    } else {
+      const cState = document.createElement("div");
+      cState.className = "dt-cell";
+      cState.appendChild(discStateChip(idea));
+      r.append(cSum, cCmt, cTheme, cStage, cState, cActs);
+    }
     table.appendChild(r);
   });
   if(!cs.ideas.length){
@@ -10565,7 +10602,7 @@ function discRoadmapPane(cs){
       if(idea.note){ const n = document.createElement("div"); n.className = "kn"; n.textContent = idea.note; card.appendChild(n); }
       const meta = document.createElement("div"); meta.className = "kcard-meta disc-meta";
       meta.appendChild(discThemeChip(idea, cs));
-      meta.appendChild(discStateChip(idea));
+      if(cs.type!=="social") meta.appendChild(discStateChip(idea));
       const tlIt = (cs.tl && cs.tl.items || []).find(t=>t.tid===idea.id);
       if(tlIt && tlIt.start && tlIt.end){
         const d = document.createElement("span"); d.className = "disc-chip dates";
