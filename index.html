@@ -2169,6 +2169,20 @@ body{margin:0}
 .ws-okr-pct{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--indigo);flex:none}
 #csokr-dialog .field select{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;color:var(--ink)}
 
+/* ===== pinned strategy ===== */
+.ws-strategy{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid #E4D08A;background:linear-gradient(180deg,#FFFBEB,#FFF4CF);border-radius:10px;padding:10px 12px;margin:0 0 14px;cursor:pointer;font-family:var(--sans)}
+.ws-strategy:hover{border-color:#C9A227}
+.ws-strat-ic{font-size:14px;flex:none}
+.ws-strat-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ws-strat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8A6A12;font-weight:700}
+.ws-strat-t{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strat-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#FFFBEB,#FFF7E0);border:1px solid #EBDCA6;border-radius:10px;padding:9px 14px;margin-bottom:14px}
+.strat-ic{font-size:14px}
+.strat-txt{flex:1;min-width:0;font-size:13px;color:#5A4A18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strat-txt b{color:var(--ink)}
+.strat-go{border:1px solid #C9A227;background:#fff;color:#8A6A12;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);flex:none}
+.strat-go:hover{background:#FFF4CF}
+
 </style>
 </head>
 <body>
@@ -2494,6 +2508,7 @@ body{margin:0}
     </div>
     </div>
     <div class="pane-head">
+      <div id="strategy-banner"></div>
       <div class="space-crumb" id="space-crumb"></div>
       <div class="head-row">
         <div class="head-left">
@@ -10989,9 +11004,17 @@ function renderAll(){
   $("nav-a").classList.toggle("ghost", view==="okr");
   $("nav-b").classList.toggle("ghost", view!=="okr");
   // sidebar workspace switcher (hidden on OKRs)
+  const _sb = $("strategy-banner");
+  if(_sb){
+    _sb.innerHTML = "";
+    if(view!=="okr"){ const _bn = docStrategyBanner(); if(_bn) _sb.appendChild(_bn); }
+  }
   const ws = $("ws-switch");
   ws.innerHTML = "";
   if(view!=="okr"){
+    /* ---- the CEO's pinned strategy sits above everything ---- */
+    const _strat = docStrategyChip();
+    if(_strat) ws.appendChild(_strat);
     /* ---- top-level ROADMAPS first (timelines across every space) ---- */
     const rl = document.createElement("div");
     rl.className = "ws-label"; rl.textContent = "Roadmaps";
@@ -11919,7 +11942,10 @@ function spid(){ return "sp-"+Math.random().toString(36).slice(2,7)+Date.now().t
 function normalizeSpace(sp){ if(!sp||typeof sp!=="object") return null; var n=sp.name!=null?String(sp.name):""; if(!n) return null; return { id:sp.id||spid(), name:n, icon:sp.icon?String(sp.icon):"📁", color:sp.color?String(sp.color):"#3B5BDB" }; }
 function normalizeDocs(o){
   o=o||{};
-  return { spaces:Array.isArray(o.spaces)?o.spaces.map(normalizeSpace).filter(Boolean):[], docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
+  var _strat = (typeof o.strategyDoc==="string") ? o.strategyDoc : null;
+  var _out = { spaces:Array.isArray(o.spaces)?o.spaces.map(normalizeSpace).filter(Boolean):[], docs:Array.isArray(o.docs)?o.docs.map(normalizeDoc).filter(Boolean):[], templates:Array.isArray(o.templates)?o.templates.map(normalizeTpl).filter(Boolean):[] };
+  if(_strat && _out.docs.some(function(d){ return d.id===_strat; })) _out.strategyDoc = _strat;
+  return _out;
 }
 function docCurrentSpace(){ for(var i=0;i<TEAMDOCS.spaces.length;i++){ if(TEAMDOCS.spaces[i].id===docSpaceId) return TEAMDOCS.spaces[i]; } return null; }
 function docsInSpaceRaw(){ return (TEAMDOCS.docs||[]).filter(function(d){ return d.spaceId===docSpaceId; }).sort(docByUpdated); }
@@ -11945,6 +11971,46 @@ function docCopyLinkFor(id){
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, ()=>docCopyFallback(url,done));
     else docCopyFallback(url,done);
   }catch(_){ docCopyFallback(url,done); }
+}
+/* ---------- the CEO's pinned strategy ---------- */
+function docStrategy(){
+  const id = TEAMDOCS && TEAMDOCS.strategyDoc;
+  if(!id) return null;
+  return (TEAMDOCS.docs||[]).find(d=>d.id===id) || null;
+}
+function docTogglePin(){
+  const d = docCurrent(); if(!d) return;
+  if(TEAMDOCS.strategyDoc === d.id){ delete TEAMDOCS.strategyDoc; toast("Unpinned"); }
+  else { TEAMDOCS.strategyDoc = d.id; toast("Pinned — the whole team sees this at the top"); }
+  renderDocMain(); pushAll();
+}
+function docOpenStrategy(){
+  const d = docStrategy(); if(!d){ toast("No strategy pinned yet"); return; }
+  docSpaceId = d.spaceId || docSpaceId;
+  docOpenId = d.id;
+  let guard=0, cur=d;
+  while(cur && cur.parentId && guard++<20){ docExpanded[cur.parentId]=true; cur=(TEAMDOCS.docs||[]).find(x=>x.id===cur.parentId); }
+  openDocsPage();
+}
+function docStrategyChip(){
+  const d = docStrategy(); if(!d) return null;
+  const b = document.createElement("button");
+  b.className = "ws-strategy";
+  b.title = "Read the team strategy";
+  b.innerHTML = '<span class="ws-strat-ic">📌</span><span class="ws-strat-main">'
+    + '<span class="ws-strat-lbl">Strategy</span>'
+    + '<span class="ws-strat-t">'+mtEsc(d.title||"Untitled")+'</span></span>';
+  b.onclick = docOpenStrategy;
+  return b;
+}
+function docStrategyBanner(){
+  const d = docStrategy(); if(!d) return null;
+  const wrap = document.createElement("div"); wrap.className="strat-banner";
+  wrap.innerHTML = '<span class="strat-ic">📌</span><span class="strat-txt"><b>'+mtEsc(d.title||"Strategy")+'</b> — our plan for the year</span>';
+  const go = document.createElement("button"); go.className="strat-go"; go.textContent="Read";
+  go.onclick = docOpenStrategy;
+  wrap.appendChild(go);
+  return wrap;
 }
 function docCopyLink(){
   const d = docCurrent();
@@ -12324,6 +12390,7 @@ function renderDocMain(){
       +'<span class="doce-flex"></span>'
       +'<span class="doce-saved" id="doce-saved">Saved</span>'
       +'<button class="doce-tb" title="Copy a link to this document" onmousedown="event.preventDefault()" onclick="docCopyLink()">🔗 Copy link</button>'
+      +(admin ? '<button class="doce-tb" title="Show this at the top of the workspace for the whole team" onmousedown="event.preventDefault()" onclick="docTogglePin()">'+(TEAMDOCS.strategyDoc===d.id ? '📌 Unpin strategy' : '📌 Pin as strategy')+'</button>' : '')
       +'<button class="doce-tb" title="Save as template" onmousedown="event.preventDefault()" onclick="docSaveAsTemplate()">Save as template</button>'
       +'</div>';
   }
