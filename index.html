@@ -2020,6 +2020,20 @@ body{margin:0}
 .soc-day:hover .soc-dayadd{opacity:1}
 .soc-dayadd:hover{color:var(--indigo)}
 
+/* ===== Product suite space ===== */
+.pdt-boards{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 14px}
+.pdt-boardchip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.pdt-boardchip:hover{border-color:var(--indigo);color:var(--indigo)}
+.pdt-boardchip.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.pdt-boardx{opacity:.6;font-size:14px;line-height:1}
+.pdt-boardx:hover{opacity:1}
+.pdt-boardadd{border:1px dashed var(--line-strong);background:none;border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.pdt-boardadd:hover{border-color:var(--indigo);color:var(--indigo)}
+.pdt-flag{font-size:10px;font-weight:700;color:#C0362C;background:#FBE9E7;border-radius:99px;padding:2px 8px}
+.pdt-qaacts{margin-top:8px;display:flex;gap:6px}
+.pdt-qabtn{border:1px solid var(--line-strong);background:var(--card);border-radius:7px;padding:3px 9px;font-size:10.5px;font-weight:600;cursor:pointer;color:var(--muted);font-family:var(--sans)}
+.pdt-qabtn.back:hover{border-color:#C0362C;color:#C0362C}
+
 </style>
 </head>
 <body>
@@ -2516,6 +2530,12 @@ body{margin:0}
           <span class="tpl-name">Competitor Analysis</span>
           <span class="tpl-desc">Compare against competitors — product-level feature grids and feature-level deep dives, side by side.</span>
           <span class="tpl-by">Product-level · Feature-level</span>
+        </button>
+        <button class="tpl-card" data-tpl="pdt">
+          <span class="tpl-emoji">🧩</span>
+          <span class="tpl-name">Product All in One</span>
+          <span class="tpl-desc">The whole product flow — ideas and roadmap, as many scrum boards as you need, an automatic hand-off to Q/A, and a bugs board.</span>
+          <span class="tpl-by">Ideation · Development · Q/A · Bugs</span>
         </button>
         <button class="tpl-card" data-tpl="social">
           <span class="tpl-emoji">📣</span>
@@ -3182,7 +3202,7 @@ function normalizeCspaces(c){
   c.list = c.list || [];
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
-    x.type = ["scrum","discovery","content","module","research","competitor","social"].includes(x.type) ? x.type : "bugs";
+    x.type = ["scrum","discovery","content","module","research","competitor","social","pdt"].includes(x.type) ? x.type : "bugs";
     x.members = x.members || {};   // per-space role assignments {email: role}
     if(x.type === "research" || x.type === "competitor"){
       // these spaces host their research/analysis on their own node (like a module node, but not in the module list)
@@ -3190,13 +3210,32 @@ function normalizeCspaces(c){
       x.node.name = x.name;
       normalizeAnalyses(x.node);
     }
+    if(x.type === "pdt"){
+      x.boards = x.boards || [];
+      x.items  = x.items  || [];
+      x.boards.forEach(b=>{
+        if(!b.id) b.id="pb-"+Math.random().toString(36).slice(2,8);
+        if(["dev","qa","bugs"].indexOf(b.lane)<0) b.lane="dev";   // older spaces had dev-only boards
+      });
+      [["dev","Scrum board 1","pb-main"],["qa","Q/A board 1","pq-main"],["bugs","Bugs board 1","pg-main"]].forEach(([ln,nm,id])=>{
+        if(!x.boards.some(b=>b.lane===ln)) x.boards.push({id:id, name:nm, lane:ln});
+      });
+      x.items.forEach(i=>{
+        if(!i.id) i.id="pi-"+Math.random().toString(36).slice(2,8);
+        if(["dev","qa","bugs"].indexOf(i.lane)<0) i.lane="dev";
+        const mine = x.boards.filter(b=>b.lane===i.lane);
+        if(!mine.some(b=>b.id===i.board)) i.board = mine[0].id;
+        const cols = i.lane==="qa" ? PDT_QA_COLS : i.lane==="bugs" ? PDT_BUG_COLS : PDT_DEV_COLS;
+        if(!cols.some(c=>c.key===i.col)) i.col=cols[0].key;
+      });
+    }
     if(x.type === "social"){
       x.cards = x.cards || [];
       x.events = x.events || [];
       x.cards.forEach(c=>{ if(!c.id) c.id="sc-"+Math.random().toString(36).slice(2,8); if(!SOC_COLS.some(k=>k.key===c.col)) c.col="todo"; });
       x.events.forEach(e=>{ if(!e.id) e.id="se-"+Math.random().toString(36).slice(2,8); });
     }
-    if(x.type === "discovery" || x.type === "social"){
+    if(x.type === "discovery" || x.type === "social" || x.type === "pdt"){
       x.ideas = x.ideas || [];
       // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
       x.tl = x.tl || {};
@@ -3257,6 +3296,9 @@ function convertModuleToIdeas(mod, disc){
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
 let socialView = "ideation";   // Social Media space: ideation | ideation-roadmap | process | schedule
+let pdtView = "ideation";      // Product space: ideation | ideation-roadmap | dev | qa | bugs
+let pdtBoardId = { dev:null, qa:null, bugs:null };
+let pdtDragId = null;
 let socDragId = null;
 let socMonth = (new Date()).toISOString().slice(0,7);
 let adminView = "users";  // Administration page: "users" | "permissions"
@@ -3453,7 +3495,16 @@ function loadTeamData(t){
   BUILTIN_SPACE_MEMBERS = t.spaceMembers || { dev:{}, bugs:{} };
   BUILTIN_SPACE_MEMBERS.dev = BUILTIN_SPACE_MEMBERS.dev || {};
   BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {};
-  BUILTIN_HIDDEN = t.builtinHidden || { dev:false, bugs:false };
+  if(t.builtinHidden){
+    BUILTIN_HIDDEN = t.builtinHidden;
+  } else {
+    // No preference saved yet. A brand-new team starts clean — no Development / Bugs
+    // spaces until the person adds them. Teams that already have work in either
+    // keep them visible so nothing disappears.
+    var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length) || (DEV.spaces&&DEV.spaces.length>1)));
+    var _bugsUsed = !!(typeof BUGS!=="undefined" && BUGS && BUGS.tickets && BUGS.tickets.some(function(x){ return x.team===TEAM; }));
+    BUILTIN_HIDDEN = { dev: !_devUsed, bugs: !_bugsUsed };
+  }
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
@@ -4397,6 +4448,7 @@ function csIsActive(cs){
   return cs.type==="bugs" ? (view==="cbugs" && activeCspace===cs.id)
     : cs.type==="discovery" ? (view==="disc" && activeCspace===cs.id)
     : cs.type==="social" ? (view==="social" && activeCspace===cs.id)
+    : cs.type==="pdt" ? (view==="pdt" && activeCspace===cs.id)
     : cs.type==="content" ? (view==="content" && activeSection===cs.sectionKey)
     : cs.type==="module" ? (view==="roadmap" && (activeModule===cs.moduleKey || String(activeModule).indexOf(cs.moduleKey+"::")===0))
     : (cs.type==="research"||cs.type==="competitor") ? (view==="csnode" && activeCspace===cs.id)
@@ -4406,13 +4458,14 @@ function navToSpace(cs){
   if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
   else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
   else if(cs.type==="social"){ view = "social"; activeCspace = cs.id; socialView = "ideation"; }
+  else if(cs.type==="pdt"){ view = "pdt"; activeCspace = cs.id; pdtView = "ideation"; pdtBoardId = { dev:null, qa:null, bugs:null }; }
   else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
   else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
   else if(cs.type==="research" || cs.type==="competitor"){ view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false; }
   else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
   renderAll();
 }
-function csTypeLabel(t){ return t==="scrum"?"Scrum":t==="discovery"?"Product":t==="content"?"Content":t==="module"?"Module":t==="research"?"Research":t==="competitor"?"Competitor":t==="social"?"Social":"Bugs"; }
+function csTypeLabel(t){ return t==="scrum"?"Scrum":t==="discovery"?"Product":t==="content"?"Content":t==="module"?"Module":t==="research"?"Research":t==="competitor"?"Competitor":t==="social"?"Social":t==="pdt"?"Product All in One":"Bugs"; }
 function closeAllList(){ const e=document.getElementById("alllist-back"); if(e) e.remove(); }
 function openAllList(kind){
   closeAllList();
@@ -4489,6 +4542,9 @@ let _lastNavSig = "";
 // the work-area tabs for the current view (Summary is prepended separately)
 function workTabs(){
   if(view==="disc") return [{key:"ideas",label:"All ideas"},{key:"roadmap",label:"Roadmap"},{key:"timeline",label:"Timeline"}];
+  if(view==="pdt") return (pdtView==="ideation"||pdtView==="ideation-roadmap")
+      ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
+      : [{key:pdtView,label:pdtSectionLabel(pdtView)}];
   if(view==="social") return (socialView==="ideation"||socialView==="ideation-roadmap")
       ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
       : [{key:socialView,label:socSectionLabel(socialView)}];
@@ -4498,7 +4554,7 @@ function workTabs(){
   return [{key:"work",label:l}];
 }
 // which work tab is highlighted while the work pane is showing
-function workTabActiveKey(){ return view==="disc" ? discView : view==="social" ? socialView : "work"; }
+function workTabActiveKey(){ return view==="disc" ? discView : view==="social" ? socialView : view==="pdt" ? pdtView : "work"; }
 function applyPaneTab(){
   const su=$("pane-summary"), wk=$("pane-work");
   if(su) su.classList.toggle("show", paneTab==="summary");
@@ -4508,6 +4564,7 @@ function selectWorkTab(key){
   paneTab="work";
   if(view==="disc" && discView!==key){ discView=key; renderAll(); return; }  // re-render the sub-view
   if(view==="social" && socialView!==key){ socialView=key; renderAll(); return; }
+  if(view==="pdt" && pdtView!==key){ pdtView=key; renderAll(); return; }
   applyPaneTab(); renderTabs();
 }
 function renderTabs(){
@@ -4530,7 +4587,7 @@ function renderTabs(){
 }
 function renderHeader(){
   const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
-  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="social" ? (((currentSocial()||{}).name) || "Social Media") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="social" ? (((currentSocial()||{}).name) || "Social Media") : view==="pdt" ? (((currentPdt()||{}).name) || "Product All in One") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
@@ -9450,6 +9507,208 @@ function currentSocial(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace 
 function saveSocial(){ renderAll(); pushAll(); }
 function socSectionLabel(k){ return k==="process" ? "Content Process" : k==="schedule" ? "Schedule" : "Ideation"; }
 
+/* ================= PRODUCT suite space (Ideation / Development / QA / Bugs) ================= */
+const PDT_DEV_COLS = [
+  {key:"todo",     label:"To Do"},
+  {key:"progress", label:"In Progress"},
+  {key:"review",   label:"In Review"},
+  {key:"qa",       label:"Send for Q/A Testing"},
+];
+const PDT_QA_COLS = [
+  {key:"incoming", label:"Incoming from Dev"},
+  {key:"testing",  label:"Testing"},
+  {key:"passed",   label:"Passed"},
+];
+const PDT_BUG_COLS = [
+  {key:"todo",     label:"To Do"},
+  {key:"progress", label:"In Progress"},
+  {key:"verify",   label:"In Review"},
+  {key:"done",     label:"Done"},
+];
+function currentPdt(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="pdt") || null; }
+function savePdt(){ renderAll(); pushAll(); }
+function pdtSectionLabel(k){ return k==="dev" ? "Development" : k==="qa" ? "Q/A Testing" : k==="bugs" ? "Bugs" : "Ideation"; }
+function pdtBoards(cs, lane){
+  cs.boards = cs.boards || [];
+  return lane ? cs.boards.filter(b=>(b.lane||"dev")===lane) : cs.boards;
+}
+function pdtActiveBoard(cs, lane){
+  lane = lane || "dev";
+  const bs = pdtBoards(cs, lane);
+  if(!bs.length) return null;
+  let b = bs.find(x=>x.id===pdtBoardId[lane]);
+  if(!b){ b = bs[0]; pdtBoardId[lane] = b.id; }
+  return b;
+}
+function pdtLaneNoun(lane){ return lane==="qa" ? "Q/A board" : lane==="bugs" ? "Bugs board" : "scrum board"; }
+function pdtItems(cs){ return cs.items || (cs.items=[]); }
+
+function renderContentPdt(){
+  const wrap = $("content"); wrap.innerHTML = "";
+  const cs = currentPdt();
+  if(!cs){ view = "roadmap"; renderAll(); return; }
+  if(pdtView === "dev")   return pdtDevPane(cs);
+  if(pdtView === "qa")    return pdtQaPane(cs);
+  if(pdtView === "bugs")  return pdtBugsPane(cs);
+  if(pdtView === "ideation-roadmap") return discRoadmapPane(cs);
+  return discIdeasPane(cs);
+}
+
+/* ---------- shared kanban renderer ---------- */
+function pdtKanban(cs, cols, filterFn, opts){
+  opts = opts || {};
+  const board = document.createElement("div"); board.className="soc-board";
+  cols.forEach(col=>{
+    const inCol = pdtItems(cs).filter(it=> filterFn(it) && it.col===col.key);
+    const cw = document.createElement("div"); cw.className="soc-col";
+    const chd = document.createElement("div"); chd.className="soc-colhead";
+    chd.innerHTML = '<span class="soc-colname">'+mtEsc(col.label)+'</span><span class="soc-colcount">'+inCol.length+'</span>';
+    cw.appendChild(chd);
+    const list = document.createElement("div"); list.className="soc-collist";
+    list.addEventListener("dragover", e=>{ if(pdtDragId){ e.preventDefault(); cw.classList.add("soc-over"); } });
+    list.addEventListener("dragleave", ()=> cw.classList.remove("soc-over"));
+    list.addEventListener("drop", e=>{
+      e.preventDefault(); cw.classList.remove("soc-over");
+      if(!pdtDragId) return;
+      const it = pdtItems(cs).find(x=>x.id===pdtDragId); pdtDragId=null;
+      if(!it || it.col===col.key) return;
+      pdtMoveItem(cs, it, col.key, opts.lane);
+    });
+    inCol.forEach(it=> list.appendChild(pdtCardEl(cs, it, opts)));
+    cw.appendChild(list);
+    if(editMode && !opts.noAdd && !col.readonly){
+      const add = document.createElement("button"); add.className="soc-add"; add.textContent="＋ Create";
+      add.onclick = ()=> pdtNewItem(cs, col.key, opts);
+      cw.appendChild(add);
+    }
+    board.appendChild(cw);
+  });
+  return board;
+}
+/* moving an item — this is where Dev → QA hand-off happens */
+function pdtMoveItem(cs, it, colKey, lane){
+  if(lane==="dev" && colKey==="qa"){
+    // auto hand-off: leaves the dev board and lands on the current Q/A board
+    const qb = pdtActiveBoard(cs, "qa");
+    it.fromBoard = it.board || null;
+    it.lane = "qa"; it.col = "incoming"; it.board = qb ? qb.id : null;
+    savePdt(); toast("Sent to "+((qb&&qb.name)||"Q/A Testing"));
+    return;
+  }
+  it.col = colKey;
+  savePdt();
+}
+function pdtSendBack(cs, it){
+  it.lane = "dev";
+  it.board = it.fromBoard || (pdtActiveBoard(cs,"dev")||{}).id || null;
+  it.col = "progress";
+  it.failed = true;
+  savePdt(); toast("Sent back to Development");
+}
+function pdtCardEl(cs, it, opts){
+  const el = document.createElement("div"); el.className="soc-card";
+  if(editMode){
+    el.draggable = true;
+    el.addEventListener("dragstart", e=>{ pdtDragId=it.id; el.classList.add("soc-dragging"); try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",it.id); }catch(_){} });
+    el.addEventListener("dragend", ()=>{ el.classList.remove("soc-dragging"); pdtDragId=null; });
+  }
+  let meta = "";
+  if(it.failed && it.lane==="dev") meta += '<span class="pdt-flag">↩ sent back by Q/A</span>';
+  if(it.due) meta += '<span class="soc-due">📅 '+mtEsc(it.due)+'</span>';
+  el.innerHTML = '<div class="soc-card-t">'+mtEsc(it.title)+'</div>'
+    + (meta?'<div class="soc-card-m">'+meta+'</div>':'')
+    + (it.owner ? '<div class="soc-card-o">'+mtEsc(it.owner)+'</div>' : '');
+  if(editMode){
+    const acts = document.createElement("div"); acts.className="soc-card-acts";
+    const ed = document.createElement("button"); ed.textContent="✎"; ed.title="Edit"; ed.onclick=e=>{ e.stopPropagation(); pdtEditItem(cs, it); };
+    const del = document.createElement("button"); del.textContent="×"; del.title="Delete"; del.onclick=e=>{ e.stopPropagation(); if(confirm('Delete "'+it.title+'"?')){ cs.items = pdtItems(cs).filter(x=>x.id!==it.id); savePdt(); } };
+    acts.append(ed, del); el.appendChild(acts);
+  }
+  // Q/A actions: pass on / send back
+  if(editMode && it.lane==="qa"){
+    const row=document.createElement("div"); row.className="pdt-qaacts";
+    const back=document.createElement("button"); back.className="pdt-qabtn back"; back.textContent="↩ Send back";
+    back.title="Not done — return this to the Development board";
+    back.onclick=e=>{ e.stopPropagation(); pdtSendBack(cs, it); };
+    row.appendChild(back);
+    el.appendChild(row);
+  }
+  return el;
+}
+function pdtNewItem(cs, colKey, opts){
+  openDialog("New item", {}, v=>{
+    const it = { id:"pi-"+Date.now().toString(36), title:v.title, lane:(opts&&opts.lane)||"dev", col:colKey };
+    const _ln=(opts&&opts.lane)||"dev"; const _b=pdtActiveBoard(cs,_ln); it.board = _b?_b.id:null;
+    if(v.owner) it.owner=v.owner;
+    if(v.duedate) it.due=v.duedate;
+    pdtItems(cs).push(it); savePdt();
+  }, {duedate:true});
+}
+function pdtEditItem(cs, it){
+  openDialog("Edit item", {title:it.title, owner:it.owner||"", duedate:it.due||""}, v=>{
+    it.title=v.title;
+    if(v.owner) it.owner=v.owner; else delete it.owner;
+    if(v.duedate) it.due=v.duedate; else delete it.due;
+    savePdt();
+  }, {duedate:true});
+}
+
+/* ---------- shared: board switcher for any lane (N boards each) ---------- */
+function pdtBoardBar(cs, lane, block){
+  const bar = document.createElement("div"); bar.className="pdt-boards";
+  const active = pdtActiveBoard(cs, lane);
+  pdtBoards(cs, lane).forEach(b=>{
+    const chip=document.createElement("button");
+    chip.className="pdt-boardchip"+(active && active.id===b.id?" on":"");
+    chip.textContent=b.name;
+    chip.onclick=()=>{ pdtBoardId[lane]=b.id; renderAll(); };
+    if(editMode){
+      const x=document.createElement("span"); x.className="pdt-boardx"; x.textContent="×"; x.title="Delete board";
+      x.onclick=e=>{
+        e.stopPropagation();
+        if(confirm('Delete board "'+b.name+'" and its cards?')){
+          cs.items = pdtItems(cs).filter(i=>!(i.lane===lane && i.board===b.id));
+          cs.boards = cs.boards.filter(y=>y.id!==b.id);
+          pdtBoardId[lane]=null; savePdt();
+        }
+      };
+      chip.appendChild(x);
+    }
+    bar.appendChild(chip);
+  });
+  if(editMode){
+    const add=document.createElement("button"); add.className="pdt-boardadd";
+    add.textContent="＋ New "+pdtLaneNoun(lane);
+    add.onclick=()=>{ openDialog("New "+pdtLaneNoun(lane), {}, v=>{
+      const b={id:"pb-"+Date.now().toString(36), name:v.title, lane:lane};
+      cs.boards.push(b); pdtBoardId[lane]=b.id; savePdt();
+    }, {hideExtras:true}); };
+    bar.appendChild(add);
+  }
+  block.appendChild(bar);
+  return active;
+}
+function pdtLanePane(cs, lane, heading, cols, note){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h = document.createElement("h2"); h.textContent = heading;
+  head.appendChild(h);
+  block.appendChild(head);
+  const b = pdtBoardBar(cs, lane, block);
+  if(!b){
+    const e=document.createElement("div"); e.className="empty";
+    e.textContent = editMode ? ("No "+pdtLaneNoun(lane)+"s yet — create your first one above.") : ("No "+pdtLaneNoun(lane)+"s yet.");
+    block.appendChild(e); wrap.appendChild(block); return;
+  }
+  if(note){ const n=document.createElement("div"); n.className="hint"; n.style.margin="0 0 10px"; n.textContent=note; block.appendChild(n); }
+  block.appendChild(pdtKanban(cs, cols, it=> it.lane===lane && it.board===b.id, {lane:lane}));
+  wrap.appendChild(block);
+}
+function pdtDevPane(cs){  pdtLanePane(cs, "dev",  "Development", PDT_DEV_COLS, "Cards dropped into “Send for Q/A Testing” move to the current Q/A board automatically."); }
+function pdtQaPane(cs){   pdtLanePane(cs, "qa",   "Q/A Testing", PDT_QA_COLS,  "Items arrive here automatically from Development. Use “↩ Send back” if something isn’t done."); }
+function pdtBugsPane(cs){ pdtLanePane(cs, "bugs", "Bugs",        PDT_BUG_COLS, null); }
+
 function renderContentSocial(){
   const wrap = $("content"); wrap.innerHTML = "";
   const cs = currentSocial();
@@ -9910,6 +10169,11 @@ function renderAll(){
         if(fv){ activeRmap = fv.id; } else { view = "roadmap"; activeRmap = null; editMode = false; defaultView(); }
       }
     }
+    // safety: if tickets exist for this team but Bugs is hidden and no Bugs space
+    // can receive them, bring the built-in board back so nothing is stranded.
+    if(BUILTIN_HIDDEN.bugs && !(CSPACES.list||[]).some(x=>x.type==="bugs")){
+      try{ if(typeof teamBugs==="function" && teamBugs().length){ BUILTIN_HIDDEN.bugs = false; } }catch(_){ }
+    }
     // bounce off a hidden built-in
     if(view==="dev" && BUILTIN_HIDDEN.dev){ view = "roadmap"; defaultView(); }
     if(view==="bugs" && BUILTIN_HIDDEN.bugs){
@@ -10112,6 +10376,16 @@ function renderAll(){
         }
         ws.appendChild(b);
         /* Social Media space: three sub-sections in the sidebar */
+        if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
+          [["ideation","💡 Ideation & Roadmap"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
+            const sub=document.createElement("button");
+            const on = (k==="ideation") ? (pdtView==="ideation"||pdtView==="ideation-roadmap") : pdtView===k;
+            sub.className="ws-sub"+(on?" active":"");
+            sub.textContent=lbl;
+            sub.onclick=()=>{ pdtView=k; renderAll(); };
+            ws.appendChild(sub);
+          });
+        }
         if(cs.type==="social" && view==="social" && activeCspace===cs.id){
           [["ideation","💡 Ideation"],["process","🗂 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
             const sub=document.createElement("button");
@@ -10174,6 +10448,11 @@ function renderAll(){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
     renderContentSocial();
+  }
+  else if(view==="pdt"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    renderContentPdt();
   }
   else if(view==="csnode"){
     $("side-title").style.display = "none";
@@ -11806,7 +12085,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
-    openDialog(type==="social" ? "New Social Media space" : type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
+    openDialog(type==="pdt" ? "New Product All in One space" : type==="social" ? "New Social Media space" : type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
      chooseAccess(v.title, (access, members)=>{
       const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members: members||{} };
       if(type==="scrum"){
@@ -11825,6 +12104,11 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         cs.ideas = []; cs.cards = []; cs.events = [];
         CSPACES.list.push(cs);
         view = "social"; activeCspace = cs.id; socialView = "ideation";
+        renderAll(); pushAll();
+      } else if(type==="pdt"){
+        cs.ideas = []; cs.boards = [{id:"pb-main", name:"Scrum board 1", lane:"dev"},{id:"pq-main", name:"Q/A board 1", lane:"qa"},{id:"pg-main", name:"Bugs board 1", lane:"bugs"}]; cs.items = [];
+        CSPACES.list.push(cs);
+        view = "pdt"; activeCspace = cs.id; pdtView = "ideation"; pdtBoardId = { dev:null, qa:null, bugs:null };
         renderAll(); pushAll();
       } else if(type==="module"){
         const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
