@@ -3124,8 +3124,17 @@ let activeModule = "all";
 function firstModuleKey(){ return (DATA.modules && DATA.modules[0] && DATA.modules[0].key) || "all"; }
 function defaultView(){
   // entering a team lands on the first module space (Product roadmap container is gone)
-  if(DATA.modules && DATA.modules.length){ view = "roadmap"; activeModule = firstModuleKey(); }
-  else { view = "dev"; }
+  if(DATA.modules && DATA.modules.length){ view = "roadmap"; activeModule = firstModuleKey(); return; }
+  // otherwise land on the first real space this team actually has
+  const _cs = (CSPACES && CSPACES.list) ? CSPACES.list : [];
+  const _first = _cs[0];
+  if(_first){ navToSpace(_first); return; }
+  const _rm = (RMAPS && RMAPS.maps) ? RMAPS.maps[0] : null;
+  if(_rm){ view = "rmap"; activeRmap = _rm.id; return; }
+  // only fall back to the built-in boards if they are still switched on
+  if(typeof BUILTIN_HIDDEN==="object" && BUILTIN_HIDDEN && !BUILTIN_HIDDEN.dev && !devBoardIsEmpty()){ view = "dev"; return; }
+  if(typeof BUILTIN_HIDDEN==="object" && BUILTIN_HIDDEN && !BUILTIN_HIDDEN.bugs){ view = "bugs"; return; }
+  view = "okr";
 }
 let activeCycle = null;
 let activeStatus = "all";
@@ -3285,14 +3294,16 @@ function normalizeDev(d){
   d.sprints = d.sprints || [];
   d.cards = d.cards || [];
   // migration: if there are cards/sprints but no spaces, wrap everything in a default "Core Team" space
-  if(!d.spaces.length){
+  if(!d.spaces.length && ((d.cards&&d.cards.length) || (d.sprints&&d.sprints.length))){
+    // only rebuild a home when there is orphaned work — an intentionally empty
+    // Development board must stay empty instead of respawning "Core Team".
     d.spaces.push({id:"space-core", name:"Core Team"});
   }
-  const defId = d.spaces[0].id;
+  const defId = d.spaces.length ? d.spaces[0].id : null;
   d.spaces.forEach(sp=>{ if(!sp.id) sp.id = "space-"+Math.random().toString(36).slice(2,9); });
   d.sprints.forEach(sp=>{
     if(!sp.id) sp.id = "sp-" + Math.random().toString(36).slice(2,9);
-    if(!sp.space || !d.spaces.some(x=>x.id===sp.space)) sp.space = defId;
+    if(defId && (!sp.space || !d.spaces.some(x=>x.id===sp.space))) sp.space = defId;
   });
   d.cards.forEach(c=>{
     c.col = KCOLS.some(k=>k.key===c.col) ? c.col : "todo";
@@ -3300,7 +3311,7 @@ function normalizeDev(d){
     if(!c.id) c.id = "dv-" + Math.random().toString(36).slice(2,9);
     // a card's space follows its sprint if it has one; otherwise keep/default it
     if(c.sprint){ const s = d.sprints.find(x=>x.id===c.sprint); if(s) c.space = s.space; }
-    if(!c.space || !d.spaces.some(x=>x.id===c.space)) c.space = defId;
+    if(defId && (!c.space || !d.spaces.some(x=>x.id===c.space))) c.space = defId;
   });
   return d;
 }
@@ -3631,7 +3642,7 @@ function loadTeamData(t){
     // spaces until the person adds them. Teams that already have work in either
     // keep them visible so nothing disappears.
     // only actual work counts — an empty leftover space must not bring the board back
-    var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length)));
+    var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length)) && (DEV.spaces&&DEV.spaces.length));
     var _bugsUsed = !!(typeof BUGS!=="undefined" && BUGS && BUGS.tickets && BUGS.tickets.some(function(x){ return x.team===TEAM; }));
     BUILTIN_HIDDEN = { dev: !_devUsed, bugs: !_bugsUsed };
   }
@@ -4578,6 +4589,11 @@ function noteRecent(){
 function rankByRecent(items, keyFn){
   const rank = k => { const i = RECENT.indexOf(k); return i<0 ? 1e9 : i; };
   return items.map((it,i)=>[it,i]).sort((a,b)=> (rank(keyFn(a[0]))-rank(keyFn(b[0]))) || (a[1]-b[1])).map(x=>x[0]);
+}
+function devBoardIsEmpty(){
+  if(!DEV) return true;
+  const sp = (DEV.spaces||[]).length, spr = (DEV.sprints||[]).length, cd = (DEV.cards||[]).length;
+  return sp===0 && spr===0 && cd===0;
 }
 function csIsActive(cs){
   return cs.type==="bugs" ? (view==="cbugs" && activeCspace===cs.id)
@@ -10743,6 +10759,9 @@ function renderAll(){
       try{ if(typeof teamBugs==="function" && teamBugs().length){ BUILTIN_HIDDEN.bugs = false; } }catch(_){ }
     }
     // bounce off a hidden built-in
+    // an empty Development board (no dev spaces, no sprints, no cards) is dead weight —
+    // treat it as hidden so it can't linger in the sidebar after everything was deleted.
+    if(!BUILTIN_HIDDEN.dev && devBoardIsEmpty()){ BUILTIN_HIDDEN.dev = true; }
     if(view==="dev" && BUILTIN_HIDDEN.dev){ view = "roadmap"; defaultView(); }
     if(view==="bugs" && BUILTIN_HIDDEN.bugs){
       const tb = (CSPACES.list||[]).find(x=>x.id===BUGS_DEFAULT_BOARD && x.type==="bugs") || (CSPACES.list||[]).find(x=>x.type==="bugs");
