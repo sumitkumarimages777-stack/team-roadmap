@@ -2183,6 +2183,38 @@ body{margin:0}
 .strat-go{border:1px solid #C9A227;background:#fff;color:#8A6A12;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans);flex:none}
 .strat-go:hover{background:#FFF4CF}
 
+/* ===== Our Product: auto map ===== */
+.pp-modetg{display:inline-flex;gap:4px;background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:3px;margin-bottom:18px}
+.pp-mode{border:none;background:none;border-radius:99px;padding:6px 15px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
+.pp-mode.on{background:var(--indigo);color:#fff}
+.ppmap-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+.ppmap-legend span{display:inline-flex;align-items:center;gap:6px}
+.ppmap-legend i,.ppmap-dots i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.d-live{background:var(--done,#1F845A)}.d-dev{background:var(--progress,#B65C02)}.d-idea{background:var(--line-strong,#8993A4)}
+.ppmap-tot{margin-left:auto;font-family:var(--mono);font-size:11px}
+.ppmap-scroll{overflow-x:auto;padding:10px 0 20px}
+.ppmap{display:inline-block;min-width:100%;text-align:center}
+.ppmap ul{display:flex;justify-content:center;gap:16px;list-style:none;margin:0;padding:28px 0 0;position:relative}
+.ppmap > ul{padding-top:0}
+.ppmap li{position:relative;padding:28px 8px 0;text-align:center}
+.ppmap li::before,.ppmap li::after{content:"";position:absolute;top:0;height:28px;width:50%;border-top:2px solid var(--line-strong)}
+.ppmap li::before{right:50%;border-right:2px solid var(--line-strong)}
+.ppmap li::after{left:50%}
+.ppmap li:only-child::before,.ppmap li:only-child::after{width:50%}
+.ppmap li:first-child::before,.ppmap li:last-child::after{border:0}
+.ppmap li:last-child::before{border-right:2px solid var(--line-strong)}
+.ppmap ul ul::before{content:"";position:absolute;top:0;left:50%;height:28px;border-left:2px solid var(--line-strong)}
+.ppmap > ul > li::before,.ppmap > ul > li::after{display:none}
+.ppmap-node{display:inline-flex;flex-direction:column;gap:4px;min-width:150px;max-width:230px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--indigo);border-radius:12px;padding:11px 13px;text-align:left;cursor:pointer;vertical-align:top}
+.ppmap-node:hover{border-color:var(--indigo);box-shadow:0 4px 14px rgba(9,30,66,.10)}
+.ppmap-node.root{border-top-color:#111;background:linear-gradient(180deg,#fff,#F4F5FF)}
+.ppmap-node.d1{border-top-color:#2563EB}.ppmap-node.d2{border-top-color:#0EA5A5}.ppmap-node.d3{border-top-color:#8B5CF6}
+.ppmap-tier{font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.ppmap-name{font-weight:700;font-size:13px;line-height:1.35;color:var(--ink)}
+.ppmap-desc{font-size:11px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ppmap-dots{display:inline-flex;align-items:center;gap:4px;margin-top:2px}
+.ppmap-dots b{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:700;margin-left:2px}
+
 </style>
 </head>
 <body>
@@ -11321,6 +11353,7 @@ const PP_TIERS = [
   { w:"sub-module", p:"sub-modules", c:"Sub-modules", ph:"e.g. a smaller piece of this module" }
 ];
 function ppTier(depth){ return PP_TIERS[Math.max(0, Math.min(depth|0, PP_TIERS.length-1))]; }
+let ppView2 = "browse";   // "browse" | "map"
 
 function ppid(){ return "p-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
 function ppEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -11339,6 +11372,67 @@ function normalizeProduct(p){
   return { desc:p.desc?String(p.desc):"", children:Array.isArray(p.children)?p.children.map(nd):[] };
 }
 
+function ppSetView(v){ ppView2 = v; renderProductPage(); }
+function ppFeatCounts(n){
+  var c = {live:0, dev:0, idea:0, total:0};
+  (function walk(x){
+    (x.features||[]).forEach(function(f){ c.total++; c[f.status] = (c[f.status]||0)+1; });
+    (x.children||[]).forEach(walk);
+  })(n);
+  return c;
+}
+function ppPathTo(id){
+  var out = null;
+  (function walk(nodes, path){
+    (nodes||[]).forEach(function(n){
+      var p = path.concat([n.id]);
+      if(n.id===id){ out = p; return; }
+      walk(n.children, p);
+    });
+  })((PRODUCT&&PRODUCT.children)||[], []);
+  return out || [];
+}
+function ppMapOpen(id){ productPath = ppPathTo(id); ppView2 = "browse"; renderProductPage(); }
+function ppMapNode(n, depth){
+  var tier = ppTier(depth).w;
+  var kids = n.children || [];
+  var fc = ppFeatCounts(n);
+  var dots = "";
+  if(fc.total){
+    dots = '<span class="ppmap-dots">'
+      + (fc.live?'<i class="d-live" title="'+fc.live+' live"></i>':'')
+      + (fc.dev?'<i class="d-dev" title="'+fc.dev+' in development"></i>':'')
+      + (fc.idea?'<i class="d-idea" title="'+fc.idea+' in ideation"></i>':'')
+      + '<b>'+fc.total+'</b></span>';
+  }
+  var h = '<li><div class="ppmap-node d'+Math.min(depth,3)+'" onclick="ppMapOpen(\''+n.id+'\')" title="Open '+ppEsc(n.name)+'">'
+    + '<span class="ppmap-tier">'+ppEsc(tier)+'</span>'
+    + '<span class="ppmap-name">'+ppEsc(n.icon||"")+' '+ppEsc(n.name)+'</span>'
+    + (n.desc?'<span class="ppmap-desc">'+ppEsc(n.desc)+'</span>':'')
+    + dots
+    + '</div>';
+  if(kids.length){
+    h += '<ul>' + kids.map(function(k){ return ppMapNode(k, depth+1); }).join("") + '</ul>';
+  }
+  return h + '</li>';
+}
+function ppMapHTML(){
+  var roots = (PRODUCT && PRODUCT.children) || [];
+  if(!roots.length){
+    return '<div class="empty">Nothing to map yet — add your first category in Browse.</div>';
+  }
+  var total = ppFeatCounts({children:roots, features:[]});
+  var legend = '<div class="ppmap-legend">'
+    + '<span><i class="d-live"></i> Live</span><span><i class="d-dev"></i> In development</span><span><i class="d-idea"></i> Ideation</span>'
+    + '<span class="ppmap-tot">'+total.total+' feature(s) across the product</span></div>';
+  var rootName = (typeof TEAMS!=="undefined" && TEAMS[TEAM] && TEAMS[TEAM].name) ? TEAMS[TEAM].name : "Our Product";
+  return legend
+    + '<div class="ppmap-scroll"><div class="ppmap"><ul><li>'
+    + '<div class="ppmap-node root"><span class="ppmap-tier">product</span><span class="ppmap-name">📦 '+ppEsc(rootName)+'</span>'
+    + ((PRODUCT&&PRODUCT.desc)?'<span class="ppmap-desc">'+ppEsc(PRODUCT.desc)+'</span>':'')+'</div>'
+    + '<ul>' + roots.map(function(r){ return ppMapNode(r, 0); }).join("") + '</ul>'
+    + '</li></ul></div></div>';
+}
 function productNodeAt(pathArr){
   var node = { id:"__root__", name:"Our Product", icon:"📦", desc:(PRODUCT&&PRODUCT.desc)||"", children:(PRODUCT&&PRODUCT.children)||[], __root:true };
   var arr = pathArr||[];
@@ -11390,13 +11484,23 @@ function renderProductPage(){
   }
   $("pp-bc").innerHTML = bc;
 
+  // Browse | Map toggle
+  var _tg = '<div class="pp-modetg">'
+    + '<button class="pp-mode'+(ppView2==="browse"?" on":"")+'" onclick="ppSetView(\'browse\')">Browse</button>'
+    + '<button class="pp-mode'+(ppView2==="map"?" on":"")+'" onclick="ppSetView(\'map\')">🗺 Map</button>'
+    + '</div>';
+  if(ppView2==="map"){
+    $("pp-main").innerHTML = _tg + ppMapHTML();
+    return;
+  }
+
   var childWord = ppTier(depth).w;
   var childCap  = ppTier(depth).c;
   // three-tier model: Categories (d0) -> Solutions (d1) -> features+flow (d2+).
   // Boxes are only added at category/solution levels; features & flow only at solution level.
   var allowChildren = depth <= 1;
   var allowContent  = depth >= 2;
-  var html = "";
+  var html = _tg;
 
   // head
   html += '<div class="pp-head"><div class="pp-ttl">';
