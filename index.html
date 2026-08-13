@@ -2158,6 +2158,17 @@ body{margin:0}
 .soc-ev.soc-ev-dragging{opacity:.45}
 .dt-row.dt-nostate{grid-template-columns:minmax(220px,2.4fr) 62px minmax(150px,1.4fr) minmax(100px,1fr) minmax(70px,auto)}
 .soc-card-n{margin-top:5px;font-size:11.5px;line-height:1.5;color:var(--muted);white-space:pre-wrap}
+/* ===== space -> OKR link ===== */
+.ws-okr{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid var(--line);background:linear-gradient(180deg,#F7F8FF,#EEF1FF);border-radius:10px;padding:9px 11px;margin:2px 0 6px;cursor:pointer;font-family:var(--sans)}
+.ws-okr:hover{border-color:var(--indigo)}
+.ws-okr-ic{font-size:13px;flex:none}
+.ws-okr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.ws-okr-t{font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-okr-bar{height:4px;border-radius:99px;background:var(--line);overflow:hidden}
+.ws-okr-bar i{display:block;height:100%}
+.ws-okr-pct{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--indigo);flex:none}
+#csokr-dialog .field select{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:9px;font:inherit;color:var(--ink)}
+
 </style>
 </head>
 <body>
@@ -2238,6 +2249,18 @@ body{margin:0}
   </div>
 </div>
 
+<div class="overlay" id="csokr-dialog" style="z-index:475">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3 id="csokr-title">Link this space to an OKR</h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:14px">Show the team what this board is actually for. The objective appears at the top of the space, with live progress.</div>
+      <div class="field"><label for="csokr-cycle">Cycle</label><select id="csokr-cycle"></select></div>
+      <div class="field"><label for="csokr-obj">Objective</label><select id="csokr-obj"></select></div>
+      <div class="field"><label for="csokr-kr">Key result (optional)</label><select id="csokr-kr"></select></div>
+    </div>
+    <div class="btns"><button class="mt-del" id="csokr-unlink">Unlink</button><button class="btn" id="csokr-cancel">Cancel</button><button class="btn save" id="csokr-save">Link</button></div>
+  </div>
+</div>
 <div class="overlay" id="okrperm-dialog" style="z-index:474">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
     <h3 id="okrperm-title">Permissions</h3>
@@ -3104,6 +3127,85 @@ function spaceViewAllowed(){
   const cs = (CSPACES.list||[]).find(x=>x.id===activeCspace);
   if(!cs) return true;
   return canViewSpace(csRef(cs));
+}
+/* ---------- link a space to an OKR ---------- */
+let csOkrId = null;
+function csOkrCycles(){ return (OKRS && OKRS.cycles) ? OKRS.cycles : []; }
+function csOkrResolve(cs){
+  if(!cs || !cs.okr) return null;
+  const cyc = csOkrCycles().find(c=>c.key===cs.okr.cycle);
+  if(!cyc) return null;
+  const ob = (cyc.objectives||[]).find(o=>o.id===cs.okr.objective);
+  if(!ob) return null;
+  const kr = (cs.okr.kr!=null && ob.krs) ? ob.krs[cs.okr.kr] : null;
+  return { cyc, ob, kr };
+}
+function csOkrPct(link){
+  if(!link) return 0;
+  if(link.kr) return krPct(link.kr);
+  return (typeof objRollupPct==="function") ? objRollupPct(link.ob) : objPct(link.ob);
+}
+function csOkrOpen(cs){
+  csOkrId = cs.id;
+  const cycles = csOkrCycles();
+  const cySel = $("csokr-cycle");
+  cySel.innerHTML = cycles.length ? cycles.map(c=>'<option value="'+c.key+'">'+mtEsc(c.name)+'</option>').join("") : '<option value="">No cycles yet</option>';
+  if(cs.okr && cs.okr.cycle) cySel.value = cs.okr.cycle;
+  csOkrFillObjectives(cs);
+  cySel.onchange = ()=> csOkrFillObjectives(null);
+  $("csokr-obj").onchange = ()=> csOkrFillKrs(null);
+  $("csokr-unlink").style.display = cs.okr ? "inline" : "none";
+  $("csokr-dialog").classList.add("show");
+}
+function csOkrFillObjectives(cs){
+  const cyc = csOkrCycles().find(c=>c.key===$("csokr-cycle").value);
+  const objs = cyc ? (cyc.objectives||[]) : [];
+  $("csokr-obj").innerHTML = objs.length ? objs.map(o=>'<option value="'+o.id+'">'+mtEsc(o.title)+'</option>').join("") : '<option value="">No objectives in this cycle</option>';
+  if(cs && cs.okr && cs.okr.objective) $("csokr-obj").value = cs.okr.objective;
+  csOkrFillKrs(cs);
+}
+function csOkrFillKrs(cs){
+  const cyc = csOkrCycles().find(c=>c.key===$("csokr-cycle").value);
+  const ob = cyc ? (cyc.objectives||[]).find(o=>o.id===$("csokr-obj").value) : null;
+  const krs = ob ? (ob.krs||[]) : [];
+  $("csokr-kr").innerHTML = '<option value="">\u2014 whole objective \u2014</option>' + krs.map((k,i)=>'<option value="'+i+'">'+mtEsc(k.title)+'</option>').join("");
+  if(cs && cs.okr && cs.okr.kr!=null) $("csokr-kr").value = String(cs.okr.kr);
+}
+function csOkrClose(){ $("csokr-dialog").classList.remove("show"); csOkrId = null; }
+function csOkrSave(){
+  const cs = (CSPACES.list||[]).find(x=>x.id===csOkrId);
+  if(!cs){ csOkrClose(); return; }
+  const cycle = $("csokr-cycle").value, objective = $("csokr-obj").value, krv = $("csokr-kr").value;
+  if(!cycle || !objective){ toast("Pick a cycle and an objective first"); return; }
+  cs.okr = { cycle, objective };
+  if(krv!=="") cs.okr.kr = parseInt(krv,10);
+  csOkrClose(); renderAll(); pushAll(); toast("Linked to the objective");
+}
+function csOkrUnlink(){
+  const cs = (CSPACES.list||[]).find(x=>x.id===csOkrId);
+  if(cs) delete cs.okr;
+  csOkrClose(); renderAll(); pushAll(); toast("Unlinked");
+}
+function csOkrGoto(cs){
+  const link = csOkrResolve(cs);
+  if(!link){ toast("That objective no longer exists"); return; }
+  view = "okr"; activeCycle = link.cyc.key; okrView2 = "list";
+  renderAll();
+  setTimeout(()=>{ const el = document.getElementById("obj-"+link.ob.id); if(el && el.scrollIntoView) el.scrollIntoView({block:"center"}); }, 60);
+}
+function csOkrChip(cs){
+  const link = csOkrResolve(cs);
+  if(!link) return null;
+  const p = csOkrPct(link);
+  const b = document.createElement("button");
+  b.className = "ws-okr";
+  b.title = "Working toward: "+link.ob.title+(link.kr? " \u2014 "+link.kr.title : "")+" \u2014 click to open in OKRs";
+  b.innerHTML = '<span class="ws-okr-ic">\uD83C\uDFAF</span>'
+    + '<span class="ws-okr-main"><span class="ws-okr-t">'+mtEsc(link.kr ? link.kr.title : link.ob.title)+'</span>'
+    + '<span class="ws-okr-bar"><i style="width:'+p+'%;background:'+scoreColor(p)+'"></i></span></span>'
+    + '<span class="ws-okr-pct">'+p+'%</span>';
+  b.onclick = ()=> csOkrGoto(cs);
+  return b;
 }
 function csRef(cs){
   return { key:"cs:"+cs.id, obj:cs, name:cs.name };
@@ -4295,6 +4397,10 @@ $("f-photos").addEventListener("change", async e=>{
   }
 });
 $("dlg-cancel").onclick = ()=> $("overlay").classList.remove("show");
+if($("csokr-cancel")) $("csokr-cancel").onclick = csOkrClose;
+if($("csokr-save")) $("csokr-save").onclick = csOkrSave;
+if($("csokr-unlink")) $("csokr-unlink").onclick = csOkrUnlink;
+if($("csokr-dialog")) $("csokr-dialog").onclick = function(e){ if(e.target.id==="csokr-dialog") csOkrClose(); };
 if($("okrperm-cancel")) $("okrperm-cancel").onclick = okrPermClose;
 if($("okrperm-save")) $("okrperm-save").onclick = okrPermSave;
 if($("okrperm-dialog")) $("okrperm-dialog").onclick = function(e){ if(e.target.id==="okrperm-dialog") okrPermClose(); };
@@ -11015,6 +11121,7 @@ function renderAll(){
             {label:"Set background", onClick:()=> openBgPicker({key:"cs:"+cs.id, obj:cs, name:cs.name})},
           ];
           if(cs.type==="pdt") _items.push({label:"Board mapping", onClick:()=>{ view="pdt"; activeCspace=cs.id; pdtView="mapping"; renderAll(); }});
+          _items.push({label: cs.okr ? "Change linked OKR\u2026" : "Link to an OKR\u2026", onClick:()=> csOkrOpen(cs)});
           _items.push({label:"Delete\u2026", danger:true, onClick: doDelete});
           openRowMenu(menu, _items); };
           b.appendChild(menu);
@@ -11044,6 +11151,8 @@ function renderAll(){
           });
         }
         ws.appendChild(b);
+        /* what this space is for: the linked objective sits above its sections */
+        if(csIsActive(cs) && cs.okr){ const _ok = csOkrChip(cs); if(_ok) ws.appendChild(_ok); }
         /* Social Media space: three sub-sections in the sidebar */
         if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
           [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
