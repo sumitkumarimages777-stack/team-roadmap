@@ -3134,7 +3134,7 @@ function defaultView(){
   // entering a team lands on the first module space (Product roadmap container is gone)
   if(DATA.modules && DATA.modules.length){ view = "roadmap"; activeModule = firstModuleKey(); return; }
   // otherwise land on the first real space this team actually has
-  const _cs = (CSPACES && CSPACES.list) ? CSPACES.list : [];
+  const _cs = (CSPACES && CSPACES.list) ? CSPACES.list.filter(function(c){ try{ return canViewSpace(csRef(c)); }catch(_){ return true; } }) : [];
   const _first = _cs[0];
   if(_first){ navToSpace(_first); return; }
   const _rm = (RMAPS && RMAPS.maps) ? RMAPS.maps[0] : null;
@@ -11107,19 +11107,19 @@ function renderAll(){
   else if(view==="disc"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
-    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
+    if(!spaceViewAllowed()) { activeCspace = null; view = "roadmap"; defaultView(); if(view==="disc"){ view = "okr"; } renderAll(); return; }
     renderContentDisc();
   }
   else if(view==="social"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
-    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
+    if(!spaceViewAllowed()) { activeCspace = null; view = "roadmap"; defaultView(); if(view==="social"){ view = "okr"; } renderAll(); return; }
     renderContentSocial();
   }
   else if(view==="pdt"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
-    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
+    if(!spaceViewAllowed()) { activeCspace = null; view = "roadmap"; defaultView(); if(view==="pdt"){ view = "okr"; } renderAll(); return; }
     renderContentPdt();
   }
   else if(view==="csnode"){
