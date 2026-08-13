@@ -2194,18 +2194,18 @@ body{margin:0}
 .ppmap-tot{margin-left:auto;font-family:var(--mono);font-size:11px}
 .ppmap-scroll{overflow-x:auto;padding:10px 0 20px}
 .ppmap{display:inline-block;min-width:100%;text-align:center}
-.ppmap ul{display:flex;justify-content:center;gap:16px;list-style:none;margin:0;padding:28px 0 0;position:relative}
+.ppmap ul{display:flex;justify-content:center;gap:34px;list-style:none;margin:0;padding:30px 0 0;position:relative}
 .ppmap > ul{padding-top:0}
-.ppmap li{position:relative;padding:28px 8px 0;text-align:center}
-.ppmap li::before,.ppmap li::after{content:"";position:absolute;top:0;height:28px;width:50%;border-top:2px solid var(--line-strong)}
-.ppmap li::before{right:50%;border-right:2px solid var(--line-strong)}
+.ppmap li{position:relative;padding:30px 20px 0;text-align:center}
+.ppmap li::before,.ppmap li::after{content:"";position:absolute;top:0;height:30px;width:50%;border-top:2px solid #111}
+.ppmap li::before{right:50%;border-right:2px solid #111}
 .ppmap li::after{left:50%}
 .ppmap li:only-child::before,.ppmap li:only-child::after{width:50%}
 .ppmap li:first-child::before,.ppmap li:last-child::after{border:0}
-.ppmap li:last-child::before{border-right:2px solid var(--line-strong)}
-.ppmap ul ul::before{content:"";position:absolute;top:0;left:50%;height:28px;border-left:2px solid var(--line-strong)}
+.ppmap li:last-child::before{border-right:2px solid #111}
+.ppmap ul ul::before{content:"";position:absolute;top:0;left:50%;height:30px;border-left:2px solid #111}
 .ppmap > ul > li::before,.ppmap > ul > li::after{display:none}
-.ppmap-node{display:inline-flex;flex-direction:column;gap:4px;min-width:150px;max-width:230px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--indigo);border-radius:12px;padding:11px 13px;text-align:left;cursor:pointer;vertical-align:top}
+.ppmap-node{display:inline-flex;flex-direction:column;gap:4px;min-width:158px;max-width:230px;margin:0 4px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--indigo);border-radius:12px;padding:11px 13px;text-align:left;cursor:pointer;vertical-align:top}
 .ppmap-node:hover{border-color:var(--indigo);box-shadow:0 4px 14px rgba(9,30,66,.10)}
 .ppmap-node.root{border-top-color:#111;background:linear-gradient(180deg,#fff,#F4F5FF)}
 .ppmap-node.d1{border-top-color:#2563EB}.ppmap-node.d2{border-top-color:#0EA5A5}.ppmap-node.d3{border-top-color:#8B5CF6}
@@ -2233,6 +2233,11 @@ body{margin:0}
 .kr-own{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--indigo);background:var(--indigo-soft,#EEF1FF);border-radius:99px;padding:2px 8px;vertical-align:middle}
 .strat-x{border:none;background:none;color:#8A6A12;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.65;flex:none}
 .strat-x:hover{opacity:1}
+.pp-addmod{margin:10px 0 0;border:1px dashed var(--line-strong);background:none;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.pp-addmod:hover{border-color:var(--indigo);color:var(--indigo)}
+.pp-delmod{margin-left:10px;color:var(--muted);cursor:pointer;font-size:14px}
+.pp-delmod:hover{color:#C0362C}
+.pp-emptymod td{color:var(--muted);font-style:italic;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -11407,6 +11412,7 @@ function normalizeProduct(p){
     icon:n.icon?String(n.icon):"",
     desc:n.desc?String(n.desc):"",
     children:Array.isArray(n.children)?n.children.map(nd):[],
+    modules:Array.isArray(n.modules)?n.modules.map(function(m){ return String(m||"").trim(); }).filter(Boolean):[],
     features:Array.isArray(n.features)?n.features.map(function(f){ f=f||{}; var st=(f.status==="live"||f.status==="dev"||f.status==="idea")?f.status:"idea"; return {module:f.module?String(f.module):"General",feat:f.feat?String(f.feat):"",who:f.who?String(f.who):"",solves:f.solves?String(f.solves):"",status:st}; }):[],
     flow:(n.flow&&Array.isArray(n.flow.steps))?{steps:n.flow.steps.map(function(s){ s=s||{}; return {t:s.t?String(s.t):"",tag:s.tag?String(s.tag):""}; }),loop:n.flow.loop?String(n.flow.loop):""}:null
   }; }
@@ -11530,7 +11536,28 @@ function ppInsideChips(n, childrenDepth){
   if(!a.length) a.push("Empty");
   return a;
 }
-function ppModulesOf(node){ var m=[]; (node.features||[]).forEach(function(f){ var x=f.module||"General"; if(m.indexOf(x)<0) m.push(x); }); return m; }
+function ppModulesOf(node){
+  var m=[];
+  (node.modules||[]).forEach(function(x){ x=String(x||"").trim(); if(x && m.indexOf(x)<0) m.push(x); });
+  (node.features||[]).forEach(function(f){ var x=f.module||"General"; if(m.indexOf(x)<0) m.push(x); });
+  return m;
+}
+function ppAddModule(nodeId){
+  var node = ppNodeById(nodeId); if(!node) return;
+  var name = window.prompt("New module name:", "");
+  if(name===null) return;
+  name = String(name).trim(); if(!name) return;
+  node.modules = node.modules || [];
+  if(ppModulesOf(node).indexOf(name)>=0){ toast("That module already exists"); return; }
+  node.modules.push(name); ppCommit();
+}
+function ppDeleteModule(nodeId, encMod){
+  var node = ppNodeById(nodeId); if(!node) return;
+  var m = decodeURIComponent(encMod);
+  if((node.features||[]).some(function(f){ return (f.module||"General")===m; })){ toast("Remove its features first"); return; }
+  node.modules = (node.modules||[]).filter(function(x){ return x!==m; });
+  ppCommit();
+}
 
 /* ---------- open / navigate ---------- */
 function openProduct(){ productPath=[]; productFilter="all"; renderProductPage(); $("product-page").style.display="block"; window.scrollTo(0,0); }
@@ -11622,15 +11649,21 @@ function renderProductPage(){
 
 function ppFeaturesHTML(node, admin){
   // This page is how we SHOW the product — no build-status column or filters here.
-  var mods=[]; node.features.forEach(function(f){ var m=f.module||"General"; if(mods.indexOf(m)<0) mods.push(m); });
+  var mods = ppModulesOf(node);
   var h = '<div class="pp-section"><div class="pp-tblhead"><div class="pp-eyebrow" style="margin:0">Features — by module</div></div>';
   h += '<div class="pp-tbl-wrap"><table class="pp-tbl pp-sheet"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
   var zeb=0;
   mods.forEach(function(m){
     var idxs=[];
     node.features.forEach(function(f,i){ if((f.module||"General")===m) idxs.push(i); });
-    if(!idxs.length) return;
-    h += '<tr class="pp-modrow"><td colspan="'+(admin?4:3)+'">'+ppEsc(m)+(admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')+'</td></tr>';
+    if(!idxs.length && !admin) return;               // empty modules are only useful while editing
+    h += '<tr class="pp-modrow"><td colspan="'+(admin?4:3)+'">'+ppEsc(m)
+       + (admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')
+       + ((admin && !idxs.length)?'<span class="pp-delmod" title="Remove this empty module" onclick="ppDeleteModule(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">×</span>':'')
+       + '</td></tr>';
+    if(!idxs.length){
+      h += '<tr class="pp-emptymod"><td colspan="'+(admin?4:3)+'">No features in this module yet.</td></tr>';
+    }
     idxs.forEach(function(i){
       var f=node.features[i];
       var alt = (zeb++ % 2) ? ' pp-alt' : '';
@@ -11640,7 +11673,9 @@ function ppFeaturesHTML(node, admin){
         + '</tr>';
     });
   });
-  h += '</tbody></table><div class="pp-tblfoot"><span><b>'+node.features.length+'</b> feature(s)</span></div></div></div>';
+  h += '</tbody></table>';
+  if(admin) h += '<button class="pp-addmod" onclick="ppAddModule(\''+node.id+'\')">＋ Add module</button>';
+  h += '<div class="pp-tblfoot"><span><b>'+node.features.length+'</b> feature(s) in '+mods.length+' module(s)</span></div></div></div>';
   return h;
 }
 
@@ -11701,13 +11736,11 @@ function ppRootFormHTML(v){
 }
 function ppFeatureFormHTML(v, mods){
   v=v||{};
-  var opt=[["live","Live"],["dev","Under development"],["idea","Under ideation"]].map(function(o){ return '<option value="'+o[0]+'"'+(v.status===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join("");
   var dl=(mods||[]).map(function(m){ return '<option value="'+ppEsc(m)+'"></option>'; }).join("");
   return '<div class="field"><label>Module</label><input id="pp-f-mod" type="text" list="pp-modlist" value="'+ppEsc(v.module||"")+'" placeholder="e.g. Practice Engine"><datalist id="pp-modlist">'+dl+'</datalist></div>'
    + '<div class="field"><label>Feature</label><input id="pp-f-feat" type="text" value="'+ppEsc(v.feat||"")+'" placeholder="e.g. Adaptive practice"></div>'
    + '<div class="field"><label>Built for</label><input id="pp-f-who" type="text" value="'+ppEsc(v.who||"")+'" placeholder="Users / Teachers / Internal / Both"></div>'
-   + '<div class="field"><label>What it solves</label><textarea id="pp-f-solves" placeholder="The problem this solves, in one line">'+ppEsc(v.solves||"")+'</textarea></div>'
-   + '<div class="field"><label>Status</label><select id="pp-f-status">'+opt+'</select></div>';
+   + '<div class="field"><label>What it solves</label><textarea id="pp-f-solves" placeholder="The problem this solves, in one line">'+ppEsc(v.solves||"")+'</textarea></div>';
 }
 function ppStepFormHTML(v){
   v=v||{};
@@ -11756,7 +11789,7 @@ function ppAddFeature(nodeId, encMod){
   ppOpenDialog("Add feature", ppFeatureFormHTML({module:preset,status:"idea"}, ppModulesOf(node)), function(){
     var feat=$("pp-f-feat").value.trim(); if(!feat){ $("pp-f-feat").focus(); return; }
     node.features = node.features || [];
-    node.features.push({ module:$("pp-f-mod").value.trim()||"General", feat:feat, who:$("pp-f-who").value.trim(), solves:$("pp-f-solves").value.trim(), status:$("pp-f-status").value });
+    node.features.push({ module:$("pp-f-mod").value.trim()||"General", feat:feat, who:$("pp-f-who").value.trim(), solves:$("pp-f-solves").value.trim(), status:"idea" });
     ppCloseDialog(); ppCommit();
   });
 }
@@ -11766,7 +11799,7 @@ function ppEditFeature(nodeId, idx){
   var danger = '<button onclick="ppDeleteFeature(\''+nodeId+'\','+idx+')">Delete feature</button>';
   ppOpenDialog("Edit feature", ppFeatureFormHTML(f, ppModulesOf(node)), function(){
     var feat=$("pp-f-feat").value.trim(); if(!feat){ $("pp-f-feat").focus(); return; }
-    f.module=$("pp-f-mod").value.trim()||"General"; f.feat=feat; f.who=$("pp-f-who").value.trim(); f.solves=$("pp-f-solves").value.trim(); f.status=$("pp-f-status").value;
+    f.module=$("pp-f-mod").value.trim()||"General"; f.feat=feat; f.who=$("pp-f-who").value.trim(); f.solves=$("pp-f-solves").value.trim();
     ppCloseDialog(); ppCommit();
   }, danger);
 }
