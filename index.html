@@ -2102,6 +2102,38 @@ body{margin:0}
 .dz-del:hover:not(:disabled){filter:brightness(1.08)}
 .dz-del:disabled{opacity:.4;cursor:not-allowed}
 
+/* ===== Content culture sticky note ===== */
+.soc-culture{position:relative;margin:6px 0 20px;max-width:420px;padding:22px 20px 18px;
+  background:linear-gradient(160deg,#FFF7CC 0%,#FFE9A8 100%);
+  border:1px solid #F0D986;border-radius:4px 4px 14px 14px;
+  box-shadow:0 8px 20px rgba(146,110,20,.18), inset 0 -18px 26px rgba(255,255,255,.35);
+  transform:rotate(-1.1deg)}
+.soc-culture.editable{cursor:pointer}
+.soc-culture.editable:hover{transform:rotate(-0.3deg) translateY(-2px);box-shadow:0 12px 26px rgba(146,110,20,.24)}
+.soc-pin{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:24px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.soc-culture-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#8A6A12;margin-bottom:8px}
+.soc-culture-b{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",var(--sans);font-size:16px;line-height:1.65;color:#4A3A08;white-space:pre-wrap}
+.soc-culture-b.ph{opacity:.55;font-style:italic}
+/* ===== schedule bucket ===== */
+.soc-bucket{display:flex;flex-direction:column;gap:8px}
+.soc-bkrow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--indigo);border-radius:10px;padding:11px 13px}
+.soc-bktitle{flex:1;font-size:13.5px;font-weight:600;color:var(--ink)}
+.soc-bkacts{display:flex;gap:6px}
+.soc-bkbtn{border:1px solid var(--line-strong);background:var(--card);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted);font-family:var(--sans)}
+.soc-bkbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+.soc-bkbtn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
+.soc-bkbtn.primary:hover{filter:brightness(1.07);color:#fff}
+/* ===== send-to buttons ===== */
+.disc-toproc{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:3px 10px;font-size:10.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.disc-toproc:hover{border-color:var(--indigo);color:var(--indigo)}
+.disc-toproc.done{border-color:var(--done);color:var(--done)}
+.soc-schedrow{margin-top:9px}
+.soc-schedbtn{border:1px dashed var(--line-strong);background:none;border-radius:8px;padding:4px 10px;font-size:10.5px;font-weight:600;color:var(--muted);cursor:pointer;width:100%;text-align:left;font-family:var(--sans)}
+.soc-schedbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+.soc-schedbtn.on{border-style:solid;border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft,#EEF1FF)}
+.soc-scheddone{font-size:10.5px;font-weight:700;color:var(--done)}
+.soc-ev-time{font-family:var(--mono);font-size:9.5px;color:var(--indigo)}
+
 </style>
 </head>
 <body>
@@ -2750,6 +2782,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="field-row" id="f-pd-row" style="gap:12px">
       <div class="field" id="f-priority-wrap" style="flex:1"><label for="f-priority">Priority</label><select id="f-priority"><option value="">None</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
       <div class="field" id="f-startdate-wrap" style="flex:1;display:none"><label for="f-startdate">Start date</label><input type="date" id="f-startdate"></div>
+      <div class="field" id="f-time-wrap" style="flex:1;display:none"><label for="f-time">Time</label><input type="time" id="f-time"></div>
       <div class="field" id="f-duedate-wrap" style="flex:1"><label for="f-duedate">Due date</label><input type="date" id="f-duedate"></div>
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
@@ -3303,6 +3336,7 @@ function normalizeCspaces(c){
       x.events = x.events || [];
       x.cards.forEach(c=>{ if(!c.id) c.id="sc-"+Math.random().toString(36).slice(2,8); if(!SOC_COLS.some(k=>k.key===c.col)) c.col="todo"; });
       x.events.forEach(e=>{ if(!e.id) e.id="se-"+Math.random().toString(36).slice(2,8); });
+      x.culture = typeof x.culture==="string" ? x.culture : "";
     }
     if(x.type === "discovery" || x.type === "social" || x.type === "pdt"){
       x.ideas = x.ideas || [];
@@ -4054,8 +4088,9 @@ function openDialog(title, values, onSave, opts={}){
     $("f-assignee-search").oninput = ()=> draw($("f-assignee-search").value);
     $("f-assignee-search").onfocus = ()=> draw($("f-assignee-search").value);
   }
-  $("f-pd-row").style.display = (opts.priority||opts.duedate||opts.startdate) ? "flex" : "none";
+  $("f-pd-row").style.display = (opts.priority||opts.duedate||opts.startdate||opts.time) ? "flex" : "none";
   if($("f-startdate-wrap")){ $("f-startdate-wrap").style.display = opts.startdate ? "" : "none"; $("f-startdate").value = values.startdate || ""; }
+  if($("f-time-wrap")){ $("f-time-wrap").style.display = opts.time ? "" : "none"; $("f-time").value = values.time || ""; }
   $("f-priority-wrap").style.display = opts.priority ? "" : "none";
   $("f-priority").value = values.priority || "";
   $("f-duedate-wrap").style.display = opts.duedate ? "" : "none";
@@ -4199,6 +4234,7 @@ $("dlg-save").onclick = ()=>{
     channel: ($("f-channel") && $("f-channel-wrap") && $("f-channel-wrap").style.display!=="none") ? $("f-channel").value : "",
     duedate: $("f-duedate") ? $("f-duedate").value : "",
     startdate: ($("f-startdate") && $("f-startdate-wrap") && $("f-startdate-wrap").style.display!=="none") ? $("f-startdate").value : "",
+    time: ($("f-time") && $("f-time-wrap") && $("f-time-wrap").style.display!=="none") ? $("f-time").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
     level: $("f-level") ? $("f-level").value : "",
@@ -10030,6 +10066,30 @@ function renderContentSocial(){
 }
 
 /* ---------- Content Process: kanban ---------- */
+function socIdeaToProcess(cs, idea){
+  cs.cards = cs.cards || [];
+  if(cs.cards.some(c=>c.fromIdea===idea.id)){ toast("Already in Content Process"); return; }
+  const card = { id:"sc-"+Date.now().toString(36), title:idea.title, col:"todo", fromIdea:idea.id };
+  if(idea.note) card.note = idea.note;
+  cs.cards.push(card);
+  saveSocial(); toast("Sent to Content Process → To Do");
+}
+function socToBucket(cs, card){
+  card.bucket = true;
+  saveSocial(); toast("Added to the Schedule bucket");
+}
+function socScheduleCard(cs, card){
+  openDialog("Schedule this post", {title:card.title, duedate:(new Date()).toISOString().slice(0,10), channel:card.channel||""}, v=>{
+    if(!v.duedate){ toast("Pick a date"); return; }
+    cs.events = cs.events || [];
+    const ev = { id:"se-"+Date.now().toString(36), title:(v.title||card.title), date:v.duedate, cardId:card.id };
+    if(v.time) ev.time = v.time;
+    if(v.channel) ev.channel = v.channel;
+    cs.events.push(ev);
+    card.bucket = false; card.eventId = ev.id;
+    saveSocial(); toast("Scheduled for "+v.duedate+(v.time?" at "+v.time:""));
+  }, {duedate:true, time:true, channel:true});
+}
 function socProcessPane(cs){
   const wrap = $("content");
   const block = document.createElement("section"); block.className="block";
@@ -10082,6 +10142,18 @@ function socCardEl(cs, card){
   if(card.due) meta += '<span class="soc-due">📅 '+mtEsc(card.due)+'</span>';
   el.innerHTML = '<div class="soc-card-t">'+mtEsc(card.title)+'</div>'+(meta?'<div class="soc-card-m">'+meta+'</div>':'')
     + (card.owner ? '<div class="soc-card-o">'+mtEsc(card.owner)+'</div>' : '');
+  if(editMode && !card.eventId){
+    const row=document.createElement("div"); row.className="soc-schedrow";
+    const sb=document.createElement("button"); sb.className="soc-schedbtn"+(card.bucket?" on":"");
+    sb.textContent = card.bucket ? "📅 in schedule bucket" : "📅 Send to Schedule";
+    sb.title = card.bucket ? "Waiting in the Schedule bucket — pick a day there" : "Add this to the Schedule bucket";
+    sb.onclick=e=>{ e.stopPropagation(); if(card.bucket){ socialView="schedule"; renderAll(); return; } socToBucket(cs, card); };
+    row.appendChild(sb); el.appendChild(row);
+  } else if(card.eventId){
+    const row=document.createElement("div"); row.className="soc-schedrow";
+    const done=document.createElement("span"); done.className="soc-scheddone"; done.textContent="📅 scheduled";
+    row.appendChild(done); el.appendChild(row);
+  }
   if(editMode){
     const acts = document.createElement("div"); acts.className="soc-card-acts";
     const ed = document.createElement("button"); ed.textContent="✎"; ed.title="Edit"; ed.onclick=e=>{ e.stopPropagation(); socEditCard(cs, card); };
@@ -10118,6 +10190,25 @@ function socMonthShift(n){
   saveSocialLocal();
 }
 function saveSocialLocal(){ renderAll(); }
+function socCultureNote(cs){
+  const note=document.createElement("div"); note.className="soc-culture";
+  const pin=document.createElement("div"); pin.className="soc-pin"; pin.textContent="📌"; note.appendChild(pin);
+  const t=document.createElement("div"); t.className="soc-culture-t"; t.textContent="Content culture";
+  note.appendChild(t);
+  const body=document.createElement("div"); body.className="soc-culture-b";
+  const txt=(cs.culture||"").trim();
+  body.textContent = txt || (editMode ? "Click to set your posting rhythm — e.g. 2 long videos a week, 4 shorts, post at 7 PM." : "No content culture set yet.");
+  if(!txt) body.classList.add("ph");
+  note.appendChild(body);
+  if(editMode){
+    note.classList.add("editable");
+    note.title="Click to edit";
+    note.onclick=()=>{
+      openDialog("Content culture", {note: cs.culture||""}, v=>{ cs.culture=(v.note||"").trim(); saveSocial(); }, {noteOnly:true, hideTitle:true});
+    };
+  }
+  return note;
+}
 function socSchedulePane(cs){
   const wrap = $("content");
   const block = document.createElement("section"); block.className="block";
@@ -10132,6 +10223,7 @@ function socSchedulePane(cs){
   const next = document.createElement("button"); next.className="soc-navbtn"; next.textContent="›"; next.onclick=()=>socMonthShift(1);
   nav.append(prev,lbl,next); head.appendChild(nav);
   block.appendChild(head);
+  block.appendChild(socCultureNote(cs));
 
   const cal = document.createElement("div"); cal.className="soc-cal";
   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
@@ -10149,7 +10241,7 @@ function socSchedulePane(cs){
     const dnum = document.createElement("div"); dnum.className="soc-daynum"; dnum.textContent=d; cell.appendChild(dnum);
     (cs.events||[]).filter(ev=>ev.date===iso).forEach(ev=>{
       const pill=document.createElement("div"); pill.className="soc-ev";
-      pill.innerHTML='<span class="soc-ev-t">'+mtEsc(ev.title)+'</span>'+(ev.channel?'<span class="soc-ev-c">'+mtEsc(ev.channel)+'</span>':'');
+      pill.innerHTML='<span class="soc-ev-t">'+(ev.time?'<b class="soc-ev-time">'+mtEsc(ev.time)+'</b> ':'')+mtEsc(ev.title)+'</span>'+(ev.channel?'<span class="soc-ev-c">'+mtEsc(ev.channel)+'</span>':'');
       if(editMode){
         pill.onclick=(e)=>{ e.stopPropagation(); socEditEvent(cs, ev); };
         const x=document.createElement("button"); x.className="soc-ev-del"; x.textContent="×"; x.title="Delete";
@@ -10167,23 +10259,57 @@ function socSchedulePane(cs){
   }
   block.appendChild(cal);
   wrap.appendChild(block);
+
+  // ---- ready-to-schedule bucket ----
+  const waiting = (cs.cards||[]).filter(c=> c.bucket && !c.eventId);
+  const bl=document.createElement("section"); bl.className="block";
+  const bh=document.createElement("div"); bh.className="block-head";
+  const bt=document.createElement("h2"); bt.textContent="Ready to schedule";
+  bh.appendChild(bt);
+  const bc=document.createElement("span"); bc.className="hint"; bc.style.marginLeft="10px";
+  bc.textContent=waiting.length+" item(s) waiting";
+  bh.appendChild(bc); bl.appendChild(bh);
+  if(!waiting.length){
+    const e=document.createElement("div"); e.className="empty";
+    e.textContent="Nothing waiting — send items here with “📅 Send to Schedule” on a Content Process card.";
+    bl.appendChild(e);
+  } else {
+    const list=document.createElement("div"); list.className="soc-bucket";
+    waiting.forEach(c=>{
+      const row=document.createElement("div"); row.className="soc-bkrow";
+      row.innerHTML='<span class="soc-bktitle">'+mtEsc(c.title)+'</span>'+(c.channel?'<span class="soc-chip">'+mtEsc(c.channel)+'</span>':'');
+      if(editMode){
+        const acts=document.createElement("div"); acts.className="soc-bkacts";
+        const go=document.createElement("button"); go.className="soc-bkbtn primary"; go.textContent="Pick day & time";
+        go.onclick=()=>socScheduleCard(cs, c); acts.appendChild(go);
+        const rm=document.createElement("button"); rm.className="soc-bkbtn"; rm.textContent="×"; rm.title="Remove from bucket";
+        rm.onclick=()=>{ c.bucket=false; saveSocial(); }; acts.appendChild(rm);
+        row.appendChild(acts);
+      }
+      list.appendChild(row);
+    });
+    bl.appendChild(list);
+  }
+  wrap.appendChild(bl);
 }
 function socNewEvent(cs, iso){
   openDialog("Schedule a post", {duedate:iso}, v=>{
     cs.events = cs.events || [];
     const ev = { id:"se-"+Date.now().toString(36), title:v.title, date:(v.duedate||iso) };
+    if(v.time) ev.time = v.time;
     if(v.channel) ev.channel = v.channel;
     if(v.owner) ev.owner = v.owner;
     cs.events.push(ev); saveSocial();
-  }, {duedate:true, channel:true});
+  }, {duedate:true, time:true, channel:true});
 }
 function socEditEvent(cs, ev){
-  openDialog("Edit scheduled post", {title:ev.title, duedate:ev.date, channel:ev.channel||"", owner:ev.owner||""}, v=>{
+  openDialog("Edit scheduled post", {title:ev.title, duedate:ev.date, time:ev.time||"", channel:ev.channel||"", owner:ev.owner||""}, v=>{
     ev.title=v.title; if(v.duedate) ev.date=v.duedate;
+    if(v.time) ev.time=v.time; else delete ev.time;
     if(v.channel) ev.channel=v.channel; else delete ev.channel;
     if(v.owner) ev.owner=v.owner; else delete ev.owner;
     saveSocial();
-  }, {duedate:true, channel:true});
+  }, {duedate:true, time:true, channel:true});
 }
 
 function renderContentDisc(){
@@ -10308,6 +10434,15 @@ function discRoadmapPane(cs){
         meta.appendChild(d);
       }
       meta.appendChild(commentChip(idea, saveDisc));
+      if(cs.type==="social" && editMode){
+        const already = (cs.cards||[]).some(c=>c.fromIdea===idea.id);
+        const b=document.createElement("button");
+        b.className="disc-toproc"+(already?" done":"");
+        b.textContent = already ? "✓ in Content Process" : "→ Content Process";
+        b.title = already ? "Already sent to the Content Process board" : "Send this idea to Content Process → To Do";
+        b.onclick=(e)=>{ e.stopPropagation(); if(already){ socialView="process"; renderAll(); return; } socIdeaToProcess(cs, idea); };
+        meta.appendChild(b);
+      }
       card.appendChild(meta);
       // click opens the idea editor
       t.style.cursor = "pointer";
