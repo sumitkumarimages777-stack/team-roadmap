@@ -3772,6 +3772,7 @@ async function start(){
     showBanner("Live team editing is not connected yet — changes here stay only on your screen. See README.md for the 3-minute JSONBin setup.");
   }
   renderAll();
+  try{ docOpenFromUrl(); }catch(_){ }
 }
 
 /* ---------- the landing page: pick a team or create one ---------- */
@@ -11461,6 +11462,63 @@ function docTplList(){
 }
 
 /* ----- navigation / shell ----- */
+function docLinkFor(id){
+  const u = new URL(location.href);
+  u.search = "";
+  u.searchParams.set("team", TEAM);
+  u.searchParams.set("doc", id);
+  return u.toString();
+}
+function docCopyLinkFor(id){
+  const d=(TEAMDOCS.docs||[]).find(x=>x.id===id); if(!d){ toast("Not found"); return; }
+  const url=docLinkFor(id); const done=()=> toast("Link copied");
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, ()=>docCopyFallback(url,done));
+    else docCopyFallback(url,done);
+  }catch(_){ docCopyFallback(url,done); }
+}
+function docCopyLink(){
+  const d = docCurrent();
+  if(!d){ toast("Open a document first"); return; }
+  const url = docLinkFor(d.id);
+  const done = ()=> toast("Link copied — anyone on this team can open it");
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(done, ()=> docCopyFallback(url, done));
+    } else { docCopyFallback(url, done); }
+  }catch(_){ docCopyFallback(url, done); }
+}
+function docCopyFallback(url, done){
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=url; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta); done();
+  }catch(e){ window.prompt("Copy this link:", url); }
+}
+/* if the page was opened with ?doc=... jump straight to that document */
+function docOpenFromUrl(){
+  let id = null;
+  try{ id = new URLSearchParams(location.search).get("doc"); }catch(_){ }
+  if(!id) return false;
+  const d = (TEAMDOCS.docs||[]).find(x=>x.id===id);
+  if(!d){ toast("That document no longer exists"); return false; }
+  docSpaceId = d.spaceId || docSpaceId;
+  docOpenId = d.id;
+  // expand its parents so it is visible in the tree
+  let guard=0, cur=d;
+  while(cur && cur.parentId && guard++<20){
+    docExpanded[cur.parentId]=true;
+    cur=(TEAMDOCS.docs||[]).find(x=>x.id===cur.parentId);
+  }
+  openDocsPage();
+  return true;
+}
+function openDocsPage(){
+  docSearch=""; docSpaceMenuOpen=false;
+  buildDocsShell();
+  $("docs-page").style.display="block"; window.scrollTo(0,0);
+}
 function openDocs(){
   docSearch=""; docSpaceMenuOpen=false;
   if(!docCurrentSpace()){ docSpaceId = TEAMDOCS.spaces[0] ? TEAMDOCS.spaces[0].id : null; }
@@ -11612,6 +11670,7 @@ function docRowHTML(d, depth, admin, flat){
     + '<span class="docw-item-main"><span class="docw-item-title">'+mtEsc(d.title||"Untitled")+'</span></span>'
     + (admin?'<span class="docw-rowacts">'
         +'<button class="docw-ra" title="Add inside" onclick="event.stopPropagation();docNewMenuToggle(\''+d.id+'\',event)">＋</button>'
+        +'<button class="docw-ra" title="Copy link" onclick="event.stopPropagation();docCopyLinkFor(\''+d.id+'\')">🔗</button>'
         +'<button class="docw-ra" title="Move" onclick="event.stopPropagation();docMoveOpen(\''+d.id+'\')">⇄</button>'
         +'<button class="docw-ra" title="Delete" onclick="event.stopPropagation();docDelete(\''+d.id+'\')">×</button>'
       +'</span>'+(docNewMenuFor===d.id?docNewMenuHTML(d.id):'') :'')
@@ -11795,6 +11854,7 @@ function renderDocMain(){
       +'<button class="doce-tb" title="Insert table" onmousedown="event.preventDefault()" onclick="doceTableToggle(event)">▦ Table</button>'
       +'<span class="doce-flex"></span>'
       +'<span class="doce-saved" id="doce-saved">Saved</span>'
+      +'<button class="doce-tb" title="Copy a link to this document" onmousedown="event.preventDefault()" onclick="docCopyLink()">🔗 Copy link</button>'
       +'<button class="doce-tb" title="Save as template" onmousedown="event.preventDefault()" onclick="docSaveAsTemplate()">Save as template</button>'
       +'</div>';
   }
