@@ -2215,6 +2215,22 @@ body{margin:0}
 .ppmap-dots{display:inline-flex;align-items:center;gap:4px;margin-top:2px}
 .ppmap-dots b{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:700;margin-left:2px}
 
+/* map: in-place expand */
+.ppmap-node{position:relative}
+.ppmap-node.open{box-shadow:0 3px 14px rgba(9,30,66,.09)}
+.ppmap-kids{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:2px}
+.ppmap-exp{margin-top:8px;border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:3px 10px;font-size:10.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans);align-self:flex-start}
+.ppmap-exp:hover{border-color:var(--indigo);color:var(--indigo)}
+.ppmap-goto{position:absolute;top:7px;right:7px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:12px;opacity:0;line-height:1}
+.ppmap-node:hover .ppmap-goto{opacity:.75}
+.ppmap-goto:hover{opacity:1;color:var(--indigo)}
+.ppmap-feats{margin-top:9px;border-top:1px dashed var(--line-strong);padding-top:8px;display:flex;flex-direction:column;gap:7px;text-align:left}
+.ppmap-feat{display:flex;flex-direction:column;gap:1px}
+.ppmap-fname{font-size:11.5px;font-weight:600;color:var(--ink)}
+.ppmap-fwho{font-family:var(--mono);font-size:9px;color:var(--indigo);text-transform:uppercase;letter-spacing:.05em}
+.ppmap-fsolves{font-size:10.5px;color:var(--muted);line-height:1.4}
+
+.kr-own{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--indigo);background:var(--indigo-soft,#EEF1FF);border-radius:99px;padding:2px 8px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -2934,7 +2950,7 @@ const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 let okrFilter = null;   // null = all levels; else a level key to focus
 let okrView2 = "list";   // "list" | "tree"
-let okrBoardMine = false;   // Board: filter to my OKRs (owned by me) + context
+let okrBoardMine = false;   // filter every OKR view to the ones I own (objective or key result)
 let okrTreeExpanded = {};
 let okrPermId = null;
 const STAGE_ORDER = ["new","review","pipeline","shipped","notnow"];
@@ -7123,6 +7139,11 @@ function krEl(kr, ob, ki, oi){
   body.className = "body";
   const t = document.createElement("div");
   t.className = "title"; t.textContent = kr.title;
+  if(kr.owner){
+    const ow = document.createElement("span"); ow.className="kr-own"; ow.textContent = krOwnerName(kr);
+    ow.title = "Key result owner";
+    t.appendChild(ow);
+  }
   body.appendChild(t);
   if(kr.note){
     const n = document.createElement("div"); n.className="note"; n.textContent = kr.note;
@@ -7187,6 +7208,7 @@ function objRollupPct(ob){
   }
   return objPct(ob);
 }
+function krOwnerName(kr){ return (kr && kr.owner) ? okrOwnerName(kr.owner) : ""; }
 function okrOwnerName(email){ if(!email) return ""; var m=assigneeMembers().find(function(u){return u.email===email;}); return m?userDisplayName(m):email; }
 function okrOwners(ob){ if(ob&&Array.isArray(ob.owners)&&ob.owners.length) return ob.owners.slice(); if(ob&&ob.assignee) return [ob.assignee]; return []; }
 function okrInList(list){ return !!(SESSION && Array.isArray(list) && list.indexOf(SESSION.email)>=0); }
@@ -7221,10 +7243,11 @@ function okrEditNode(ob, cyc){
 }
 
 function renderOkrTree(cyc, wrap){
-  var objs=cyc.objectives;
+  var _scope = okrBoardScope(cyc);
+  var objs = _scope ? cyc.objectives.filter(function(o){ return _scope[o.id]; }) : cyc.objectives;
   if(!objs.length){
     var e=document.createElement("div"); e.className="empty";
-    e.textContent="No objectives yet."+((editMode||SESSION)?" Add one below.":"");
+    e.textContent = okrBoardMine ? "Nothing owned by you in this cycle." : ("No objectives yet."+((editMode||SESSION)?" Add one below.":""));
     wrap.appendChild(e);
   } else {
     var has=function(id){ return objs.some(function(o){return o.id===id;}); };
@@ -7267,18 +7290,18 @@ function okrTreeNode(ob, cyc, objs){
       var kb=document.createElement("div"); kb.className="okrtree-krbox";
       ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
         var row=document.createElement("div"); row.className="okrtree-kr";
-        row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+'</div>'
+        row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+(kr.owner?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrtree-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrtree-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
         if(canEdit){ var up=document.createElement("button"); up.className="okrtree-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; row.appendChild(up); }
         kb.appendChild(row);
       });
-      if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true}); }; kb.appendChild(addkr); }
+      if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); }; kb.appendChild(addkr); }
       card.appendChild(kb);
     }
   } else if(canEdit){
     var addkr0=document.createElement("button"); addkr0.className="okrtree-krtg empty"; addkr0.textContent="＋ Add key result";
-    addkr0.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true}); };
+    addkr0.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); };
     card.appendChild(addkr0);
   }
   // actions
@@ -7390,15 +7413,20 @@ function okrPermSave(){
 
 /* ================= OKR Board view (vertical level bands + connectors) ================= */
 var _okrBoardResizeBound=false;
+function okrOwnsKr(ob){
+  if(!SESSION || !ob || !ob.krs) return false;
+  return ob.krs.some(function(k){ return k && k.owner===SESSION.email; });
+}
 function okrBoardScope(cyc){
-  // returns the id-set to show: my owned objectives + their parent chain + direct children.
+  // returns the id-set to show: what I own (objective OR one of its key results),
+  // plus its parent chain and direct children so it still reads in context.
   var objs=cyc.objectives;
   if(!okrBoardMine || !SESSION) return null; // null = show all
   var byId={}; objs.forEach(function(o){ byId[o.id]=o; });
   var keep={};
   function addParents(o){ var g=0, cur=o; while(cur && cur.alignsTo && byId[cur.alignsTo] && g++<20){ var pa=byId[cur.alignsTo]; keep[pa.id]=true; cur=pa; } }
   objs.forEach(function(o){
-    if(okrOwners(o).indexOf(SESSION.email)>=0){
+    if(okrOwners(o).indexOf(SESSION.email)>=0 || okrOwnsKr(o)){
       keep[o.id]=true;
       addParents(o);
       objs.forEach(function(c){ if(c.alignsTo===o.id) keep[c.id]=true; }); // direct children
@@ -7409,10 +7437,6 @@ function okrBoardScope(cyc){
 function renderOkrBoard(cyc, wrap){
   var objs=cyc.objectives;
   // filter toolbar (top-right)
-  var bar=document.createElement("div"); bar.className="okrb-toolbar";
-  var seg=document.createElement("div"); seg.className="okrb-filter";
-  [["all","All OKRs"],["mine","My OKRs"]].forEach(function(m){ var b=document.createElement("button"); b.className="okrb-fbtn"+((m[0]==="mine")===okrBoardMine?" on":""); b.textContent=m[1]; b.onclick=function(){ okrBoardMine=(m[0]==="mine"); renderAll(); }; seg.appendChild(b); });
-  bar.appendChild(seg); wrap.appendChild(bar);
 
   var scope=okrBoardScope(cyc); // null => all
   var vis = scope ? objs.filter(function(o){ return scope[o.id]; }) : objs;
@@ -7482,18 +7506,18 @@ function okrBoardCard(ob, cyc, objs){
       var kb=document.createElement("div"); kb.className="okrb-krbox";
       ob.krs.forEach(function(kr,ki){ var pc=krPct(kr);
         var r=document.createElement("div"); r.className="okrb-kr";
-        r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+'</div>'
+        r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+(kr.owner?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrb-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrb-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
         if(canEdit){ var up=document.createElement("button"); up.className="okrb-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; r.appendChild(up); }
         kb.appendChild(r);
       });
-      if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true}); }; kb.appendChild(ak); }
+      if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); }; kb.appendChild(ak); }
       card.appendChild(kb);
     }
   } else if(canEdit){
     var ak0=document.createElement("button"); ak0.className="okrb-krtg empty"; ak0.textContent="＋ Add key result";
-    ak0.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true}); };
+    ak0.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.assignee) kr.owner=v.assignee; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); okrTreeExpanded[ob.id]=true; saveOkrs(); toast("Key result added"); }, {metric:true, assignee:true}); };
     card.appendChild(ak0);
   }
 
@@ -7544,10 +7568,23 @@ function renderContentOkr(){
   var _tg=document.createElement('div'); _tg.className='okr-modetg';
   [['list','List'],['tree','Org tree'],['board','Board']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
   wrap.appendChild(_tg);
+  var _fbar=document.createElement('div'); _fbar.className='okrb-toolbar';
+  var _seg=document.createElement('div'); _seg.className='okrb-filter';
+  [['all','All OKRs'],['mine','My OKRs']].forEach(function(m){
+    var b=document.createElement('button');
+    b.className='okrb-fbtn'+((m[0]==='mine')===okrBoardMine?' on':'');
+    b.textContent=m[1];
+    b.title = m[0]==='mine' ? 'Only objectives and key results you own' : 'Everything in this cycle';
+    b.onclick=function(){ okrBoardMine=(m[0]==='mine'); renderAll(); };
+    _seg.appendChild(b);
+  });
+  _fbar.appendChild(_seg); wrap.appendChild(_fbar);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
   if(okrView2==='board'){ renderOkrBoard(cyc, wrap); return; }
-  const _order=[]; cyc.objectives.forEach(o=>{ const k=(o.level||"").trim(); if(_order.indexOf(k)<0) _order.push(k); });
-  const _ordered = cyc.objectives.slice().sort((a,b)=> _order.indexOf((a.level||"").trim()) - _order.indexOf((b.level||"").trim()));
+  const _scopeL = okrBoardScope(cyc);
+  const _listObjs = _scopeL ? cyc.objectives.filter(o=>_scopeL[o.id]) : cyc.objectives;
+  const _order=[]; _listObjs.forEach(o=>{ const k=(o.level||"").trim(); if(_order.indexOf(k)<0) _order.push(k); });
+  const _ordered = _listObjs.slice().sort((a,b)=> _order.indexOf((a.level||"").trim()) - _order.indexOf((b.level||"").trim()));
   let _lastLv=null, _dispNum=0;
   _ordered.forEach(ob=>{
     const _lvKey = (ob.level||"").trim();
@@ -11353,7 +11390,8 @@ const PP_TIERS = [
   { w:"sub-module", p:"sub-modules", c:"Sub-modules", ph:"e.g. a smaller piece of this module" }
 ];
 function ppTier(depth){ return PP_TIERS[Math.max(0, Math.min(depth|0, PP_TIERS.length-1))]; }
-let ppView2 = "browse";   // "browse" | "map"
+let ppView2 = "map";      // "map" | "browse" — the map is the front door
+let ppMapExp = {};        // per-node expand state in the map
 
 function ppid(){ return "p-"+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
 function ppEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -11369,7 +11407,7 @@ function normalizeProduct(p){
     flow:(n.flow&&Array.isArray(n.flow.steps))?{steps:n.flow.steps.map(function(s){ s=s||{}; return {t:s.t?String(s.t):"",tag:s.tag?String(s.tag):""}; }),loop:n.flow.loop?String(n.flow.loop):""}:null
   }; }
   p=p||{};
-  return { desc:p.desc?String(p.desc):"", children:Array.isArray(p.children)?p.children.map(nd):[] };
+  return { name:(p.name!=null&&String(p.name).trim())?String(p.name):"", icon:p.icon?String(p.icon):"", desc:p.desc?String(p.desc):"", children:Array.isArray(p.children)?p.children.map(nd):[] };
 }
 
 function ppSetView(v){ ppView2 = v; renderProductPage(); }
@@ -11393,24 +11431,45 @@ function ppPathTo(id){
   return out || [];
 }
 function ppMapOpen(id){ productPath = ppPathTo(id); ppView2 = "browse"; renderProductPage(); }
+/* the tree structure always shows; the FEATURE list folds so the map stays readable */
+function ppMapIsOpen(id){ return !!ppMapExp[id]; }
+function ppMapToggle(id){ ppMapExp[id] = !ppMapExp[id]; renderProductPage(); }
 function ppMapNode(n, depth){
   var tier = ppTier(depth).w;
   var kids = n.children || [];
+  var feats = n.features || [];
   var fc = ppFeatCounts(n);
-  var dots = "";
-  if(fc.total){
-    dots = '<span class="ppmap-dots">'
-      + (fc.live?'<i class="d-live" title="'+fc.live+' live"></i>':'')
-      + (fc.dev?'<i class="d-dev" title="'+fc.dev+' in development"></i>':'')
-      + (fc.idea?'<i class="d-idea" title="'+fc.idea+' in ideation"></i>':'')
-      + '<b>'+fc.total+'</b></span>';
-  }
-  var h = '<li><div class="ppmap-node d'+Math.min(depth,3)+'" onclick="ppMapOpen(\''+n.id+'\')" title="Open '+ppEsc(n.name)+'">'
+  var open = ppMapIsOpen(n.id);
+  var admin = (typeof can==="function") ? can("admin") : false;
+
+  var badge = "";
+  if(fc.total) badge += '<span class="ppmap-dots"><b>'+fc.total+' feature'+(fc.total>1?'s':'')+'</b></span>';
+  if(kids.length) badge += '<span class="ppmap-kids">'+kids.length+' '+ppTier(depth+1).p+'</span>';
+
+  var h = '<li><div class="ppmap-node d'+Math.min(depth,3)+(open?' open':'')+'">'
     + '<span class="ppmap-tier">'+ppEsc(tier)+'</span>'
     + '<span class="ppmap-name">'+ppEsc(n.icon||"")+' '+ppEsc(n.name)+'</span>'
     + (n.desc?'<span class="ppmap-desc">'+ppEsc(n.desc)+'</span>':'')
-    + dots
-    + '</div>';
+    + badge;
+  // expand / collapse right here — never jump to Browse
+  if(feats.length){
+    h += '<button class="ppmap-exp" onclick="event.stopPropagation();ppMapToggle(\''+n.id+'\')">'
+       + (open ? '\u25B4 hide features' : '\u25BE show '+feats.length+' feature'+(feats.length>1?'s':''))
+       + '</button>';
+  }
+  // the features themselves, listed in place
+  if(open && feats.length){
+    h += '<div class="ppmap-feats">';
+    feats.forEach(function(f){
+      h += '<div class="ppmap-feat"><span class="ppmap-fname">'+ppEsc(f.feat||"Untitled")+'</span>'
+        + (f.who?'<span class="ppmap-fwho">'+ppEsc(f.who)+'</span>':'')
+        + (f.solves?'<span class="ppmap-fsolves">'+ppEsc(f.solves)+'</span>':'')
+        + '</div>';
+    });
+    h += '</div>';
+  }
+  if(admin) h += '<button class="ppmap-goto" title="Open in Browse to edit" onclick="event.stopPropagation();ppMapOpen(\''+n.id+'\')">\u2197</button>';
+  h += '</div>';
   if(kids.length){
     h += '<ul>' + kids.map(function(k){ return ppMapNode(k, depth+1); }).join("") + '</ul>';
   }
@@ -11422,19 +11481,29 @@ function ppMapHTML(){
     return '<div class="empty">Nothing to map yet — add your first category in Browse.</div>';
   }
   var total = ppFeatCounts({children:roots, features:[]});
-  var legend = '<div class="ppmap-legend">'
-    + '<span><i class="d-live"></i> Live</span><span><i class="d-dev"></i> In development</span><span><i class="d-idea"></i> Ideation</span>'
-    + '<span class="ppmap-tot">'+total.total+' feature(s) across the product</span></div>';
-  var rootName = (typeof TEAMS!=="undefined" && TEAMS[TEAM] && TEAMS[TEAM].name) ? TEAMS[TEAM].name : "Our Product";
+  var legend = '<div class="ppmap-legend"><span class="ppmap-tot">'+total.total+' feature(s) across the product</span></div>';
+  var admin = (typeof can==="function") ? can("admin") : false;
   return legend
     + '<div class="ppmap-scroll"><div class="ppmap"><ul><li>'
-    + '<div class="ppmap-node root"><span class="ppmap-tier">product</span><span class="ppmap-name">📦 '+ppEsc(rootName)+'</span>'
+    + '<div class="ppmap-node root"'+(admin?' onclick="ppRenameRoot()" title="Click to rename the starting point"':'')+'>'
+    + '<span class="ppmap-tier">starting point'+(admin?' \u00b7 \u270E':'')+'</span>'
+    + '<span class="ppmap-name">'+ppEsc(ppRootIcon())+' '+ppEsc(ppRootName())+'</span>'
     + ((PRODUCT&&PRODUCT.desc)?'<span class="ppmap-desc">'+ppEsc(PRODUCT.desc)+'</span>':'')+'</div>'
     + '<ul>' + roots.map(function(r){ return ppMapNode(r, 0); }).join("") + '</ul>'
     + '</li></ul></div></div>';
 }
+function ppRootName(){ return (PRODUCT && PRODUCT.name && String(PRODUCT.name).trim()) ? PRODUCT.name : "Our Product"; }
+function ppRootIcon(){ return (PRODUCT && PRODUCT.icon) ? PRODUCT.icon : "\uD83D\uDCE6"; }
+function ppRenameRoot(){
+  var cur = (PRODUCT && PRODUCT.name) || "";
+  var v = window.prompt("What should the map start from?\n(e.g. Dubuddy, Cyberflow, DYNG)", cur);
+  if(v===null) return;
+  v = String(v).trim();
+  if(v) PRODUCT.name = v; else delete PRODUCT.name;
+  renderProductPage(); pushAll();
+}
 function productNodeAt(pathArr){
-  var node = { id:"__root__", name:"Our Product", icon:"📦", desc:(PRODUCT&&PRODUCT.desc)||"", children:(PRODUCT&&PRODUCT.children)||[], __root:true };
+  var node = { id:"__root__", name:ppRootName(), icon:ppRootIcon(), desc:(PRODUCT&&PRODUCT.desc)||"", children:(PRODUCT&&PRODUCT.children)||[], __root:true };
   var arr = pathArr||[];
   for(var i=0;i<arr.length;i++){ var nx=(node.children||[]).find(function(c){return c.id===arr[i];}); if(!nx) break; node=nx; }
   return node;
@@ -11474,7 +11543,7 @@ function renderProductPage(){
   var depth = productPath.length;
 
   // breadcrumb
-  var bc = '<button onclick="ppCrumb(-1)">📦 Our Product</button>';
+  var bc = '<button onclick="ppCrumb(-1)">'+ppEsc(ppRootIcon())+' '+ppEsc(ppRootName())+'</button>';
   for(var i=0;i<productPath.length;i++){
     var n = productNodeAt(productPath.slice(0,i+1));
     if(!n) break;
@@ -11486,8 +11555,8 @@ function renderProductPage(){
 
   // Browse | Map toggle
   var _tg = '<div class="pp-modetg">'
-    + '<button class="pp-mode'+(ppView2==="browse"?" on":"")+'" onclick="ppSetView(\'browse\')">Browse</button>'
     + '<button class="pp-mode'+(ppView2==="map"?" on":"")+'" onclick="ppSetView(\'map\')">🗺 Map</button>'
+    + '<button class="pp-mode'+(ppView2==="browse"?" on":"")+'" onclick="ppSetView(\'browse\')">Browse</button>'
     + '</div>';
   if(ppView2==="map"){
     $("pp-main").innerHTML = _tg + ppMapHTML();
@@ -11548,31 +11617,26 @@ function renderProductPage(){
 }
 
 function ppFeaturesHTML(node, admin){
-  var counts={live:0,dev:0,idea:0}; node.features.forEach(function(f){counts[f.status]++;});
+  // This page is how we SHOW the product — no build-status column or filters here.
   var mods=[]; node.features.forEach(function(f){ var m=f.module||"General"; if(mods.indexOf(m)<0) mods.push(m); });
-  var h = '<div class="pp-section"><div class="pp-tblhead"><div class="pp-eyebrow" style="margin:0">Features — by module</div><div class="pp-filters">';
-  [["all","All",""],["live","Live","var(--done)"],["dev","Under development","var(--progress)"],["idea","Under ideation","var(--indigo)"]].forEach(function(row){
-    var k=row[0],l=row[1],c=row[2];
-    h += '<button class="pp-chip'+(productFilter===k?' active':'')+'" onclick="ppSetFilter(\''+k+'\')">'+(c?'<span class="pp-cd2" style="background:'+c+'"></span>':'')+l+'</button>';
-  });
-  h += '</div></div><div class="pp-tbl-wrap"><table class="pp-tbl pp-sheet"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th><th class="pp-sth">Status</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  var h = '<div class="pp-section"><div class="pp-tblhead"><div class="pp-eyebrow" style="margin:0">Features — by module</div></div>';
+  h += '<div class="pp-tbl-wrap"><table class="pp-tbl pp-sheet"><thead><tr><th>Feature</th><th>Built for</th><th>What it solves</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
   var zeb=0;
   mods.forEach(function(m){
     var idxs=[];
-    node.features.forEach(function(f,i){ if((f.module||"General")===m && (productFilter==="all"||f.status===productFilter)) idxs.push(i); });
+    node.features.forEach(function(f,i){ if((f.module||"General")===m) idxs.push(i); });
     if(!idxs.length) return;
-    h += '<tr class="pp-modrow"><td colspan="'+(admin?5:4)+'">'+ppEsc(m)+(admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')+'</td></tr>';
+    h += '<tr class="pp-modrow"><td colspan="'+(admin?4:3)+'">'+ppEsc(m)+(admin?'<span class="pp-addf" onclick="ppAddFeature(\''+node.id+'\',\''+encodeURIComponent(m)+'\')">＋ add feature</span>':'')+'</td></tr>';
     idxs.forEach(function(i){
-      var f=node.features[i], s=ppStatusMeta[f.status];
+      var f=node.features[i];
       var alt = (zeb++ % 2) ? ' pp-alt' : '';
-      h += '<tr class="pp-r-'+f.status+alt+'"><td class="pp-ftc"><span class="pp-feat">'+ppEsc(f.feat)+'</span></td>'
+      h += '<tr class="'+alt+'"><td class="pp-ftc"><span class="pp-feat">'+ppEsc(f.feat)+'</span></td>'
         + '<td class="pp-who">'+ppEsc(f.who)+'</td><td class="pp-note">'+ppEsc(f.solves)+'</td>'
-        + '<td class="pp-st pp-st-'+f.status+'">'+s.l+'</td>'
         + (admin?'<td class="pp-editcell"><span class="pp-rowedit" title="Edit" onclick="ppEditFeature(\''+node.id+'\','+i+')">✎</span></td>':'')
         + '</tr>';
     });
   });
-  h += '</tbody></table><div class="pp-tblfoot"><span><b class="pp-fl">'+counts.live+'</b> live</span><span><b class="pp-fd">'+counts.dev+'</b> under development</span><span><b class="pp-fi">'+counts.idea+'</b> under ideation</span></div></div></div>';
+  h += '</tbody></table><div class="pp-tblfoot"><span><b>'+node.features.length+'</b> feature(s)</span></div></div></div>';
   return h;
 }
 
