@@ -1976,6 +1976,50 @@ body{margin:0}
 .okrb-fbtn{border:none;background:none;border-radius:99px;padding:6px 14px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
 .okrb-fbtn.on{background:var(--indigo);color:#fff}
 
+/* ===== Social Media space ===== */
+.ws-sub{display:block;width:100%;text-align:left;border:none;background:none;padding:7px 12px 7px 30px;font-size:13px;color:var(--muted);cursor:pointer;border-radius:8px;font-family:var(--sans)}
+.ws-sub:hover{background:var(--hover,#F1F2F4);color:var(--ink)}
+.ws-sub.active{color:var(--indigo);font-weight:700;background:var(--indigo-soft,#EEF1FF)}
+.soc-board{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 12px}
+.soc-col{flex:0 0 250px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:9px}
+.soc-col.soc-over{border-color:var(--indigo);background:var(--indigo-soft,#EEF1FF)}
+.soc-colhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.soc-colname{font-weight:700;font-size:13px;color:var(--ink)}
+.soc-colcount{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+.soc-collist{display:flex;flex-direction:column;gap:8px;min-height:40px}
+.soc-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 11px;position:relative;cursor:grab}
+.soc-card.soc-dragging{opacity:.5}
+.soc-card-t{font-weight:600;font-size:13px;line-height:1.35;color:var(--ink)}
+.soc-card-m{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.soc-chip{font-size:10.5px;font-weight:600;color:var(--indigo);background:var(--indigo-soft,#EEF1FF);border-radius:99px;padding:2px 8px}
+.soc-due{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.soc-card-o{margin-top:6px;font-size:11.5px;color:var(--muted)}
+.soc-card-acts{position:absolute;top:6px;right:6px;display:none;gap:2px}
+.soc-card:hover .soc-card-acts{display:flex}
+.soc-card-acts button{border:none;background:var(--paper);color:var(--muted);border-radius:5px;width:20px;height:20px;font-size:11px;cursor:pointer}
+.soc-card-acts button:hover{color:var(--indigo)}
+.soc-add{border:1px dashed var(--line-strong);background:none;color:var(--muted);border-radius:9px;padding:8px;font-size:12.5px;cursor:pointer;font-family:var(--sans)}
+.soc-add:hover{border-color:var(--indigo);color:var(--indigo)}
+/* calendar */
+.soc-calnav{display:flex;align-items:center;gap:10px;margin-left:auto}
+.soc-navbtn{width:28px;height:28px;border:1px solid var(--line-strong);background:var(--card);border-radius:8px;cursor:pointer;color:var(--muted);font-size:15px}
+.soc-navbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+.soc-callabel{font-weight:700;font-size:14px;color:var(--ink);min-width:150px;text-align:center}
+.soc-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:6px}
+.soc-dow{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);text-align:center;padding:4px 0;font-weight:700}
+.soc-day{min-height:96px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px;position:relative;display:flex;flex-direction:column;gap:4px}
+.soc-day-out{background:none;border:none}
+.soc-today{border-color:var(--indigo);box-shadow:inset 0 0 0 1px var(--indigo)}
+.soc-daynum{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:700}
+.soc-ev{background:var(--indigo-soft,#EEF1FF);border-left:3px solid var(--indigo);border-radius:6px;padding:4px 6px;cursor:pointer;position:relative}
+.soc-ev-t{display:block;font-size:11px;font-weight:600;color:var(--ink);line-height:1.3}
+.soc-ev-c{display:block;font-size:9.5px;color:var(--indigo);margin-top:1px}
+.soc-ev-del{position:absolute;top:2px;right:3px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:12px;display:none;line-height:1}
+.soc-ev:hover .soc-ev-del{display:block}
+.soc-dayadd{position:absolute;bottom:5px;right:5px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px;opacity:0}
+.soc-day:hover .soc-dayadd{opacity:1}
+.soc-dayadd:hover{color:var(--indigo)}
+
 </style>
 </head>
 <body>
@@ -2473,6 +2517,12 @@ body{margin:0}
           <span class="tpl-desc">Compare against competitors — product-level feature grids and feature-level deep dives, side by side.</span>
           <span class="tpl-by">Product-level · Feature-level</span>
         </button>
+        <button class="tpl-card" data-tpl="social">
+          <span class="tpl-emoji">📣</span>
+          <span class="tpl-name">Social Media</span>
+          <span class="tpl-desc">Run content end-to-end — collect ideas, move posts through your production stages, and schedule them on a calendar.</span>
+          <span class="tpl-by">Ideation · Content Process · Schedule</span>
+        </button>
         <button class="tpl-card" data-tpl="scrum">
           <span class="tpl-emoji">🏃</span>
           <span class="tpl-name">Scrum</span>
@@ -2606,6 +2656,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     <div class="dlg-body">
     <div class="field" id="f-title-wrap"><label for="f-title">Title</label><input id="f-title"></div>
     <div class="field" id="f-owner-wrap"><label for="f-owner">Owner (optional)</label><input id="f-owner" placeholder="e.g. Backend team / Aman"></div>
+    <div class="field" id="f-channel-wrap" style="display:none"><label for="f-channel">Channel</label><select id="f-channel"></select></div>
     <div class="field" id="f-assignee-wrap"><label>Assignee (optional)</label><div class="assignee-pick"><input id="f-assignee-search" placeholder="Search people…" autocomplete="off"><input type="hidden" id="f-assignee-val"><div id="f-assignee-menu" class="assignee-menu"></div></div></div>
     <div class="field" id="f-owners-wrap" style="display:none"><label>Owners (add as many as you like)</label><div id="f-owners-box" class="pp"></div></div>
     <div class="field-row" id="f-pd-row" style="gap:12px">
@@ -3131,7 +3182,7 @@ function normalizeCspaces(c){
   c.list = c.list || [];
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
-    x.type = ["scrum","discovery","content","module","research","competitor"].includes(x.type) ? x.type : "bugs";
+    x.type = ["scrum","discovery","content","module","research","competitor","social"].includes(x.type) ? x.type : "bugs";
     x.members = x.members || {};   // per-space role assignments {email: role}
     if(x.type === "research" || x.type === "competitor"){
       // these spaces host their research/analysis on their own node (like a module node, but not in the module list)
@@ -3139,7 +3190,13 @@ function normalizeCspaces(c){
       x.node.name = x.name;
       normalizeAnalyses(x.node);
     }
-    if(x.type === "discovery"){
+    if(x.type === "social"){
+      x.cards = x.cards || [];
+      x.events = x.events || [];
+      x.cards.forEach(c=>{ if(!c.id) c.id="sc-"+Math.random().toString(36).slice(2,8); if(!SOC_COLS.some(k=>k.key===c.col)) c.col="todo"; });
+      x.events.forEach(e=>{ if(!e.id) e.id="se-"+Math.random().toString(36).slice(2,8); });
+    }
+    if(x.type === "discovery" || x.type === "social"){
       x.ideas = x.ideas || [];
       // each discovery space embeds a full timeline board (same engine as top-level Roadmaps)
       x.tl = x.tl || {};
@@ -3199,6 +3256,9 @@ function convertModuleToIdeas(mod, disc){
   return leaves.length;
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
+let socialView = "ideation";   // Social Media space: ideation | ideation-roadmap | process | schedule
+let socDragId = null;
+let socMonth = (new Date()).toISOString().slice(0,7);
 let adminView = "users";  // Administration page: "users" | "permissions"
 // capability matrix shown on the Permissions reference page (what each role can do)
 const PERM_CAPS = [
@@ -3831,6 +3891,10 @@ function openDialog(title, values, onSave, opts={}){
   $("f-title-wrap").style.display = opts.hideTitle ? "none" : "";
   $("f-title-wrap").querySelector("label").textContent = opts.titleLabel || "Title";
   $("f-owner-wrap").style.display = opts.simple||opts.hideExtras||opts.noteOnly ? "none" : "";
+  if($("f-channel-wrap")){
+    $("f-channel-wrap").style.display = opts.channel ? "" : "none";
+    if(opts.channel){ var _ch=values.channel||""; $("f-channel").innerHTML='<option value="">— none —</option>'+SOC_CHANNELS.map(function(c){ return '<option value="'+mtEsc(c)+'">'+mtEsc(c)+'</option>'; }).join(""); $("f-channel").value=_ch; }
+  }
   $("f-note-wrap").style.display = opts.simple||opts.hideExtras ? "none" : "";
   $("f-note-wrap").querySelector("label").textContent = opts.noteLabel || "Note (optional)";
   // assignee (searchable), priority, due date, labels
@@ -4009,6 +4073,7 @@ $("dlg-save").onclick = ()=>{
     note: $("f-note").value.trim(),
     assignee: $("f-assignee-val") ? $("f-assignee-val").value : "",
     owners: ($("f-owners-wrap") && $("f-owners-wrap").style.display!=="none") ? ppGet("f-owners-box") : undefined,
+    channel: ($("f-channel") && $("f-channel-wrap") && $("f-channel-wrap").style.display!=="none") ? $("f-channel").value : "",
     duedate: $("f-duedate") ? $("f-duedate").value : "",
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
@@ -4331,6 +4396,7 @@ function rankByRecent(items, keyFn){
 function csIsActive(cs){
   return cs.type==="bugs" ? (view==="cbugs" && activeCspace===cs.id)
     : cs.type==="discovery" ? (view==="disc" && activeCspace===cs.id)
+    : cs.type==="social" ? (view==="social" && activeCspace===cs.id)
     : cs.type==="content" ? (view==="content" && activeSection===cs.sectionKey)
     : cs.type==="module" ? (view==="roadmap" && (activeModule===cs.moduleKey || String(activeModule).indexOf(cs.moduleKey+"::")===0))
     : (cs.type==="research"||cs.type==="competitor") ? (view==="csnode" && activeCspace===cs.id)
@@ -4339,13 +4405,14 @@ function csIsActive(cs){
 function navToSpace(cs){
   if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
   else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
+  else if(cs.type==="social"){ view = "social"; activeCspace = cs.id; socialView = "ideation"; }
   else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
   else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
   else if(cs.type==="research" || cs.type==="competitor"){ view = "csnode"; activeCspace = cs.id; activeAnalysis = null; researchOpen = false; }
   else { view = "dev"; devSpace = cs.devId || null; devSprint = null; }
   renderAll();
 }
-function csTypeLabel(t){ return t==="scrum"?"Scrum":t==="discovery"?"Product":t==="content"?"Content":t==="module"?"Module":t==="research"?"Research":t==="competitor"?"Competitor":"Bugs"; }
+function csTypeLabel(t){ return t==="scrum"?"Scrum":t==="discovery"?"Product":t==="content"?"Content":t==="module"?"Module":t==="research"?"Research":t==="competitor"?"Competitor":t==="social"?"Social":"Bugs"; }
 function closeAllList(){ const e=document.getElementById("alllist-back"); if(e) e.remove(); }
 function openAllList(kind){
   closeAllList();
@@ -4422,13 +4489,16 @@ let _lastNavSig = "";
 // the work-area tabs for the current view (Summary is prepended separately)
 function workTabs(){
   if(view==="disc") return [{key:"ideas",label:"All ideas"},{key:"roadmap",label:"Roadmap"},{key:"timeline",label:"Timeline"}];
+  if(view==="social") return (socialView==="ideation"||socialView==="ideation-roadmap")
+      ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
+      : [{key:socialView,label:socSectionLabel(socialView)}];
   const l = view==="rmap" ? "Timeline" : view==="okr" ? "Objectives"
     : view==="dev" ? "Board" : (view==="bugs"||view==="cbugs") ? "Board" : view==="content" ? "Board"
     : view==="ideas" ? "Ideas" : view==="admin" ? "Admin" : "Board";
   return [{key:"work",label:l}];
 }
 // which work tab is highlighted while the work pane is showing
-function workTabActiveKey(){ return view==="disc" ? discView : "work"; }
+function workTabActiveKey(){ return view==="disc" ? discView : view==="social" ? socialView : "work"; }
 function applyPaneTab(){
   const su=$("pane-summary"), wk=$("pane-work");
   if(su) su.classList.toggle("show", paneTab==="summary");
@@ -4437,6 +4507,7 @@ function applyPaneTab(){
 function selectWorkTab(key){
   paneTab="work";
   if(view==="disc" && discView!==key){ discView=key; renderAll(); return; }  // re-render the sub-view
+  if(view==="social" && socialView!==key){ socialView=key; renderAll(); return; }
   applyPaneTab(); renderTabs();
 }
 function renderTabs(){
@@ -4459,7 +4530,7 @@ function renderTabs(){
 }
 function renderHeader(){
   const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
-  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="social" ? (((currentSocial()||{}).name) || "Social Media") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
@@ -9365,6 +9436,187 @@ function discIdeaActs(cs, idea){
   return acts;
 }
 
+/* ================= SOCIAL MEDIA space (Ideation / Content Process / Schedule) ================= */
+const SOC_COLS = [
+  {key:"todo",     label:"To Do"},
+  {key:"draft",    label:"Draft"},
+  {key:"progress", label:"In Progress"},
+  {key:"review",   label:"In Review"},
+  {key:"approved", label:"Approved"},
+  {key:"published",label:"Published"},
+];
+const SOC_CHANNELS = ["Instagram","YouTube","LinkedIn","X / Twitter","Facebook","Blog","Newsletter"];
+function currentSocial(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="social") || null; }
+function saveSocial(){ renderAll(); pushAll(); }
+function socSectionLabel(k){ return k==="process" ? "Content Process" : k==="schedule" ? "Schedule" : "Ideation"; }
+
+function renderContentSocial(){
+  const wrap = $("content"); wrap.innerHTML = "";
+  const cs = currentSocial();
+  if(!cs){ view = "roadmap"; renderAll(); return; }
+  if(socialView === "process")  return socProcessPane(cs);
+  if(socialView === "schedule") return socSchedulePane(cs);
+  if(socialView === "ideation-roadmap") return discRoadmapPane(cs);
+  return discIdeasPane(cs);
+}
+
+/* ---------- Content Process: kanban ---------- */
+function socProcessPane(cs){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h = document.createElement("h2"); h.textContent = "Content Process";
+  head.appendChild(h);
+  const cnt = document.createElement("span"); cnt.className="hint"; cnt.style.marginLeft="10px";
+  cnt.textContent = (cs.cards||[]).length + " item(s)";
+  head.appendChild(cnt);
+  block.appendChild(head);
+
+  const board = document.createElement("div"); board.className="soc-board";
+  SOC_COLS.forEach(col=>{
+    const inCol = (cs.cards||[]).filter(c=>c.col===col.key);
+    const cw = document.createElement("div"); cw.className="soc-col";
+    const chd = document.createElement("div"); chd.className="soc-colhead";
+    chd.innerHTML = '<span class="soc-colname">'+mtEsc(col.label)+'</span><span class="soc-colcount">'+inCol.length+'</span>';
+    cw.appendChild(chd);
+    const list = document.createElement("div"); list.className="soc-collist";
+    list.addEventListener("dragover", e=>{ if(socDragId){ e.preventDefault(); cw.classList.add("soc-over"); } });
+    list.addEventListener("dragleave", ()=> cw.classList.remove("soc-over"));
+    list.addEventListener("drop", e=>{
+      e.preventDefault(); cw.classList.remove("soc-over");
+      if(!socDragId) return;
+      const card = (cs.cards||[]).find(c=>c.id===socDragId);
+      if(card && card.col!==col.key){ card.col = col.key; socDragId=null; saveSocial(); }
+      socDragId=null;
+    });
+    inCol.forEach(card=> list.appendChild(socCardEl(cs, card)));
+    cw.appendChild(list);
+    if(editMode){
+      const add = document.createElement("button"); add.className="soc-add"; add.textContent="＋ Create";
+      add.onclick = ()=> socNewCard(cs, col.key);
+      cw.appendChild(add);
+    }
+    board.appendChild(cw);
+  });
+  block.appendChild(board);
+  wrap.appendChild(block);
+}
+function socCardEl(cs, card){
+  const el = document.createElement("div"); el.className="soc-card";
+  if(editMode){
+    el.draggable = true;
+    el.addEventListener("dragstart", e=>{ socDragId=card.id; el.classList.add("soc-dragging"); try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",card.id); }catch(_){} });
+    el.addEventListener("dragend", ()=>{ el.classList.remove("soc-dragging"); socDragId=null; });
+  }
+  let meta = "";
+  if(card.channel) meta += '<span class="soc-chip">'+mtEsc(card.channel)+'</span>';
+  if(card.due) meta += '<span class="soc-due">📅 '+mtEsc(card.due)+'</span>';
+  el.innerHTML = '<div class="soc-card-t">'+mtEsc(card.title)+'</div>'+(meta?'<div class="soc-card-m">'+meta+'</div>':'')
+    + (card.owner ? '<div class="soc-card-o">'+mtEsc(card.owner)+'</div>' : '');
+  if(editMode){
+    const acts = document.createElement("div"); acts.className="soc-card-acts";
+    const ed = document.createElement("button"); ed.textContent="✎"; ed.title="Edit"; ed.onclick=e=>{ e.stopPropagation(); socEditCard(cs, card); };
+    const del = document.createElement("button"); del.textContent="×"; del.title="Delete"; del.onclick=e=>{ e.stopPropagation(); if(confirm('Delete "'+card.title+'"?')){ cs.cards = cs.cards.filter(c=>c.id!==card.id); saveSocial(); } };
+    acts.append(ed, del); el.appendChild(acts);
+  }
+  return el;
+}
+function socNewCard(cs, colKey){
+  openDialog("New content item", {}, v=>{
+    cs.cards = cs.cards || [];
+    const card = { id:"sc-"+Date.now().toString(36), title:v.title, col:colKey };
+    if(v.owner) card.owner = v.owner;
+    if(v.duedate) card.due = v.duedate;
+    if(v.channel) card.channel = v.channel;
+    cs.cards.push(card); saveSocial();
+  }, {duedate:true, channel:true});
+}
+function socEditCard(cs, card){
+  openDialog("Edit content item", {title:card.title, owner:card.owner||"", duedate:card.due||"", channel:card.channel||""}, v=>{
+    card.title = v.title;
+    if(v.owner) card.owner=v.owner; else delete card.owner;
+    if(v.duedate) card.due=v.duedate; else delete card.due;
+    if(v.channel) card.channel=v.channel; else delete card.channel;
+    saveSocial();
+  }, {duedate:true, channel:true});
+}
+
+/* ---------- Schedule: month calendar ---------- */
+function socMonthShift(n){
+  const d = new Date(socMonth+"-01T00:00:00");
+  d.setMonth(d.getMonth()+n);
+  socMonth = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  saveSocialLocal();
+}
+function saveSocialLocal(){ renderAll(); }
+function socSchedulePane(cs){
+  const wrap = $("content");
+  const block = document.createElement("section"); block.className="block";
+  const head = document.createElement("div"); head.className="block-head";
+  const h = document.createElement("h2"); h.textContent = "Schedule";
+  head.appendChild(h);
+  const nav = document.createElement("div"); nav.className="soc-calnav";
+  const prev = document.createElement("button"); prev.className="soc-navbtn"; prev.textContent="‹"; prev.onclick=()=>socMonthShift(-1);
+  const lbl = document.createElement("span"); lbl.className="soc-callabel";
+  const dd = new Date(socMonth+"-01T00:00:00");
+  lbl.textContent = dd.toLocaleDateString(undefined,{month:"long", year:"numeric"});
+  const next = document.createElement("button"); next.className="soc-navbtn"; next.textContent="›"; next.onclick=()=>socMonthShift(1);
+  nav.append(prev,lbl,next); head.appendChild(nav);
+  block.appendChild(head);
+
+  const cal = document.createElement("div"); cal.className="soc-cal";
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
+    const dh=document.createElement("div"); dh.className="soc-dow"; dh.textContent=d; cal.appendChild(dh);
+  });
+  const first = new Date(socMonth+"-01T00:00:00");
+  const year=first.getFullYear(), month=first.getMonth();
+  let lead = (first.getDay()+6)%7;                       // Monday-first
+  const daysIn = new Date(year, month+1, 0).getDate();
+  for(let i=0;i<lead;i++){ const e=document.createElement("div"); e.className="soc-day soc-day-out"; cal.appendChild(e); }
+  const todayISO = (new Date()).toISOString().slice(0,10);
+  for(let d=1; d<=daysIn; d++){
+    const iso = year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const cell = document.createElement("div"); cell.className="soc-day"+(iso===todayISO?" soc-today":"");
+    const dnum = document.createElement("div"); dnum.className="soc-daynum"; dnum.textContent=d; cell.appendChild(dnum);
+    (cs.events||[]).filter(ev=>ev.date===iso).forEach(ev=>{
+      const pill=document.createElement("div"); pill.className="soc-ev";
+      pill.innerHTML='<span class="soc-ev-t">'+mtEsc(ev.title)+'</span>'+(ev.channel?'<span class="soc-ev-c">'+mtEsc(ev.channel)+'</span>':'');
+      if(editMode){
+        pill.onclick=(e)=>{ e.stopPropagation(); socEditEvent(cs, ev); };
+        const x=document.createElement("button"); x.className="soc-ev-del"; x.textContent="×"; x.title="Delete";
+        x.onclick=(e)=>{ e.stopPropagation(); if(confirm('Delete "'+ev.title+'"?')){ cs.events = cs.events.filter(y=>y.id!==ev.id); saveSocial(); } };
+        pill.appendChild(x);
+      }
+      cell.appendChild(pill);
+    });
+    if(editMode){
+      const add=document.createElement("button"); add.className="soc-dayadd"; add.textContent="＋";
+      add.title="Schedule a post"; add.onclick=(e)=>{ e.stopPropagation(); socNewEvent(cs, iso); };
+      cell.appendChild(add);
+    }
+    cal.appendChild(cell);
+  }
+  block.appendChild(cal);
+  wrap.appendChild(block);
+}
+function socNewEvent(cs, iso){
+  openDialog("Schedule a post", {duedate:iso}, v=>{
+    cs.events = cs.events || [];
+    const ev = { id:"se-"+Date.now().toString(36), title:v.title, date:(v.duedate||iso) };
+    if(v.channel) ev.channel = v.channel;
+    if(v.owner) ev.owner = v.owner;
+    cs.events.push(ev); saveSocial();
+  }, {duedate:true, channel:true});
+}
+function socEditEvent(cs, ev){
+  openDialog("Edit scheduled post", {title:ev.title, duedate:ev.date, channel:ev.channel||"", owner:ev.owner||""}, v=>{
+    ev.title=v.title; if(v.duedate) ev.date=v.duedate;
+    if(v.channel) ev.channel=v.channel; else delete ev.channel;
+    if(v.owner) ev.owner=v.owner; else delete ev.owner;
+    saveSocial();
+  }, {duedate:true, channel:true});
+}
+
 function renderContentDisc(){
   const wrap = $("content");
   wrap.innerHTML = "";
@@ -9859,6 +10111,17 @@ function renderAll(){
           });
         }
         ws.appendChild(b);
+        /* Social Media space: three sub-sections in the sidebar */
+        if(cs.type==="social" && view==="social" && activeCspace===cs.id){
+          [["ideation","💡 Ideation"],["process","🗂 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
+            const sub=document.createElement("button");
+            const on = (k==="ideation") ? (socialView==="ideation"||socialView==="ideation-roadmap") : socialView===k;
+            sub.className="ws-sub"+(on?" active":"");
+            sub.textContent=lbl;
+            sub.onclick=()=>{ socialView=k; renderAll(); };
+            ws.appendChild(sub);
+          });
+        }
         /* discovery sub-views (All ideas / Roadmap / Timeline) now render as content tabs */
       });
       if(_allCs.length > _shownCs.length){
@@ -9906,6 +10169,11 @@ function renderAll(){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
     renderContentDisc();
+  }
+  else if(view==="social"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    renderContentSocial();
   }
   else if(view==="csnode"){
     $("side-title").style.display = "none";
@@ -11538,7 +11806,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
-    openDialog(type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
+    openDialog(type==="social" ? "New Social Media space" : type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
      chooseAccess(v.title, (access, members)=>{
       const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members: members||{} };
       if(type==="scrum"){
@@ -11552,6 +11820,11 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
         cs.ideas = [];
         CSPACES.list.push(cs);
         view = "disc"; activeCspace = cs.id; discView = "ideas";
+        renderAll(); pushAll();
+      } else if(type==="social"){
+        cs.ideas = []; cs.cards = []; cs.events = [];
+        CSPACES.list.push(cs);
+        view = "social"; activeCspace = cs.id; socialView = "ideation";
         renderAll(); pushAll();
       } else if(type==="module"){
         const key = v.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") + "-" + Date.now().toString(36).slice(-3);
