@@ -2087,6 +2087,21 @@ body{margin:0}
 .pdt-mapsel{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;color:var(--ink)}
 .pdt-mapsel:disabled{opacity:.6}
 
+/* ===== Danger zone: team list ===== */
+.dz-list{max-width:680px;display:flex;flex-direction:column;gap:8px}
+.dz-row{display:flex;align-items:center;gap:12px;border:1px solid #E4A9A2;background:#FFF8F7;border-radius:12px;padding:12px 14px}
+.dz-row.current{border-color:var(--indigo);background:var(--indigo-soft,#EEF1FF)}
+.dz-av{width:34px;height:34px;flex:none;border-radius:9px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.dz-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dz-name{font-weight:700;font-size:14px;color:var(--ink)}
+.dz-badge{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.05em;background:var(--indigo);color:#fff;border-radius:99px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+.dz-slug{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.dz-open{border:1px solid var(--line-strong);background:var(--card);color:var(--muted);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.dz-open:hover{border-color:var(--indigo);color:var(--indigo)}
+.dz-del{border:1px solid #C0362C;background:#C0362C;color:#fff;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.dz-del:hover:not(:disabled){filter:brightness(1.08)}
+.dz-del:disabled{opacity:.4;cursor:not-allowed}
+
 </style>
 </head>
 <body>
@@ -12725,28 +12740,41 @@ function renderAdminDanger(wrap){
   const h2 = document.createElement("h2"); h2.textContent = "Danger zone";
   head.appendChild(h2); wrap.appendChild(head);
 
-  const name = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
-  const card = document.createElement("div"); card.className = "danger-card";
-  const t = document.createElement("div"); t.className="danger-t"; t.textContent = "Delete this team";
-  const p = document.createElement("div"); p.className="danger-p";
-  p.textContent = "Permanently deletes “"+name+"” and everything in it — roadmaps, spaces, boards, docs, OKRs and its people’s roles for this team. This cannot be undone.";
-  const list = document.createElement("ul"); list.className="danger-list";
-  ["Roadmaps and timelines","Spaces and every board inside them","Docs, spaces and templates","OKR cycles, objectives and key results","My Team org chart, squads, ownership and reviews"].forEach(x=>{
-    const li=document.createElement("li"); li.textContent=x; list.appendChild(li);
+  const intro = document.createElement("div"); intro.className="hint"; intro.style.margin="0 0 16px";
+  intro.textContent = "Every team in this workspace. Deleting one permanently removes its roadmaps, spaces and boards, docs, OKRs, My Team data and its people’s roles for that team. This cannot be undone — download a Backup first if you might want the data later.";
+  wrap.appendChild(intro);
+
+  const slugs = Object.keys(TEAMS||{}).sort((a,b)=> ((TEAMS[a].name||a)+"").localeCompare((TEAMS[b].name||b)+""));
+  const list = document.createElement("div"); list.className="dz-list";
+  if(!slugs.length){
+    const e=document.createElement("div"); e.className="hint"; e.textContent="No teams found."; list.appendChild(e);
+  }
+  slugs.forEach(slug=>{
+    const name = (TEAMS[slug] && TEAMS[slug].name) || slug;
+    const row = document.createElement("div"); row.className="dz-row"+(slug===TEAM?" current":"");
+    const av = document.createElement("span"); av.className="dz-av"; av.textContent=(name||"?").charAt(0).toUpperCase();
+    const main = document.createElement("div"); main.className="dz-main";
+    main.innerHTML = '<span class="dz-name">'+mtEsc(name)+(slug===TEAM?' <span class="dz-badge">current</span>':'')+'</span><span class="dz-slug">/'+mtEsc(slug)+'</span>';
+    const open = document.createElement("button"); open.className="dz-open"; open.textContent="Open";
+    open.onclick=()=> navTeam(slug);
+    const del = document.createElement("button"); del.className="dz-del"; del.textContent="Delete";
+    del.disabled = slugs.length<=1;
+    del.title = slugs.length<=1 ? "This is the only team — you can't delete it" : "Delete this team permanently";
+    del.onclick=()=> deleteTeamFlow(slug);
+    row.append(av, main, open, del);
+    list.appendChild(row);
   });
-  const btn = document.createElement("button"); btn.className="danger-btn"; btn.textContent="Delete “"+name+"” permanently";
-  btn.onclick = ()=> deleteTeamFlow();
-  card.append(t,p,list,btn);
-  wrap.appendChild(card);
+  wrap.appendChild(list);
 
   const note = document.createElement("div"); note.className="hint"; note.style.marginTop="14px";
-  note.textContent = "Only a super-admin sees this. Download a Backup first if you might want the data later.";
+  note.textContent = "Only a super-admin sees this page.";
   wrap.appendChild(note);
 }
-function deleteTeamFlow(){
+function deleteTeamFlow(slug){
   if(!(currentUser() && currentUser().super)){ alert("Only a super-admin can delete a team."); return; }
-  const slug = TEAM;
+  slug = slug || TEAM;
   const name = (TEAMS[slug] && TEAMS[slug].name) || slug;
+  if(!TEAMS[slug]){ alert("That team no longer exists."); return; }
   if(Object.keys(TEAMS).length <= 1){ alert("This is your only team — create another one before deleting this."); return; }
   const typed = prompt('This permanently deletes "'+name+'" and everything in it.\n\nType the team name to confirm:');
   if(typed===null) return;
@@ -12764,9 +12792,14 @@ function deleteTeamFlow(){
       } else {
         delete TEAMS[slug];
       }
-      const left = Object.keys(TEAMS);
+      (USERS||[]).forEach(u=>{ if(u.teams) delete u.teams[slug]; });
       alert('"'+name+'" was deleted.');
-      if(left.length) navTeam(left[0]); else location.href = location.pathname;
+      if(slug === TEAM){
+        const left = Object.keys(TEAMS);
+        if(left.length) navTeam(left[0]); else location.href = location.pathname;
+      } else {
+        renderAdminPage();   // stay here; the list refreshes
+      }
     }catch(e){ alert("Couldn't delete the team: "+e.message); }
   })();
 }
