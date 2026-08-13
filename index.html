@@ -2134,6 +2134,11 @@ body{margin:0}
 .soc-scheddone{font-size:10.5px;font-weight:700;color:var(--done)}
 .soc-ev-time{font-family:var(--mono);font-size:9.5px;color:var(--indigo)}
 
+/* culture note pinned top-right of Schedule */
+.soc-schedtop{display:flex;align-items:flex-start;justify-content:space-between;gap:26px;flex-wrap:wrap}
+.soc-schedtop-l{flex:1;min-width:260px}
+.soc-schedtop .soc-culture{margin:2px 0 12px;width:340px;max-width:100%;flex:none}
+@media(max-width:900px){ .soc-schedtop .soc-culture{width:100%} }
 </style>
 </head>
 <body>
@@ -3605,7 +3610,8 @@ function loadTeamData(t){
     // No preference saved yet. A brand-new team starts clean — no Development / Bugs
     // spaces until the person adds them. Teams that already have work in either
     // keep them visible so nothing disappears.
-    var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length) || (DEV.spaces&&DEV.spaces.length>1)));
+    // only actual work counts — an empty leftover space must not bring the board back
+    var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length)));
     var _bugsUsed = !!(typeof BUGS!=="undefined" && BUGS && BUGS.tickets && BUGS.tickets.some(function(x){ return x.team===TEAM; }));
     BUILTIN_HIDDEN = { dev: !_devUsed, bugs: !_bugsUsed };
   }
@@ -8422,13 +8428,23 @@ function renderSidebarDev(){
         actBtn("pencil","Rename team / space",false, ()=>
           openDialog("Rename dev space", {title:space.name}, v=>{ space.name = v.title; saveDev(); }, {hideExtras:true, titleLabel:"Team / space name"})),
         actBtn("trash","Delete space",true, ()=>{
-          if(DEV.spaces.length<=1){ toast("Keep at least one dev space"); return; }
           const n = DEV.cards.filter(c=>c.space===space.id).length;
-          if(confirm("Delete the dev space \u201C"+space.name+"\u201D and its "+n+" card(s) + sprints?")){
+          const last = DEV.spaces.length<=1;
+          const msg = last
+            ? "Delete \u201C"+space.name+"\u201D and its "+n+" card(s) + sprints?\n\nThis is the last dev space, so the Development board will be removed from the sidebar. You can bring it back any time with \uFF0B Add space \u2192 Scrum."
+            : "Delete the dev space \u201C"+space.name+"\u201D and its "+n+" card(s) + sprints?";
+          if(confirm(msg)){
             DEV.cards = DEV.cards.filter(c=>c.space!==space.id);
             DEV.sprints = DEV.sprints.filter(x=>x.space!==space.id);
             DEV.spaces.splice(DEV.spaces.indexOf(space),1);
             devSpace = null; devSprint = null;
+            if(last){
+              BUILTIN_HIDDEN.dev = true;
+              view = "roadmap"; defaultView();
+              saveDev(); pushAll(); renderAll();
+              toast("Development board removed");
+              return;
+            }
             saveDev(); toast("Dev space deleted");
           }
         }),
@@ -10222,8 +10238,11 @@ function socSchedulePane(cs){
   lbl.textContent = dd.toLocaleDateString(undefined,{month:"long", year:"numeric"});
   const next = document.createElement("button"); next.className="soc-navbtn"; next.textContent="›"; next.onclick=()=>socMonthShift(1);
   nav.append(prev,lbl,next); head.appendChild(nav);
-  block.appendChild(head);
-  block.appendChild(socCultureNote(cs));
+  const top = document.createElement("div"); top.className="soc-schedtop";
+  const left = document.createElement("div"); left.className="soc-schedtop-l"; left.appendChild(head);
+  top.appendChild(left);
+  top.appendChild(socCultureNote(cs));
+  block.appendChild(top);
 
   const cal = document.createElement("div"); cal.className="soc-cal";
   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
