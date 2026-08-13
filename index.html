@@ -2157,6 +2157,7 @@ body{margin:0}
 .soc-ev[draggable="true"]{cursor:grab}
 .soc-ev.soc-ev-dragging{opacity:.45}
 .dt-row.dt-nostate{grid-template-columns:minmax(220px,2.4fr) 62px minmax(150px,1.4fr) minmax(100px,1fr) minmax(70px,auto)}
+.soc-card-n{margin-top:5px;font-size:11.5px;line-height:1.5;color:var(--muted);white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -3090,14 +3091,20 @@ function canViewSpace(ref){
   const teamRole = roleOf(currentUser(), TEAM);
   if(!teamRole) return false;
   if(roleRank(teamRole) <= roleRank("admin")) return true;   // owners/admins see everything
-  const access = spaceAccessOf(ref);
-  if(access !== "private") return true;                       // open & limited are visible to all
-  // private: only explicit members (with a real role, not "none") can see it
   const m = spaceMembers(ref);
   const sr = m[currentUser().email];
-  return !!sr && sr !== "none";
+  if(sr === "none") return false;               // explicitly shut out of this space
+  if(sr) return true;                           // explicitly given a role here -> always visible
+  const access = spaceAccessOf(ref);
+  return access !== "private";                  // open & limited are visible to the whole team
 }
 // build a ref for any custom space object (for visibility checks in the sidebar)
+// the space currently open in the main pane — must pass the same visibility rule as the sidebar
+function spaceViewAllowed(){
+  const cs = (CSPACES.list||[]).find(x=>x.id===activeCspace);
+  if(!cs) return true;
+  return canViewSpace(csRef(cs));
+}
 function csRef(cs){
   return { key:"cs:"+cs.id, obj:cs, name:cs.name };
 }
@@ -10248,7 +10255,9 @@ function socCardEl(cs, card){
   let meta = "";
   if(card.channel) meta += '<span class="soc-chip">'+mtEsc(card.channel)+'</span>';
   if(card.due) meta += '<span class="soc-due">📅 '+mtEsc(card.due)+'</span>';
-  el.innerHTML = '<div class="soc-card-t">'+mtEsc(card.title)+'</div>'+(meta?'<div class="soc-card-m">'+meta+'</div>':'')
+  el.innerHTML = '<div class="soc-card-t">'+mtEsc(card.title)+'</div>'
+    + (card.note ? '<div class="soc-card-n">'+mtEsc(card.note)+'</div>' : '')
+    + (meta?'<div class="soc-card-m">'+meta+'</div>':'')
     + (card.owner ? '<div class="soc-card-o">'+mtEsc(card.owner)+'</div>' : '');
   if(editMode && !card.eventId){
     const row=document.createElement("div"); row.className="soc-schedrow";
@@ -10314,15 +10323,17 @@ function socNewCard(cs, colKey){
     if(v.owner) card.owner = v.owner;
     if(v.duedate) card.due = v.duedate;
     if(v.channel) card.channel = v.channel;
+    if(v.note) card.note = v.note;
     cs.cards.push(card); saveSocial();
   }, {duedate:true, channel:true});
 }
 function socEditCard(cs, card){
-  openDialog("Edit content item", {title:card.title, owner:card.owner||"", duedate:card.due||"", channel:card.channel||""}, v=>{
+  openDialog("Edit content item", {title:card.title, owner:card.owner||"", duedate:card.due||"", channel:card.channel||"", note:card.note||""}, v=>{
     card.title = v.title;
     if(v.owner) card.owner=v.owner; else delete card.owner;
     if(v.duedate) card.due=v.duedate; else delete card.due;
     if(v.channel) card.channel=v.channel; else delete card.channel;
+    if(v.note) card.note=v.note; else delete card.note;
     saveSocial();
   }, {duedate:true, channel:true});
 }
@@ -11095,16 +11106,19 @@ function renderAll(){
   else if(view==="disc"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
+    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
     renderContentDisc();
   }
   else if(view==="social"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
+    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
     renderContentSocial();
   }
   else if(view==="pdt"){
     $("side-title").style.display = "none";
     $("mods").innerHTML = "";
+    if(!spaceViewAllowed()) { view = "roadmap"; defaultView(); renderAll(); return; }
     renderContentPdt();
   }
   else if(view==="csnode"){
