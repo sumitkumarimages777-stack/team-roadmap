@@ -2139,6 +2139,20 @@ body{margin:0}
 .soc-schedtop-l{flex:1;min-width:260px}
 .soc-schedtop .soc-culture{margin:2px 0 12px;width:340px;max-width:100%;flex:none}
 @media(max-width:900px){ .soc-schedtop .soc-culture{width:100%} }
+/* ===== content card subtasks ===== */
+.soc-subs{margin-top:10px;border-top:1px dashed var(--line-strong);padding-top:9px}
+.soc-subs-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:5px}
+.soc-subs-bar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:8px}
+.soc-subs-bar i{display:block;height:100%;background:var(--done);transition:width .18s}
+.soc-sub{display:flex;align-items:center;gap:7px;padding:3px 0;font-size:12px;color:var(--ink);cursor:pointer}
+.soc-sub input{margin:0;cursor:pointer}
+.soc-sub.on span{text-decoration:line-through;color:var(--muted)}
+.soc-sub-x{margin-left:auto;border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;opacity:0}
+.soc-sub:hover .soc-sub-x{opacity:.7}
+.soc-sub-x:hover{opacity:1;color:#C0362C}
+.soc-sub-add{margin-top:6px;border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;font-family:var(--sans)}
+.soc-sub-add:hover{text-decoration:underline}
+
 </style>
 </head>
 <body>
@@ -3339,7 +3353,9 @@ function normalizeCspaces(c){
     if(x.type === "social"){
       x.cards = x.cards || [];
       x.events = x.events || [];
-      x.cards.forEach(c=>{ if(!c.id) c.id="sc-"+Math.random().toString(36).slice(2,8); if(!SOC_COLS.some(k=>k.key===c.col)) c.col="todo"; });
+      x.cards.forEach(c=>{ if(!c.id) c.id="sc-"+Math.random().toString(36).slice(2,8); if(!SOC_COLS.some(k=>k.key===c.col)) c.col="todo";
+        if(Array.isArray(c.subtasks)) c.subtasks.forEach(function(t,i){ if(!t.id) t.id="st-"+i+Math.random().toString(36).slice(2,6); t.done=!!t.done; t.label=String(t.label||"Step"); });
+        else if(c.subtasks!==undefined) delete c.subtasks; });
       x.events.forEach(e=>{ if(!e.id) e.id="se-"+Math.random().toString(36).slice(2,8); });
       x.culture = typeof x.culture==="string" ? x.culture : "";
     }
@@ -10082,6 +10098,24 @@ function renderContentSocial(){
 }
 
 /* ---------- Content Process: kanban ---------- */
+const SOC_DEFAULT_SUBTASKS = ["Scripting","Shooting","Editing","Thumbnail"];
+function socSeedSubtasks(card){
+  if(card.col!=="progress") return;
+  if(Array.isArray(card.subtasks) && card.subtasks.length) return;
+  card.subtasks = SOC_DEFAULT_SUBTASKS.map(function(l,i){ return {id:"st-"+Date.now().toString(36)+i, label:l, done:false}; });
+}
+function socEventFor(cs, card){
+  if(!card.eventId) return null;
+  return (cs.events||[]).find(function(e){ return e.id===card.eventId; }) || null;
+}
+function socFmtDay(iso){
+  if(!iso) return "";
+  try{
+    const d=new Date(iso+"T00:00:00");
+    return d.toLocaleDateString(undefined,{day:"numeric", month:"short"});
+  }catch(_){ return iso; }
+}
+function socToggleSub(cs, card, st){ st.done=!st.done; saveSocial(); }
 function socIdeaToProcess(cs, idea){
   cs.cards = cs.cards || [];
   if(cs.cards.some(c=>c.fromIdea===idea.id)){ toast("Already in Content Process"); return; }
@@ -10131,7 +10165,7 @@ function socProcessPane(cs){
       e.preventDefault(); cw.classList.remove("soc-over");
       if(!socDragId) return;
       const card = (cs.cards||[]).find(c=>c.id===socDragId);
-      if(card && card.col!==col.key){ card.col = col.key; socDragId=null; saveSocial(); }
+      if(card && card.col!==col.key){ card.col = col.key; socSeedSubtasks(card); socDragId=null; saveSocial(); }
       socDragId=null;
     });
     inCol.forEach(card=> list.appendChild(socCardEl(cs, card)));
@@ -10167,8 +10201,45 @@ function socCardEl(cs, card){
     row.appendChild(sb); el.appendChild(row);
   } else if(card.eventId){
     const row=document.createElement("div"); row.className="soc-schedrow";
-    const done=document.createElement("span"); done.className="soc-scheddone"; done.textContent="📅 scheduled";
+    const evd=socEventFor(cs, card);
+    const done=document.createElement("span"); done.className="soc-scheddone";
+    done.textContent = evd ? ("📅 "+socFmtDay(evd.date)+(evd.time?" · "+evd.time:"")) : "📅 scheduled";
+    if(evd) done.title = "Scheduled for "+evd.date+(evd.time?" at "+evd.time:"");
     row.appendChild(done); el.appendChild(row);
+  }
+  // subtasks (seeded when a card reaches In Progress)
+  if(Array.isArray(card.subtasks) && card.subtasks.length){
+    const doneN = card.subtasks.filter(function(x){return x.done;}).length;
+    const box=document.createElement("div"); box.className="soc-subs";
+    const hd=document.createElement("div"); hd.className="soc-subs-h";
+    hd.textContent = "Steps "+doneN+"/"+card.subtasks.length;
+    box.appendChild(hd);
+    const bar=document.createElement("div"); bar.className="soc-subs-bar";
+    bar.innerHTML='<i style="width:'+Math.round(doneN/card.subtasks.length*100)+'%"></i>';
+    box.appendChild(bar);
+    card.subtasks.forEach(function(st){
+      const r=document.createElement("label"); r.className="soc-sub"+(st.done?" on":"");
+      const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!st.done;
+      cb.onclick=function(e){ e.stopPropagation(); socToggleSub(cs, card, st); };
+      const tx=document.createElement("span"); tx.textContent=st.label;
+      r.append(cb, tx);
+      if(editMode){
+        const x=document.createElement("button"); x.className="soc-sub-x"; x.textContent="×"; x.title="Remove step";
+        x.onclick=function(e){ e.stopPropagation(); card.subtasks=card.subtasks.filter(function(y){return y.id!==st.id;}); saveSocial(); };
+        r.appendChild(x);
+      }
+      box.appendChild(r);
+    });
+    if(editMode){
+      const add=document.createElement("button"); add.className="soc-sub-add"; add.textContent="＋ Step";
+      add.onclick=function(e){ e.stopPropagation(); openDialog("New step", {}, function(v){ card.subtasks.push({id:"st-"+Date.now().toString(36), label:v.title, done:false}); saveSocial(); }, {hideExtras:true, titleLabel:"Step"}); };
+      box.appendChild(add);
+    }
+    el.appendChild(box);
+  } else if(editMode && card.col==="progress"){
+    const add=document.createElement("button"); add.className="soc-sub-add"; add.textContent="＋ Add steps";
+    add.onclick=function(e){ e.stopPropagation(); card.subtasks=[]; socSeedSubtasks(card); saveSocial(); };
+    el.appendChild(add);
   }
   if(editMode){
     const acts = document.createElement("div"); acts.className="soc-card-acts";
