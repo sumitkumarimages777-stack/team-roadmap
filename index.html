@@ -2238,11 +2238,6 @@ body{margin:0}
 .pp-delmod{margin-left:10px;color:var(--muted);cursor:pointer;font-size:14px}
 .pp-delmod:hover{color:#C0362C}
 .pp-emptymod td{color:var(--muted);font-style:italic;font-size:12.5px}
-/* top navigation carried onto every full-screen page */
-.ov-nav{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;margin-right:12px}
-.ov-nav .corner-nav{font-size:12.5px;padding:7px 15px}
-@media(max-width:860px){ .ov-nav{width:100%;order:3;margin:8px 0 0} }
-
 </style>
 </head>
 <body>
@@ -2369,7 +2364,7 @@ body{margin:0}
 </div>
 <div id="docs-page" class="docs-page" style="display:none">
   <div class="dp-shell">
-    <div class="dp-top" id="dp-top">
+    <div class="dp-top">
       <div class="dp-brand"><span class="dp-bi">📄</span> Docs</div>
       <button class="dp-back" id="docs-back">← Back to workspace</button>
     </div>
@@ -2379,7 +2374,7 @@ body{margin:0}
 
 <div id="team-page" class="team-page" style="display:none">
   <div class="mt-shell">
-    <div class="mt-top" id="mt-top">
+    <div class="mt-top">
       <div class="mt-brand"><span class="mt-bi">👥</span> My Team</div>
       <div class="mt-viewtoggle">
         <button id="mt-view-org" class="on" onclick="mtSetView('org')">Reporting lines</button>
@@ -2495,7 +2490,7 @@ body{margin:0}
 
 <div id="product-page" class="product-page" style="display:none">
   <div class="pp-shell">
-    <div class="pp-top" id="pp-top">
+    <div class="pp-top">
       <div class="pp-brand"><span class="pp-bi">📦</span> Our Product</div>
       <button class="pp-back" id="pp-back">← Back to workspace</button>
     </div>
@@ -11565,7 +11560,7 @@ function ppDeleteModule(nodeId, encMod){
 }
 
 /* ---------- open / navigate ---------- */
-function openProduct(){ productPath=[]; productFilter="all"; renderProductPage(); mountOvNav("pp-top","prod"); $("product-page").style.display="block"; window.scrollTo(0,0); }
+function openProduct(){ productPath=[]; productFilter="all"; renderProductPage(); $("product-page").style.display="block"; window.scrollTo(0,0); }
 function closeProduct(){ $("product-page").style.display="none"; }
 function ppGo(id){ productPath.push(id); productFilter="all"; renderProductPage(); }
 function ppCrumb(i){ productPath = i<0 ? [] : productPath.slice(0,i+1); productFilter="all"; renderProductPage(); }
@@ -11893,7 +11888,7 @@ function mtFind(id, node, parent){
   return null;
 }
 
-function openTeam(){ mtView="org"; renderTeamPage(); mountOvNav("mt-top","team"); $("team-page").style.display="block"; window.scrollTo(0,0); }
+function openTeam(){ mtView="org"; renderTeamPage(); $("team-page").style.display="block"; window.scrollTo(0,0); }
 function closeTeam(){ $("team-page").style.display="none"; }
 function mtCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
 
@@ -12278,13 +12273,11 @@ function docOpenFromUrl(){
   return true;
 }
 function openDocsPage(){
-  mountOvNav("dp-top","docs");
   docSearch=""; docSpaceMenuOpen=false;
   buildDocsShell();
   $("docs-page").style.display="block"; window.scrollTo(0,0);
 }
 function openDocs(){
-  mountOvNav("dp-top","docs");
   docSearch=""; docSpaceMenuOpen=false;
   if(!docCurrentSpace()){ docSpaceId = TEAMDOCS.spaces[0] ? TEAMDOCS.spaces[0].id : null; }
   var roots=docChildren("");
@@ -13127,38 +13120,6 @@ function sqDelete(id){
 
 /* ---------- controls ---------- */
 let lastWs = "roadmap";
-/* the same top navigation on every full-screen page, so you can jump straight
-   between Workspace / OKRs / Our Product / My Team / Docs from anywhere      */
-function closeAllPages(){
-  ["product-page","team-page","docs-page","admin-page"].forEach(function(id){
-    var el = $(id); if(el) el.style.display = "none";
-  });
-}
-function ovNav(active){
-  const wrap = document.createElement("div");
-  wrap.className = "ov-nav";
-  [
-    ["ws","Workspace", function(){ closeAllPages(); view = lastWs; renderAll(); }],
-    ["okr","OKRs",     function(){ closeAllPages(); view = "okr"; renderAll(); }],
-    ["prod","Our Product", function(){ closeAllPages(); openProduct(); }],
-    ["team","My Team", function(){ closeAllPages(); openTeam(); }],
-    ["docs","Docs",    function(){ closeAllPages(); openDocs(); }]
-  ].forEach(function(row){
-    const b = document.createElement("button");
-    b.className = "corner-nav" + (row[0]===active ? "" : " ghost");
-    b.textContent = row[1];
-    b.onclick = row[2];
-    wrap.appendChild(b);
-  });
-  return wrap;
-}
-function mountOvNav(hostId, active){
-  const host = $(hostId); if(!host) return;
-  const old = host.querySelector(".ov-nav"); if(old) old.remove();
-  const back = host.querySelector("button[id$='-back']");
-  const nav = ovNav(active);
-  if(back) host.insertBefore(nav, back); else host.appendChild(nav);
-}
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
 $("nav-team-ideas").onclick = ()=>{ view = (view==="ideas") ? lastWs : "ideas"; renderAll(); };
