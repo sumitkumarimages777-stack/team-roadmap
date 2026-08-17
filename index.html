@@ -2668,6 +2668,31 @@ body{margin:0}
   .sc-body{padding:20px}
   .sc-topbar{padding:14px 20px}
 }
+
+/* ---- member scorecards (People) ---- */
+.sc-btn{background:var(--sc-primary);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sc-btn:hover{background:#2544e6}
+.sc-mhdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:26px 2px 12px}
+.sc-mhdr h3{font-family:var(--sc-mono);font-size:16px;font-weight:600;margin:0;color:var(--sc-text)}
+.sc-hint{background:var(--sc-primary-soft);border:1px solid #cdd7ff;color:#22307F;border-radius:12px;padding:12px 16px;font-size:12.5px;margin-bottom:18px;line-height:1.5}
+.sc-hint b{font-weight:600}
+.sc-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.sc-mcard{background:var(--sc-surface);border:1px solid var(--sc-line);border-radius:14px;box-shadow:0 1px 2px rgba(20,26,46,.04),0 6px 20px rgba(20,26,46,.05);overflow:hidden;display:flex;flex-direction:column}
+.sc-mh{padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--sc-line)}
+.sc-avatar{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;font-family:var(--sc-mono);font-weight:700;font-size:15px;color:#fff}
+.sc-who{min-width:0}
+.sc-who b{font-size:14.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sc-text)}
+.sc-who span{font-size:12px;color:var(--sc-muted)}
+.sc-mdel{margin-left:auto;background:none;border:none;color:var(--sc-faint);font-size:15px;padding:4px;border-radius:6px;line-height:1;cursor:pointer}
+.sc-mdel:hover{background:var(--sc-off-bg);color:var(--sc-off)}
+.sc-mk{padding:6px 16px 14px}
+.sc-mrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F2F3F8}
+.sc-mrow:last-child{border-bottom:none}
+.sc-mnm{flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--sc-text)}
+.sc-mnm small{display:block;color:var(--sc-faint);font-weight:400;font-size:11px}
+.sc-mval{width:64px;text-align:center;font-family:var(--sc-mono);font-weight:600}
+.sc-msub{font-size:12px;color:var(--sc-muted);margin-top:6px}
+@media(max-width:820px){ .sc-members{grid-template-columns:1fr} }
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
@@ -13400,6 +13425,7 @@ function normalizeScorecard(x){
       k.source = (k.source && k.source.type) ? k.source : {type:"manual"};
     });
   });
+  scNormMembers(x);
   return x;
 }
 /* --- board connection engine: read live counts from existing boards --- */
@@ -13481,6 +13507,169 @@ function scTrend(cur, prev){
 function scCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
 function scStatLabel(s){ return s==="on"?"On track":s==="risk"?"At risk":s==="off"?"Off track":"Not set"; }
 function scTypeBadge(t){ if(!t) return '<span class="sc-prev">\u2014</span>'; var safe=SC_TYPES.indexOf(t)>=0?t:""; return '<span class="sc-type'+(safe?(" t-"+safe):"")+'">'+mtEsc(t)+'</span>'; }
+/* ================= SCORECARD · PEOPLE (member scorecards) ================= */
+var SC_AVATAR_COLORS = ["#3355FF","#12946A","#B03060","#7A3AA8","#B87503","#2F7D8A","#C4552E","#4A5AA8"];
+var SC_MSTATUS = ["On track","At risk","Off track","Not started"];
+var SC_UNIVERSAL = [
+  {name:"Personal OKRs / goals", what:"% of quarterly goals completed", type:"Output", target:"> 70%", cadence:"Quarterly"},
+  {name:"Peer & manager feedback", what:"Values, reliability & collaboration", type:"Behaviour", target:"Positive", cadence:"Quarterly"},
+  {name:"Growth plan progress", what:"Movement on their development plan", type:"Growth", target:"On track", cadence:"Quarterly"}
+];
+var SC_ROLES = {
+  "Software Developer":{dept:"Engineering",kpis:[
+    {name:"Sprint goal delivery",what:"Committed work shipped, sustainably",type:"Output",target:"~90%",cadence:"Monthly"},
+    {name:"Change failure rate",what:"% of their changes that cause incidents",type:"Quality",target:"Low",cadence:"Monthly"},
+    {name:"Code review contribution",what:"Timely, useful reviews for teammates",type:"Collaboration",target:"\u2014",cadence:"Monthly"},
+    {name:"Feature impact",what:"Did their work move its target metric",type:"Impact",target:"\u2014",cadence:"Quarterly"}
+  ]},
+  "New / Junior Developer":{dept:"Engineering",kpis:[
+    {name:"Onboarding milestones",what:"First PR & first feature on the ramp plan",type:"Growth",target:"On track",cadence:"Weekly"},
+    {name:"Time to first merged PR",what:"How fast they land their first change",type:"Growth",target:"< 2 weeks",cadence:"Once"},
+    {name:"Growing task ownership",what:"Tasks get bigger & more independent",type:"Growth",target:"Increasing",cadence:"Monthly"}
+  ]},
+  "QA Engineer":{dept:"Engineering",kpis:[
+    {name:"Escaped defects",what:"Bugs reaching production in owned areas",type:"Quality",target:"Low",cadence:"Monthly"},
+    {name:"Pre-release bugs caught",what:"Issues found before users see them",type:"Quality",target:"\u2014",cadence:"Monthly"},
+    {name:"Test coverage",what:"Coverage of their owned features",type:"Quality",target:"\u2014",cadence:"Monthly"}
+  ]},
+  "Product Manager":{dept:"Product",kpis:[
+    {name:"Feature outcome",what:"% of shipped features hitting target metric",type:"Impact",target:"\u2014",cadence:"Quarterly"},
+    {name:"Roadmap delivery",what:"On-time delivery of committed items",type:"Output",target:"\u2014",cadence:"Monthly"},
+    {name:"Discovery quality",what:"Research & specs behind good decisions",type:"Quality",target:"\u2014",cadence:"Quarterly"}
+  ]},
+  "Product Designer":{dept:"Product",kpis:[
+    {name:"Usability outcome",what:"Task-success rate in user testing",type:"Impact",target:"> 85%",cadence:"Quarterly"},
+    {name:"Delivery vs rework",what:"Designs ship without major rework",type:"Quality",target:"\u2014",cadence:"Monthly"},
+    {name:"Design-system contribution",what:"Reusable components added / maintained",type:"Collaboration",target:"\u2014",cadence:"Quarterly"}
+  ]},
+  "Performance Marketer":{dept:"Marketing",kpis:[
+    {name:"ROAS / CAC (owned channels)",what:"Efficiency of the spend they run",type:"Impact",target:"On target",cadence:"Weekly"},
+    {name:"Experiment velocity",what:"Tests run & learnings shipped",type:"Output",target:"\u2014",cadence:"Monthly"}
+  ]},
+  "Content Writer":{dept:"Marketing",kpis:[
+    {name:"Organic sign-ups from content",what:"Users driven by pieces they wrote",type:"Impact",target:"\u2014",cadence:"Monthly"},
+    {name:"Content published vs plan",what:"Output against the content calendar",type:"Output",target:"\u2014",cadence:"Monthly"},
+    {name:"Content quality / engagement",what:"Read-through & engagement",type:"Quality",target:"\u2014",cadence:"Monthly"}
+  ]},
+  "Social / Community Manager":{dept:"Marketing",kpis:[
+    {name:"Engagement rate (owned)",what:"How much the audience interacts",type:"Quality",target:"> 3%",cadence:"Weekly"},
+    {name:"Community response time",what:"Speed of replies in the community",type:"Quality",target:"\u2014",cadence:"Weekly"},
+    {name:"Social-driven sign-ups",what:"Sign-ups attributed to social",type:"Impact",target:"\u2014",cadence:"Monthly"}
+  ]},
+  "Content Creator / Instr. Designer":{dept:"Educational Content",kpis:[
+    {name:"Completion rate (own lessons)",what:"% of learners finishing their lessons",type:"Impact",target:"> 75%",cadence:"Monthly"},
+    {name:"Learner rating (own content)",what:"Star/thumbs rating on their material",type:"Quality",target:"> 4.2",cadence:"Monthly"},
+    {name:"Lessons produced vs plan",what:"Output against the content roadmap",type:"Output",target:"\u2014",cadence:"Monthly"},
+    {name:"Report / error rate",what:"Mistakes learners flag",type:"Quality",target:"Low",cadence:"Monthly"}
+  ]},
+  "Support Agent":{dept:"Customer Support",kpis:[
+    {name:"CSAT (own tickets)",what:"Satisfaction of users they help",type:"Quality",target:"> 90%",cadence:"Weekly"},
+    {name:"Avg resolution time",what:"How fast they close tickets",type:"Speed",target:"\u2014",cadence:"Weekly"},
+    {name:"First contact resolution",what:"% solved in a single reply",type:"Quality",target:"> 70%",cadence:"Monthly"},
+    {name:"Tickets handled",what:"Volume (context, not sole measure)",type:"Output",target:"\u2014",cadence:"Weekly"}
+  ]},
+  "Recruiter":{dept:"HR",kpis:[
+    {name:"Time-to-hire (owned roles)",what:"Days to fill their roles",type:"Output",target:"< 40 days",cadence:"Monthly"},
+    {name:"Offer acceptance rate",what:"% of their offers accepted",type:"Quality",target:"> 80%",cadence:"Monthly"},
+    {name:"Hiring-manager satisfaction",what:"Quality of candidates delivered",type:"Quality",target:"\u2014",cadence:"Quarterly"}
+  ]},
+  "People Ops / Generalist":{dept:"HR",kpis:[
+    {name:"New-hire onboarding satisfaction",what:"How well new joiners are set up",type:"Quality",target:"\u2014",cadence:"Quarterly"},
+    {name:"Query resolution time",what:"Speed on employee requests",type:"Output",target:"\u2014",cadence:"Monthly"}
+  ]}
+};
+function scMemberId(){ return "mem-"+Math.random().toString(36).slice(2,9); }
+function scMStCls(status){ return {"On track":"on","At risk":"risk","Off track":"off","Not started":"none"}[status] || "none"; }
+function scBuildMember(name, role){
+  var tmpl = SC_ROLES[role]; if(!tmpl) return null;
+  var kpis = tmpl.kpis.concat(SC_UNIVERSAL).map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
+  return { id:scMemberId(), name:name, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[(name.length)%SC_AVATAR_COLORS.length], kpis:kpis };
+}
+function scNormMembers(x){
+  x.members = Array.isArray(x.members) ? x.members : [];
+  x.members.forEach(function(m){
+    if(!m.id) m.id = scMemberId();
+    m.name = m.name || "Unnamed";
+    m.role = m.role || "";
+    m.dept = m.dept || (SC_ROLES[m.role] ? SC_ROLES[m.role].dept : "");
+    m.color = m.color || SC_AVATAR_COLORS[((m.name||"").length)%SC_AVATAR_COLORS.length];
+    m.kpis = Array.isArray(m.kpis) ? m.kpis : [];
+    m.kpis.forEach(function(k){
+      k.name = k.name || "KPI"; k.what = k.what || ""; k.type = k.type || "";
+      k.target = k.target || ""; k.cadence = k.cadence || "Monthly";
+      if(k.current==null) k.current = "";
+      k.status = SC_MSTATUS.indexOf(k.status)>=0 ? k.status : "Not started";
+      k.note = k.note || "";
+    });
+  });
+  return x;
+}
+function scFindMember(id){ var ms=(SCORECARD.members||[]); for(var i=0;i<ms.length;i++){ if(ms[i].id===id) return ms[i]; } return null; }
+function scMemberStatusCtl(id,idx,status){
+  var cls=scMStCls(status);
+  var opts=SC_MSTATUS.map(function(sv){return '<option'+(sv===status?" selected":"")+'>'+sv+'</option>';}).join("");
+  return '<span class="sc-stwrap '+cls+'"><span class="sc-dot2"></span><select class="sc-status '+cls+'" onchange="scSetMemberField(\''+id+'\','+idx+',\'status\',this.value)">'+opts+'</select></span>';
+}
+function scMemberCard(m){
+  var admin=scCanEdit();
+  var init=(m.name||"?").split(/\s+/).map(function(x){return x[0]||"";}).slice(0,2).join("").toUpperCase();
+  var rows=(m.kpis||[]).map(function(k,i){
+    var curCell = admin
+      ? '<input class="sc-inp sc-mval" value="'+mtEsc(k.current||"")+'" placeholder="\u2014" onchange="scSetMemberField(\''+m.id+'\','+i+',\'current\',this.value)">'
+      : '<span class="sc-cur">'+(k.current?mtEsc(k.current):'\u2014')+'</span>';
+    var stCell = admin ? scMemberStatusCtl(m.id,i,k.status) : '<span class="sc-pill '+scMStCls(k.status)+'">'+mtEsc(k.status)+'</span>';
+    return '<div class="sc-mrow"><div class="sc-mnm">'+mtEsc(k.name)+((k.target && k.target!=="\u2014")?'<small>target '+mtEsc(k.target)+'</small>':'')+'</div>'+curCell+stCell+'</div>';
+  }).join("");
+  return '<div class="sc-mcard"><div class="sc-mh"><div class="sc-avatar" style="background:'+mtEsc(m.color||"#3355FF")+'">'+mtEsc(init)+'</div><div class="sc-who"><b>'+mtEsc(m.name)+'</b><span>'+mtEsc(m.role)+'</span></div>'+(admin?'<button class="sc-mdel" title="Remove" onclick="scDelMember(\''+m.id+'\')">\u2715</button>':'')+'</div><div class="sc-mk">'+rows+'</div></div>';
+}
+function scSetMemberField(id,idx,field,val){
+  var m=scFindMember(id); if(!m || !m.kpis[idx]) return;
+  if(field==="status"){ m.kpis[idx].status = SC_MSTATUS.indexOf(val)>=0 ? val : "Not started"; }
+  else { m.kpis[idx][field] = (val||"").trim(); }
+  if(typeof pushAll==="function") pushAll();
+  renderScorecard();
+}
+function scDelMember(id){
+  var m=scFindMember(id); if(!m) return;
+  if(typeof confirm==="function" && !confirm("Remove "+m.name+" and their scorecard?")) return;
+  SCORECARD.members=(SCORECARD.members||[]).filter(function(x){return x.id!==id;});
+  renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Removed");
+}
+function scOpenMember(presetDept){
+  var byDept={}; Object.keys(SC_ROLES).forEach(function(r){ var d=SC_ROLES[r].dept; (byDept[d]=byDept[d]||[]).push(r); });
+  var optgroups=Object.keys(byDept).map(function(d){ return '<optgroup label="'+mtEsc(d)+'">'+byDept[d].map(function(r){ var sel=(presetDept&&d===presetDept&&byDept[d][0]===r)?" selected":""; return '<option value="'+mtEsc(r)+'"'+sel+'>'+mtEsc(r)+'</option>'; }).join("")+'</optgroup>'; }).join("");
+  scDlg={mode:"member"};
+  $("sc-dlg-title").textContent="Add team member";
+  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Full name</label><input id="sc-m-name" placeholder="e.g. Kabir Singh" autocomplete="off"></div><div class="sc-fld"><label>Role</label><select id="sc-m-role">'+optgroups+'</select></div><div class="sc-msub">Pick a role and their scorecard is built automatically from role KPIs + a universal layer.</div>';
+  $("sc-dlg-danger").innerHTML="";
+  $("sc-dialog").classList.add("show");
+  setTimeout(function(){ var el=$("sc-m-name"); if(el) el.focus(); },40);
+}
+function scSaveMember(){
+  if(!scDlg || scDlg.mode!=="member") return;
+  var name=($("sc-m-name").value||"").trim(); var role=$("sc-m-role").value;
+  if(!name){ if(typeof toast==="function") toast("Enter a name"); return; }
+  var m=scBuildMember(name,role); if(!m) return;
+  SCORECARD.members=SCORECARD.members||[]; SCORECARD.members.push(m);
+  var fk="people"; (SCORECARD.funcs||[]).forEach(function(f){ if(f.name===m.dept) fk=f.key; });
+  scDlgClose(); scView=fk; renderScorecard();
+  if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(name+" added");
+}
+function scDlgSave(){ if(scDlg && scDlg.mode==="member") scSaveMember(); else scSaveKpi(); }
+function scMembersSectionHTML(deptName, admin){
+  var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
+  var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  var h='<div class="sc-mhdr"><div><h3>Individual scorecards</h3><div class="sc-sub">'+members.length+' '+(members.length===1?"person":"people")+' in '+mtEsc(deptName)+' \u2014 each measured on their own role</div></div>'+(admin?'<button class="sc-btn" onclick="scOpenMember(\''+dj+'\')">\uff0b Add to '+mtEsc(deptName)+'</button>':'')+'</div>';
+  h+= members.length ? '<div class="sc-members">'+members.map(scMemberCard).join("")+'</div>' : '<div class="sc-card"><div class="sc-empty"><b>No one here yet</b>Add a team member to generate their role scorecard.</div></div>';
+  return h;
+}
+function scPeoplePageHTML(admin){
+  var ms=SCORECARD.members||[];
+  var h='<div class="sc-hint"><b>Every person, measured fairly.</b> Each scorecard blends role KPIs with a universal layer (goals, peer feedback, growth). New joiners are measured on ramp &amp; learning, not senior output.</div>';
+  h+= ms.length ? '<div class="sc-members">'+ms.map(scMemberCard).join("")+'</div>' : '<div class="sc-card"><div class="sc-empty"><b>No team members yet</b>Add your first person to build their scorecard.</div></div>';
+  return h;
+}
+
 /* --- page: dark sidebar (Overview + Functions), content pane --- */
 let scView = "overview";       // "overview" | function-key
 let SCTAB = 0;                 // kept for back-compat
@@ -13508,7 +13697,9 @@ function scRenderSidebar(){
   h+='<a class="sc-nav-a'+(scView==="overview"?" on":"")+'" onclick="scGo(\'overview\')"><span>\u25c9 Overview</span></a>';
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Functions</div>';
   others.forEach(function(f){ var n=scAttnCount(f); h+='<a class="sc-nav-a'+(scView===f.key?" on":"")+'" onclick="scGo(\''+f.key+'\')"'+(n?' title="'+n+' need attention"':'')+'><span>'+mtEsc(f.name)+'</span><span class="sc-cnt'+(n?" warn":"")+'">'+(n?n:"\u2013")+'</span></a>'; });
-  h+='</div></nav>';
+  h+='</div>';
+  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">People</div><a class="sc-nav-a'+(scView==="people"?" on":"")+'" onclick="scGo(\'people\')"><span>Team members</span><span class="sc-cnt">'+((SCORECARD.members||[]).length||"\u2013")+'</span></a></div>';
+  h+='</nav>';
   h+='<div class="sc-foot"><button class="sc-footbtn" onclick="closeScorecard()">\u2190 Back to workspace</button></div>';
   var side=$("sc-side"); if(side) side.innerHTML=h;
 }
@@ -13589,19 +13780,23 @@ function scStatusCtl(fkey,k){
 }
 function scRenderContent(){
   var admin = scCanEdit();
-  var eyebrow, title, body;
-  if(scView!=="overview" && !scFuncByKey(scView)) scView="overview";
+  var eyebrow, title, body, action="";
+  if(scView!=="overview" && scView!=="people" && !scFuncByKey(scView)) scView="overview";
   if(scView==="overview"){
     eyebrow="Overview"; title="Dashboard";
     var company=scCompanyFunc();
     body = scHeroHTML(admin) + scStripHTML() + scAttnHTML() + scCaveatHTML();
     if(company) body += scKpiTableCard(company, admin, company.name + " KPIs");
+  } else if(scView==="people"){
+    eyebrow="People"; title="Team members";
+    if(admin) action='<button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button>';
+    body = scPeoplePageHTML(admin);
   } else {
     var f=scFuncByKey(scView);
     eyebrow="Function"; title=f.name;
-    body = (f.desc?'<div class="sc-fdesc">'+mtEsc(f.desc)+'</div>':'') + scCaveatHTML() + scKpiTableCard(f, admin, null);
+    body = (f.desc?'<div class="sc-fdesc">'+mtEsc(f.desc)+'</div>':'') + scCaveatHTML() + scKpiTableCard(f, admin, null) + scMembersSectionHTML(f.name, admin);
   }
-  var top='<div class="sc-topbar"><div><div class="sc-eyebrow">'+mtEsc(eyebrow)+'</div><h2 class="sc-title">'+mtEsc(title)+'</h2></div><div class="sc-topact"></div></div>';
+  var top='<div class="sc-topbar"><div><div class="sc-eyebrow">'+mtEsc(eyebrow)+'</div><h2 class="sc-title">'+mtEsc(title)+'</h2></div><div class="sc-topact">'+action+'</div></div>';
   $("sc-main").innerHTML = top + '<div class="sc-body">' + body + '</div>';
 }
 
@@ -13664,7 +13859,7 @@ function scOpenKpi(fkey, id){
   if(!f) return;
   var existing = id ? f.kpis.filter(function(k){return k.id===id;})[0] : null;
   var draft = existing ? clean(existing) : {id:null,name:"",measures:"",why:"",owner:"",target:"",cadence:"Weekly",type:"",current:"",previous:"",status:"",notes:"",source:{type:"manual"}};
-  scDlg = {fkey:fkey, id:id, draft:draft};
+  scDlg = {mode:"kpi", fkey:fkey, id:id, draft:draft};
   $("sc-dlg-title").textContent = id ? "Edit KPI" : "New KPI";
   var owners=(typeof assigneeMembers==="function"?assigneeMembers():[]);
   var ownOpts='<option value="">\u2014 Unassigned \u2014</option>';
@@ -13742,7 +13937,7 @@ if($("nav-e")){ $("nav-e").onclick = openDocs; }
 if($("nav-f")){ $("nav-f").onclick = openScorecard; }
 if($("sc-back")){ $("sc-back").onclick = closeScorecard; }
 if($("sc-dlg-cancel")){ $("sc-dlg-cancel").onclick = scDlgClose; }
-if($("sc-dlg-save")){ $("sc-dlg-save").onclick = scSaveKpi; }
+if($("sc-dlg-save")){ $("sc-dlg-save").onclick = scDlgSave; }
 if($("sc-dialog")){ $("sc-dialog").onclick = function(e){ if(e.target.id==="sc-dialog") scDlgClose(); }; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
