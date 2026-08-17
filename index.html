@@ -2511,6 +2511,70 @@ body{margin:0}
   </div>
 </div>
 
+<style id="sc-css">
+#scorecard-page #sc-main{max-width:1180px;margin:0 auto}
+.sc-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 16px}
+.sc-tab{border:1px solid #dfe3ea;background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:#475066;cursor:pointer}
+.sc-tab.on{background:#17233a;color:#fff;border-color:#17233a}
+.sc-tab .sc-tabn{opacity:.55;font-weight:500;margin-left:5px}
+.sc-fdesc{color:#69728a;font-size:13.5px;margin:-4px 0 12px}
+.sc-caveat{margin:0 0 16px;font-size:12.5px;color:#7a5f14;background:#fdf6e6;border:1px solid #f2e2b8;border-radius:8px;padding:8px 12px;line-height:1.5}
+.sc-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.sc-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#8a93a6;font-weight:700;padding:0 12px 8px;border-bottom:1px solid #e6e9f0}
+.sc-table td{padding:12px;border-bottom:1px solid #eef1f6;vertical-align:top}
+.sc-kname{font-weight:600;color:#1c2434}
+.sc-kmeas{color:#69728a;font-size:12px;margin-top:2px;max-width:340px;line-height:1.4}
+.sc-cad{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#eef1f6;color:#5a6478}
+.sc-cur{font-weight:700;color:#1c2434;font-size:15px}
+.sc-link{display:inline-block;font-size:10px;font-weight:700;color:#2f6df6;background:#eaf1ff;border-radius:5px;padding:1px 5px;vertical-align:middle}
+.sc-prev{color:#9aa2b1}
+.sc-tr{font-size:11px}.sc-tr.up{color:#3a7d44}.sc-tr.dn{color:#b23b3b}.sc-tr.fl{color:#9aa2b1}
+.sc-pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.sc-pill.on{background:#e4f5e9;color:#1f7a3d}.sc-pill.risk{background:#fdf1dc;color:#9a6a12}.sc-pill.off{background:#fbe4e4;color:#a52d2d}.sc-pill.none{background:#eef1f6;color:#8a93a6}
+.sc-notes{color:#69728a;max-width:240px;font-size:12.5px;line-height:1.4}
+.sc-kact{display:flex;gap:4px}
+.sc-kbtn{border:1px solid #dfe3ea;background:#fff;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:13px;color:#5a6478;line-height:1}
+.sc-kbtn:hover{background:#f4f6fa}
+.sc-addk{margin-top:14px;border:1px dashed #c7cde0;background:#fbfcfe;border-radius:10px;padding:10px 14px;font-weight:600;color:#2f6df6;cursor:pointer;font-size:13px;display:inline-block}
+.sc-addk:hover{background:#f2f6ff}
+.sc-empty{color:#8a93a6;padding:18px 0}
+.sc-fld{margin-bottom:12px}
+.sc-fld>label{display:block;font-size:12px;font-weight:600;color:#5a6478;margin-bottom:4px}
+.sc-fld input,.sc-fld select,.sc-fld textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d6dbe6;border-radius:8px;font-size:13.5px;font-family:inherit;background:#fff}
+.sc-fld input:disabled{background:#f1f3f7;color:#8a93a6}
+.sc-fld textarea{min-height:54px;resize:vertical}
+.sc-two{display:flex;gap:10px}.sc-two>div{flex:1}
+.sc-src{border:1px solid #e6e9f0;border-radius:10px;padding:12px;background:#fbfcfe}
+.sc-srct{display:block;font-size:13px;font-weight:600;color:#39415a;margin-bottom:6px;cursor:pointer}
+.sc-srcb{margin-top:8px;padding-top:10px;border-top:1px solid #eef1f6}
+.sc-srcrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sc-srcrow>span{width:66px;font-size:12px;color:#69728a;font-weight:600}
+.sc-srcrow>select{flex:1;padding:7px 9px;border:1px solid #d6dbe6;border-radius:8px;font-size:13px;background:#fff}
+.sc-srcnote,.sc-srcprev{font-size:12px;color:#69728a;margin-top:6px}
+.sc-srcprev b{color:#1c2434}
+</style>
+<div id="scorecard-page" class="product-page" style="display:none">
+  <div class="pp-shell">
+    <div class="pp-top">
+      <div class="pp-brand"><span class="pp-bi">📊</span> Scorecard</div>
+      <button class="pp-back" id="sc-back">← Back to workspace</button>
+    </div>
+    <div id="sc-main"></div>
+  </div>
+</div>
+
+<div class="overlay" id="sc-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:560px">
+    <h3 id="sc-dlg-title">Edit KPI</h3>
+    <div class="dlg-body" id="sc-dlg-body"></div>
+    <div class="btns">
+      <div class="sc-dlg-danger" id="sc-dlg-danger"></div>
+      <button class="btn" id="sc-dlg-cancel">Cancel</button>
+      <button class="btn save" id="sc-dlg-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="admin-page" class="admin-page" style="display:none">
   <div class="admin-shell">
     <aside class="admin-side">
@@ -2559,6 +2623,7 @@ body{margin:0}
       <button class="corner-nav ghost" id="nav-c">Our Product</button>
       <button class="corner-nav ghost" id="nav-d">My Team</button>
       <button class="corner-nav ghost" id="nav-e">Docs</button>
+      <button class="corner-nav ghost" id="nav-f">📊 Scorecard</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -3830,6 +3895,7 @@ function teamPayload(){
     ownership: (typeof TEAMOWN!=="undefined") ? clean(TEAMOWN) : null,
     perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
+    scorecard: clean(SCORECARD),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -3858,6 +3924,7 @@ function loadTeamData(t){
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
+  SCORECARD = normalizeScorecard(t.scorecard);
   TEAMORG = normalizeOrg(t.orgChart);
   TEAMSQUADS = normalizeSquads(t.squads);
   TEAMOWN = normalizeOwnership(t.ownership);
@@ -3884,6 +3951,7 @@ let TEAMOWN = { roles:[] };
 let ownSave = null;
 let TEAMPERF = { people:[] };
 let TEAMDOCS = { spaces:[], docs:[], templates:[] };
+let SCORECARD = { funcs: [] };
 let docOpenId = null;
 let docEditing = false;
 let docBackup = null;
@@ -13119,6 +13187,334 @@ function sqDelete(id){
 }
 
 /* ---------- controls ---------- */
+
+/* ================= SCORECARD (KPI dashboard, per team) ================= */
+function scSeed(){
+  var SC_RAW = {
+  "Company (CEO)": `The numbers that tell you if Dubuddy as a whole is healthy.
+Weekly Active Learners|Unique users who did at least one lesson in the week|North Star metric — everything ladders up to this|20% MoM growth|Weekly
+Monthly Recurring Revenue (MRR)|Predictable subscription revenue per month|The core measure of a healthy paid business||Monthly
+Net Revenue Retention|Revenue kept + expanded from existing users vs churned|Above 100% means you grow even with zero new users|> 100%|Monthly
+Paying Subscribers|Total users on a paid plan|Direct measure of monetised value||Monthly
+Free → Paid Conversion %|% of active free users who upgrade to paid|Tells you whether the value is worth paying for|5–8%|Monthly
+LTV : CAC Ratio|Lifetime value vs cost to acquire a customer|Above 3:1 = growth is profitable, not burning cash|> 3 : 1|Monthly
+Monthly Active Users (MAU)|Unique users active in the month|Top-of-funnel scale of the whole product||Monthly
+Cash Runway (months)|Months of cash left at current burn|Survival metric — how long before you must raise/profit|> 12 months|Quarterly`,
+  "Marketing": `Getting the right people in the door, affordably.
+New Sign-ups / week|Number of new registered accounts per week|The raw fuel for growth||Weekly
+Customer Acquisition Cost (CAC)|Total spend ÷ new paying customers|If CAC creeps up, growth gets expensive fast||Monthly
+Traffic → Sign-up %|% of site/app-store visitors who register|Measures how convincing your landing/store page is|> 25%|Weekly
+Activation Rate|% of new sign-ups who complete their first lesson|The 'aha' moment — predicts whether they'll stay|> 60%|Weekly
+Free → Paid Conversion %|% of activated users who become paid|Where marketing meets revenue|5–8%|Monthly
+Organic vs Paid Split|Share of new users from unpaid channels|High organic = a brand that grows cheaply on its own|> 50% organic|Monthly
+Cost per Install (CPI)|Ad spend ÷ app installs|Core efficiency number for app-store campaigns||Weekly`,
+  "Product": `Keeping users coming back and going deeper.
+Day-1 / Day-7 / Day-30 Retention|% of users returning after 1, 7, 30 days|The truest measure of whether the product is habit-forming|30% at D7|Weekly
+DAU / MAU (Stickiness)|Daily actives ÷ monthly actives|How many days a month the average user shows up|> 20%|Weekly
+Lessons Completed / Active User|Avg lessons finished per active user per week|Depth of engagement, not just logins|> 4 / week|Weekly
+Churn Rate|% of paying users who cancel per month|Every point of churn caps how big you can grow|< 5% / month|Monthly
+Avg Session Length|Average time spent per app session|Signals how absorbing the learning experience is||Weekly
+Feature Adoption Rate|% of users using a key new feature|Tells you if new work actually lands with users||Monthly`,
+  "Engineering": `A fast, reliable app that ships value steadily.
+Average Load Time|Avg time for the app / key screens to load|A slow app leaks users before they ever learn|< 2 s|Weekly
+Crash-free Sessions / Uptime|% of sessions with no crash; service uptime|A buggy or down app quietly destroys retention|> 99.5%|Weekly
+Cycle Time (idea → shipped)|Avg days from work started to shipped to users|How fast the team can turn ideas into value||Weekly
+Bugs Reported vs Resolved|Bugs closed vs opened (net open trend)|If reported outpaces resolved, quality is slipping|Resolved ≥ reported|Weekly
+Deployment Frequency|How often code ships to production|Frequent, small ships = lower risk, faster learning||Weekly
+Mean Time to Recovery (MTTR)|Avg time to recover from an incident/outage|Measures resilience — outages happen, recovery matters|< 1 hour|Monthly`,
+  "Customer Support": `Fast, satisfying help — and an early-warning system for product problems.
+First Response Time|Avg time to the first reply on a support ticket|Fast acknowledgement calms users even before a fix|< 4 hrs|Weekly
+Resolution Time|Avg time from ticket opened to fully resolved|How quickly problems actually get solved|< 24 hrs|Weekly
+CSAT|% of positive ratings after a support interaction|Direct read on whether support leaves users happy|> 90%|Weekly
+First Contact Resolution|% of tickets solved in a single reply|High FCR means less back-and-forth for everyone|> 70%|Monthly
+Ticket Volume per 1,000 Users|Support tickets normalised to user base|A rising trend usually means something is broken|Watch trend|Weekly`,
+  "Educational Content": `Quality and outcomes for a learning app, not just quantity.
+Lesson Completion Rate|% of started lessons that get finished|The clearest signal of content quality and pacing|> 75%|Weekly
+Avg Lesson Rating|User star/thumbs rating per lesson|Direct learner feedback on what works|> 4.2 / 5|Weekly
+Learning Outcome / Quiz Pass Rate|% of learners passing lesson checks/quizzes|Are people actually learning, not just clicking?|> 80%|Monthly
+Content Published / month|New lessons or courses shipped|Keeps the library fresh and gives users reasons to return||Monthly
+Retention Contribution|Retention of users who touch content vs those who don't|Finds which content actually keeps people around||Monthly
+Report / Error Rate per Lesson|User-reported mistakes per 1,000 views|Errors erode trust in a learning product fast|< 1 / 1,000|Weekly
+Time to Produce a Lesson|Avg days from brief to published|Production speed sets how fast the library can grow||Monthly`,
+  "HR": `Keep it light at your stage — a few numbers, reviewed slowly.
+Employee Retention / Turnover|% of staff retained (or lost) over 12 months|Team stability is a founder-level risk at your stage|> 90%|Quarterly
+Time to Hire|Avg days from role opened to offer accepted|Slow hiring bottlenecks every other team's KPIs|< 40 days|Monthly
+Offer Acceptance Rate|% of job offers candidates accept|Signals how attractive Dubuddy is to talent|> 80%|Monthly
+eNPS (Employee Net Promoter)|Would employees recommend working here (-100 to +100)|Early warning system for morale and culture|> 30|Quarterly
+Goal / OKR Completion|% of quarterly team objectives hit|Measures whether the org executes what it plans|> 70%|Quarterly
+Onboarding Time to Productivity|Weeks until a new hire is fully contributing|Faster ramp = hires pay off sooner||Monthly`,
+};
+  var funcs = [];
+  Object.keys(SC_RAW).forEach(function(name){
+    var lines = SC_RAW[name].split("\n").map(function(s){return s.trim();}).filter(Boolean);
+    var desc = lines.shift() || "";
+    var kpis = lines.map(function(ln){
+      var p = ln.split("|");
+      return { id:"kpi-"+Math.random().toString(36).slice(2,9),
+               name:(p[0]||"").trim(), measures:(p[1]||"").trim(), why:(p[2]||"").trim(),
+               target:(p[3]||"").trim(), cadence:((p[4]||"Weekly").trim()),
+               owner:"", current:"", previous:"", status:"", notes:"", source:{type:"manual"} };
+    });
+    funcs.push({ key:name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""), name:name, desc:desc, kpis:kpis });
+  });
+  return { funcs: funcs };
+}
+function normalizeScorecard(x){
+  x = x || {};
+  if(!Array.isArray(x.funcs) || !x.funcs.length){ x = scSeed(); }
+  x.funcs.forEach(function(f){
+    if(!f.key) f.key = "fn-"+Math.random().toString(36).slice(2,8);
+    f.name = f.name || "Function";
+    f.desc = f.desc || "";
+    f.kpis = f.kpis || [];
+    f.kpis.forEach(function(k){
+      if(!k.id) k.id = "kpi-"+Math.random().toString(36).slice(2,9);
+      k.name = k.name || "KPI";
+      k.measures = k.measures || "";
+      k.why = k.why || "";
+      k.owner = k.owner || "";
+      k.target = k.target || "";
+      k.cadence = ["Weekly","Monthly","Quarterly"].indexOf(k.cadence)>=0 ? k.cadence : "Weekly";
+      if(typeof k.current === "undefined" || k.current===null) k.current = "";
+      if(typeof k.previous === "undefined" || k.previous===null) k.previous = "";
+      k.status = ["on","risk","off"].indexOf(k.status)>=0 ? k.status : "";
+      k.notes = k.notes || "";
+      k.source = (k.source && k.source.type) ? k.source : {type:"manual"};
+    });
+  });
+  return x;
+}
+/* --- board connection engine: read live counts from existing boards --- */
+function scBoards(){
+  var out = [];
+  try{
+    if(typeof DEV!=="undefined" && DEV && DEV.spaces && DEV.spaces.length && !(typeof BUILTIN_HIDDEN!=="undefined" && BUILTIN_HIDDEN && BUILTIN_HIDDEN.dev)){
+      var dc={}; KCOLS.forEach(function(c){dc[c.key]=0;});
+      (DEV.cards||[]).forEach(function(c){ if(dc[c.col]!==undefined) dc[c.col]++; });
+      out.push({id:"dev", label:"Development", cols:KCOLS.map(function(c){return {key:c.key,label:c.label};}), counts:dc, total:(DEV.cards||[]).length});
+    }
+  }catch(e){}
+  try{
+    if(typeof BUGS!=="undefined" && BUGS && !(typeof BUILTIN_HIDDEN!=="undefined" && BUILTIN_HIDDEN && BUILTIN_HIDDEN.bugs)){
+      var tk=(typeof teamBugs==="function")?teamBugs():((BUGS.tickets||[]).filter(function(t){return t.team===TEAM;}));
+      var bc={}; KCOLS.forEach(function(c){bc[c.key]=0;});
+      tk.forEach(function(t){ if(bc[t.col]!==undefined) bc[t.col]++; });
+      out.push({id:"bugs", label:"Bugs", cols:KCOLS.map(function(c){return {key:c.key,label:c.label};}), counts:bc, total:tk.length});
+    }
+  }catch(e){}
+  ((typeof CSPACES!=="undefined" && CSPACES && CSPACES.list)?CSPACES.list:[]).forEach(function(x){
+    if(x.type==="social"){
+      var sc={}; SOC_COLS.forEach(function(c){sc[c.key]=0;});
+      (x.cards||[]).forEach(function(c){ if(sc[c.col]!==undefined) sc[c.col]++; });
+      out.push({id:"cs:"+x.id, label:x.name+" (Content)", cols:SOC_COLS.map(function(c){return {key:c.key,label:c.label};}), counts:sc, total:(x.cards||[]).length});
+    }
+    if(x.type==="pdt"){
+      (x.boards||[]).forEach(function(b){
+        var cols = b.lane==="qa"?PDT_QA_COLS : b.lane==="bugs"?PDT_BUG_COLS : PDT_DEV_COLS;
+        var items=(x.items||[]).filter(function(i){return i.lane===b.lane && i.board===b.id;});
+        var pc={}; cols.forEach(function(c){pc[c.key]=0;});
+        items.forEach(function(i){ if(pc[i.col]!==undefined) pc[i.col]++; });
+        out.push({id:"pdt:"+x.id+":"+b.id, label:x.name+" \u203a "+b.name, cols:cols.map(function(c){return {key:c.key,label:c.label};}), counts:pc, total:items.length});
+      });
+    }
+  });
+  try{
+    if(typeof OKRS!=="undefined" && OKRS && OKRS.cycles && OKRS.cycles.length){
+      out.push({id:"okrs", label:"OKRs \u2014 avg objective progress", cols:[], counts:{}, total:0, okr:true});
+    }
+  }catch(e){}
+  return out;
+}
+function scBoardById(id){ var a=scBoards(); for(var i=0;i<a.length;i++){ if(a[i].id===id) return a[i]; } return null; }
+function scComputed(k){
+  if(!k || !k.source || k.source.type!=="board") return null;
+  var b = scBoardById(k.source.boardId);
+  if(!b) return {ok:false, text:"\u2014"};
+  if(b.okr){
+    var cyc = null;
+    for(var i=0;i<OKRS.cycles.length;i++){ if(OKRS.cycles[i].key===activeCycle){ cyc=OKRS.cycles[i]; break; } }
+    if(!cyc) cyc = OKRS.cycles[0];
+    var objs = (cyc && cyc.objectives) ? cyc.objectives.filter(function(o){return !o.alignsTo;}) : [];
+    if(!objs.length && cyc) objs = cyc.objectives || [];
+    if(!objs.length) return {ok:true, text:"0%"};
+    var avg = Math.round(objs.reduce(function(a,o){return a+objRollupPct(o);},0)/objs.length);
+    return {ok:true, text:avg+"%"};
+  }
+  var m = k.source.metric || "count";
+  if(m==="total") return {ok:true, text:String(b.total)};
+  if(m==="pct"){ var n=b.counts[k.source.col]||0; var pc=b.total?Math.round(n/b.total*100):0; return {ok:true, text:pc+"%"}; }
+  var n2 = b.counts[k.source.col]; return {ok:true, text:String(n2||0)};
+}
+function scCurrent(k){ var c=scComputed(k); if(c) return c.text; return (k.current===""||k.current==null)?"":String(k.current); }
+function scOwnerName(v){
+  if(!v) return "";
+  var us=(typeof USERS!=="undefined"?USERS:[]);
+  for(var i=0;i<us.length;i++){ if(us[i].email===v) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); }
+  return v;
+}
+function scNum(v){ if(v==null) return null; var m=String(v).replace(/,/g,"").match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):null; }
+function scTrend(cur, prev){
+  var a=scNum(cur), b=scNum(prev);
+  if(a==null||b==null) return "";
+  if(a>b) return ' <span class="sc-tr up" title="up vs previous">\u25b2</span>';
+  if(a<b) return ' <span class="sc-tr dn" title="down vs previous">\u25bc</span>';
+  return ' <span class="sc-tr fl" title="no change">\u2013</span>';
+}
+function scCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
+/* --- page --- */
+let SCTAB = 0;
+let scDlg = null;
+function openScorecard(){ if(!SCORECARD || !SCORECARD.funcs) SCORECARD=normalizeScorecard(null); if(SCTAB>=SCORECARD.funcs.length) SCTAB=0; if(SCTAB<0) SCTAB=0; renderScorecard(); $("scorecard-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function closeScorecard(){ $("scorecard-page").style.display="none"; }
+function scGoTab(i){ SCTAB=i; renderScorecard(); }
+function renderScorecard(){
+  var admin = scCanEdit();
+  var funcs = (SCORECARD && SCORECARD.funcs) ? SCORECARD.funcs : [];
+  if(SCTAB>=funcs.length) SCTAB=0;
+  var tabs='<div class="sc-tabs">';
+  funcs.forEach(function(f,i){ tabs+='<button class="sc-tab'+(i===SCTAB?" on":"")+'" onclick="scGoTab('+i+')">'+mtEsc(f.name)+'<span class="sc-tabn">'+((f.kpis||[]).length)+'</span></button>'; });
+  tabs+='</div>';
+  var f = funcs[SCTAB] || {kpis:[]};
+  var html = tabs;
+  if(f.desc) html+='<div class="sc-fdesc">'+mtEsc(f.desc)+'</div>';
+  html+='<div class="sc-caveat">Enter each number on its review cadence. A few KPIs can pull their current value straight from a board \u2014 look for the \uD83D\uDD17 chip. Time-based metrics (cycle time, deployment frequency, response time) need the activity log before they can auto-fill.</div>';
+  html+='<table class="sc-table"><thead><tr><th>KPI</th><th>Owner</th><th>Target</th><th>Cadence</th><th>Current</th><th>Prev</th><th>Status</th><th>Notes / next action</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  if(!(f.kpis||[]).length){ html+='<tr><td colspan="'+(admin?9:8)+'" class="sc-empty">No KPIs in this function yet.</td></tr>'; }
+  (f.kpis||[]).forEach(function(k){
+    var cur = scCurrent(k);
+    var connected = k.source && k.source.type==="board";
+    var stCls = k.status||"none";
+    var stLbl = k.status==="on"?"On track":k.status==="risk"?"At risk":k.status==="off"?"Off track":"\u2014";
+    html+='<tr>';
+    html+='<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
+    html+='<td>'+(k.owner?mtEsc(scOwnerName(k.owner)):'<span class="sc-prev">\u2014</span>')+'</td>';
+    html+='<td>'+(k.target?mtEsc(k.target):'<span class="sc-prev">\u2014</span>')+'</td>';
+    html+='<td><span class="sc-cad">'+mtEsc(k.cadence)+'</span></td>';
+    html+='<td><span class="sc-cur">'+(cur!==""?mtEsc(cur):'<span class="sc-prev">\u2014</span>')+'</span>'+(connected?' <span class="sc-link" title="Auto from '+mtEsc((scBoardById(k.source.boardId)||{label:"board"}).label)+'">\uD83D\uDD17 auto</span>':'')+scTrend(cur,k.previous)+'</td>';
+    html+='<td class="sc-prev">'+((k.previous!==""&&k.previous!=null)?mtEsc(String(k.previous)):'\u2014')+'</td>';
+    html+='<td><span class="sc-pill '+stCls+'">'+stLbl+'</span></td>';
+    html+='<td class="sc-notes">'+(k.notes?mtEsc(k.notes):'')+'</td>';
+    if(admin){ html+='<td><div class="sc-kact"><button class="sc-kbtn" title="Edit" onclick="scOpenKpi(\''+f.key+'\',\''+k.id+'\')">\u270e</button><button class="sc-kbtn" title="Delete" onclick="scDelKpi(\''+f.key+'\',\''+k.id+'\')">\u00d7</button></div></td>'; }
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  if(admin){ html+='<div class="sc-addk" onclick="scOpenKpi(\''+f.key+'\',null)">\uff0b Add KPI to '+mtEsc(f.name)+'</div>'; }
+  $("sc-main").innerHTML = html;
+}
+/* --- source (board-connect) sub-form --- */
+function scSourceFormHTML(src){
+  var boards = scBoards();
+  var h='<div class="sc-src">';
+  h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type!=="board"?"checked":"")+' onclick="scSrcType(\'manual\')"> Manual entry</label>';
+  h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type==="board"?"checked":"")+' onclick="scSrcType(\'board\')"'+(boards.length?"":" disabled")+'> Connect a board'+(boards.length?"":" (no boards with cards yet)")+'</label>';
+  if(src.type==="board"){
+    var b = scBoardById(src.boardId) || boards[0];
+    h+='<div class="sc-srcb">';
+    h+='<div class="sc-srcrow"><span>Board</span><select id="sc-src-board" onchange="scSrcBoard(this.value)">';
+    boards.forEach(function(bb){ h+='<option value="'+bb.id+'"'+((b&&bb.id===b.id)?" selected":"")+'>'+mtEsc(bb.label)+'</option>'; });
+    h+='</select></div>';
+    if(b && b.okr){
+      h+='<div class="sc-srcnote">Pulls the average objective progress of the current OKR cycle.</div>';
+    } else if(b){
+      h+='<div class="sc-srcrow"><span>Measure</span><select id="sc-src-metric" onchange="scSrcMetric(this.value)">'
+       +'<option value="count"'+(src.metric==="count"?" selected":"")+'>Count of cards in a column</option>'
+       +'<option value="pct"'+(src.metric==="pct"?" selected":"")+'>Column as % of all cards</option>'
+       +'<option value="total"'+(src.metric==="total"?" selected":"")+'>Total cards on the board</option>'
+       +'</select></div>';
+      if(src.metric!=="total"){
+        h+='<div class="sc-srcrow"><span>Column</span><select id="sc-src-col" onchange="scSrcCol(this.value)">';
+        b.cols.forEach(function(c){ h+='<option value="'+c.key+'"'+(c.key===src.col?" selected":"")+'>'+mtEsc(c.label)+' ('+(b.counts[c.key]||0)+')</option>'; });
+        h+='</select></div>';
+      }
+    }
+    var comp = scComputed({source:src});
+    h+='<div class="sc-srcprev">Live value now: <b>'+(comp?mtEsc(comp.text):"\u2014")+'</b></div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function scDlgRerenderSource(){
+  var w=$("sc-src-wrap"); if(w) w.innerHTML=scSourceFormHTML(scDlg.draft.source);
+  var ci=$("sc-f-current");
+  if(ci){ var comp=scComputed(scDlg.draft); if(comp){ ci.value=comp.text; ci.disabled=true; ci.title="Auto-computed from the connected board"; } else { ci.disabled=false; ci.title=""; } }
+}
+function scSrcType(t){
+  var bs=scBoards();
+  if(t==="board"){ if(!bs.length) return; var b0=bs[0]; scDlg.draft.source = b0.okr?{type:"board",boardId:b0.id}:{type:"board",boardId:b0.id,metric:"count",col:(b0.cols[0]?b0.cols[0].key:"")}; }
+  else { scDlg.draft.source={type:"manual"}; }
+  scDlgRerenderSource();
+}
+function scSrcBoard(id){ var b=scBoardById(id); scDlg.draft.source = (b&&b.okr)?{type:"board",boardId:id}:{type:"board",boardId:id,metric:"count",col:(b&&b.cols[0])?b.cols[0].key:""}; scDlgRerenderSource(); }
+function scSrcMetric(m){ scDlg.draft.source.metric=m; if(m!=="total" && !scDlg.draft.source.col){ var b=scBoardById(scDlg.draft.source.boardId); scDlg.draft.source.col=(b&&b.cols[0])?b.cols[0].key:""; } scDlgRerenderSource(); }
+function scSrcCol(c){ scDlg.draft.source.col=c; scDlgRerenderSource(); }
+/* --- KPI editor dialog --- */
+function scOpenKpi(fkey, id){
+  var f=null, fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(fs[i].key===fkey){ f=fs[i]; break; } }
+  if(!f) return;
+  var existing = id ? f.kpis.filter(function(k){return k.id===id;})[0] : null;
+  var draft = existing ? clean(existing) : {id:null,name:"",measures:"",why:"",owner:"",target:"",cadence:"Weekly",current:"",previous:"",status:"",notes:"",source:{type:"manual"}};
+  scDlg = {fkey:fkey, id:id, draft:draft};
+  $("sc-dlg-title").textContent = id ? "Edit KPI" : "New KPI";
+  var owners=(typeof assigneeMembers==="function"?assigneeMembers():[]);
+  var ownOpts='<option value="">\u2014 Unassigned \u2014</option>';
+  owners.forEach(function(u){ ownOpts+='<option value="'+mtEsc(u.email)+'"'+(u.email===draft.owner?" selected":"")+'>'+mtEsc(typeof userDisplayName==="function"?userDisplayName(u):(u.name||u.email))+'</option>'; });
+  if(draft.owner && !owners.some(function(u){return u.email===draft.owner;})){ ownOpts+='<option value="'+mtEsc(draft.owner)+'" selected>'+mtEsc(draft.owner)+'</option>'; }
+  var cadOpts=["Weekly","Monthly","Quarterly"].map(function(c){return '<option'+(c===draft.cadence?" selected":"")+'>'+c+'</option>';}).join("");
+  var stOpts=[["","\u2014 None"],["on","On track"],["risk","At risk"],["off","Off track"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===draft.status?" selected":"")+'>'+o[1]+'</option>';}).join("");
+  var body=''
+   +'<div class="sc-fld"><label>KPI name</label><input id="sc-f-name" value="'+mtEsc(draft.name)+'"></div>'
+   +'<div class="sc-fld"><label>What it measures</label><input id="sc-f-meas" value="'+mtEsc(draft.measures)+'"></div>'
+   +'<div class="sc-fld"><label>Why it matters</label><input id="sc-f-why" value="'+mtEsc(draft.why)+'"></div>'
+   +'<div class="sc-two"><div class="sc-fld"><label>Owner</label><select id="sc-f-owner">'+ownOpts+'</select></div>'
+   +'<div class="sc-fld"><label>Target</label><input id="sc-f-target" value="'+mtEsc(draft.target)+'"></div></div>'
+   +'<div class="sc-two"><div class="sc-fld"><label>Cadence</label><select id="sc-f-cad">'+cadOpts+'</select></div>'
+   +'<div class="sc-fld"><label>Status</label><select id="sc-f-status">'+stOpts+'</select></div></div>'
+   +'<div class="sc-fld"><label>Data source</label><div id="sc-src-wrap"></div></div>'
+   +'<div class="sc-two"><div class="sc-fld"><label>Current value</label><input id="sc-f-current" value="'+mtEsc(String(draft.current==null?"":draft.current))+'"></div>'
+   +'<div class="sc-fld"><label>Previous value</label><input id="sc-f-prev" value="'+mtEsc(String(draft.previous==null?"":draft.previous))+'"></div></div>'
+   +'<div class="sc-fld"><label>Notes / next action</label><textarea id="sc-f-notes">'+mtEsc(draft.notes)+'</textarea></div>';
+  $("sc-dlg-body").innerHTML = body;
+  $("sc-dlg-danger").innerHTML = "";
+  scDlgRerenderSource();
+  $("sc-dialog").classList.add("show");
+}
+function scDlgClose(){ $("sc-dialog").classList.remove("show"); scDlg=null; }
+function scSaveKpi(){
+  if(!scDlg) return;
+  var f=null, fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(fs[i].key===scDlg.fkey){ f=fs[i]; break; } }
+  if(!f) return;
+  var d=scDlg.draft;
+  var name=($("sc-f-name").value||"").trim();
+  if(!name){ if(typeof toast==="function") toast("Give the KPI a name"); return; }
+  d.name=name;
+  d.measures=($("sc-f-meas").value||"").trim();
+  d.why=($("sc-f-why").value||"").trim();
+  d.owner=$("sc-f-owner").value||"";
+  d.target=($("sc-f-target").value||"").trim();
+  d.cadence=$("sc-f-cad").value||"Weekly";
+  d.status=$("sc-f-status").value||"";
+  d.previous=($("sc-f-prev").value||"").trim();
+  d.notes=($("sc-f-notes").value||"").trim();
+  if(!(d.source && d.source.type==="board")){ d.source={type:"manual"}; d.current=($("sc-f-current").value||"").trim(); }
+  if(scDlg.id){ var idx=-1; for(var j=0;j<f.kpis.length;j++){ if(f.kpis[j].id===scDlg.id){ idx=j; break; } } if(idx>=0) f.kpis[idx]=d; }
+  else { d.id="kpi-"+Math.random().toString(36).slice(2,9); f.kpis.push(d); }
+  SCORECARD = normalizeScorecard(SCORECARD);
+  scDlgClose();
+  renderScorecard();
+  if(typeof pushAll==="function") pushAll();
+  if(typeof toast==="function") toast("Saved");
+}
+function scDelKpi(fkey,id){
+  if(typeof confirm==="function" && !confirm("Delete this KPI?")) return;
+  var f=null, fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(fs[i].key===fkey){ f=fs[i]; break; } }
+  if(!f) return;
+  f.kpis = f.kpis.filter(function(k){return k.id!==id;});
+  renderScorecard();
+  if(typeof pushAll==="function") pushAll();
+  if(typeof toast==="function") toast("Deleted");
+}
+
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
@@ -13130,6 +13526,11 @@ if($("pp-dlg-cancel")){ $("pp-dlg-cancel").onclick = ppCloseDialog; }
 if($("pp-dlg-save")){ $("pp-dlg-save").onclick = function(){ if(ppDlgSave) ppDlgSave(); }; }
 if($("nav-d")){ $("nav-d").onclick = openTeam; }
 if($("nav-e")){ $("nav-e").onclick = openDocs; }
+if($("nav-f")){ $("nav-f").onclick = openScorecard; }
+if($("sc-back")){ $("sc-back").onclick = closeScorecard; }
+if($("sc-dlg-cancel")){ $("sc-dlg-cancel").onclick = scDlgClose; }
+if($("sc-dlg-save")){ $("sc-dlg-save").onclick = scSaveKpi; }
+if($("sc-dialog")){ $("sc-dialog").onclick = function(e){ if(e.target.id==="sc-dialog") scDlgClose(); }; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
 if($("docsp-cancel")){ $("docsp-cancel").onclick = docSpaceCloseDlg; }
