@@ -2512,46 +2512,124 @@ body{margin:0}
 </div>
 
 <style id="sc-css">
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+#scorecard-page{
+  --sc-ink:#141A2E; --sc-line:#E6E8F0; --sc-surface:#FFFFFF; --sc-canvas:#F5F6FA;
+  --sc-text:#1A2032; --sc-muted:#6B7286; --sc-faint:#9AA0B2;
+  --sc-primary:#3355FF; --sc-primary-soft:#EAEEFF;
+  --sc-on:#12946A; --sc-on-bg:#E3F4EC; --sc-risk:#B87503; --sc-risk-bg:#FBEFD6;
+  --sc-off:#CE3D3D; --sc-off-bg:#FBE5E5; --sc-none:#828AA0; --sc-none-bg:#EDEFF4;
+  --sc-mono:"Space Grotesk", ui-monospace, "SFMono-Regular", monospace;
+  --sc-sans:"Inter", system-ui, -apple-system, sans-serif;
+  font-family:var(--sc-sans); color:var(--sc-text);
+}
 #scorecard-page #sc-main{max-width:1180px;margin:0 auto}
-.sc-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 16px}
-.sc-tab{border:1px solid #dfe3ea;background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:#475066;cursor:pointer}
-.sc-tab.on{background:#17233a;color:#fff;border-color:#17233a}
-.sc-tab .sc-tabn{opacity:.55;font-weight:500;margin-left:5px}
-.sc-fdesc{color:#69728a;font-size:13.5px;margin:-4px 0 12px}
-.sc-caveat{margin:0 0 16px;font-size:12.5px;color:#7a5f14;background:#fdf6e6;border:1px solid #f2e2b8;border-radius:8px;padding:8px 12px;line-height:1.5}
+/* North Star hero */
+.sc-northstar{position:relative;overflow:hidden;background:linear-gradient(135deg,#171E36 0%,#232F57 100%);color:#fff;border-radius:16px;padding:26px 28px;margin:4px 0 22px}
+.sc-northstar::after{content:"";position:absolute;right:-70px;top:-70px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle at center, rgba(51,85,255,.55), transparent 62%);pointer-events:none}
+.sc-ns-rings{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:150px;height:150px;opacity:.5;pointer-events:none}
+.sc-ns-rings circle{fill:none;stroke:#5E76FF;stroke-width:1}
+.sc-ns-tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8FA0E6;font-weight:600}
+.sc-ns-nm{font-size:16px;font-weight:500;margin:9px 0 2px;color:#DCE2F5}
+.sc-ns-val{font-family:var(--sc-mono);font-size:44px;font-weight:700;letter-spacing:-1.5px;line-height:1.05}
+.sc-ns-val small{font-size:17px;color:#9AA8DE;font-weight:500;margin-left:8px;letter-spacing:0;font-family:var(--sc-sans)}
+.sc-ns-name{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:3px 8px;font-size:15px;font-family:var(--sc-sans);width:min(360px,70%)}
+.sc-ns-in{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:8px;padding:2px 8px;font-family:var(--sc-mono);font-weight:700;width:150px;font-size:26px;letter-spacing:-.5px}
+.sc-ns-in.sc-ns-tgt{width:120px;font-size:16px;font-weight:600}
+.sc-ns-name::placeholder,.sc-ns-in::placeholder{color:#8FA0E6}
+.sc-ns-bar{margin-top:16px;max-width:440px;position:relative;z-index:1}
+.sc-ns-track{height:7px;border-radius:20px;background:rgba(255,255,255,.14);overflow:hidden}
+.sc-ns-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,#4E6BFF,#8AA0FF);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.sc-ns-cap{display:flex;justify-content:space-between;font-size:11.5px;color:#9AA8DE;margin-top:6px}
+/* stat strip */
+.sc-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.sc-stat{background:var(--sc-surface);border:1px solid var(--sc-line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,26,46,.04),0 6px 20px rgba(20,26,46,.05)}
+.sc-stat .sc-k{font-family:var(--sc-mono);font-size:30px;font-weight:700;letter-spacing:-1px}
+.sc-stat .sc-k.on{color:var(--sc-on)}.sc-stat .sc-k.risk{color:var(--sc-risk)}.sc-stat .sc-k.off{color:var(--sc-off)}.sc-stat .sc-k.none{color:var(--sc-none)}
+.sc-stat .sc-l{font-size:12.5px;color:var(--sc-muted);margin-top:2px;display:flex;align-items:center;gap:7px}
+.sc-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.sc-dot.on{background:var(--sc-on)}.sc-dot.risk{background:var(--sc-risk)}.sc-dot.off{background:var(--sc-off)}.sc-dot.none{background:var(--sc-none)}
+/* cards */
+.sc-card{background:var(--sc-surface);border:1px solid var(--sc-line);border-radius:14px;box-shadow:0 1px 2px rgba(20,26,46,.04),0 6px 20px rgba(20,26,46,.05);margin-bottom:22px;overflow:hidden}
+.sc-card-head{padding:16px 20px;border-bottom:1px solid var(--sc-line)}
+.sc-card-head h3{font-family:var(--sc-mono);font-size:15.5px;font-weight:600;margin:0;letter-spacing:-.2px;color:var(--sc-text)}
+.sc-card-head .sc-sub{font-size:12.5px;color:var(--sc-muted);margin-top:2px}
+.sc-attn{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F0F1F6;font-size:13.5px}
+.sc-attn:last-child{border-bottom:none}
+.sc-attn-nm{min-width:0}.sc-attn .sc-pill{margin-left:auto}
+.sc-crumb{font-size:12px;color:var(--sc-muted);margin-left:6px}
+.sc-empty{padding:34px 20px;text-align:center;color:var(--sc-muted)}
+.sc-empty b{display:block;color:var(--sc-text);font-family:var(--sc-mono);font-size:15px;margin-bottom:5px}
+/* caveat */
+.sc-caveat{margin:0 0 18px;font-size:12.5px;color:#7a5f14;background:#FBEFD6;border:1px solid #f0dca6;border-radius:10px;padding:9px 14px;line-height:1.5}
+/* tabs */
+.sc-tabs{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+.sc-tab{border:1px solid var(--sc-line);background:#fff;border-radius:999px;padding:7px 15px;font-size:13px;font-weight:600;color:#475066;cursor:pointer}
+.sc-tab:hover{border-color:var(--sc-primary);color:var(--sc-primary)}
+.sc-tab.on{background:var(--sc-ink);color:#fff;border-color:var(--sc-ink)}
+.sc-tab.on:hover{color:#fff}
+.sc-tab .sc-tabn{opacity:.55;font-weight:500;margin-left:6px;font-family:var(--sc-mono)}
+/* table */
 .sc-table{width:100%;border-collapse:collapse;font-size:13.5px}
-.sc-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#8a93a6;font-weight:700;padding:0 12px 8px;border-bottom:1px solid #e6e9f0}
-.sc-table td{padding:12px;border-bottom:1px solid #eef1f6;vertical-align:top}
-.sc-kname{font-weight:600;color:#1c2434}
-.sc-kmeas{color:#69728a;font-size:12px;margin-top:2px;max-width:340px;line-height:1.4}
-.sc-cad{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#eef1f6;color:#5a6478}
-.sc-cur{font-weight:700;color:#1c2434;font-size:15px}
-.sc-link{display:inline-block;font-size:10px;font-weight:700;color:#2f6df6;background:#eaf1ff;border-radius:5px;padding:1px 5px;vertical-align:middle}
-.sc-prev{color:#9aa2b1}
-.sc-tr{font-size:11px}.sc-tr.up{color:#3a7d44}.sc-tr.dn{color:#b23b3b}.sc-tr.fl{color:#9aa2b1}
-.sc-pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
-.sc-pill.on{background:#e4f5e9;color:#1f7a3d}.sc-pill.risk{background:#fdf1dc;color:#9a6a12}.sc-pill.off{background:#fbe4e4;color:#a52d2d}.sc-pill.none{background:#eef1f6;color:#8a93a6}
-.sc-notes{color:#69728a;max-width:240px;font-size:12.5px;line-height:1.4}
+.sc-table th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--sc-faint);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--sc-line);background:#FCFCFE}
+.sc-table td{padding:11px 14px;border-bottom:1px solid #F0F1F6;vertical-align:middle}
+.sc-table tr:last-child td{border-bottom:none}
+.sc-kname{font-weight:600;color:var(--sc-text)}
+.sc-kmeas{color:var(--sc-muted);font-size:11.5px;margin-top:1px;max-width:320px;line-height:1.4}
+.sc-tgt{font-family:var(--sc-mono);color:var(--sc-muted);white-space:nowrap}
+.sc-cad{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#EDEFF4;color:#5a6478}
+.sc-cur{font-family:var(--sc-mono);font-weight:700;color:var(--sc-text);font-size:14.5px}
+.sc-prev{color:var(--sc-faint)}
+.sc-link{font-size:11px;vertical-align:middle}
+.sc-tr{font-size:11px}.sc-tr.up{color:var(--sc-on)}.sc-tr.dn{color:var(--sc-off)}.sc-tr.fl{color:var(--sc-faint)}
+.sc-notes{color:var(--sc-muted);max-width:220px;font-size:12.5px;line-height:1.4}
+.sc-curwrap{display:flex;align-items:center;gap:6px}
+/* type badge */
+.sc-type{font-family:var(--sc-mono);font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:6px;border:1px solid var(--sc-line);color:var(--sc-muted);white-space:nowrap}
+.sc-type.t-Output{color:#2544e6;border-color:#c9d3ff;background:#f3f6ff}
+.sc-type.t-Quality{color:#12946A;border-color:#bfe6d5;background:#eefaf4}
+.sc-type.t-Collaboration{color:#8A5A1B;border-color:#eeddc0;background:#fbf5e6}
+.sc-type.t-Growth{color:#7A3AA8;border-color:#e6d2f5;background:#f8f0ff}
+.sc-type.t-Impact{color:#B03060;border-color:#f2cddd;background:#fdeff4}
+.sc-type.t-Behaviour{color:#3a6c8a;border-color:#cbe0ec;background:#eef7fc}
+.sc-type.t-Speed{color:#a05a00;border-color:#f0dcc0;background:#fdf3e6}
+/* inline inputs */
+.sc-inp{border:1px solid var(--sc-line);border-radius:8px;padding:6px 9px;font-size:13px;color:var(--sc-text);background:#fff;font-family:inherit}
+.sc-inp:focus{outline:none;border-color:var(--sc-primary);box-shadow:0 0 0 3px var(--sc-primary-soft)}
+.sc-val{font-family:var(--sc-mono);font-weight:600;text-align:center;width:78px}
+.sc-note{width:100%;min-width:150px}
+/* inline status pill-select */
+.sc-stwrap{position:relative;display:inline-block}
+.sc-dot2{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;pointer-events:none}
+.sc-stwrap.on .sc-dot2{background:var(--sc-on)}.sc-stwrap.risk .sc-dot2{background:var(--sc-risk)}.sc-stwrap.off .sc-dot2{background:var(--sc-off)}.sc-stwrap.none .sc-dot2{background:var(--sc-none)}
+.sc-status{appearance:none;-webkit-appearance:none;border:1px solid var(--sc-line);border-radius:20px;padding:5px 14px 5px 24px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.sc-status:focus{outline:none;box-shadow:0 0 0 3px var(--sc-primary-soft)}
+.sc-status.on{color:var(--sc-on);background:var(--sc-on-bg)}.sc-status.risk{color:var(--sc-risk);background:var(--sc-risk-bg)}.sc-status.off{color:var(--sc-off);background:var(--sc-off-bg)}.sc-status.none{color:var(--sc-none);background:var(--sc-none-bg)}
+/* status pill (read-only) */
+.sc-pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.sc-pill.on{background:var(--sc-on-bg);color:var(--sc-on)}.sc-pill.risk{background:var(--sc-risk-bg);color:var(--sc-risk)}.sc-pill.off{background:var(--sc-off-bg);color:var(--sc-off)}.sc-pill.none{background:var(--sc-none-bg);color:var(--sc-none)}
+/* row actions + add */
 .sc-kact{display:flex;gap:4px}
-.sc-kbtn{border:1px solid #dfe3ea;background:#fff;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:13px;color:#5a6478;line-height:1}
-.sc-kbtn:hover{background:#f4f6fa}
-.sc-addk{margin-top:14px;border:1px dashed #c7cde0;background:#fbfcfe;border-radius:10px;padding:10px 14px;font-weight:600;color:#2f6df6;cursor:pointer;font-size:13px;display:inline-block}
+.sc-kbtn{border:1px solid var(--sc-line);background:#fff;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:13px;color:#5a6478;line-height:1}
+.sc-kbtn:hover{background:#f4f6fa;border-color:var(--sc-primary);color:var(--sc-primary)}
+.sc-addk{margin:0 20px 18px;border:1px dashed #c7cde0;background:#fbfcfe;border-radius:10px;padding:10px 14px;font-weight:600;color:var(--sc-primary);cursor:pointer;font-size:13px;display:inline-block}
 .sc-addk:hover{background:#f2f6ff}
-.sc-empty{color:#8a93a6;padding:18px 0}
+/* editor dialog fields */
 .sc-fld{margin-bottom:12px}
 .sc-fld>label{display:block;font-size:12px;font-weight:600;color:#5a6478;margin-bottom:4px}
 .sc-fld input,.sc-fld select,.sc-fld textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d6dbe6;border-radius:8px;font-size:13.5px;font-family:inherit;background:#fff}
 .sc-fld input:disabled{background:#f1f3f7;color:#8a93a6}
 .sc-fld textarea{min-height:54px;resize:vertical}
 .sc-two{display:flex;gap:10px}.sc-two>div{flex:1}
-.sc-src{border:1px solid #e6e9f0;border-radius:10px;padding:12px;background:#fbfcfe}
+.sc-src{border:1px solid var(--sc-line);border-radius:10px;padding:12px;background:#fbfcfe}
 .sc-srct{display:block;font-size:13px;font-weight:600;color:#39415a;margin-bottom:6px;cursor:pointer}
 .sc-srcb{margin-top:8px;padding-top:10px;border-top:1px solid #eef1f6}
 .sc-srcrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.sc-srcrow>span{width:66px;font-size:12px;color:#69728a;font-weight:600}
+.sc-srcrow>span{width:66px;font-size:12px;color:var(--sc-muted);font-weight:600}
 .sc-srcrow>select{flex:1;padding:7px 9px;border:1px solid #d6dbe6;border-radius:8px;font-size:13px;background:#fff}
-.sc-srcnote,.sc-srcprev{font-size:12px;color:#69728a;margin-top:6px}
-.sc-srcprev b{color:#1c2434}
+.sc-srcnote,.sc-srcprev{font-size:12px;color:var(--sc-muted);margin-top:6px}
+.sc-srcprev b{color:var(--sc-text)}
+@media(max-width:820px){ .sc-strip{grid-template-columns:repeat(2,1fr)} .sc-ns-val{font-size:34px} }
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="pp-shell">
@@ -13192,58 +13270,59 @@ function sqDelete(id){
 function scSeed(){
   var SC_RAW = {
   "Company (CEO)": `The numbers that tell you if Dubuddy as a whole is healthy.
-Weekly Active Learners|Unique users who did at least one lesson in the week|North Star metric — everything ladders up to this|20% MoM growth|Weekly
-Monthly Recurring Revenue (MRR)|Predictable subscription revenue per month|The core measure of a healthy paid business||Monthly
-Net Revenue Retention|Revenue kept + expanded from existing users vs churned|Above 100% means you grow even with zero new users|> 100%|Monthly
-Paying Subscribers|Total users on a paid plan|Direct measure of monetised value||Monthly
-Free → Paid Conversion %|% of active free users who upgrade to paid|Tells you whether the value is worth paying for|5–8%|Monthly
-LTV : CAC Ratio|Lifetime value vs cost to acquire a customer|Above 3:1 = growth is profitable, not burning cash|> 3 : 1|Monthly
-Monthly Active Users (MAU)|Unique users active in the month|Top-of-funnel scale of the whole product||Monthly
-Cash Runway (months)|Months of cash left at current burn|Survival metric — how long before you must raise/profit|> 12 months|Quarterly`,
+Weekly Active Learners|Unique users who did at least one lesson in the week|North Star metric — everything ladders up to this|20% MoM growth|Weekly|Impact
+Monthly Recurring Revenue (MRR)|Predictable subscription revenue per month|The core measure of a healthy paid business||Monthly|Impact
+Net Revenue Retention|Revenue kept + expanded from existing users vs churned|Above 100% means you grow even with zero new users|> 100%|Monthly|Impact
+Paying Subscribers|Total users on a paid plan|Direct measure of monetised value||Monthly|Output
+Free → Paid Conversion %|% of active free users who upgrade to paid|Tells you whether the value is worth paying for|5–8%|Monthly|Impact
+LTV : CAC Ratio|Lifetime value vs cost to acquire a customer|Above 3:1 = growth is profitable, not burning cash|> 3 : 1|Monthly|Impact
+Monthly Active Users (MAU)|Unique users active in the month|Top-of-funnel scale of the whole product||Monthly|Output
+Cash Runway (months)|Months of cash left at current burn|Survival metric — how long before you must raise/profit|> 12 months|Quarterly|Impact`,
   "Marketing": `Getting the right people in the door, affordably.
-New Sign-ups / week|Number of new registered accounts per week|The raw fuel for growth||Weekly
-Customer Acquisition Cost (CAC)|Total spend ÷ new paying customers|If CAC creeps up, growth gets expensive fast||Monthly
-Traffic → Sign-up %|% of site/app-store visitors who register|Measures how convincing your landing/store page is|> 25%|Weekly
-Activation Rate|% of new sign-ups who complete their first lesson|The 'aha' moment — predicts whether they'll stay|> 60%|Weekly
-Free → Paid Conversion %|% of activated users who become paid|Where marketing meets revenue|5–8%|Monthly
-Organic vs Paid Split|Share of new users from unpaid channels|High organic = a brand that grows cheaply on its own|> 50% organic|Monthly
-Cost per Install (CPI)|Ad spend ÷ app installs|Core efficiency number for app-store campaigns||Weekly`,
+New Sign-ups / week|Number of new registered accounts per week|The raw fuel for growth||Weekly|Output
+Customer Acquisition Cost (CAC)|Total spend ÷ new paying customers|If CAC creeps up, growth gets expensive fast||Monthly|Impact
+Traffic → Sign-up %|% of site/app-store visitors who register|Measures how convincing your landing/store page is|> 25%|Weekly|Quality
+Activation Rate|% of new sign-ups who complete their first lesson|The 'aha' moment — predicts whether they'll stay|> 60%|Weekly|Impact
+Free → Paid Conversion %|% of activated users who become paid|Where marketing meets revenue|5–8%|Monthly|Impact
+Organic vs Paid Split|Share of new users from unpaid channels|High organic = a brand that grows cheaply on its own|> 50% organic|Monthly|Quality
+Cost per Install (CPI)|Ad spend ÷ app installs|Core efficiency number for app-store campaigns||Weekly|Impact`,
   "Product": `Keeping users coming back and going deeper.
-Day-1 / Day-7 / Day-30 Retention|% of users returning after 1, 7, 30 days|The truest measure of whether the product is habit-forming|30% at D7|Weekly
-DAU / MAU (Stickiness)|Daily actives ÷ monthly actives|How many days a month the average user shows up|> 20%|Weekly
-Lessons Completed / Active User|Avg lessons finished per active user per week|Depth of engagement, not just logins|> 4 / week|Weekly
-Churn Rate|% of paying users who cancel per month|Every point of churn caps how big you can grow|< 5% / month|Monthly
-Avg Session Length|Average time spent per app session|Signals how absorbing the learning experience is||Weekly
-Feature Adoption Rate|% of users using a key new feature|Tells you if new work actually lands with users||Monthly`,
+Day-1 / Day-7 / Day-30 Retention|% of users returning after 1, 7, 30 days|The truest measure of whether the product is habit-forming|30% at D7|Weekly|Impact
+DAU / MAU (Stickiness)|Daily actives ÷ monthly actives|How many days a month the average user shows up|> 20%|Weekly|Quality
+Lessons Completed / Active User|Avg lessons finished per active user per week|Depth of engagement, not just logins|> 4 / week|Weekly|Impact
+Churn Rate|% of paying users who cancel per month|Every point of churn caps how big you can grow|< 5% / month|Monthly|Quality
+Avg Session Length|Average time spent per app session|Signals how absorbing the learning experience is||Weekly|Quality
+Feature Adoption Rate|% of users using a key new feature|Tells you if new work actually lands with users||Monthly|Impact`,
   "Engineering": `A fast, reliable app that ships value steadily.
-Average Load Time|Avg time for the app / key screens to load|A slow app leaks users before they ever learn|< 2 s|Weekly
-Crash-free Sessions / Uptime|% of sessions with no crash; service uptime|A buggy or down app quietly destroys retention|> 99.5%|Weekly
-Cycle Time (idea → shipped)|Avg days from work started to shipped to users|How fast the team can turn ideas into value||Weekly
-Bugs Reported vs Resolved|Bugs closed vs opened (net open trend)|If reported outpaces resolved, quality is slipping|Resolved ≥ reported|Weekly
-Deployment Frequency|How often code ships to production|Frequent, small ships = lower risk, faster learning||Weekly
-Mean Time to Recovery (MTTR)|Avg time to recover from an incident/outage|Measures resilience — outages happen, recovery matters|< 1 hour|Monthly`,
+Average Load Time|Avg time for the app / key screens to load|A slow app leaks users before they ever learn|< 2 s|Weekly|Speed
+Crash-free Sessions / Uptime|% of sessions with no crash; service uptime|A buggy or down app quietly destroys retention|> 99.5%|Weekly|Quality
+Cycle Time (idea → shipped)|Avg days from work started to shipped to users|How fast the team can turn ideas into value||Weekly|Speed
+Bugs Reported vs Resolved|Bugs closed vs opened (net open trend)|If reported outpaces resolved, quality is slipping|Resolved ≥ reported|Weekly|Quality
+Deployment Frequency|How often code ships to production|Frequent, small ships = lower risk, faster learning||Weekly|Speed
+Mean Time to Recovery (MTTR)|Avg time to recover from an incident/outage|Measures resilience — outages happen, recovery matters|< 1 hour|Monthly|Speed`,
   "Customer Support": `Fast, satisfying help — and an early-warning system for product problems.
-First Response Time|Avg time to the first reply on a support ticket|Fast acknowledgement calms users even before a fix|< 4 hrs|Weekly
-Resolution Time|Avg time from ticket opened to fully resolved|How quickly problems actually get solved|< 24 hrs|Weekly
-CSAT|% of positive ratings after a support interaction|Direct read on whether support leaves users happy|> 90%|Weekly
-First Contact Resolution|% of tickets solved in a single reply|High FCR means less back-and-forth for everyone|> 70%|Monthly
-Ticket Volume per 1,000 Users|Support tickets normalised to user base|A rising trend usually means something is broken|Watch trend|Weekly`,
+First Response Time|Avg time to the first reply on a support ticket|Fast acknowledgement calms users even before a fix|< 4 hrs|Weekly|Speed
+Resolution Time|Avg time from ticket opened to fully resolved|How quickly problems actually get solved|< 24 hrs|Weekly|Speed
+CSAT|% of positive ratings after a support interaction|Direct read on whether support leaves users happy|> 90%|Weekly|Quality
+First Contact Resolution|% of tickets solved in a single reply|High FCR means less back-and-forth for everyone|> 70%|Monthly|Quality
+Ticket Volume per 1,000 Users|Support tickets normalised to user base|A rising trend usually means something is broken|Watch trend|Weekly|Quality`,
   "Educational Content": `Quality and outcomes for a learning app, not just quantity.
-Lesson Completion Rate|% of started lessons that get finished|The clearest signal of content quality and pacing|> 75%|Weekly
-Avg Lesson Rating|User star/thumbs rating per lesson|Direct learner feedback on what works|> 4.2 / 5|Weekly
-Learning Outcome / Quiz Pass Rate|% of learners passing lesson checks/quizzes|Are people actually learning, not just clicking?|> 80%|Monthly
-Content Published / month|New lessons or courses shipped|Keeps the library fresh and gives users reasons to return||Monthly
-Retention Contribution|Retention of users who touch content vs those who don't|Finds which content actually keeps people around||Monthly
-Report / Error Rate per Lesson|User-reported mistakes per 1,000 views|Errors erode trust in a learning product fast|< 1 / 1,000|Weekly
-Time to Produce a Lesson|Avg days from brief to published|Production speed sets how fast the library can grow||Monthly`,
+Lesson Completion Rate|% of started lessons that get finished|The clearest signal of content quality and pacing|> 75%|Weekly|Impact
+Avg Lesson Rating|User star/thumbs rating per lesson|Direct learner feedback on what works|> 4.2 / 5|Weekly|Quality
+Learning Outcome / Quiz Pass Rate|% of learners passing lesson checks/quizzes|Are people actually learning, not just clicking?|> 80%|Monthly|Impact
+Content Published / month|New lessons or courses shipped|Keeps the library fresh and gives users reasons to return||Monthly|Output
+Retention Contribution|Retention of users who touch content vs those who don't|Finds which content actually keeps people around||Monthly|Impact
+Report / Error Rate per Lesson|User-reported mistakes per 1,000 views|Errors erode trust in a learning product fast|< 1 / 1,000|Weekly|Quality
+Time to Produce a Lesson|Avg days from brief to published|Production speed sets how fast the library can grow||Monthly|Speed`,
   "HR": `Keep it light at your stage — a few numbers, reviewed slowly.
-Employee Retention / Turnover|% of staff retained (or lost) over 12 months|Team stability is a founder-level risk at your stage|> 90%|Quarterly
-Time to Hire|Avg days from role opened to offer accepted|Slow hiring bottlenecks every other team's KPIs|< 40 days|Monthly
-Offer Acceptance Rate|% of job offers candidates accept|Signals how attractive Dubuddy is to talent|> 80%|Monthly
-eNPS (Employee Net Promoter)|Would employees recommend working here (-100 to +100)|Early warning system for morale and culture|> 30|Quarterly
-Goal / OKR Completion|% of quarterly team objectives hit|Measures whether the org executes what it plans|> 70%|Quarterly
-Onboarding Time to Productivity|Weeks until a new hire is fully contributing|Faster ramp = hires pay off sooner||Monthly`,
+Employee Retention / Turnover|% of staff retained (or lost) over 12 months|Team stability is a founder-level risk at your stage|> 90%|Quarterly|Quality
+Time to Hire|Avg days from role opened to offer accepted|Slow hiring bottlenecks every other team's KPIs|< 40 days|Monthly|Output
+Offer Acceptance Rate|% of job offers candidates accept|Signals how attractive Dubuddy is to talent|> 80%|Monthly|Quality
+eNPS (Employee Net Promoter)|Would employees recommend working here (-100 to +100)|Early warning system for morale and culture|> 30|Quarterly|Behaviour
+Goal / OKR Completion|% of quarterly team objectives hit|Measures whether the org executes what it plans|> 70%|Quarterly|Output
+Onboarding Time to Productivity|Weeks until a new hire is fully contributing|Faster ramp = hires pay off sooner||Monthly|Growth`,
 };
+var SC_NS = {name:"Weekly Active Learners", current:"14,300", target:"20,000"};
   var funcs = [];
   Object.keys(SC_RAW).forEach(function(name){
     var lines = SC_RAW[name].split("\n").map(function(s){return s.trim();}).filter(Boolean);
@@ -13252,16 +13331,19 @@ Onboarding Time to Productivity|Weeks until a new hire is fully contributing|Fas
       var p = ln.split("|");
       return { id:"kpi-"+Math.random().toString(36).slice(2,9),
                name:(p[0]||"").trim(), measures:(p[1]||"").trim(), why:(p[2]||"").trim(),
-               target:(p[3]||"").trim(), cadence:((p[4]||"Weekly").trim()),
+               target:(p[3]||"").trim(), cadence:((p[4]||"Weekly").trim()), type:((p[5]||"").trim()),
                owner:"", current:"", previous:"", status:"", notes:"", source:{type:"manual"} };
     });
     funcs.push({ key:name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""), name:name, desc:desc, kpis:kpis });
   });
-  return { funcs: funcs };
+  return { northStar: clean(SC_NS), funcs: funcs };
 }
+var SC_TYPES = ["Output","Quality","Collaboration","Growth","Impact","Behaviour","Speed"];
 function normalizeScorecard(x){
   x = x || {};
   if(!Array.isArray(x.funcs) || !x.funcs.length){ x = scSeed(); }
+  var ns = (x.northStar && typeof x.northStar==="object") ? x.northStar : {};
+  x.northStar = { name: ns.name || "Weekly Active Learners", current: (ns.current!=null?String(ns.current):""), target: (ns.target!=null?String(ns.target):"") };
   x.funcs.forEach(function(f){
     if(!f.key) f.key = "fn-"+Math.random().toString(36).slice(2,8);
     f.name = f.name || "Function";
@@ -13274,6 +13356,7 @@ function normalizeScorecard(x){
       k.why = k.why || "";
       k.owner = k.owner || "";
       k.target = k.target || "";
+      k.type = (typeof k.type==="string") ? k.type : "";
       k.cadence = ["Weekly","Monthly","Quarterly"].indexOf(k.cadence)>=0 ? k.cadence : "Weekly";
       if(typeof k.current === "undefined" || k.current===null) k.current = "";
       if(typeof k.previous === "undefined" || k.previous===null) k.previous = "";
@@ -13361,46 +13444,107 @@ function scTrend(cur, prev){
   return ' <span class="sc-tr fl" title="no change">\u2013</span>';
 }
 function scCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
+function scStatLabel(s){ return s==="on"?"On track":s==="risk"?"At risk":s==="off"?"Off track":"Not set"; }
+function scTypeBadge(t){ if(!t) return '<span class="sc-prev">\u2014</span>'; var safe=SC_TYPES.indexOf(t)>=0?t:""; return '<span class="sc-type'+(safe?(" t-"+safe):"")+'">'+mtEsc(t)+'</span>'; }
 /* --- page --- */
 let SCTAB = 0;
 let scDlg = null;
 function openScorecard(){ if(!SCORECARD || !SCORECARD.funcs) SCORECARD=normalizeScorecard(null); if(SCTAB>=SCORECARD.funcs.length) SCTAB=0; if(SCTAB<0) SCTAB=0; renderScorecard(); $("scorecard-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function closeScorecard(){ $("scorecard-page").style.display="none"; }
 function scGoTab(i){ SCTAB=i; renderScorecard(); }
+function scAllKpis(){ var a=[]; ((SCORECARD&&SCORECARD.funcs)||[]).forEach(function(f){ (f.kpis||[]).forEach(function(k){ a.push({k:k,f:f}); }); }); return a; }
+function scCounts(){ var c={on:0,risk:0,off:0,none:0}; scAllKpis().forEach(function(o){ var s=o.k.status||"none"; c[s]=(c[s]||0)+1; }); return c; }
+function scNsPct(){ var ns=SCORECARD.northStar||{}; var cu=scNum(ns.current), tg=scNum(ns.target); if(cu==null||!tg) return null; return Math.max(3, Math.min(100, Math.round(cu/tg*100))); }
 function renderScorecard(){
   var admin = scCanEdit();
   var funcs = (SCORECARD && SCORECARD.funcs) ? SCORECARD.funcs : [];
   if(SCTAB>=funcs.length) SCTAB=0;
+  var ns = SCORECARD.northStar || {name:"",current:"",target:""};
+  var pct = scNsPct();
+  /* ---- North Star hero ---- */
+  var nsVal = admin
+    ? '<input class="sc-ns-in sc-ns-cur" id="sc-ns-cur" value="'+mtEsc(ns.current)+'" placeholder="\u2014" onchange="scSetNS(\'current\',this.value)"> <small>/ target <input class="sc-ns-in sc-ns-tgt" id="sc-ns-tgt" value="'+mtEsc(ns.target)+'" placeholder="\u2014" onchange="scSetNS(\'target\',this.value)"></small>'
+    : mtEsc(ns.current||"\u2014")+' <small>/ target '+mtEsc(ns.target||"\u2014")+'</small>';
+  var nsName = admin
+    ? '<input class="sc-ns-name" id="sc-ns-name" value="'+mtEsc(ns.name)+'" placeholder="North Star metric" onchange="scSetNS(\'name\',this.value)">'
+    : mtEsc(ns.name||"");
+  var hero = '<div class="sc-northstar">'
+    + '<svg class="sc-ns-rings" viewBox="0 0 150 150"><circle cx="75" cy="75" r="30"/><circle cx="75" cy="75" r="48"/><circle cx="75" cy="75" r="66"/></svg>'
+    + '<div class="sc-ns-tag">\u2726 North Star metric</div>'
+    + '<div class="sc-ns-nm">'+nsName+'</div>'
+    + '<div class="sc-ns-val">'+nsVal+'</div>'
+    + (pct!=null ? '<div class="sc-ns-bar"><div class="sc-ns-track"><div class="sc-ns-fill" style="width:'+pct+'%"></div></div><div class="sc-ns-cap"><span>'+pct+'% of target</span><span>Everything below should push this up</span></div></div>' : '')
+    + '</div>';
+  /* ---- stat strip ---- */
+  var c = scCounts();
+  var strip = '<div class="sc-strip">'
+    + '<div class="sc-stat"><div class="sc-k on">'+c.on+'</div><div class="sc-l"><span class="sc-dot on"></span>On track</div></div>'
+    + '<div class="sc-stat"><div class="sc-k risk">'+c.risk+'</div><div class="sc-l"><span class="sc-dot risk"></span>At risk</div></div>'
+    + '<div class="sc-stat"><div class="sc-k off">'+c.off+'</div><div class="sc-l"><span class="sc-dot off"></span>Off track</div></div>'
+    + '<div class="sc-stat"><div class="sc-k none">'+c.none+'</div><div class="sc-l"><span class="sc-dot none"></span>Not set</div></div>'
+    + '</div>';
+  /* ---- needs attention ---- */
+  var attn = scAllKpis().filter(function(o){ return o.k.status==="risk" || o.k.status==="off"; });
+  var attnHtml = '<div class="sc-card"><div class="sc-card-head"><div><h3>Needs attention</h3><div class="sc-sub">Everything currently at risk or off track</div></div></div>';
+  if(attn.length){
+    attnHtml += attn.map(function(o){ return '<div class="sc-attn"><span class="sc-dot '+(o.k.status)+'"></span><span class="sc-attn-nm"><b>'+mtEsc(o.k.name)+'</b> <span class="sc-crumb">'+mtEsc(o.f.name)+'</span></span><span class="sc-pill '+o.k.status+'">'+scStatLabel(o.k.status)+'</span></div>'; }).join("");
+  } else {
+    attnHtml += '<div class="sc-empty"><b>All clear</b>Nothing flagged. Update statuses as your numbers come in.</div>';
+  }
+  attnHtml += '</div>';
+  /* ---- caveat ---- */
+  var caveat = '<div class="sc-caveat">Enter each number on its review cadence. A few KPIs can pull their current value straight from a board \u2014 look for the \uD83D\uDD17 chip. Time-based metrics (cycle time, deployment frequency, response time) need the activity log before they can auto-fill.</div>';
+  /* ---- function tabs ---- */
   var tabs='<div class="sc-tabs">';
   funcs.forEach(function(f,i){ tabs+='<button class="sc-tab'+(i===SCTAB?" on":"")+'" onclick="scGoTab('+i+')">'+mtEsc(f.name)+'<span class="sc-tabn">'+((f.kpis||[]).length)+'</span></button>'; });
   tabs+='</div>';
-  var f = funcs[SCTAB] || {kpis:[]};
-  var html = tabs;
-  if(f.desc) html+='<div class="sc-fdesc">'+mtEsc(f.desc)+'</div>';
-  html+='<div class="sc-caveat">Enter each number on its review cadence. A few KPIs can pull their current value straight from a board \u2014 look for the \uD83D\uDD17 chip. Time-based metrics (cycle time, deployment frequency, response time) need the activity log before they can auto-fill.</div>';
-  html+='<table class="sc-table"><thead><tr><th>KPI</th><th>Owner</th><th>Target</th><th>Cadence</th><th>Current</th><th>Prev</th><th>Status</th><th>Notes / next action</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
-  if(!(f.kpis||[]).length){ html+='<tr><td colspan="'+(admin?9:8)+'" class="sc-empty">No KPIs in this function yet.</td></tr>'; }
+  /* ---- active function card + table ---- */
+  var f = funcs[SCTAB] || {kpis:[],name:"",desc:""};
+  var card = '<div class="sc-card"><div class="sc-card-head"><div><h3>'+mtEsc(f.name)+'</h3>'+(f.desc?'<div class="sc-sub">'+mtEsc(f.desc)+'</div>':'')+'</div></div>';
+  card += '<table class="sc-table"><thead><tr><th>KPI</th><th>Type</th><th>Owner</th><th>Target</th><th>Cadence</th><th>Current</th><th>Status</th><th>Note / next action</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  if(!(f.kpis||[]).length){ card += '<tr><td colspan="'+(admin?9:8)+'" class="sc-empty" style="text-align:left">No KPIs in this function yet.</td></tr>'; }
   (f.kpis||[]).forEach(function(k){
     var cur = scCurrent(k);
     var connected = k.source && k.source.type==="board";
-    var stCls = k.status||"none";
-    var stLbl = k.status==="on"?"On track":k.status==="risk"?"At risk":k.status==="off"?"Off track":"\u2014";
-    html+='<tr>';
-    html+='<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
-    html+='<td>'+(k.owner?mtEsc(scOwnerName(k.owner)):'<span class="sc-prev">\u2014</span>')+'</td>';
-    html+='<td>'+(k.target?mtEsc(k.target):'<span class="sc-prev">\u2014</span>')+'</td>';
-    html+='<td><span class="sc-cad">'+mtEsc(k.cadence)+'</span></td>';
-    html+='<td><span class="sc-cur">'+(cur!==""?mtEsc(cur):'<span class="sc-prev">\u2014</span>')+'</span>'+(connected?' <span class="sc-link" title="Auto from '+mtEsc((scBoardById(k.source.boardId)||{label:"board"}).label)+'">\uD83D\uDD17 auto</span>':'')+scTrend(cur,k.previous)+'</td>';
-    html+='<td class="sc-prev">'+((k.previous!==""&&k.previous!=null)?mtEsc(String(k.previous)):'\u2014')+'</td>';
-    html+='<td><span class="sc-pill '+stCls+'">'+stLbl+'</span></td>';
-    html+='<td class="sc-notes">'+(k.notes?mtEsc(k.notes):'')+'</td>';
-    if(admin){ html+='<td><div class="sc-kact"><button class="sc-kbtn" title="Edit" onclick="scOpenKpi(\''+f.key+'\',\''+k.id+'\')">\u270e</button><button class="sc-kbtn" title="Delete" onclick="scDelKpi(\''+f.key+'\',\''+k.id+'\')">\u00d7</button></div></td>'; }
-    html+='</tr>';
+    card += '<tr>';
+    card += '<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
+    card += '<td>'+scTypeBadge(k.type)+'</td>';
+    card += '<td>'+(k.owner?mtEsc(scOwnerName(k.owner)):'<span class="sc-prev">\u2014</span>')+'</td>';
+    card += '<td class="sc-tgt">'+(k.target?mtEsc(k.target):'\u2014')+'</td>';
+    card += '<td><span class="sc-cad">'+mtEsc(k.cadence)+'</span></td>';
+    if(connected){
+      card += '<td><span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> <span class="sc-link" title="Auto from '+mtEsc((scBoardById(k.source.boardId)||{label:"board"}).label)+'">\uD83D\uDD17</span>'+scTrend(cur,k.previous)+'</td>';
+    } else if(admin){
+      card += '<td><div class="sc-curwrap"><input class="sc-inp sc-val" value="'+mtEsc(cur)+'" placeholder="\u2014" onchange="scSetCurrent(\''+f.key+'\',\''+k.id+'\',this.value)">'+scTrend(cur,k.previous)+'</div></td>';
+    } else {
+      card += '<td><span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span>'+scTrend(cur,k.previous)+'</td>';
+    }
+    if(admin){
+      card += '<td>'+scStatusCtl(f.key,k)+'</td>';
+      card += '<td><input class="sc-inp sc-note" value="'+mtEsc(k.notes||"")+'" placeholder="Add a note\u2026" onchange="scSetNote(\''+f.key+'\',\''+k.id+'\',this.value)"></td>';
+      card += '<td><div class="sc-kact"><button class="sc-kbtn" title="Edit details" onclick="scOpenKpi(\''+f.key+'\',\''+k.id+'\')">\u270e</button><button class="sc-kbtn" title="Delete" onclick="scDelKpi(\''+f.key+'\',\''+k.id+'\')">\u00d7</button></div></td>';
+    } else {
+      card += '<td><span class="sc-pill '+(k.status||"none")+'">'+scStatLabel(k.status)+'</span></td>';
+      card += '<td class="sc-notes">'+(k.notes?mtEsc(k.notes):'')+'</td>';
+    }
+    card += '</tr>';
   });
-  html+='</tbody></table>';
-  if(admin){ html+='<div class="sc-addk" onclick="scOpenKpi(\''+f.key+'\',null)">\uff0b Add KPI to '+mtEsc(f.name)+'</div>'; }
-  $("sc-main").innerHTML = html;
+  card += '</tbody></table>';
+  if(admin){ card += '<div class="sc-addk" onclick="scOpenKpi(\''+f.key+'\',null)">\uff0b Add KPI to '+mtEsc(f.name)+'</div>'; }
+  card += '</div>';
+  $("sc-main").innerHTML = hero + strip + attnHtml + caveat + tabs + card;
 }
+function scStatusCtl(fkey,k){
+  var s=k.status||"";
+  var opts=[["","Not set"],["on","On track"],["risk","At risk"],["off","Off track"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===s?" selected":"")+'>'+o[1]+'</option>';}).join("");
+  return '<span class="sc-stwrap '+(s||"none")+'"><span class="sc-dot2"></span><select class="sc-status '+(s||"none")+'" onchange="scSetStatus(\''+fkey+'\',\''+k.id+'\',this.value)">'+opts+'</select></span>';
+}
+/* --- inline setters --- */
+function scFindKpi(fkey,id){ var fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(fs[i].key===fkey){ var ks=fs[i].kpis||[]; for(var j=0;j<ks.length;j++){ if(ks[j].id===id) return ks[j]; } } } return null; }
+function scSetCurrent(fkey,id,v){ var k=scFindKpi(fkey,id); if(!k) return; k.current=(v||"").trim(); if(typeof pushAll==="function") pushAll(); renderScorecard(); }
+function scSetStatus(fkey,id,v){ var k=scFindKpi(fkey,id); if(!k) return; k.status=["on","risk","off"].indexOf(v)>=0?v:""; if(typeof pushAll==="function") pushAll(); renderScorecard(); }
+function scSetNote(fkey,id,v){ var k=scFindKpi(fkey,id); if(!k) return; k.notes=(v||"").trim(); if(typeof pushAll==="function") pushAll(); }
+function scSetNS(field,v){ if(!SCORECARD.northStar) SCORECARD.northStar={name:"",current:"",target:""}; SCORECARD.northStar[field]=(v||"").trim(); if(typeof pushAll==="function") pushAll(); renderScorecard(); }
 /* --- source (board-connect) sub-form --- */
 function scSourceFormHTML(src){
   var boards = scBoards();
@@ -13453,7 +13597,7 @@ function scOpenKpi(fkey, id){
   var f=null, fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(fs[i].key===fkey){ f=fs[i]; break; } }
   if(!f) return;
   var existing = id ? f.kpis.filter(function(k){return k.id===id;})[0] : null;
-  var draft = existing ? clean(existing) : {id:null,name:"",measures:"",why:"",owner:"",target:"",cadence:"Weekly",current:"",previous:"",status:"",notes:"",source:{type:"manual"}};
+  var draft = existing ? clean(existing) : {id:null,name:"",measures:"",why:"",owner:"",target:"",cadence:"Weekly",type:"",current:"",previous:"",status:"",notes:"",source:{type:"manual"}};
   scDlg = {fkey:fkey, id:id, draft:draft};
   $("sc-dlg-title").textContent = id ? "Edit KPI" : "New KPI";
   var owners=(typeof assigneeMembers==="function"?assigneeMembers():[]);
@@ -13461,6 +13605,7 @@ function scOpenKpi(fkey, id){
   owners.forEach(function(u){ ownOpts+='<option value="'+mtEsc(u.email)+'"'+(u.email===draft.owner?" selected":"")+'>'+mtEsc(typeof userDisplayName==="function"?userDisplayName(u):(u.name||u.email))+'</option>'; });
   if(draft.owner && !owners.some(function(u){return u.email===draft.owner;})){ ownOpts+='<option value="'+mtEsc(draft.owner)+'" selected>'+mtEsc(draft.owner)+'</option>'; }
   var cadOpts=["Weekly","Monthly","Quarterly"].map(function(c){return '<option'+(c===draft.cadence?" selected":"")+'>'+c+'</option>';}).join("");
+  var typeOpts='<option value="">\u2014 None \u2014</option>'+SC_TYPES.map(function(t){return '<option'+(t===draft.type?" selected":"")+'>'+t+'</option>';}).join("");
   var stOpts=[["","\u2014 None"],["on","On track"],["risk","At risk"],["off","Off track"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===draft.status?" selected":"")+'>'+o[1]+'</option>';}).join("");
   var body=''
    +'<div class="sc-fld"><label>KPI name</label><input id="sc-f-name" value="'+mtEsc(draft.name)+'"></div>'
@@ -13469,7 +13614,8 @@ function scOpenKpi(fkey, id){
    +'<div class="sc-two"><div class="sc-fld"><label>Owner</label><select id="sc-f-owner">'+ownOpts+'</select></div>'
    +'<div class="sc-fld"><label>Target</label><input id="sc-f-target" value="'+mtEsc(draft.target)+'"></div></div>'
    +'<div class="sc-two"><div class="sc-fld"><label>Cadence</label><select id="sc-f-cad">'+cadOpts+'</select></div>'
-   +'<div class="sc-fld"><label>Status</label><select id="sc-f-status">'+stOpts+'</select></div></div>'
+   +'<div class="sc-fld"><label>Type</label><select id="sc-f-type">'+typeOpts+'</select></div></div>'
+   +'<div class="sc-fld"><label>Status</label><select id="sc-f-status">'+stOpts+'</select></div>'
    +'<div class="sc-fld"><label>Data source</label><div id="sc-src-wrap"></div></div>'
    +'<div class="sc-two"><div class="sc-fld"><label>Current value</label><input id="sc-f-current" value="'+mtEsc(String(draft.current==null?"":draft.current))+'"></div>'
    +'<div class="sc-fld"><label>Previous value</label><input id="sc-f-prev" value="'+mtEsc(String(draft.previous==null?"":draft.previous))+'"></div></div>'
@@ -13493,6 +13639,7 @@ function scSaveKpi(){
   d.owner=$("sc-f-owner").value||"";
   d.target=($("sc-f-target").value||"").trim();
   d.cadence=$("sc-f-cad").value||"Weekly";
+  d.type=$("sc-f-type").value||"";
   d.status=$("sc-f-status").value||"";
   d.previous=($("sc-f-prev").value||"").trim();
   d.notes=($("sc-f-notes").value||"").trim();
