@@ -2725,6 +2725,116 @@ body{margin:0}
 .sc-mconncell{display:inline-flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap}
 .sc-mcur{font-size:13px}
 </style>
+<style id="csm-css">
+#csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
+#csm-page #csm-main{max-width:none;margin:0}
+.csm-app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.csm-side{background:var(--c-surface);border-right:1px solid var(--c-line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.csm-brand{padding:18px 20px;border-bottom:1px solid var(--c-line);display:flex;align-items:center;gap:11px}
+.csm-brand .csm-logo{font-size:20px}
+.csm-brand b{font-size:16px;font-weight:700;display:block;color:var(--c-ink)}
+.csm-brand span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-faint);display:block;margin-top:1px}
+.csm-nav{padding:10px 10px;flex:1}
+.csm-nav-lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-faint);font-weight:700;padding:14px 12px 6px}
+.csm-nav-a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;color:#44546f;font-size:14px;font-weight:500;cursor:pointer}
+.csm-nav-a:hover{background:#f1f2f4}
+.csm-nav-a.on{background:var(--c-pri-soft);color:var(--c-pri);font-weight:600}
+.csm-ic{width:18px;text-align:center;opacity:.8}
+.csm-nl{flex:1;min-width:0}
+.csm-cnt{font-size:11px;color:var(--c-muted);background:#f1f2f4;border-radius:20px;padding:1px 8px}
+.csm-nav-a.on .csm-cnt{background:#fff}
+.csm-foot{padding:12px;border-top:1px solid var(--c-line)}
+.csm-footbtn{width:100%;background:#f1f2f4;border:1px solid var(--c-line);border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;color:#44546f}
+.csm-footbtn:hover{background:#e9eaed}
+.csm-body{padding:28px 40px 70px;max-width:1000px}
+.csm-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px}
+.csm-eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-faint);font-weight:700}
+.csm-top h2{font-size:26px;font-weight:600;margin:4px 0 0;letter-spacing:-.4px}
+.csm-sub{color:var(--c-muted);font-size:13.5px;margin:6px 0 0;max-width:640px}
+.csm-card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:10px;padding:20px 22px;margin-bottom:18px}
+.csm-p{color:#44546f;font-size:14px;line-height:1.6;margin:0 0 16px}
+.csm-fld{margin-bottom:18px}
+.csm-fld>label,.csm-fldlbl{display:block;font-size:12.5px;font-weight:600;color:#44546f;margin-bottom:6px}
+.csm-inp{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #b3b9c4;border-radius:6px;font-size:14px;font-family:inherit;background:#fff}
+.csm-inp:focus{outline:none;border-color:var(--c-pri);box-shadow:0 0 0 2px var(--c-pri-soft)}
+.csm-ro{font-size:14px;color:var(--c-ink)}
+.csm-area{width:100%;box-sizing:border-box;min-height:160px;padding:10px 12px;border:1px solid #b3b9c4;border-radius:6px;font-size:14px;font-family:inherit;resize:vertical}
+.csm-two{display:flex;gap:14px}.csm-two>div{flex:1}
+.csm-muted{color:var(--c-faint);font-size:13px}
+.csm-hint{color:var(--c-muted);font-size:12px;margin-top:6px;line-height:1.5}
+.csm-mono{font-family:ui-monospace,monospace;font-size:12.5px;color:var(--c-muted)}
+.csm-btn{background:var(--c-pri);color:#fff;border:none;border-radius:6px;padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer}
+.csm-btn:hover{background:#0055cc}
+.csm-btn.ghost{background:#fff;color:#44546f;border:1px solid #b3b9c4}
+.csm-btn.ghost:hover{background:#f1f2f4}
+.csm-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.csm-table th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--c-faint);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--c-line)}
+.csm-table td{padding:11px 10px;border-bottom:1px solid #f0f1f3;vertical-align:middle}
+.csm-strong{font-weight:600}
+.csm-badge{display:inline-block;font-size:11.5px;font-weight:600;background:#f1f2f4;color:#44546f;border-radius:5px;padding:2px 8px}
+.csm-rowact{display:flex;gap:4px;justify-content:flex-end}
+.csm-ib{border:1px solid var(--c-line);background:#fff;border-radius:6px;width:28px;height:28px;cursor:pointer;color:#626f86}
+.csm-ib:hover{background:#f1f2f4;color:var(--c-pri)}
+.csm-empty{padding:34px 8px;text-align:center;color:var(--c-muted)}
+.csm-empty b{display:block;color:var(--c-ink);font-size:15px;margin-bottom:5px}
+.csm-note{font-size:12.5px;color:#5f4d0f;background:#fff7d6;border:1px solid #f5e6a3;border-radius:8px;padding:10px 14px;line-height:1.5}
+.csm-note b{color:#44380a}
+.csm-stub{background:#fff;border:1px dashed #c1c7d0;border-radius:10px;padding:20px 22px;margin-bottom:18px}
+.csm-stub-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a54800;background:#fff0e6;border:1px solid #ffd9bd;border-radius:5px;padding:2px 8px;margin-bottom:8px}
+.csm-stub h3{margin:0 0 6px;font-size:16px}
+.csm-stub p{margin:0;color:var(--c-muted);font-size:13.5px;line-height:1.6}
+.csm-getgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.csm-getcell{border:1px solid var(--c-line);border-radius:8px;padding:14px 16px;cursor:pointer}
+.csm-getcell:hover{border-color:var(--c-pri);background:var(--c-pri-soft)}
+.csm-getcell b{display:block;font-size:14px}
+.csm-getcell span{font-size:12px;color:var(--c-muted)}
+.csm-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.csm-chip{display:inline-flex;align-items:center;gap:6px;background:#f1f2f4;border-radius:20px;padding:4px 12px;font-size:13px}
+.csm-chip b{cursor:pointer;color:#8993a4;font-weight:700}
+.csm-chip b:hover{color:#c9372c}
+.csm-addrow{display:flex;gap:8px}.csm-addrow .csm-inp{flex:1}
+.csm-brandrow{display:flex;align-items:center;gap:12px}
+.csm-swatch{width:44px;height:44px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px}
+.csm-color{width:44px;height:32px;border:1px solid #b3b9c4;border-radius:6px;background:#fff;cursor:pointer;vertical-align:middle}
+.csm-urlrow{display:flex;align-items:center;gap:0}
+.csm-urlpre{background:#f1f2f4;border:1px solid #b3b9c4;border-right:none;border-radius:6px 0 0 6px;padding:8px 10px;font-size:13px;color:var(--c-muted)}
+.csm-urlrow .csm-inp{border-radius:0 6px 6px 0}
+.csm-toggrow{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.csm-tog{width:40px;height:22px;border-radius:20px;background:#c1c7d0;border:none;cursor:pointer;position:relative;flex:none}
+.csm-tog.on{background:var(--c-pri)}
+.csm-tog-k{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+.csm-tog.on .csm-tog-k{left:20px}
+.csm-secthead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.csm-code{background:#1d2125;color:#dee4ea;border-radius:8px;padding:12px 14px;font-size:12px;overflow-x:auto;font-family:ui-monospace,monospace}
+.csm-radio{display:block;font-size:14px;margin-bottom:8px;cursor:pointer}
+.csm-artlist{display:flex;flex-direction:column;gap:12px}
+.csm-artcard{background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:16px 18px;display:flex;gap:12px;justify-content:space-between}
+.csm-artmain b{font-size:15px}
+.csm-artmain p{margin:4px 0 4px;color:var(--c-muted);font-size:13px;line-height:1.5}
+.csm-frow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.csm-frow .csm-inp:first-child{flex:1}
+.csm-frow select.csm-inp{max-width:150px}
+.csm-req{font-size:12px;color:var(--c-muted);white-space:nowrap;display:flex;align-items:center;gap:4px}
+@media(max-width:820px){.csm-app{grid-template-columns:1fr}.csm-side{position:static;height:auto}.csm-body{padding:20px}.csm-top h2{font-size:22px}}
+</style>
+<div id="csm-page" class="product-page" style="display:none">
+  <div class="csm-app">
+    <aside class="csm-side" id="csm-side"></aside>
+    <main class="csm-content"><div id="csm-main"></div></main>
+  </div>
+</div>
+
+<div class="overlay" id="csm-dialog" style="z-index:460">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:560px">
+    <h3 id="csm-dlg-title">Edit</h3>
+    <div class="dlg-body" id="csm-dlg-body"></div>
+    <div class="btns">
+      <button class="btn" id="csm-dlg-cancel">Cancel</button>
+      <button class="btn save" id="csm-dlg-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
     <aside class="sc-side" id="sc-side"></aside>
@@ -2793,6 +2903,7 @@ body{margin:0}
       <button class="corner-nav ghost" id="nav-d">My Team</button>
       <button class="corner-nav ghost" id="nav-e">Docs</button>
       <button class="corner-nav ghost" id="nav-f">📊 Scorecard</button>
+      <button class="corner-nav ghost" id="nav-g">🎧 Service</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -4065,6 +4176,7 @@ function teamPayload(){
     perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     scorecard: clean(SCORECARD),
+    csm: clean(CSM),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -4094,6 +4206,7 @@ function loadTeamData(t){
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
   SCORECARD = normalizeScorecard(t.scorecard);
+  CSM = normalizeCsm(t.csm);
   TEAMORG = normalizeOrg(t.orgChart);
   TEAMSQUADS = normalizeSquads(t.squads);
   TEAMOWN = normalizeOwnership(t.ownership);
@@ -4121,6 +4234,7 @@ let ownSave = null;
 let TEAMPERF = { people:[] };
 let TEAMDOCS = { spaces:[], docs:[], templates:[] };
 let SCORECARD = { funcs: [] };
+let CSM = {};
 let docOpenId = null;
 let docEditing = false;
 let docBackup = null;
@@ -13463,22 +13577,39 @@ function normalizeScorecard(x){
 /* --- board connection engine: read live counts from existing boards --- */
 function scBoards(){
   var out = [];
+  var KC = KCOLS.map(function(c){return {key:c.key,label:c.label};});
+  function cspaces(){ return (typeof CSPACES!=="undefined" && CSPACES && CSPACES.list) ? CSPACES.list : []; }
+  // ---- Development (built-in) + named scrum boards. Shown even if hidden in the sidebar. ----
   try{
-    if(typeof DEV!=="undefined" && DEV && DEV.spaces && DEV.spaces.length && !(typeof BUILTIN_HIDDEN!=="undefined" && BUILTIN_HIDDEN && BUILTIN_HIDDEN.dev)){
-      var dc={}; KCOLS.forEach(function(c){dc[c.key]=0;});
-      (DEV.cards||[]).forEach(function(c){ if(dc[c.col]!==undefined) dc[c.col]++; });
-      out.push({id:"dev", label:"Development", cols:KCOLS.map(function(c){return {key:c.key,label:c.label};}), counts:dc, total:(DEV.cards||[]).length});
+    if(typeof DEV!=="undefined" && DEV && ((DEV.cards&&DEV.cards.length) || (DEV.spaces&&DEV.spaces.length))){
+      var allc={}; KCOLS.forEach(function(c){allc[c.key]=0;});
+      (DEV.cards||[]).forEach(function(c){ if(allc[c.col]!==undefined) allc[c.col]++; });
+      out.push({id:"dev", label:"Development", cols:KC, counts:allc, total:(DEV.cards||[]).length});
+      cspaces().filter(function(x){return x.type==="scrum" && x.devId;}).forEach(function(cs){
+        var cards=(DEV.cards||[]).filter(function(c){ return c.space===cs.devId; });
+        var dc={}; KCOLS.forEach(function(c){dc[c.key]=0;});
+        cards.forEach(function(c){ if(dc[c.col]!==undefined) dc[c.col]++; });
+        out.push({id:"dev:"+cs.devId, label:cs.name, cols:KC, counts:dc, total:cards.length});
+      });
     }
   }catch(e){}
+  // ---- Bugs (built-in) + named bug spaces. Shown even if hidden. ----
   try{
-    if(typeof BUGS!=="undefined" && BUGS && !(typeof BUILTIN_HIDDEN!=="undefined" && BUILTIN_HIDDEN && BUILTIN_HIDDEN.bugs)){
+    if(typeof BUGS!=="undefined" && BUGS){
       var tk=(typeof teamBugs==="function")?teamBugs():((BUGS.tickets||[]).filter(function(t){return t.team===TEAM;}));
       var bc={}; KCOLS.forEach(function(c){bc[c.key]=0;});
       tk.forEach(function(t){ if(bc[t.col]!==undefined) bc[t.col]++; });
-      out.push({id:"bugs", label:"Bugs", cols:KCOLS.map(function(c){return {key:c.key,label:c.label};}), counts:bc, total:tk.length});
+      out.push({id:"bugs", label:"Bugs", cols:KC, counts:bc, total:tk.length});
+      cspaces().filter(function(x){return x.type==="bugs";}).forEach(function(cs){
+        var bt=tk.filter(function(t){ return t.board===cs.id; });
+        var b2={}; KCOLS.forEach(function(c){b2[c.key]=0;});
+        bt.forEach(function(t){ if(b2[t.col]!==undefined) b2[t.col]++; });
+        out.push({id:"csbugs:"+cs.id, label:cs.name+" (Bugs)", cols:KC, counts:b2, total:bt.length});
+      });
     }
   }catch(e){}
-  ((typeof CSPACES!=="undefined" && CSPACES && CSPACES.list)?CSPACES.list:[]).forEach(function(x){
+  // ---- Content (social) + Product-suite (pdt) spaces ----
+  cspaces().forEach(function(x){
     if(x.type==="social"){
       var sc={}; SOC_COLS.forEach(function(c){sc[c.key]=0;});
       (x.cards||[]).forEach(function(c){ if(sc[c.col]!==undefined) sc[c.col]++; });
@@ -13494,6 +13625,7 @@ function scBoards(){
       });
     }
   });
+  // ---- OKRs ----
   try{
     if(typeof OKRS!=="undefined" && OKRS && OKRS.cycles && OKRS.cycles.length){
       out.push({id:"okrs", label:"OKRs \u2014 avg objective progress", cols:[], counts:{}, total:0, okr:true});
@@ -13501,6 +13633,7 @@ function scBoards(){
   }catch(e){}
   return out;
 }
+
 function scBoardById(id){ var a=scBoards(); for(var i=0;i<a.length;i++){ if(a[i].id===id) return a[i]; } return null; }
 function scComputed(k){
   if(!k || !k.source) return null;
@@ -14260,6 +14393,249 @@ function scDelKpi(fkey,id){
   if(typeof toast==="function") toast("Deleted");
 }
 
+/* ================= CUSTOMER SERVICE (Jira-style template, per team) ================= */
+var CSM_FIELD_TYPES = ["Short text","Paragraph","Email","Number","Dropdown","Date","Attachment"];
+var CSM_WORK_TYPES = ["Question","Problem","Incident","Request","Change"];
+function csmId(p){ return (p||"csm")+"-"+Math.random().toString(36).slice(2,9); }
+function normalizeCsm(x){
+  x = x || {};
+  x.name = x.name || "Customers";
+  x.desc = x.desc || "Customer Service adapts to match your support model.";
+  x.members = Array.isArray(x.members) ? x.members : [];
+  x.connectedSpaces = Array.isArray(x.connectedSpaces) ? x.connectedSpaces : [];
+  x.forms = Array.isArray(x.forms) ? x.forms : [];
+  x.forms.forEach(function(f){
+    if(!f.id) f.id=csmId("form"); f.name=f.name||"Untitled form"; f.space=f.space||""; f.workType=f.workType||"Question";
+    f.fields = Array.isArray(f.fields)?f.fields:[];
+    f.fields.forEach(function(fl){ if(!fl.id) fl.id=csmId("fld"); fl.label=fl.label||"Field"; fl.type=CSM_FIELD_TYPES.indexOf(fl.type)>=0?fl.type:"Short text"; fl.required=!!fl.required; });
+    f.channels = Array.isArray(f.channels)?f.channels:[];
+  });
+  x.articles = Array.isArray(x.articles) ? x.articles : [];
+  x.articles.forEach(function(a){ if(!a.id) a.id=csmId("art"); a.title=a.title||"Untitled article"; a.body=a.body||""; a.updated=a.updated||""; });
+  var b = (x.branding && typeof x.branding==="object") ? x.branding : {};
+  x.branding = { brandName: b.brandName || "", color: b.color || "#3355FF", icon: (b.icon!=null?b.icon:"") };
+  var ch = (x.channels && typeof x.channels==="object") ? x.channels : {};
+  x.channels = {
+    website: (ch.website&&typeof ch.website==="object") ? {title:ch.website.title||"", slug:ch.website.slug||"", live:!!ch.website.live} : {title:"",slug:"",live:false},
+    emails: Array.isArray(ch.emails)?ch.emails:[],
+    embed: (ch.embed&&typeof ch.embed==="object")?{enabled:!!ch.embed.enabled}:{enabled:false},
+    voice: (ch.voice&&typeof ch.voice==="object")?{enabled:!!ch.voice.enabled}:{enabled:false}
+  };
+  x.channels.emails.forEach(function(e){ if(!e.id) e.id=csmId("eml"); e.address=e.address||""; e.replyTo=!!e.replyTo; });
+  var ac = (x.access && typeof x.access==="object") ? x.access : {};
+  x.access = { mode: (ac.mode==="anyone"?"anyone":"orgs"), orgs: Array.isArray(ac.orgs)?ac.orgs:[] };
+  return x;
+}
+function csmCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
+function csmSave(){ if(typeof pushAll==="function") pushAll(); }
+function csmTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : []; }
+function csmUserName(email){ var us=csmTeamUsers(); for(var i=0;i<us.length;i++){ if(us[i].email===email) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); } return email; }
+/* ---- page shell ---- */
+let csmView = "get-started";
+let csmDlg = null;
+var CSM_SECTIONS = [
+  {group:"", items:[{key:"get-started",label:"Get started",icon:"\u25c9"},{key:"overview",label:"Overview",icon:"\u2261"},{key:"forms",label:"Forms",icon:"\u25a4"},{key:"articles",label:"Articles",icon:"\u25a4"},{key:"branding",label:"Branding",icon:"\u25d0"}]},
+  {group:"Channels", items:[{key:"website",label:"Support website",icon:"\u25ce"},{key:"email",label:"Email",icon:"\u2709"},{key:"embed",label:"Embed",icon:"\u25a3"},{key:"voice",label:"Voice",icon:"\u260e"}]},
+  {group:"Access", items:[{key:"access",label:"Customer access",icon:"\u263a"}]}
+];
+function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function closeCsm(){ $("csm-page").style.display="none"; }
+function csmGo(v){ csmView=v; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function renderCsm(){ csmRenderSidebar(); csmRenderContent(); }
+function csmRenderSidebar(){
+  var h='<div class="csm-brand"><span class="csm-logo">\uD83C\uDFA7</span><div><b>'+mtEsc(CSM.name)+'</b><span>Customer Service</span></div></div>';
+  h+='<nav class="csm-nav">';
+  CSM_SECTIONS.forEach(function(sec){
+    if(sec.group) h+='<div class="csm-nav-lbl">'+mtEsc(sec.group)+'</div>';
+    sec.items.forEach(function(it){
+      var badge = it.key==="forms" ? CSM.forms.length : it.key==="articles" ? CSM.articles.length : "";
+      h+='<a class="csm-nav-a'+(csmView===it.key?" on":"")+'" onclick="csmGo(\''+it.key+'\')"><span class="csm-ic">'+it.icon+'</span><span class="csm-nl">'+mtEsc(it.label)+'</span>'+(badge!==""&&badge>0?'<span class="csm-cnt">'+badge+'</span>':'')+'</a>';
+    });
+  });
+  h+='</nav>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button></div>';
+  var s=$("csm-side"); if(s) s.innerHTML=h;
+}
+function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
+function csmTop(eyebrow, title, sub, action){
+  return '<div class="csm-top"><div><div class="csm-eyebrow">'+mtEsc(eyebrow)+'</div><h2>'+mtEsc(title)+'</h2>'+(sub?'<p class="csm-sub">'+sub+'</p>':'')+'</div><div>'+(action||"")+'</div></div>';
+}
+function csmRenderContent(){
+  var admin=csmCanEdit(), v=csmView, body="";
+  if(v==="get-started"){
+    body=csmTop("Overview","Welcome, "+CSM.name+"!", mtEsc(CSM.desc),"")
+      +'<div class="csm-card"><p class="csm-p">You can create a customer experience for different customer groups, route requests to your spaces, and manage articles, forms, branding and channels here. The operational channels (email capture, hosted support site, embeddable chat, voice, AI agent) light up once the backend is connected \u2014 everything else works today.</p>'
+      +'<div class="csm-getgrid">'
+      +'<div class="csm-getcell" onclick="csmGo(\'forms\')"><b>Forms</b><span>'+CSM.forms.length+' created</span></div>'
+      +'<div class="csm-getcell" onclick="csmGo(\'articles\')"><b>Articles</b><span>'+CSM.articles.length+' published</span></div>'
+      +'<div class="csm-getcell" onclick="csmGo(\'branding\')"><b>Branding</b><span>set your look</span></div>'
+      +'<div class="csm-getcell" onclick="csmGo(\'website\')"><b>Channels</b><span>website, email, embed</span></div>'
+      +'</div></div>';
+  } else if(v==="overview"){
+    var nameField = admin ? '<input class="csm-inp" id="csm-name" value="'+mtEsc(CSM.name)+'" onchange="csmSetName(this.value)">' : '<div class="csm-ro">'+mtEsc(CSM.name)+'</div>';
+    body=csmTop("Customer experiences","Overview","Get a snapshot of your customer experience.","");
+    body+='<div class="csm-card"><div class="csm-fld"><label>Customer experience name</label>'+nameField+'</div>';
+    body+='<div class="csm-fld"><label>Team members</label><div class="csm-chips">'+(CSM.members.length?CSM.members.map(function(em){ return '<span class="csm-chip">'+mtEsc(csmUserName(em))+(admin?' <b onclick="csmDelMember(\''+mtEsc(em)+'\')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">No one added yet</span>')+'</div>'+(admin?csmMemberPicker():'')+'</div>';
+    body+='<div class="csm-fld"><label>Connected spaces</label><div class="csm-chips">'+(CSM.connectedSpaces.length?CSM.connectedSpaces.map(function(sp,i){ return '<span class="csm-chip">'+mtEsc(sp)+(admin?' <b onclick="csmDelSpace('+i+')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">Requests from this experience are routed to these spaces.</span>')+'</div>'+(admin?'<div class="csm-addrow"><input class="csm-inp" id="csm-space-in" placeholder="e.g. Support board"><button class="csm-btn ghost" onclick="csmAddSpace()">Add</button></div>':'')+'</div>';
+    body+='</div>';
+  } else if(v==="forms"){
+    var act = admin ? '<button class="csm-btn" onclick="csmOpenForm(null)">+ Create a form</button>' : '';
+    body=csmTop("Customer experiences","Forms","Forms are used in your channels to capture information from customers.",act);
+    if(!CSM.forms.length){ body+='<div class="csm-card"><div class="csm-empty"><b>No forms yet</b>Create a form to capture questions, problems or requests.</div></div>'; }
+    else {
+      body+='<div class="csm-card"><table class="csm-table"><thead><tr><th>Name</th><th>Space</th><th>Work item</th><th>Fields</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+      CSM.forms.forEach(function(f){
+        body+='<tr><td class="csm-strong">'+mtEsc(f.name)+'</td><td>'+(f.space?mtEsc(f.space):'<span class="csm-muted">\u2014</span>')+'</td><td><span class="csm-badge">'+mtEsc(f.workType)+'</span></td><td>'+f.fields.length+'</td>'+(admin?'<td><div class="csm-rowact"><button class="csm-ib" title="Edit" onclick="csmOpenForm(\''+f.id+'\')">\u270e</button><button class="csm-ib" title="Delete" onclick="csmDelForm(\''+f.id+'\')">\u00d7</button></div></td>':'')+'</tr>';
+      });
+      body+='</tbody></table></div>';
+    }
+    body+='<div class="csm-note">Form <b>definitions</b> are saved. Actually receiving submissions from customers needs the backend \u2014 wired later.</div>';
+  } else if(v==="articles"){
+    var act2 = admin ? '<button class="csm-btn" onclick="csmOpenArticle(null)">+ Add article</button>' : '';
+    body=csmTop("Customer experiences","Articles","Articles help your customers self-serve and power your future AI agent.",act2);
+    if(!CSM.articles.length){ body+='<div class="csm-card"><div class="csm-empty"><b>Add your first article</b>Knowledge base content is stored and ready to publish.</div></div>'; }
+    else {
+      body+='<div class="csm-artlist">';
+      CSM.articles.forEach(function(a){
+        var preview=(a.body||"").replace(/\s+/g," ").slice(0,140);
+        body+='<div class="csm-artcard"><div class="csm-artmain"><b>'+mtEsc(a.title)+'</b><p>'+mtEsc(preview)+(a.body&&a.body.length>140?"\u2026":"")+'</p>'+(a.updated?'<span class="csm-muted">Updated '+mtEsc(a.updated)+'</span>':'')+'</div>'+(admin?'<div class="csm-rowact"><button class="csm-ib" title="Edit" onclick="csmOpenArticle(\''+a.id+'\')">\u270e</button><button class="csm-ib" title="Delete" onclick="csmDelArticle(\''+a.id+'\')">\u00d7</button></div>':'')+'</div>';
+      });
+      body+='</div>';
+    }
+  } else if(v==="branding"){
+    var d=admin;
+    body=csmTop("Customer experiences","Branding","Apply consistent branding across all customer channels.","");
+    body+='<div class="csm-card">';
+    body+='<div class="csm-fld"><label>Brand name</label>'+(d?'<input class="csm-inp" value="'+mtEsc(CSM.branding.brandName)+'" onchange="csmSetBrand(\'brandName\',this.value)" placeholder="'+mtEsc(CSM.name)+'">':'<div class="csm-ro">'+mtEsc(CSM.branding.brandName||CSM.name)+'</div>')+'</div>';
+    var icon = (CSM.branding.icon||CSM.branding.brandName||CSM.name||"C").slice(0,1).toUpperCase();
+    body+='<div class="csm-fld"><label>Brand icon</label><div class="csm-brandrow"><div class="csm-swatch" style="background:'+mtEsc(CSM.branding.color)+'">'+mtEsc(icon)+'</div>'+(d?'<input class="csm-inp" style="max-width:120px" value="'+mtEsc(CSM.branding.icon)+'" placeholder="Letter" maxlength="2" onchange="csmSetBrand(\'icon\',this.value)">':'')+'</div><div class="csm-hint">Image logo upload needs file storage \u2014 arrives with the backend.</div></div>';
+    body+='<div class="csm-fld"><label>Brand color</label>'+(d?'<input type="color" class="csm-color" value="'+mtEsc(/^#/.test(CSM.branding.color)?CSM.branding.color:"#3355FF")+'" onchange="csmSetBrand(\'color\',this.value)"> <span class="csm-mono">'+mtEsc(CSM.branding.color)+'</span>':'<span class="csm-mono">'+mtEsc(CSM.branding.color)+'</span>')+'</div>';
+    body+='</div>';
+  } else if(v==="website"){
+    var w=CSM.channels.website, d2=admin;
+    body=csmTop("Channels","Support website","Launch a support website with a chat widget, contact page and articles.","");
+    body+='<div class="csm-card">';
+    body+='<div class="csm-fld"><label>Site title</label>'+(d2?'<input class="csm-inp" value="'+mtEsc(w.title)+'" onchange="csmSetWebsite(\'title\',this.value)" placeholder="Your site title">':'<div class="csm-ro">'+mtEsc(w.title||"\u2014")+'</div>')+'</div>';
+    body+='<div class="csm-fld"><label>URL slug</label><div class="csm-urlrow"><span class="csm-urlpre">helpcenter/</span>'+(d2?'<input class="csm-inp" value="'+mtEsc(w.slug)+'" onchange="csmSetWebsite(\'slug\',this.value)" placeholder="TRY">':'<div class="csm-ro">'+mtEsc(w.slug||"\u2014")+'</div>')+'</div></div>';
+    body+='<div class="csm-toggrow"><div><b>Publish website</b><div class="csm-hint">Actually hosting a public site needs the backend. This just records intent.</div></div>'+csmToggle("website", w.live, d2)+'</div>';
+    body+='</div>';
+  } else if(v==="email"){
+    body=csmTop("Channels","Email","Capture customer requests by email.","");
+    body+='<div class="csm-card"><div class="csm-secthead"><b>Support email addresses</b>'+(admin?'<button class="csm-btn ghost" onclick="csmAddEmail()">Add email</button>':'')+'</div>';
+    if(!CSM.channels.emails.length){ body+='<div class="csm-muted" style="padding:8px 0">No addresses yet.</div>'; }
+    else { body+='<table class="csm-table"><thead><tr><th>Email</th><th>Reply-to</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+      CSM.channels.emails.forEach(function(e){ body+='<tr><td>'+(admin?'<input class="csm-inp" value="'+mtEsc(e.address)+'" placeholder="support@yourteam.com" onchange="csmSetEmail(\''+e.id+'\',this.value)">':'<span>'+mtEsc(e.address||"\u2014")+'</span>')+'</td><td>'+(admin?'<input type="checkbox" '+(e.replyTo?"checked":"")+' onchange="csmSetEmailReply(\''+e.id+'\',this.checked)">':(e.replyTo?"Yes":"No"))+'</td>'+(admin?'<td><button class="csm-ib" onclick="csmDelEmail(\''+e.id+'\')">\u00d7</button></td>':'')+'</tr>'; });
+      body+='</tbody></table>'; }
+    body+='</div>';
+    body+=csmStub("Inbound email capture","Turning an address into tickets needs a real mailbox + parser on the backend. Addresses you list here are saved and ready to connect.");
+  } else if(v==="embed"){
+    body=csmTop("Channels","Embed","Create a chat widget to embed on any website.","");
+    body+='<div class="csm-card"><div class="csm-toggrow"><div><b>Enable embeddable widget</b><div class="csm-hint">Records intent. A live widget needs a hosted script + backend.</div></div>'+csmToggle("embed", CSM.channels.embed.enabled, admin)+'</div>';
+    body+='<label class="csm-fldlbl">Snippet (placeholder)</label><pre class="csm-code">&lt;script src="https://your-backend/widget.js" data-team="'+mtEsc(CSM.channels.website.slug||"TRY")+'"&gt;&lt;/script&gt;</pre></div>';
+  } else if(v==="voice"){
+    body=csmTop("Channels","Voice","Take customer calls.","");
+    body+=csmStub("Voice channel","Telephony needs a provider + backend. This section is a placeholder so the template is complete.");
+    body+='<div class="csm-card"><div class="csm-toggrow"><div><b>Enable voice</b><div class="csm-hint">Reserved for when the backend is connected.</div></div>'+csmToggle("voice", CSM.channels.voice.enabled, admin)+'</div></div>';
+  } else if(v==="access"){
+    body=csmTop("Customer experiences","Customer access","Set who can access the channels and experience you create.","");
+    body+='<div class="csm-card"><div class="csm-fld"><label>Give access to</label>'
+      +'<label class="csm-radio"><input type="radio" name="csmacc" '+(CSM.access.mode==="orgs"?"checked":"")+' '+(admin?'onclick="csmSetAccess(\'orgs\')"':"disabled")+'> Only customers from organizations that have been added</label>'
+      +'<label class="csm-radio"><input type="radio" name="csmacc" '+(CSM.access.mode==="anyone"?"checked":"")+' '+(admin?'onclick="csmSetAccess(\'anyone\')"':"disabled")+'> Anyone</label></div>';
+    if(CSM.access.mode==="orgs"){
+      body+='<div class="csm-fld"><label>Organizations</label><div class="csm-chips">'+(CSM.access.orgs.length?CSM.access.orgs.map(function(o,i){ return '<span class="csm-chip">'+mtEsc(o)+(admin?' <b onclick="csmDelOrg('+i+')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">No organizations added.</span>')+'</div>'+(admin?'<div class="csm-addrow"><input class="csm-inp" id="csm-org-in" placeholder="Organization name"><button class="csm-btn ghost" onclick="csmAddOrg()">Add</button></div>':'')+'</div>';
+    }
+    body+='</div>';
+  }
+  $("csm-main").innerHTML = '<div class="csm-body">'+body+'</div>';
+}
+function csmToggle(name, on, admin){ return '<button class="csm-tog'+(on?" on":"")+'" '+(admin?'onclick="csmToggleChannel(\''+name+'\')"':"disabled")+'><span class="csm-tog-k"></span></button>'; }
+function csmMemberPicker(){
+  var taken={}; CSM.members.forEach(function(e){taken[e]=1;});
+  var avail=csmTeamUsers().filter(function(u){return !taken[u.email];});
+  if(!avail.length) return '<div class="csm-hint">Add teammates in Settings \u2192 Members to include them.</div>';
+  var opts=avail.map(function(u){return '<option value="'+mtEsc(u.email)+'">'+mtEsc((typeof userDisplayName==="function")?userDisplayName(u):(u.name||u.email))+'</option>';}).join("");
+  return '<div class="csm-addrow"><select class="csm-inp" id="csm-mem-in">'+opts+'</select><button class="csm-btn ghost" onclick="csmAddMember()">Add</button></div>';
+}
+/* ---- setters ---- */
+function csmSetName(v){ CSM.name=(v||"").trim()||"Customers"; renderCsm(); csmSave(); }
+function csmAddMember(){ var el=$("csm-mem-in"); if(!el||!el.value) return; if(CSM.members.indexOf(el.value)<0) CSM.members.push(el.value); renderCsm(); csmSave(); }
+function csmDelMember(em){ CSM.members=CSM.members.filter(function(x){return x!==em;}); renderCsm(); csmSave(); }
+function csmAddSpace(){ var el=$("csm-space-in"); var v=el&&(el.value||"").trim(); if(!v) return; CSM.connectedSpaces.push(v); renderCsm(); csmSave(); }
+function csmDelSpace(i){ CSM.connectedSpaces.splice(i,1); renderCsm(); csmSave(); }
+function csmSetBrand(f,v){ CSM.branding[f]=(f==="icon")?(v||"").trim():v; renderCsm(); csmSave(); }
+function csmSetWebsite(f,v){ CSM.channels.website[f]=(v||"").trim(); csmSave(); }
+function csmToggleChannel(name){ if(name==="website"){ CSM.channels.website.live=!CSM.channels.website.live; } else if(CSM.channels[name]){ CSM.channels[name].enabled=!CSM.channels[name].enabled; } renderCsm(); csmSave(); }
+function csmAddEmail(){ CSM.channels.emails.push({id:csmId("eml"),address:"",replyTo:false}); renderCsm(); csmSave(); }
+function csmSetEmail(id,v){ var e=CSM.channels.emails.filter(function(x){return x.id===id;})[0]; if(e){ e.address=(v||"").trim(); csmSave(); } }
+function csmSetEmailReply(id,b){ var e=CSM.channels.emails.filter(function(x){return x.id===id;})[0]; if(e){ e.replyTo=!!b; csmSave(); } }
+function csmDelEmail(id){ CSM.channels.emails=CSM.channels.emails.filter(function(x){return x.id!==id;}); renderCsm(); csmSave(); }
+function csmSetAccess(m){ CSM.access.mode=(m==="anyone"?"anyone":"orgs"); renderCsm(); csmSave(); }
+function csmAddOrg(){ var el=$("csm-org-in"); var v=el&&(el.value||"").trim(); if(!v) return; CSM.access.orgs.push(v); renderCsm(); csmSave(); }
+function csmDelOrg(i){ CSM.access.orgs.splice(i,1); renderCsm(); csmSave(); }
+/* ---- form dialog ---- */
+function csmFindForm(id){ for(var i=0;i<CSM.forms.length;i++){ if(CSM.forms[i].id===id) return CSM.forms[i]; } return null; }
+function csmOpenForm(id){
+  var ex = id ? csmFindForm(id) : null;
+  var draft = ex ? clean(ex) : {id:null,name:"",space:"",workType:"Question",fields:[],channels:[]};
+  csmDlg={mode:"form", id:id, draft:draft};
+  $("csm-dlg-title").textContent = id ? "Edit form" : "Create a form";
+  var wt = CSM_WORK_TYPES.map(function(t){return '<option'+(t===draft.workType?" selected":"")+'>'+t+'</option>';}).join("");
+  var body='<div class="csm-fld"><label>Form name</label><input id="csm-f-name" class="csm-inp" value="'+mtEsc(draft.name)+'"></div>'
+   +'<div class="csm-two"><div class="csm-fld"><label>Space</label><input id="csm-f-space" class="csm-inp" value="'+mtEsc(draft.space)+'" placeholder="e.g. Support board"></div>'
+   +'<div class="csm-fld"><label>Work type</label><select id="csm-f-wt" class="csm-inp">'+wt+'</select></div></div>'
+   +'<div class="csm-fld"><label>Fields</label><div id="csm-f-fields"></div><button class="csm-btn ghost" onclick="csmDlgAddField()">+ Add field</button></div>';
+  $("csm-dlg-body").innerHTML=body;
+  csmDlgRenderFields();
+  $("csm-dialog").classList.add("show");
+}
+function csmDlgRenderFields(){
+  var box=$("csm-f-fields"); if(!box) return;
+  var h="";
+  (csmDlg.draft.fields||[]).forEach(function(fl,i){
+    var ts=CSM_FIELD_TYPES.map(function(t){return '<option'+(t===fl.type?" selected":"")+'>'+t+'</option>';}).join("");
+    h+='<div class="csm-frow"><input class="csm-inp" value="'+mtEsc(fl.label)+'" placeholder="Field label" oninput="csmDlgField('+i+',\'label\',this.value)"><select class="csm-inp" onchange="csmDlgField('+i+',\'type\',this.value)">'+ts+'</select><label class="csm-req"><input type="checkbox" '+(fl.required?"checked":"")+' onchange="csmDlgField('+i+',\'required\',this.checked)"> Req</label><button class="csm-ib" onclick="csmDlgDelField('+i+')">\u00d7</button></div>';
+  });
+  if(!(csmDlg.draft.fields||[]).length) h='<div class="csm-muted" style="margin-bottom:6px">No fields yet.</div>';
+  box.innerHTML=h;
+}
+function csmDlgAddField(){ csmDlg.draft.fields.push({id:csmId("fld"),label:"",type:"Short text",required:false}); csmDlgRenderFields(); }
+function csmDlgField(i,f,v){ if(csmDlg.draft.fields[i]) csmDlg.draft.fields[i][f]=(f==="required")?!!v:v; }
+function csmDlgDelField(i){ csmDlg.draft.fields.splice(i,1); csmDlgRenderFields(); }
+function csmSaveForm(){
+  if(!csmDlg || csmDlg.mode!=="form") return;
+  var d=csmDlg.draft;
+  d.name=($("csm-f-name").value||"").trim(); if(!d.name){ if(typeof toast==="function") toast("Give the form a name"); return; }
+  d.space=($("csm-f-space").value||"").trim(); d.workType=$("csm-f-wt").value||"Question";
+  d.fields=(d.fields||[]).filter(function(fl){ return (fl.label||"").trim(); });
+  if(csmDlg.id){ for(var i=0;i<CSM.forms.length;i++){ if(CSM.forms[i].id===csmDlg.id){ CSM.forms[i]=d; break; } } }
+  else { d.id=csmId("form"); CSM.forms.push(d); }
+  CSM=normalizeCsm(CSM); csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast("Saved");
+}
+function csmDelForm(id){ if(typeof confirm==="function" && !confirm("Delete this form?")) return; CSM.forms=CSM.forms.filter(function(f){return f.id!==id;}); renderCsm(); csmSave(); if(typeof toast==="function") toast("Deleted"); }
+/* ---- article dialog ---- */
+function csmFindArticle(id){ for(var i=0;i<CSM.articles.length;i++){ if(CSM.articles[i].id===id) return CSM.articles[i]; } return null; }
+function csmOpenArticle(id){
+  var ex=id?csmFindArticle(id):null;
+  var draft=ex?clean(ex):{id:null,title:"",body:"",updated:""};
+  csmDlg={mode:"article", id:id, draft:draft};
+  $("csm-dlg-title").textContent=id?"Edit article":"New article";
+  $("csm-dlg-body").innerHTML='<div class="csm-fld"><label>Title</label><input id="csm-a-title" class="csm-inp" value="'+mtEsc(draft.title)+'"></div><div class="csm-fld"><label>Content</label><textarea id="csm-a-body" class="csm-area">'+mtEsc(draft.body)+'</textarea></div>';
+  $("csm-dialog").classList.add("show");
+}
+function csmSaveArticle(){
+  if(!csmDlg || csmDlg.mode!=="article") return;
+  var d=csmDlg.draft;
+  d.title=($("csm-a-title").value||"").trim(); if(!d.title){ if(typeof toast==="function") toast("Give the article a title"); return; }
+  d.body=$("csm-a-body").value||"";
+  d.updated=(typeof todayStr==="function")?todayStr():"";
+  if(csmDlg.id){ for(var i=0;i<CSM.articles.length;i++){ if(CSM.articles[i].id===csmDlg.id){ CSM.articles[i]=d; break; } } }
+  else { d.id=csmId("art"); CSM.articles.unshift(d); }
+  csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast("Saved");
+}
+function csmDelArticle(id){ if(typeof confirm==="function" && !confirm("Delete this article?")) return; CSM.articles=CSM.articles.filter(function(a){return a.id!==id;}); renderCsm(); csmSave(); if(typeof toast==="function") toast("Deleted"); }
+function csmDlgClose(){ $("csm-dialog").classList.remove("show"); csmDlg=null; }
+function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); }
+
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
 $("nav-b").onclick = ()=>{ view = "okr"; renderAll(); };
@@ -14276,6 +14652,10 @@ if($("sc-back")){ $("sc-back").onclick = closeScorecard; }
 if($("sc-dlg-cancel")){ $("sc-dlg-cancel").onclick = scDlgClose; }
 if($("sc-dlg-save")){ $("sc-dlg-save").onclick = scDlgSave; }
 if($("sc-dialog")){ $("sc-dialog").onclick = function(e){ if(e.target.id==="sc-dialog") scDlgClose(); }; }
+if($("nav-g")){ $("nav-g").onclick = openCsm; }
+if($("csm-dlg-cancel")){ $("csm-dlg-cancel").onclick = csmDlgClose; }
+if($("csm-dlg-save")){ $("csm-dlg-save").onclick = csmDlgSave; }
+if($("csm-dialog")){ $("csm-dialog").onclick = function(e){ if(e.target.id==="csm-dialog") csmDlgClose(); }; }
 if($("docs-back")){ $("docs-back").onclick = closeDocs; }
 if($("doctp-cancel")){ $("doctp-cancel").onclick = docCloseTplPicker; }
 if($("docsp-cancel")){ $("docsp-cancel").onclick = docSpaceCloseDlg; }
