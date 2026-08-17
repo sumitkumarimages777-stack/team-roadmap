@@ -2816,6 +2816,23 @@ body{margin:0}
 .csm-frow select.csm-inp{max-width:150px}
 .csm-req{font-size:12px;color:var(--c-muted);white-space:nowrap;display:flex;align-items:center;gap:4px}
 @media(max-width:820px){.csm-app{grid-template-columns:1fr}.csm-side{position:static;height:auto}.csm-body{padding:20px}.csm-top h2{font-size:22px}}
+
+.csm-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.csm-tile{background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:16px 18px;min-height:150px;display:flex;flex-direction:column}
+.csm-tile-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;font-size:13.5px;font-weight:600;color:#44546f;min-height:34px}
+.csm-tib{width:24px;height:24px;flex:none}
+.csm-tile-v{flex:1;display:grid;place-items:center;font-size:38px;font-weight:700;color:var(--c-ink)}
+.csm-tile-s{text-align:center;font-size:12.5px;color:var(--c-muted);font-weight:600}
+.csm-tchip{font-size:10px;font-weight:700;color:var(--c-pri);background:var(--c-pri-soft);border-radius:5px;padding:1px 5px;margin-left:4px}
+.csm-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.csm-chart{background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:16px 18px}
+.csm-chart-h b{font-size:14.5px}
+.csm-chart-body{display:flex;align-items:stretch;gap:6px;margin-top:12px;height:150px}
+.csm-yl{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;color:var(--c-faint);text-align:center;flex:none}
+.csm-svg{flex:1;width:100%;height:150px}
+.csm-xl2{text-align:center;font-size:10px;color:var(--c-faint);margin-top:2px}
+.csm-chart-note{font-size:11.5px;color:var(--c-muted);margin-top:8px}
+@media(max-width:820px){.csm-tiles{grid-template-columns:1fr 1fr}.csm-charts{grid-template-columns:1fr}}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -14424,6 +14441,11 @@ function normalizeCsm(x){
   x.channels.emails.forEach(function(e){ if(!e.id) e.id=csmId("eml"); e.address=e.address||""; e.replyTo=!!e.replyTo; });
   var ac = (x.access && typeof x.access==="object") ? x.access : {};
   x.access = { mode: (ac.mode==="anyone"?"anyone":"orgs"), orgs: Array.isArray(ac.orgs)?ac.orgs:[] };
+  var db=(x.dashboard&&typeof x.dashboard==="object")?x.dashboard:{};
+  var defTiles=[["ai","AI Agent conversations"],["resolved","Resolved work items"],["unresolved","Unresolved work items"],["total","Total work items"]];
+  if(!Array.isArray(db.tiles)||!db.tiles.length){ db.tiles=defTiles.map(function(d){return {id:csmId("tile"),key:d[0],label:d[1],value:"0",source:{type:"manual"}};}); }
+  db.tiles.forEach(function(t){ if(!t.id) t.id=csmId("tile"); t.label=t.label||"Metric"; if(t.value==null) t.value=""; t.source=(t.source&&t.source.type)?t.source:{type:"manual"}; });
+  x.dashboard=db;
   return x;
 }
 function csmCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
@@ -14431,14 +14453,14 @@ function csmSave(){ if(typeof pushAll==="function") pushAll(); }
 function csmTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : []; }
 function csmUserName(email){ var us=csmTeamUsers(); for(var i=0;i<us.length;i++){ if(us[i].email===email) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); } return email; }
 /* ---- page shell ---- */
-let csmView = "get-started";
+let csmView = "dashboard";
 let csmDlg = null;
 var CSM_SECTIONS = [
-  {group:"", items:[{key:"get-started",label:"Get started",icon:"\u25c9"},{key:"overview",label:"Overview",icon:"\u2261"},{key:"forms",label:"Forms",icon:"\u25a4"},{key:"articles",label:"Articles",icon:"\u25a4"},{key:"branding",label:"Branding",icon:"\u25d0"}]},
+  {group:"", items:[{key:"dashboard",label:"Dashboard",icon:"\u25a6"},{key:"get-started",label:"Get started",icon:"\u25c9"},{key:"overview",label:"Overview",icon:"\u2261"},{key:"forms",label:"Forms",icon:"\u25a4"},{key:"articles",label:"Articles",icon:"\u25a4"},{key:"branding",label:"Branding",icon:"\u25d0"}]},
   {group:"Channels", items:[{key:"website",label:"Support website",icon:"\u25ce"},{key:"email",label:"Email",icon:"\u2709"},{key:"embed",label:"Embed",icon:"\u25a3"},{key:"voice",label:"Voice",icon:"\u260e"}]},
   {group:"Access", items:[{key:"access",label:"Customer access",icon:"\u263a"}]}
 ];
-function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ csmRefreshTiles(); }catch(e){} }
 function closeCsm(){ $("csm-page").style.display="none"; }
 function csmGo(v){ csmView=v; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function renderCsm(){ csmRenderSidebar(); csmRenderContent(); }
@@ -14462,7 +14484,8 @@ function csmTop(eyebrow, title, sub, action){
 }
 function csmRenderContent(){
   var admin=csmCanEdit(), v=csmView, body="";
-  if(v==="get-started"){
+  if(v==="dashboard"){ body=csmDashboardHTML(admin); }
+  else if(v==="get-started"){
     body=csmTop("Overview","Welcome, "+CSM.name+"!", mtEsc(CSM.desc),"")
       +'<div class="csm-card"><p class="csm-p">You can create a customer experience for different customer groups, route requests to your spaces, and manage articles, forms, branding and channels here. The operational channels (email capture, hosted support site, embeddable chat, voice, AI agent) light up once the backend is connected \u2014 everything else works today.</p>'
       +'<div class="csm-getgrid">'
@@ -14634,7 +14657,71 @@ function csmSaveArticle(){
 }
 function csmDelArticle(id){ if(typeof confirm==="function" && !confirm("Delete this article?")) return; CSM.articles=CSM.articles.filter(function(a){return a.id!==id;}); renderCsm(); csmSave(); if(typeof toast==="function") toast("Deleted"); }
 function csmDlgClose(){ $("csm-dialog").classList.remove("show"); csmDlg=null; }
-function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); }
+function csmFindTile(id){ var t=(CSM.dashboard&&CSM.dashboard.tiles)||[]; for(var i=0;i<t.length;i++){ if(t[i].id===id) return t[i]; } return null; }
+function csmTileValue(t){ if(t.source&&t.source.type==="sheet"){ var c=t.source.cache; return (c&&c.value!=null&&c.value!=="")?String(c.value):"0"; } return (t.value===""||t.value==null)?"0":String(t.value); }
+function csmChartCard(title,xl,yl){
+  return '<div class="csm-chart"><div class="csm-chart-h"><b>'+mtEsc(title)+'</b></div><div class="csm-chart-body"><span class="csm-yl">'+mtEsc(yl)+'</span><svg viewBox="0 0 320 150" class="csm-svg" preserveAspectRatio="none"><line x1="42" y1="8" x2="42" y2="132" stroke="#c1c7d0"/><line x1="42" y1="132" x2="312" y2="132" stroke="#c1c7d0"/></svg></div><div class="csm-xl2">'+mtEsc(xl)+'</div><div class="csm-chart-note">Fills in from ticket data once the backend is connected.</div></div>';
+}
+function csmDashboardHTML(admin){
+  var h=csmTop("Customer service","Dashboard","A snapshot of your support. Numbers come from manual entry, a connected Google Sheet, or the backend later.","");
+  h+='<div class="csm-tiles">';
+  ((CSM.dashboard&&CSM.dashboard.tiles)||[]).forEach(function(t){
+    var val=csmTileValue(t); var connected=t.source&&t.source.type==="sheet";
+    h+='<div class="csm-tile"><div class="csm-tile-h"><span>'+mtEsc(t.label)+'</span>'+(admin?'<button class="csm-ib csm-tib" title="Edit / connect" onclick="csmOpenTile(\''+t.id+'\')">\u270e</button>':'')+'</div><div class="csm-tile-v">'+mtEsc(val)+'</div><div class="csm-tile-s">Total value'+(connected?' <span class="csm-tchip">\uD83D\uDD17 sheet</span>':'')+'</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="csm-charts">'+csmChartCard("Work items created","Work item creation date","Count of work items")+csmChartCard("Full resolution time median","Work item resolution date","Median time (seconds)")+'</div>';
+  return h;
+}
+function csmRefreshTile(id){
+  var t=csmFindTile(id); if(!t || !t.source || t.source.type!=="sheet") return;
+  if(typeof scFetchSheet!=="function") return;
+  t.source.cache=t.source.cache||{}; t.source.cache.loading=true; renderCsm();
+  scFetchSheet(t.source).then(function(res){ t.source.cache={at:Date.now()}; if(res.error) t.source.cache.error=res.error; else t.source.cache.value=res.value; csmSave(); renderCsm(); });
+}
+function csmRefreshTiles(){ ((CSM.dashboard&&CSM.dashboard.tiles)||[]).forEach(function(t){ if(t.source&&t.source.type==="sheet"&&t.source.url && typeof scFetchSheet==="function"){ scFetchSheet(t.source).then(function(res){ t.source.cache=t.source.cache||{}; t.source.cache.at=Date.now(); if(res.error){t.source.cache.error=res.error;} else {delete t.source.cache.error; t.source.cache.value=res.value;} csmSave(); renderCsm(); }); } }); }
+function csmTileFormHTML(){
+  var d=csmDlg.draft, sc=d.source;
+  var h='<div class="csm-fld"><label>Label</label><input id="csm-t-label" class="csm-inp" value="'+mtEsc(d.label)+'"></div>';
+  h+='<div class="csm-fld"><label>Data source</label>';
+  h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type!=="sheet"?"checked":"")+' onclick="csmTileSrc(\'manual\')"> Manual value</label>';
+  h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type==="sheet"?"checked":"")+' onclick="csmTileSrc(\'sheet\')"> Google Sheet cell</label></div>';
+  if(sc.type==="sheet"){
+    var c=sc.cache||{};
+    h+='<div class="csm-fld"><label>Sheet URL</label><input id="csm-t-url" class="csm-inp" value="'+mtEsc(sc.url||"")+'" placeholder="Published Google Sheet link" oninput="csmTileField(\'url\',this.value)"></div>';
+    h+='<div class="csm-two"><div class="csm-fld"><label>Cell</label><input id="csm-t-cell" class="csm-inp" value="'+mtEsc(sc.cell||"B2")+'" oninput="csmTileField(\'cell\',this.value)"></div><div class="csm-fld" style="align-self:flex-end"><button class="csm-btn ghost" onclick="csmTileTest()">Test read</button></div></div>';
+    h+='<div class="csm-hint" id="csm-t-prev">'+(c.error?('<span style="color:#c9372c">'+mtEsc(c.error)+'</span>'):((c.value!=null&&c.value!=="")?('Live value: <b>'+mtEsc(String(c.value))+'</b>'):'Not tested yet'))+'</div>';
+  } else {
+    h+='<div class="csm-fld"><label>Value</label><input id="csm-t-value" class="csm-inp" value="'+mtEsc(d.value||"")+'" placeholder="0"></div>';
+  }
+  return h;
+}
+function csmOpenTile(id){
+  var t=csmFindTile(id); if(!t) return;
+  var src=(t.source&&t.source.type)?clean(t.source):{type:"manual"};
+  csmDlg={mode:"tile", id:id, draft:{label:t.label, value:t.value, source:src}};
+  $("csm-dlg-title").textContent="Edit metric";
+  $("csm-dlg-body").innerHTML=csmTileFormHTML();
+  $("csm-dialog").classList.add("show");
+}
+function csmTileSrc(t){ if(t==="sheet"){ var p=csmDlg.draft.source||{}; csmDlg.draft.source={type:"sheet", url:p.url||"", cell:p.cell||"B2", cache:p.cache||null}; } else { csmDlg.draft.source={type:"manual"}; } $("csm-dlg-body").innerHTML=csmTileFormHTML(); }
+function csmTileField(f,v){ if(csmDlg.draft.source) csmDlg.draft.source[f]=v; }
+function csmTileTest(){
+  var s=csmDlg.draft.source; var ue=$("csm-t-url"), ce=$("csm-t-cell"); if(ue) s.url=ue.value; if(ce) s.cell=ce.value;
+  var pv=$("csm-t-prev"); if(pv) pv.innerHTML="Reading\u2026";
+  if(typeof scFetchSheet!=="function"){ if(pv) pv.innerHTML='<span style="color:#c9372c">Sheet engine unavailable</span>'; return; }
+  scFetchSheet(s).then(function(res){ s.cache={at:Date.now()}; if(res.error){ s.cache.error=res.error; if(pv) pv.innerHTML='<span style="color:#c9372c">'+mtEsc(res.error)+'</span>'; } else { s.cache.value=res.value; if(pv) pv.innerHTML='Live value: <b>'+mtEsc(String(res.value))+'</b>'; } });
+}
+function csmSaveTile(){
+  if(!csmDlg || csmDlg.mode!=="tile") return;
+  var t=csmFindTile(csmDlg.id); if(!t){ csmDlgClose(); return; }
+  t.label=($("csm-t-label").value||"").trim()||t.label;
+  var s=csmDlg.draft.source||{type:"manual"};
+  if(s.type==="sheet"){ t.source=s; }
+  else { t.source={type:"manual"}; var ve=$("csm-t-value"); t.value=ve?((ve.value||"").trim()):t.value; }
+  csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast("Saved");
+}
+function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); }
 
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
