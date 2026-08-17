@@ -4207,7 +4207,7 @@ async function pushNow(){
     rec.teams[TEAM] = mine;
     await putRecord(rec);
     lastSnapshot = JSON.stringify(mine);
-  }catch(e){ toast("Save failed: "+e.message+" — check your internet, then try again"); }
+  }catch(e){ var _sz=0; try{ _sz=Math.round(JSON.stringify(lastRecord||{}).length/1024); }catch(_){ } try{ if(typeof showBanner==="function") showBanner("⚠️ Save FAILED ("+e.message+"). Your data record is ≈"+_sz+" KB. If this shows HTTP 413 or 400, the database is over its size limit — tell Claude this number. Nothing was saved; do not refresh yet."); }catch(_){ } try{ if(typeof console!=="undefined") console.error("[SAVE FAILED]", e && e.message, "record~"+_sz+"KB"); }catch(_){ } toast("⚠️ Save failed — see the red banner at top"); }
   saving = false;
 }
 /* ---- request-saving layer -------------------------------------------------
