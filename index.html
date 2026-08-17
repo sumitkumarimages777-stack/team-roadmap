@@ -2693,6 +2693,17 @@ body{margin:0}
 .sc-mval{width:64px;text-align:center;font-family:var(--sc-mono);font-weight:600}
 .sc-msub{font-size:12px;color:var(--sc-muted);margin-top:6px}
 @media(max-width:820px){ .sc-members{grid-template-columns:1fr} }
+
+/* ---- Individual KPI library (reference) ---- */
+.sc-refnote{display:flex;gap:11px;align-items:flex-start;background:#F1F3F8;border:1px solid var(--sc-line);border-radius:12px;padding:12px 16px;font-size:12.5px;color:var(--sc-muted);line-height:1.55;margin-bottom:18px}
+.sc-refnote b{color:var(--sc-text)}
+.sc-refi{flex:none;font-size:14px;line-height:1.2}
+.sc-refdept{display:flex;align-items:baseline;gap:10px;margin:26px 2px 12px}
+.sc-refdept h3{font-family:var(--sc-mono);font-size:18px;font-weight:600;margin:0;color:var(--sc-text)}
+.sc-refdept span{font-size:12.5px;color:var(--sc-muted)}
+.sc-card-head.sc-refrole{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sc-btn.ghost{background:var(--sc-surface);color:var(--sc-primary);border:1px solid var(--sc-line);box-shadow:none}
+.sc-btn.ghost:hover{background:#f2f6ff;border-color:var(--sc-primary)}
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
@@ -13635,9 +13646,9 @@ function scDelMember(id){
   SCORECARD.members=(SCORECARD.members||[]).filter(function(x){return x.id!==id;});
   renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Removed");
 }
-function scOpenMember(presetDept){
+function scOpenMember(presetDept, presetRole){
   var byDept={}; Object.keys(SC_ROLES).forEach(function(r){ var d=SC_ROLES[r].dept; (byDept[d]=byDept[d]||[]).push(r); });
-  var optgroups=Object.keys(byDept).map(function(d){ return '<optgroup label="'+mtEsc(d)+'">'+byDept[d].map(function(r){ var sel=(presetDept&&d===presetDept&&byDept[d][0]===r)?" selected":""; return '<option value="'+mtEsc(r)+'"'+sel+'>'+mtEsc(r)+'</option>'; }).join("")+'</optgroup>'; }).join("");
+  var optgroups=Object.keys(byDept).map(function(d){ return '<optgroup label="'+mtEsc(d)+'">'+byDept[d].map(function(r){ var sel=(presetRole? (r===presetRole) : (presetDept&&d===presetDept&&byDept[d][0]===r))?" selected":""; return '<option value="'+mtEsc(r)+'"'+sel+'>'+mtEsc(r)+'</option>'; }).join("")+'</optgroup>'; }).join("");
   scDlg={mode:"member"};
   $("sc-dlg-title").textContent="Add team member";
   $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Full name</label><input id="sc-m-name" placeholder="e.g. Kabir Singh" autocomplete="off"></div><div class="sc-fld"><label>Role</label><select id="sc-m-role">'+optgroups+'</select></div><div class="sc-msub">Pick a role and their scorecard is built automatically from role KPIs + a universal layer.</div>';
@@ -13661,6 +13672,28 @@ function scMembersSectionHTML(deptName, admin){
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
   var h='<div class="sc-mhdr"><div><h3>Individual scorecards</h3><div class="sc-sub">'+members.length+' '+(members.length===1?"person":"people")+' in '+mtEsc(deptName)+' \u2014 each measured on their own role</div></div>'+(admin?'<button class="sc-btn" onclick="scOpenMember(\''+dj+'\')">\uff0b Add to '+mtEsc(deptName)+'</button>':'')+'</div>';
   h+= members.length ? '<div class="sc-members">'+members.map(scMemberCard).join("")+'</div>' : '<div class="sc-card"><div class="sc-empty"><b>No one here yet</b>Add a team member to generate their role scorecard.</div></div>';
+  return h;
+}
+function scJsStr(v){ return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+function scRefTable(list){
+  var h='<table class="sc-table"><thead><tr><th>KPI</th><th>What good looks like</th><th>Type</th><th>Target</th><th>Cadence</th></tr></thead><tbody>';
+  (list||[]).forEach(function(k){ h+='<tr><td class="sc-kname">'+mtEsc(k.name)+'</td><td class="sc-kmeas" style="max-width:none">'+mtEsc(k.what||"")+'</td><td>'+scTypeBadge(k.type)+'</td><td class="sc-tgt">'+mtEsc(k.target||"\u2014")+'</td><td><span class="sc-cad">'+mtEsc(k.cadence||"")+'</span></td></tr>'; });
+  return h+'</tbody></table>';
+}
+function scLibraryHTML(admin){
+  var h='<div class="sc-refnote"><span class="sc-refi">\uD83D\uDCCB</span><div><b>This is the template, not live data.</b> It shows what each role is measured on. Add a person in any role and these KPIs become their editable scorecard under Team members. The 3 universal KPIs (personal goals, peer feedback, growth) are added to everyone automatically.</div></div>';
+  h+='<div class="sc-card"><div class="sc-card-head"><div><h3>Universal \u00b7 applies to everyone</h3><div class="sc-sub">The baseline every individual is measured on, whatever their role</div></div></div>'+scRefTable(SC_UNIVERSAL)+'</div>';
+  var order=["Engineering","Product","Marketing","Customer Support","Educational Content","HR"];
+  var byDept={}; Object.keys(SC_ROLES).forEach(function(r){ var d=SC_ROLES[r].dept; (byDept[d]=byDept[d]||[]).push(r); });
+  var depts=order.filter(function(d){return byDept[d];}).concat(Object.keys(byDept).filter(function(d){return order.indexOf(d)<0;}));
+  depts.forEach(function(d){
+    var roles=byDept[d];
+    h+='<div class="sc-refdept"><h3>'+mtEsc(d)+'</h3><span>'+roles.length+' '+(roles.length===1?"role":"roles")+'</span></div>';
+    roles.forEach(function(r){
+      var tmpl=SC_ROLES[r];
+      h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>'+mtEsc(r)+'</h3><div class="sc-sub">'+mtEsc(d)+' \u00b7 '+tmpl.kpis.length+' role KPIs + 3 universal</div></div>'+(admin?'<button class="sc-btn ghost" onclick="scOpenMember(\''+scJsStr(d)+'\',\''+scJsStr(r)+'\')">\uff0b Add someone in this role</button>':'')+'</div>'+scRefTable(tmpl.kpis)+'</div>';
+    });
+  });
   return h;
 }
 function scPeoplePageHTML(admin){
@@ -13699,6 +13732,7 @@ function scRenderSidebar(){
   others.forEach(function(f){ var n=scAttnCount(f); h+='<a class="sc-nav-a'+(scView===f.key?" on":"")+'" onclick="scGo(\''+f.key+'\')"'+(n?' title="'+n+' need attention"':'')+'><span>'+mtEsc(f.name)+'</span><span class="sc-cnt'+(n?" warn":"")+'">'+(n?n:"\u2013")+'</span></a>'; });
   h+='</div>';
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">People</div><a class="sc-nav-a'+(scView==="people"?" on":"")+'" onclick="scGo(\'people\')"><span>Team members</span><span class="sc-cnt">'+((SCORECARD.members||[]).length||"\u2013")+'</span></a></div>';
+  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Reference</div><a class="sc-nav-a'+(scView==="library"?" on":"")+'" onclick="scGo(\'library\')"><span>Individual KPI library</span><span class="sc-cnt">'+Object.keys(SC_ROLES).length+'</span></a></div>';
   h+='</nav>';
   h+='<div class="sc-foot"><button class="sc-footbtn" onclick="closeScorecard()">\u2190 Back to workspace</button></div>';
   var side=$("sc-side"); if(side) side.innerHTML=h;
@@ -13781,7 +13815,7 @@ function scStatusCtl(fkey,k){
 function scRenderContent(){
   var admin = scCanEdit();
   var eyebrow, title, body, action="";
-  if(scView!=="overview" && scView!=="people" && !scFuncByKey(scView)) scView="overview";
+  if(scView!=="overview" && scView!=="people" && scView!=="library" && !scFuncByKey(scView)) scView="overview";
   if(scView==="overview"){
     eyebrow="Overview"; title="Dashboard";
     var company=scCompanyFunc();
@@ -13791,6 +13825,10 @@ function scRenderContent(){
     eyebrow="People"; title="Team members";
     if(admin) action='<button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button>';
     body = scPeoplePageHTML(admin);
+  } else if(scView==="library"){
+    eyebrow="Reference"; title="Individual KPI library";
+    if(admin) action='<button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button>';
+    body = scLibraryHTML(admin);
   } else {
     var f=scFuncByKey(scView);
     eyebrow="Function"; title=f.name;
