@@ -2869,6 +2869,27 @@ body{margin:0}
 .csm-gline{font-size:13px;color:#44546f;display:flex;align-items:center;gap:8px}
 .csm-drypill{font-size:10.5px;font-weight:700;color:#5f4d0f;background:#fff7d6;border-radius:5px;padding:1px 7px}
 .csm-livepill{font-size:10.5px;font-weight:700;color:#216e4e;background:#dcfff1;border-radius:5px;padding:1px 7px}
+
+.csm-detailtop{display:flex;justify-content:space-between;margin-bottom:16px}
+.csm-dhead{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.csm-dkey{font-size:13px;font-weight:700;color:#626f86;background:#f1f2f4;border-radius:5px;padding:2px 8px}
+.csm-dsum{font-size:22px;font-weight:600;margin:0;letter-spacing:-.3px;flex:1;min-width:200px}
+.csm-dmeta{display:flex;flex-wrap:wrap;gap:22px;background:#fff;border:1px solid var(--c-line);border-radius:10px;padding:14px 18px;margin-bottom:18px}
+.csm-dmeta>div{display:flex;flex-direction:column;gap:4px}
+.csm-dml{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-faint);font-weight:700}
+.csm-dmv{font-size:14px}
+.csm-dsel{max-width:200px}
+.csm-dh3{margin:0 0 12px;font-size:15px}
+.csm-ddesc{font-size:14px;line-height:1.6;color:#172b4d;white-space:normal}
+.csm-dreplybtns{display:flex;gap:10px;margin-top:10px}
+.csm-timeline{display:flex;flex-direction:column;gap:2px}
+.csm-tlrow{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #f4f5f7}
+.csm-tlrow:last-child{border-bottom:none}
+.csm-tlic{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:50%;background:#f1f2f4;font-size:13px}
+.csm-tlrow.auto .csm-tlic{background:#eae6ff}
+.csm-tltext{font-size:13.5px;color:#172b4d;line-height:1.5}
+.csm-tlat{font-size:11.5px;color:var(--c-faint);margin-top:2px}
+.csm-build{font-size:10px;color:var(--c-faint);text-align:center;margin-top:8px}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -14480,7 +14501,7 @@ function normalizeCsm(x){
   x.prefix = ((x.prefix||"")+"").toUpperCase() || "CS";
   x.tickets = Array.isArray(x.tickets) ? x.tickets : [];
   var _maxSeq=0;
-  x.tickets.forEach(function(t){ if(!t.id) t.id=csmTicketId(); t.summary=t.summary||"Untitled"; t.type=CSM_WORK_TYPES.indexOf(t.type)>=0?t.type:"Question"; t.status=CSM_STATUSES.indexOf(t.status)>=0?t.status:"Open"; t.reporter=t.reporter||""; t.assignee=t.assignee||""; t.priority=CSM_PRIOS.indexOf(t.priority)>=0?t.priority:"Medium"; t.description=t.description||""; t.created=t.created||""; t.resolvedAt=t.resolvedAt||""; t.seq=t.seq||0; if(t.seq>_maxSeq)_maxSeq=t.seq; if(!t.key) t.key=x.prefix+"-"+(t.seq||0); });
+  x.tickets.forEach(function(t){ if(!t.id) t.id=csmTicketId(); t.summary=t.summary||"Untitled"; t.type=CSM_WORK_TYPES.indexOf(t.type)>=0?t.type:"Question"; t.status=CSM_STATUSES.indexOf(t.status)>=0?t.status:"Open"; t.reporter=t.reporter||""; t.assignee=t.assignee||""; t.priority=CSM_PRIOS.indexOf(t.priority)>=0?t.priority:"Medium"; t.description=t.description||""; t.created=t.created||""; t.resolvedAt=t.resolvedAt||""; t.activity=Array.isArray(t.activity)?t.activity:[]; t.seq=t.seq||0; if(t.seq>_maxSeq)_maxSeq=t.seq; if(!t.key) t.key=x.prefix+"-"+(t.seq||0); });
   x.seq = (typeof x.seq==="number" && x.seq>=_maxSeq) ? x.seq : _maxSeq;
   x.rules = Array.isArray(x.rules) ? x.rules : [];
   x.rules.forEach(function(r){ if(!r.id) r.id=csmId("rule"); r.name=r.name||"Untitled rule"; r.enabled=r.enabled!==false; r.trigger=r.trigger||"created"; r.triggerValue=r.triggerValue||""; r.conditions=Array.isArray(r.conditions)?r.conditions:[]; r.conditions.forEach(function(c){ c.field=c.field||"type"; c.op=c.op||"is"; c.value=c.value||""; }); r.actions=Array.isArray(r.actions)?r.actions:[]; r.actions.forEach(function(a){ a.type=a.type||"assign"; a.value=a.value||""; }); var g=r.guardrails||{}; r.guardrails={verify:g.verify!==false, requireApproval:!!g.requireApproval, log:g.log!==false, maxAmount:(g.maxAmount!=null?g.maxAmount:"")}; });
@@ -14493,7 +14514,7 @@ function normalizeCsm(x){
   return x;
 }
 function csmCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
-function csmSave(){ if(typeof pushAll==="function") pushAll(); }
+function csmSave(){ if(typeof pushNow==="function"){ try{ pushNow(); }catch(e){ if(typeof pushAll==="function") pushAll(); } } else if(typeof pushAll==="function"){ pushAll(); } }
 function csmTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : []; }
 function csmUserName(email){ var us=csmTeamUsers(); for(var i=0;i<us.length;i++){ if(us[i].email===email) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); } return email; }
 /* ---- page shell ---- */
@@ -14522,7 +14543,7 @@ function csmRenderSidebar(){
     });
   });
   h+='</nav>';
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build 2026-08-17 v7 \u00b7 queues + automation + detail + autosave</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -14536,6 +14557,7 @@ function csmRenderContent(){
   else if(v==="q-mine"){ body=csmQueueHTML("mine",admin); }
   else if(v==="q-unassigned"){ body=csmQueueHTML("unassigned",admin); }
   else if(v==="reports"){ body=csmReportsHTML(admin); }
+  else if(v==="ticket"){ body=csmTicketDetailHTML(admin); }
   else if(v==="rules"){ body=csmRulesHTML(admin); }
   else if(v==="audit"){ body=csmAuditHTML(admin); }
   else if(v==="get-started"){
@@ -14822,7 +14844,7 @@ function csmQueueHTML(kind, admin){
   rows.forEach(function(t){
     var asg = t.assignee ? mtEsc(csmUserName(t.assignee)) : '<span class="csm-muted">Unassigned</span>';
     var statusCell = admin ? '<select class="csm-stsel csm-st-'+(csmIsDone(t)?"done":"open")+'" onchange="csmSetTicketStatus(\''+t.id+'\',this.value)">'+CSM_STATUSES.map(function(s){return '<option'+(t.status===s?" selected":"")+'>'+s+'</option>';}).join("")+'</select>' : '<span class="csm-stpill">'+mtEsc(t.status)+'</span>';
-    h+='<tr><td>'+csmTypeBadge(t.type)+'</td><td class="csm-key">'+mtEsc(t.key)+'</td><td><a class="csm-tlink" onclick="csmOpenTicket(\''+t.id+'\')">'+mtEsc(t.summary)+'</a></td><td>'+mtEsc(t.reporter||"\u2014")+'</td><td>'+asg+'</td><td>'+statusCell+'</td><td class="csm-muted">'+mtEsc(t.created||"")+'</td></tr>';
+    h+='<tr><td>'+csmTypeBadge(t.type)+'</td><td class="csm-key">'+mtEsc(t.key)+'</td><td><a class="csm-tlink" onclick="csmViewTicket(\''+t.id+'\')">'+mtEsc(t.summary)+'</a></td><td>'+mtEsc(t.reporter||"\u2014")+'</td><td>'+asg+'</td><td>'+statusCell+'</td><td class="csm-muted">'+mtEsc(t.created||"")+'</td></tr>';
   });
   h+='</tbody></table></div>';
   return h;
@@ -14830,6 +14852,7 @@ function csmQueueHTML(kind, admin){
 function csmSetTicketStatus(id, st){
   var t=csmFindTicket(id); if(!t) return; t.status=st;
   if(csmIsDone(t)){ if(!t.resolvedAt) t.resolvedAt=(typeof todayStr==="function")?todayStr():""; } else { t.resolvedAt=""; }
+  if(typeof csmAddActivity==="function") csmAddActivity(t,"status","Status \u2192 "+st);
   if(typeof csmRunRules==="function"){ try{ csmRunRules("status", t, st, "auto"); }catch(e){} }
   csmSave(); renderCsm();
 }
@@ -14858,11 +14881,12 @@ function csmSaveTicket(){
   d.type=$("csm-k-type").value; d.priority=$("csm-k-prio").value; d.status=$("csm-k-status").value;
   d.assignee=$("csm-k-asg").value||""; d.reporter=($("csm-k-rep").value||"").trim(); d.description=$("csm-k-desc").value||"";
   if(csmIsDone(d)){ if(!d.resolvedAt) d.resolvedAt=(typeof todayStr==="function")?todayStr():""; } else { d.resolvedAt=""; }
-  if(csmDlg.id){ for(var i=0;i<CSM.tickets.length;i++){ if(CSM.tickets[i].id===csmDlg.id){ CSM.tickets[i]=d; break; } } }
+  if(csmDlg.id){ for(var i=0;i<CSM.tickets.length;i++){ if(CSM.tickets[i].id===csmDlg.id){ var _old=CSM.tickets[i]; if(typeof csmAddActivity==="function"){ if(_old.status!==d.status) csmAddActivity(d,"status","Status \u2192 "+d.status); if(_old.assignee!==d.assignee) csmAddActivity(d,"assign", d.assignee?("Assigned to "+csmUserName(d.assignee)):"Unassigned"); } CSM.tickets[i]=d; break; } } }
   else {
     d.id=csmTicketId(); CSM.seq=(CSM.seq||0)+1; d.seq=CSM.seq; d.key=(CSM.prefix||"CS")+"-"+d.seq;
     d.created=(typeof todayStr==="function")?todayStr():"";
     CSM.tickets.unshift(d);
+    if(typeof csmAddActivity==="function") csmAddActivity(d,"created","Work item created");
   }
   var _wasNew=!csmDlg.id; CSM=normalizeCsm(CSM); if(_wasNew && typeof csmRunRules==="function"){ try{ csmRunRules("created", d, "", "auto"); }catch(e){} } csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast(d.key?("Saved "+d.key):"Saved");
 }
@@ -14957,6 +14981,7 @@ function csmRunRules(trigger, t, triggerValue, mode){
         res={label:meta.label, result:csmApplyFrontAction(a,t), backend:false};
       }
       csmLog(r, t, res, mode);
+      if(mode!=="dry" && typeof csmAddActivity==="function") csmAddActivity(t,"auto",res.label+" \u2014 "+res.result,true);
     });
     fired.push(r.id);
   });
@@ -15090,6 +15115,35 @@ function csmAuditHTML(admin){
   return h;
 }
 function csmClearAudit(){ if(typeof confirm==="function" && !confirm("Clear the audit log?")) return; CSM.auditLog=[]; renderCsm(); csmSave(); }
+/* ===== CSM WORK ITEM DETAIL + ACTIVITY TIMELINE ===== */
+let csmCurrentTicket = null;
+let csmLastQueue = "q-open";
+function csmAddActivity(t, kind, text, auto){ if(!t) return; t.activity=t.activity||[]; t.activity.push({at:(typeof todayStr==="function")?todayStr():"", kind:kind, text:text, auto:!!auto}); }
+function csmViewTicket(id){ csmCurrentTicket=id; if(csmView && csmView.indexOf("q-")===0) csmLastQueue=csmView; csmView="ticket"; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function csmBackToQueue(){ csmCurrentTicket=null; csmView=csmLastQueue||"q-open"; renderCsm(); }
+function csmAssignTicket(id, email){ var t=csmFindTicket(id); if(!t) return; if(t.assignee!==email){ t.assignee=email; csmAddActivity(t,"assign", email?("Assigned to "+csmUserName(email)):"Unassigned"); } csmSave(); csmViewTicket(id); }
+function csmAddTicketReply(id, kind){ var el=$("csm-d-reply"); var v=el?(el.value||"").trim():""; if(!v){ if(typeof toast==="function") toast("Write something first"); return; } var t=csmFindTicket(id); if(!t) return; csmAddActivity(t, kind, (kind==="reply"?"Reply to customer: ":"Internal note: ")+v); csmSave(); csmViewTicket(id); if(typeof toast==="function") toast(kind==="reply"?"Reply added":"Note added"); }
+function csmTicketDetailHTML(admin){
+  var t=csmFindTicket(csmCurrentTicket);
+  if(!t){ return '<div class="csm-detailtop"><button class="csm-btn ghost" onclick="csmBackToQueue()">\u2190 Back</button></div><div class="csm-card"><div class="csm-empty"><b>Work item not found</b>It may have been deleted.</div></div>'; }
+  var users=csmTeamUsers();
+  var h='<div class="csm-detailtop"><button class="csm-btn ghost" onclick="csmBackToQueue()">\u2190 Back to queue</button>'+(admin?'<button class="csm-btn ghost" onclick="csmOpenTicket(\''+t.id+'\')">Edit details</button>':'')+'</div>';
+  h+='<div class="csm-dhead">'+csmTypeBadge(t.type)+'<span class="csm-dkey">'+mtEsc(t.key)+'</span><h2 class="csm-dsum">'+mtEsc(t.summary)+'</h2></div>';
+  var stSel = admin ? '<select class="csm-stsel csm-st-'+(csmIsDone(t)?"done":"open")+'" onchange="csmSetTicketStatus(\''+t.id+'\',this.value); csmViewTicket(\''+t.id+'\')">'+CSM_STATUSES.map(function(sx){return '<option'+(t.status===sx?" selected":"")+'>'+sx+'</option>';}).join("")+'</select>' : '<span class="csm-stpill">'+mtEsc(t.status)+'</span>';
+  var asgSel = admin ? '<select class="csm-inp csm-dsel" onchange="csmAssignTicket(\''+t.id+'\',this.value)"><option value="">Unassigned</option>'+users.map(function(u){return '<option value="'+mtEsc(u.email)+'"'+(t.assignee===u.email?" selected":"")+'>'+mtEsc(csmUserName(u.email))+'</option>';}).join("")+'</select>' : '<span>'+(t.assignee?mtEsc(csmUserName(t.assignee)):"Unassigned")+'</span>';
+  h+='<div class="csm-dmeta"><div><span class="csm-dml">Status</span>'+stSel+'</div><div><span class="csm-dml">Assignee</span>'+asgSel+'</div><div><span class="csm-dml">Priority</span><span class="csm-dmv">'+mtEsc(t.priority)+'</span></div><div><span class="csm-dml">Reporter</span><span class="csm-dmv">'+mtEsc(t.reporter||"\u2014")+'</span></div><div><span class="csm-dml">Created</span><span class="csm-dmv">'+mtEsc(t.created||"")+'</span></div></div>';
+  h+='<div class="csm-card"><h3 class="csm-dh3">Request</h3><div class="csm-ddesc">'+(t.description?mtEsc(t.description).replace(/\n/g,"<br>"):'<span class="csm-muted">No description provided.</span>')+'</div></div>';
+  if(admin){ h+='<div class="csm-card"><h3 class="csm-dh3">Add update</h3><textarea id="csm-d-reply" class="csm-area" style="min-height:80px" placeholder="Write a reply to the customer, or an internal note\u2026"></textarea><div class="csm-dreplybtns"><button class="csm-btn" onclick="csmAddTicketReply(\''+t.id+'\',\'reply\')">Add reply</button><button class="csm-btn ghost" onclick="csmAddTicketReply(\''+t.id+'\',\'note\')">Internal note</button></div></div>'; }
+  h+='<div class="csm-card"><h3 class="csm-dh3">Activity &amp; progress</h3><div class="csm-timeline">';
+  var acts=(t.activity||[]);
+  if(!acts.length){ h+='<div class="csm-muted">No activity yet.</div>'; }
+  acts.forEach(function(a){
+    var ic = a.auto ? "\uD83E\uDD16" : (a.kind==="reply" ? "\u21a9" : a.kind==="note" ? "\uD83D\uDD12" : a.kind==="status" ? "\u25cf" : a.kind==="assign" ? "\u25c9" : "\u2022");
+    h+='<div class="csm-tlrow'+(a.auto?" auto":"")+'"><span class="csm-tlic">'+ic+'</span><div class="csm-tlbody"><div class="csm-tltext">'+mtEsc(a.text)+'</div><div class="csm-tlat">'+mtEsc(a.at||"")+(a.kind==="note"?" \u00b7 internal":"")+(a.auto?" \u00b7 automation":"")+'</div></div></div>';
+  });
+  h+='</div></div>';
+  return h;
+}
 function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); else if(csmDlg.mode==="ticket") csmSaveTicket(); else if(csmDlg.mode==="rule") csmSaveRule(); }
 
 let lastWs = "roadmap";
