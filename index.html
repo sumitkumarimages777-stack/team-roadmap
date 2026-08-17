@@ -2720,6 +2720,10 @@ body{margin:0}
 .sc-refresh{font-size:13px;padding:0}
 @keyframes scspin{to{transform:rotate(360deg)}}
 .sc-refresh.spin{animation:scspin .8s linear infinite}
+
+.sc-mconn{width:24px;height:24px;font-size:12px;flex:none}
+.sc-mconncell{display:inline-flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap}
+.sc-mcur{font-size:13px}
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
@@ -13632,7 +13636,7 @@ function scRoleByName(n){ var rs=scRoles(); for(var i=0;i<rs.length;i++){ if(rs[
 function scBuildMember(name, role){
   var tmpl = scRoleByName(role); if(!tmpl) return null;
   var src = (tmpl.kpis||[]).concat(scUniversal());
-  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
+  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:"", source:{type:"manual"}}; });
   return { id:scMemberId(), name:name, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[(name.length)%SC_AVATAR_COLORS.length], kpis:kpis };
 }
 function scTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : ((typeof USERS!=="undefined"?USERS:[]).filter(function(u){ return u.super || (u.teams && u.teams[TEAM]); })); }
@@ -13640,7 +13644,7 @@ function scUserByEmail(email){ if(typeof findUser==="function"){ var u=findUser(
 function scBuildMemberFromUser(user, role){
   var tmpl = scRoleByName(role); if(!tmpl || !user) return null;
   var src = (tmpl.kpis||[]).concat(scUniversal());
-  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
+  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:"", source:{type:"manual"}}; });
   var nm = (typeof userDisplayName==="function") ? userDisplayName(user) : (user.name||user.email);
   return { id:scMemberId(), email:user.email, name:nm, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[((nm||"").length)%SC_AVATAR_COLORS.length], kpis:kpis };
 }
@@ -13660,6 +13664,7 @@ function scNormMembers(x){
       k.target = k.target || ""; k.cadence = k.cadence || "Monthly";
       if(k.current==null) k.current = "";
       k.status = SC_MSTATUS.indexOf(k.status)>=0 ? k.status : "Not started";
+      k.source = (k.source && k.source.type) ? k.source : {type:"manual"};
       k.note = k.note || "";
     });
   });
@@ -13671,15 +13676,57 @@ function scMemberStatusCtl(id,idx,status){
   var opts=SC_MSTATUS.map(function(sv){return '<option'+(sv===status?" selected":"")+'>'+sv+'</option>';}).join("");
   return '<span class="sc-stwrap '+cls+'"><span class="sc-dot2"></span><select class="sc-status '+cls+'" onchange="scSetMemberField(\''+id+'\','+idx+',\'status\',this.value)">'+opts+'</select></span>';
 }
+function scFindMemberKpi(memberId, idx){ var m=scFindMember(memberId); if(!m || !m.kpis || !m.kpis[idx]) return null; return m.kpis[idx]; }
+function scMemberConnectedCellHTML(memberId, idx, k, cur, admin){
+  var s=k.source||{};
+  if(s.type==="sheet"){
+    var c=s.cache||{};
+    var chip='<span class="sc-link" title="Google Sheet, cell '+mtEsc(s.cell||"")+'">\uD83D\uDD17</span>';
+    var refresh=admin?'<button class="sc-kbtn sc-refresh'+(c.loading?" spin":"")+'" title="Refresh from sheet" onclick="scRefreshMemberSheet(\''+memberId+'\','+idx+')">\u21bb</button>':'';
+    if(c.loading) return '<span class="sc-cur sc-mcur">\u2026</span> '+chip+' '+refresh;
+    if(c.error) return '<span class="sc-cur sc-mcur sc-err" title="'+mtEsc(c.error)+'">err</span> '+chip+' '+refresh;
+    return '<span class="sc-cur sc-mcur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> '+chip+' '+refresh;
+  }
+  return '<span class="sc-cur sc-mcur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> <span class="sc-link" title="Auto from '+mtEsc((scBoardById(s.boardId)||{label:"board"}).label)+'">\uD83D\uDD17</span>';
+}
+function scRefreshMemberSheet(memberId, idx){
+  var k=scFindMemberKpi(memberId, idx); if(!k || !k.source || k.source.type!=="sheet") return;
+  k.source.cache=k.source.cache||{}; k.source.cache.loading=true; renderScorecard();
+  scFetchSheet(k.source).then(function(res){ k.source.cache={at:Date.now()}; if(res.error) k.source.cache.error=res.error; else k.source.cache.value=res.value; if(typeof pushAll==="function") pushAll(); renderScorecard(); });
+}
+function scOpenMemberKpiSource(memberId, idx){
+  var k=scFindMemberKpi(memberId, idx); if(!k) return;
+  var src=(k.source && k.source.type)?clean(k.source):{type:"manual"};
+  scDlg={mode:"msrc", memberId:memberId, idx:idx, draft:{source:src}};
+  $("sc-dlg-title").textContent="Connect: "+(k.name||"KPI");
+  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Data source</label><div id="sc-src-wrap"></div></div><div class="sc-msub">Keep it manual, pull it from a workspace board, or read a Google Sheet cell. Board / sheet values auto-fill this number; you still set status by hand.</div>';
+  $("sc-dlg-danger").innerHTML="";
+  scDlgRerenderSource();
+  $("sc-dialog").classList.add("show");
+}
+function scSaveMemberKpiSource(){
+  if(!scDlg || scDlg.mode!=="msrc") return;
+  var k=scFindMemberKpi(scDlg.memberId, scDlg.idx); if(!k){ scDlgClose(); return; }
+  var src=scDlg.draft.source||{type:"manual"};
+  if(!(src.type==="board"||src.type==="sheet")) src={type:"manual"};
+  k.source=src;
+  SCORECARD=normalizeScorecard(SCORECARD);
+  scDlgClose(); renderScorecard();
+  if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Saved");
+}
 function scMemberCard(m){
   var admin=scCanEdit();
   var init=(m.name||"?").split(/\s+/).map(function(x){return x[0]||"";}).slice(0,2).join("").toUpperCase();
   var rows=(m.kpis||[]).map(function(k,i){
-    var curCell = admin
-      ? '<input class="sc-inp sc-mval" value="'+mtEsc(k.current||"")+'" placeholder="\u2014" onchange="scSetMemberField(\''+m.id+'\','+i+',\'current\',this.value)">'
-      : '<span class="sc-cur">'+(k.current?mtEsc(k.current):'\u2014')+'</span>';
+    var cur = scCurrent(k);
+    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet");
+    var curCell;
+    if(connected){ curCell='<span class="sc-mconncell">'+scMemberConnectedCellHTML(m.id,i,k,cur,admin)+'</span>'; }
+    else if(admin){ curCell='<input class="sc-inp sc-mval" value="'+mtEsc(k.current||"")+'" placeholder="\u2014" onchange="scSetMemberField(\''+m.id+'\','+i+',\'current\',this.value)">'; }
+    else { curCell='<span class="sc-cur">'+(cur?mtEsc(cur):'\u2014')+'</span>'; }
     var stCell = admin ? scMemberStatusCtl(m.id,i,k.status) : '<span class="sc-pill '+scMStCls(k.status)+'">'+mtEsc(k.status)+'</span>';
-    return '<div class="sc-mrow"><div class="sc-mnm">'+mtEsc(k.name)+((k.target && k.target!=="\u2014")?'<small>target '+mtEsc(k.target)+'</small>':'')+'</div>'+curCell+stCell+'</div>';
+    var connBtn = admin ? '<button class="sc-kbtn sc-mconn" title="Connect a source (board or Google Sheet)" onclick="scOpenMemberKpiSource(\''+m.id+'\','+i+')">\u2699</button>' : '';
+    return '<div class="sc-mrow"><div class="sc-mnm">'+mtEsc(k.name)+((k.target && k.target!=="\u2014")?'<small>target '+mtEsc(k.target)+'</small>':'')+'</div>'+curCell+stCell+connBtn+'</div>';
   }).join("");
   return '<div class="sc-mcard"><div class="sc-mh"><div class="sc-avatar" style="background:'+mtEsc(m.color||"#3355FF")+'">'+mtEsc(init)+'</div><div class="sc-who"><b>'+mtEsc(m.name)+'</b><span>'+mtEsc(m.role)+'</span></div>'+(admin?'<button class="sc-mdel" title="Remove" onclick="scDelMember(\''+m.id+'\')">\u2715</button>':'')+'</div><div class="sc-mk">'+rows+'</div></div>';
 }
@@ -13729,7 +13776,7 @@ function scSaveMember(){
   scDlgClose(); scView=fk; renderScorecard();
   if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(m.name+" added");
 }
-function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else scSaveKpi(); }
+function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else if(m==="msrc") scSaveMemberKpiSource(); else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
   var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
@@ -14069,9 +14116,9 @@ function scRefreshKpiSheet(fkey,id){
 }
 function scRefreshAllSheets(){
   var any=false;
-  scAllKpis().forEach(function(o){ var s=o.k.source; if(s&&s.type==="sheet"&&s.url){ any=true;
-    scFetchSheet(s).then(function(res){ s.cache=s.cache||{}; s.cache.at=Date.now(); s.cache.loading=false; if(res.error){ s.cache.error=res.error; } else { delete s.cache.error; s.cache.value=res.value; } if(typeof pushAll==="function") pushAll(); renderScorecard(); });
-  }});
+  function pull(s){ if(s&&s.type==="sheet"&&s.url){ any=true; scFetchSheet(s).then(function(res){ s.cache=s.cache||{}; s.cache.at=Date.now(); s.cache.loading=false; if(res.error){ s.cache.error=res.error; } else { delete s.cache.error; s.cache.value=res.value; } if(typeof pushAll==="function") pushAll(); renderScorecard(); }); } }
+  scAllKpis().forEach(function(o){ pull(o.k.source); });
+  (SCORECARD.members||[]).forEach(function(m){ (m.kpis||[]).forEach(function(k){ pull(k.source); }); });
   return any;
 }
 function scConnectedCellHTML(k, fkey, cur, admin){
