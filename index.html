@@ -2833,6 +2833,26 @@ body{margin:0}
 .csm-xl2{text-align:center;font-size:10px;color:var(--c-faint);margin-top:2px}
 .csm-chart-note{font-size:11.5px;color:var(--c-muted);margin-top:8px}
 @media(max-width:820px){.csm-tiles{grid-template-columns:1fr 1fr}.csm-charts{grid-template-columns:1fr}}
+
+.csm-qfilters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.csm-qsearch{max-width:280px}
+.csm-qsel{max-width:190px}
+.csm-qcount{font-size:13px;color:var(--c-muted);margin-bottom:8px}
+.csm-qtablewrap{padding:6px 8px;overflow-x:auto}
+.csm-qtable th:first-child,.csm-qtable td:first-child{width:34px}
+.csm-tybadge{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:5px;color:#fff;font-size:12px;font-weight:700}
+.csm-key{font-weight:600;color:#44546f;white-space:nowrap}
+.csm-tlink{color:var(--c-pri);cursor:pointer;font-weight:500}
+.csm-tlink:hover{text-decoration:underline}
+.csm-stsel{border:1px solid #b3b9c4;border-radius:6px;padding:4px 8px;font-size:12.5px;font-family:inherit;background:#fff;cursor:pointer}
+.csm-st-done{background:#dcfff1;border-color:#7ee2b8}
+.csm-st-open{background:#e9f2ff;border-color:#a9c8ff}
+.csm-stpill{font-size:12px;font-weight:600;background:#f1f2f4;border-radius:5px;padding:3px 9px}
+.csm-barrow{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.csm-barlbl{width:150px;font-size:13px;color:#44546f;text-align:right;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csm-bartrack{flex:1;height:16px;background:#f1f2f4;border-radius:8px;overflow:hidden}
+.csm-barfill{height:100%;background:var(--c-pri);border-radius:8px;min-width:2px}
+.csm-barval{width:32px;font-size:13px;font-weight:600;color:#44546f;flex:none}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -14441,6 +14461,11 @@ function normalizeCsm(x){
   x.channels.emails.forEach(function(e){ if(!e.id) e.id=csmId("eml"); e.address=e.address||""; e.replyTo=!!e.replyTo; });
   var ac = (x.access && typeof x.access==="object") ? x.access : {};
   x.access = { mode: (ac.mode==="anyone"?"anyone":"orgs"), orgs: Array.isArray(ac.orgs)?ac.orgs:[] };
+  x.prefix = ((x.prefix||"")+"").toUpperCase() || "CS";
+  x.tickets = Array.isArray(x.tickets) ? x.tickets : [];
+  var _maxSeq=0;
+  x.tickets.forEach(function(t){ if(!t.id) t.id=csmTicketId(); t.summary=t.summary||"Untitled"; t.type=CSM_WORK_TYPES.indexOf(t.type)>=0?t.type:"Question"; t.status=CSM_STATUSES.indexOf(t.status)>=0?t.status:"Open"; t.reporter=t.reporter||""; t.assignee=t.assignee||""; t.priority=CSM_PRIOS.indexOf(t.priority)>=0?t.priority:"Medium"; t.description=t.description||""; t.created=t.created||""; t.resolvedAt=t.resolvedAt||""; t.seq=t.seq||0; if(t.seq>_maxSeq)_maxSeq=t.seq; if(!t.key) t.key=x.prefix+"-"+(t.seq||0); });
+  x.seq = (typeof x.seq==="number" && x.seq>=_maxSeq) ? x.seq : _maxSeq;
   var db=(x.dashboard&&typeof x.dashboard==="object")?x.dashboard:{};
   var defTiles=[["ai","AI Agent conversations"],["resolved","Resolved work items"],["unresolved","Unresolved work items"],["total","Total work items"]];
   if(!Array.isArray(db.tiles)||!db.tiles.length){ db.tiles=defTiles.map(function(d){return {id:csmId("tile"),key:d[0],label:d[1],value:"0",source:{type:"manual"}};}); }
@@ -14453,10 +14478,12 @@ function csmSave(){ if(typeof pushAll==="function") pushAll(); }
 function csmTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : []; }
 function csmUserName(email){ var us=csmTeamUsers(); for(var i=0;i<us.length;i++){ if(us[i].email===email) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); } return email; }
 /* ---- page shell ---- */
-let csmView = "dashboard";
+let csmView = "q-open";
 let csmDlg = null;
 var CSM_SECTIONS = [
-  {group:"", items:[{key:"dashboard",label:"Dashboard",icon:"\u25a6"},{key:"get-started",label:"Get started",icon:"\u25c9"},{key:"overview",label:"Overview",icon:"\u2261"},{key:"forms",label:"Forms",icon:"\u25a4"},{key:"articles",label:"Articles",icon:"\u25a4"},{key:"branding",label:"Branding",icon:"\u25d0"}]},
+  {group:"Work", items:[{key:"q-open",label:"All open",icon:"\u25a4"},{key:"q-mine",label:"Assigned to me",icon:"\u25a4"},{key:"q-unassigned",label:"Unassigned",icon:"\u25a4"},{key:"reports",label:"Reports",icon:"\u25a6"}]},
+  {group:"Customer service", items:[{key:"dashboard",label:"Dashboard",icon:"\u25a6"}]},
+  {group:"Setup", items:[{key:"get-started",label:"Get started",icon:"\u25c9"},{key:"overview",label:"Overview",icon:"\u2261"},{key:"forms",label:"Forms",icon:"\u25a4"},{key:"articles",label:"Articles",icon:"\u25a4"},{key:"branding",label:"Branding",icon:"\u25d0"}]},
   {group:"Channels", items:[{key:"website",label:"Support website",icon:"\u25ce"},{key:"email",label:"Email",icon:"\u2709"},{key:"embed",label:"Embed",icon:"\u25a3"},{key:"voice",label:"Voice",icon:"\u260e"}]},
   {group:"Access", items:[{key:"access",label:"Customer access",icon:"\u263a"}]}
 ];
@@ -14470,7 +14497,7 @@ function csmRenderSidebar(){
   CSM_SECTIONS.forEach(function(sec){
     if(sec.group) h+='<div class="csm-nav-lbl">'+mtEsc(sec.group)+'</div>';
     sec.items.forEach(function(it){
-      var badge = it.key==="forms" ? CSM.forms.length : it.key==="articles" ? CSM.articles.length : "";
+      var badge = it.key==="forms" ? CSM.forms.length : it.key==="articles" ? CSM.articles.length : it.key==="q-open" ? csmTicketMetric("open") : "";
       h+='<a class="csm-nav-a'+(csmView===it.key?" on":"")+'" onclick="csmGo(\''+it.key+'\')"><span class="csm-ic">'+it.icon+'</span><span class="csm-nl">'+mtEsc(it.label)+'</span>'+(badge!==""&&badge>0?'<span class="csm-cnt">'+badge+'</span>':'')+'</a>';
     });
   });
@@ -14485,6 +14512,10 @@ function csmTop(eyebrow, title, sub, action){
 function csmRenderContent(){
   var admin=csmCanEdit(), v=csmView, body="";
   if(v==="dashboard"){ body=csmDashboardHTML(admin); }
+  else if(v==="q-open"){ body=csmQueueHTML("open",admin); }
+  else if(v==="q-mine"){ body=csmQueueHTML("mine",admin); }
+  else if(v==="q-unassigned"){ body=csmQueueHTML("unassigned",admin); }
+  else if(v==="reports"){ body=csmReportsHTML(admin); }
   else if(v==="get-started"){
     body=csmTop("Overview","Welcome, "+CSM.name+"!", mtEsc(CSM.desc),"")
       +'<div class="csm-card"><p class="csm-p">You can create a customer experience for different customer groups, route requests to your spaces, and manage articles, forms, branding and channels here. The operational channels (email capture, hosted support site, embeddable chat, voice, AI agent) light up once the backend is connected \u2014 everything else works today.</p>'
@@ -14499,6 +14530,7 @@ function csmRenderContent(){
     body=csmTop("Customer experiences","Overview","Get a snapshot of your customer experience.","");
     body+='<div class="csm-card"><div class="csm-fld"><label>Customer experience name</label>'+nameField+'</div>';
     body+='<div class="csm-fld"><label>Team members</label><div class="csm-chips">'+(CSM.members.length?CSM.members.map(function(em){ return '<span class="csm-chip">'+mtEsc(csmUserName(em))+(admin?' <b onclick="csmDelMember(\''+mtEsc(em)+'\')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">No one added yet</span>')+'</div>'+(admin?csmMemberPicker():'')+'</div>';
+    body+='<div class="csm-fld"><label>Work item key prefix</label>'+(admin?'<input class="csm-inp" style="max-width:160px" value="'+mtEsc(CSM.prefix)+'" maxlength="6" onchange="csmSetPrefix(this.value)">':'<div class="csm-ro">'+mtEsc(CSM.prefix)+'</div>')+'<div class="csm-hint">Used for work item keys, e.g. '+mtEsc(CSM.prefix)+'-1. Changing it only affects new items.</div></div>';
     body+='<div class="csm-fld"><label>Connected spaces</label><div class="csm-chips">'+(CSM.connectedSpaces.length?CSM.connectedSpaces.map(function(sp,i){ return '<span class="csm-chip">'+mtEsc(sp)+(admin?' <b onclick="csmDelSpace('+i+')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">Requests from this experience are routed to these spaces.</span>')+'</div>'+(admin?'<div class="csm-addrow"><input class="csm-inp" id="csm-space-in" placeholder="e.g. Support board"><button class="csm-btn ghost" onclick="csmAddSpace()">Add</button></div>':'')+'</div>';
     body+='</div>';
   } else if(v==="forms"){
@@ -14581,6 +14613,7 @@ function csmMemberPicker(){
 }
 /* ---- setters ---- */
 function csmSetName(v){ CSM.name=(v||"").trim()||"Customers"; renderCsm(); csmSave(); }
+function csmSetPrefix(v){ CSM.prefix=((v||"").trim().toUpperCase())||"CS"; renderCsm(); csmSave(); }
 function csmAddMember(){ var el=$("csm-mem-in"); if(!el||!el.value) return; if(CSM.members.indexOf(el.value)<0) CSM.members.push(el.value); renderCsm(); csmSave(); }
 function csmDelMember(em){ CSM.members=CSM.members.filter(function(x){return x!==em;}); renderCsm(); csmSave(); }
 function csmAddSpace(){ var el=$("csm-space-in"); var v=el&&(el.value||"").trim(); if(!v) return; CSM.connectedSpaces.push(v); renderCsm(); csmSave(); }
@@ -14658,7 +14691,7 @@ function csmSaveArticle(){
 function csmDelArticle(id){ if(typeof confirm==="function" && !confirm("Delete this article?")) return; CSM.articles=CSM.articles.filter(function(a){return a.id!==id;}); renderCsm(); csmSave(); if(typeof toast==="function") toast("Deleted"); }
 function csmDlgClose(){ $("csm-dialog").classList.remove("show"); csmDlg=null; }
 function csmFindTile(id){ var t=(CSM.dashboard&&CSM.dashboard.tiles)||[]; for(var i=0;i<t.length;i++){ if(t[i].id===id) return t[i]; } return null; }
-function csmTileValue(t){ if(t.source&&t.source.type==="sheet"){ var c=t.source.cache; return (c&&c.value!=null&&c.value!=="")?String(c.value):"0"; } return (t.value===""||t.value==null)?"0":String(t.value); }
+function csmTileValue(t){ if(t.source&&t.source.type==="tickets"){ return String(csmTicketMetric(t.source.metric)); } if(t.source&&t.source.type==="sheet"){ var c=t.source.cache; return (c&&c.value!=null&&c.value!=="")?String(c.value):"0"; } return (t.value===""||t.value==null)?"0":String(t.value); }
 function csmChartCard(title,xl,yl){
   return '<div class="csm-chart"><div class="csm-chart-h"><b>'+mtEsc(title)+'</b></div><div class="csm-chart-body"><span class="csm-yl">'+mtEsc(yl)+'</span><svg viewBox="0 0 320 150" class="csm-svg" preserveAspectRatio="none"><line x1="42" y1="8" x2="42" y2="132" stroke="#c1c7d0"/><line x1="42" y1="132" x2="312" y2="132" stroke="#c1c7d0"/></svg></div><div class="csm-xl2">'+mtEsc(xl)+'</div><div class="csm-chart-note">Fills in from ticket data once the backend is connected.</div></div>';
 }
@@ -14685,7 +14718,12 @@ function csmTileFormHTML(){
   var h='<div class="csm-fld"><label>Label</label><input id="csm-t-label" class="csm-inp" value="'+mtEsc(d.label)+'"></div>';
   h+='<div class="csm-fld"><label>Data source</label>';
   h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type!=="sheet"?"checked":"")+' onclick="csmTileSrc(\'manual\')"> Manual value</label>';
-  h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type==="sheet"?"checked":"")+' onclick="csmTileSrc(\'sheet\')"> Google Sheet cell</label></div>';
+  h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type==="sheet"?"checked":"")+' onclick="csmTileSrc(\'sheet\')"> Google Sheet cell</label>';
+  h+='<label class="csm-radio"><input type="radio" name="csmtsrc" '+(sc.type==="tickets"?"checked":"")+' onclick="csmTileSrc(\'tickets\')"> From work items (live)</label></div>';
+  if(sc.type==="tickets"){
+    var mm=[["total","Total work items"],["open","Open work items"],["resolved","Resolved work items"]];
+    h+='<div class="csm-fld"><label>Metric</label><select id="csm-t-metric" class="csm-inp" onchange="csmTileField(\'metric\',this.value)">'+mm.map(function(o){return '<option value="'+o[0]+'"'+(sc.metric===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+'</select><div class="csm-hint">Live value now: <b>'+csmTicketMetric(sc.metric||"total")+'</b></div></div>';
+  }
   if(sc.type==="sheet"){
     var c=sc.cache||{};
     h+='<div class="csm-fld"><label>Sheet URL</label><input id="csm-t-url" class="csm-inp" value="'+mtEsc(sc.url||"")+'" placeholder="Published Google Sheet link" oninput="csmTileField(\'url\',this.value)"></div>';
@@ -14704,7 +14742,7 @@ function csmOpenTile(id){
   $("csm-dlg-body").innerHTML=csmTileFormHTML();
   $("csm-dialog").classList.add("show");
 }
-function csmTileSrc(t){ if(t==="sheet"){ var p=csmDlg.draft.source||{}; csmDlg.draft.source={type:"sheet", url:p.url||"", cell:p.cell||"B2", cache:p.cache||null}; } else { csmDlg.draft.source={type:"manual"}; } $("csm-dlg-body").innerHTML=csmTileFormHTML(); }
+function csmTileSrc(t){ if(t==="sheet"){ var p=csmDlg.draft.source||{}; csmDlg.draft.source={type:"sheet", url:p.url||"", cell:p.cell||"B2", cache:p.cache||null}; } else if(t==="tickets"){ var pm=csmDlg.draft.source||{}; csmDlg.draft.source={type:"tickets", metric:pm.metric||"total"}; } else { csmDlg.draft.source={type:"manual"}; } $("csm-dlg-body").innerHTML=csmTileFormHTML(); }
 function csmTileField(f,v){ if(csmDlg.draft.source) csmDlg.draft.source[f]=v; }
 function csmTileTest(){
   var s=csmDlg.draft.source; var ue=$("csm-t-url"), ce=$("csm-t-cell"); if(ue) s.url=ue.value; if(ce) s.cell=ce.value;
@@ -14718,10 +14756,112 @@ function csmSaveTile(){
   t.label=($("csm-t-label").value||"").trim()||t.label;
   var s=csmDlg.draft.source||{type:"manual"};
   if(s.type==="sheet"){ t.source=s; }
+  else if(s.type==="tickets"){ t.source={type:"tickets", metric:s.metric||"total"}; }
   else { t.source={type:"manual"}; var ve=$("csm-t-value"); t.value=ve?((ve.value||"").trim()):t.value; }
   csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast("Saved");
 }
-function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); }
+/* ===== CSM WORK ITEMS (tickets) + QUEUES + REPORTS ===== */
+var CSM_STATUSES = ["Open","In Progress","Waiting for customer","Escalated","Resolved","Done"];
+var CSM_DONE = {"Resolved":1,"Done":1};
+var CSM_PRIOS = ["Urgent","High","Medium","Low"];
+let csmQ = {q:"",status:"",assignee:""};
+function csmTicketId(){ return "tkt-"+Math.random().toString(36).slice(2,9); }
+function csmTickets(){ return (CSM && Array.isArray(CSM.tickets)) ? CSM.tickets : []; }
+function csmIsDone(t){ return !!CSM_DONE[t.status]; }
+function csmFindTicket(id){ var ts=csmTickets(); for(var i=0;i<ts.length;i++){ if(ts[i].id===id) return ts[i]; } return null; }
+function csmTypeBadge(ty){ var c={Question:"#f5a623",Problem:"#c9372c",Incident:"#e2483d",Request:"#0c66e4",Change:"#8270db"}; return '<span class="csm-tybadge" style="background:'+(c[ty]||"#8993a4")+'" title="'+mtEsc(ty||"")+'">'+mtEsc((ty||"Q").slice(0,1))+'</span>'; }
+function csmTicketMetric(m){ var ts=csmTickets(); if(m==="resolved") return ts.filter(csmIsDone).length; if(m==="open") return ts.filter(function(t){return !csmIsDone(t);}).length; return ts.length; }
+function csmQueueFilter(kind){
+  var me=(typeof SESSION!=="undefined"&&SESSION)?SESSION.email:"";
+  return csmTickets().filter(function(t){
+    if(kind==="open" && csmIsDone(t)) return false;
+    if(kind==="mine" && t.assignee!==me) return false;
+    if(kind==="unassigned" && t.assignee) return false;
+    if(csmQ.status && t.status!==csmQ.status) return false;
+    if(csmQ.assignee==="__un"){ if(t.assignee) return false; }
+    else if(csmQ.assignee && t.assignee!==csmQ.assignee) return false;
+    if(csmQ.q){ var s=(t.summary+" "+t.key+" "+(t.reporter||"")).toLowerCase(); if(s.indexOf(csmQ.q.toLowerCase())<0) return false; }
+    return true;
+  });
+}
+function csmQSet(f,v){ csmQ[f]=v; renderCsm(); }
+function csmQueueHTML(kind, admin){
+  var titleMap={open:"All open",mine:"Assigned to me",unassigned:"Unassigned"};
+  var rows=csmQueueFilter(kind);
+  var act = admin ? '<button class="csm-btn" onclick="csmOpenTicket(null)">+ Create work item</button>' : '';
+  var h=csmTop("Queues", titleMap[kind]||"Queue", "Incoming requests appear here as work items to triage and assign. Create them by hand now; auto-capture from channels arrives with the backend.", act);
+  var statusOpts='<option value="">Status</option>'+CSM_STATUSES.map(function(s){return '<option'+(csmQ.status===s?" selected":"")+'>'+s+'</option>';}).join("");
+  var users=csmTeamUsers();
+  var asgOpts='<option value="">Assignee</option><option value="__un"'+(csmQ.assignee==="__un"?" selected":"")+'>Unassigned</option>'+users.map(function(u){return '<option value="'+mtEsc(u.email)+'"'+(csmQ.assignee===u.email?" selected":"")+'>'+mtEsc(csmUserName(u.email))+'</option>';}).join("");
+  h+='<div class="csm-qfilters"><input class="csm-inp csm-qsearch" placeholder="Search work" value="'+mtEsc(csmQ.q)+'" onchange="csmQSet(\'q\',this.value)"><select class="csm-inp csm-qsel" onchange="csmQSet(\'status\',this.value)">'+statusOpts+'</select><select class="csm-inp csm-qsel" onchange="csmQSet(\'assignee\',this.value)">'+asgOpts+'</select></div>';
+  h+='<div class="csm-qcount">'+rows.length+' work item'+(rows.length===1?"":"s")+'</div>';
+  if(!rows.length){ h+='<div class="csm-card"><div class="csm-empty"><b>Your queue is empty</b>'+(admin?'Create a work item to start triaging.':'Nothing here right now.')+'</div></div>'; return h; }
+  h+='<div class="csm-card csm-qtablewrap"><table class="csm-table csm-qtable"><thead><tr><th>T</th><th>Key</th><th>Summary</th><th>Reporter</th><th>Assignee</th><th>Status</th><th>Created</th></tr></thead><tbody>';
+  rows.forEach(function(t){
+    var asg = t.assignee ? mtEsc(csmUserName(t.assignee)) : '<span class="csm-muted">Unassigned</span>';
+    var statusCell = admin ? '<select class="csm-stsel csm-st-'+(csmIsDone(t)?"done":"open")+'" onchange="csmSetTicketStatus(\''+t.id+'\',this.value)">'+CSM_STATUSES.map(function(s){return '<option'+(t.status===s?" selected":"")+'>'+s+'</option>';}).join("")+'</select>' : '<span class="csm-stpill">'+mtEsc(t.status)+'</span>';
+    h+='<tr><td>'+csmTypeBadge(t.type)+'</td><td class="csm-key">'+mtEsc(t.key)+'</td><td><a class="csm-tlink" onclick="csmOpenTicket(\''+t.id+'\')">'+mtEsc(t.summary)+'</a></td><td>'+mtEsc(t.reporter||"\u2014")+'</td><td>'+asg+'</td><td>'+statusCell+'</td><td class="csm-muted">'+mtEsc(t.created||"")+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+function csmSetTicketStatus(id, st){
+  var t=csmFindTicket(id); if(!t) return; t.status=st;
+  if(csmIsDone(t)){ if(!t.resolvedAt) t.resolvedAt=(typeof todayStr==="function")?todayStr():""; } else { t.resolvedAt=""; }
+  csmSave(); renderCsm();
+}
+function csmOpenTicket(id){
+  var ex=id?csmFindTicket(id):null;
+  var d=ex?clean(ex):{id:null,summary:"",type:"Question",status:"Open",reporter:"",assignee:"",priority:"Medium",description:""};
+  csmDlg={mode:"ticket", id:id, draft:d};
+  $("csm-dlg-title").textContent = ex ? (ex.key+" \u00b7 Edit") : "Create work item";
+  var tyOpts=CSM_WORK_TYPES.map(function(t){return '<option'+(t===d.type?" selected":"")+'>'+t+'</option>';}).join("");
+  var stOpts=CSM_STATUSES.map(function(sx){return '<option'+(sx===d.status?" selected":"")+'>'+sx+'</option>';}).join("");
+  var prOpts=CSM_PRIOS.map(function(p){return '<option'+(p===d.priority?" selected":"")+'>'+p+'</option>';}).join("");
+  var users=csmTeamUsers();
+  var asgOpts='<option value="">Unassigned</option>'+users.map(function(u){return '<option value="'+mtEsc(u.email)+'"'+(d.assignee===u.email?" selected":"")+'>'+mtEsc(csmUserName(u.email))+'</option>';}).join("");
+  var body='<div class="csm-fld"><label>Summary</label><input id="csm-k-sum" class="csm-inp" value="'+mtEsc(d.summary)+'" placeholder="Short description of the request"></div>'
+   +'<div class="csm-two"><div class="csm-fld"><label>Type</label><select id="csm-k-type" class="csm-inp">'+tyOpts+'</select></div><div class="csm-fld"><label>Priority</label><select id="csm-k-prio" class="csm-inp">'+prOpts+'</select></div></div>'
+   +'<div class="csm-two"><div class="csm-fld"><label>Status</label><select id="csm-k-status" class="csm-inp">'+stOpts+'</select></div><div class="csm-fld"><label>Assignee</label><select id="csm-k-asg" class="csm-inp">'+asgOpts+'</select></div></div>'
+   +'<div class="csm-fld"><label>Reporter (customer)</label><input id="csm-k-rep" class="csm-inp" value="'+mtEsc(d.reporter)+'" placeholder="Customer name or email"></div>'
+   +'<div class="csm-fld"><label>Description</label><textarea id="csm-k-desc" class="csm-area" style="min-height:110px">'+mtEsc(d.description)+'</textarea></div>';
+  $("csm-dlg-body").innerHTML=body;
+  $("csm-dialog").classList.add("show");
+}
+function csmSaveTicket(){
+  if(!csmDlg || csmDlg.mode!=="ticket") return;
+  var d=csmDlg.draft;
+  d.summary=($("csm-k-sum").value||"").trim(); if(!d.summary){ if(typeof toast==="function") toast("Add a summary"); return; }
+  d.type=$("csm-k-type").value; d.priority=$("csm-k-prio").value; d.status=$("csm-k-status").value;
+  d.assignee=$("csm-k-asg").value||""; d.reporter=($("csm-k-rep").value||"").trim(); d.description=$("csm-k-desc").value||"";
+  if(csmIsDone(d)){ if(!d.resolvedAt) d.resolvedAt=(typeof todayStr==="function")?todayStr():""; } else { d.resolvedAt=""; }
+  if(csmDlg.id){ for(var i=0;i<CSM.tickets.length;i++){ if(CSM.tickets[i].id===csmDlg.id){ CSM.tickets[i]=d; break; } } }
+  else {
+    d.id=csmTicketId(); CSM.seq=(CSM.seq||0)+1; d.seq=CSM.seq; d.key=(CSM.prefix||"CS")+"-"+d.seq;
+    d.created=(typeof todayStr==="function")?todayStr():"";
+    CSM.tickets.unshift(d);
+  }
+  CSM=normalizeCsm(CSM); csmDlgClose(); renderCsm(); csmSave(); if(typeof toast==="function") toast(d.key?("Saved "+d.key):"Saved");
+}
+function csmDelTicket(id){ if(typeof confirm==="function" && !confirm("Delete this work item?")) return; CSM.tickets=CSM.tickets.filter(function(t){return t.id!==id;}); renderCsm(); csmSave(); }
+function csmBar(label,val,max){ var pct=max>0?Math.round(val/max*100):0; return '<div class="csm-barrow"><span class="csm-barlbl">'+mtEsc(label)+'</span><div class="csm-bartrack"><div class="csm-barfill" style="width:'+pct+'%"></div></div><span class="csm-barval">'+val+'</span></div>'; }
+function csmMiniTile(label,val){ return '<div class="csm-tile"><div class="csm-tile-h"><span>'+mtEsc(label)+'</span></div><div class="csm-tile-v">'+val+'</div><div class="csm-tile-s">count</div></div>'; }
+function csmReportsHTML(admin){
+  var ts=csmTickets();
+  var total=ts.length, resolved=ts.filter(csmIsDone).length, open=total-resolved;
+  var byA={}; ts.filter(function(t){return !csmIsDone(t);}).forEach(function(t){ var k=t.assignee?csmUserName(t.assignee):"Unassigned"; byA[k]=(byA[k]||0)+1; });
+  var keys=Object.keys(byA), max=0; keys.forEach(function(k){ if(byA[k]>max) max=byA[k]; });
+  var h=csmTop("Reports","Reports","Live snapshots from your work items. Satisfaction and deflection need backend data.","");
+  h+='<div class="csm-tiles" style="grid-template-columns:repeat(3,1fr)">'+csmMiniTile("Total work items",total)+csmMiniTile("Requests resolved",resolved)+csmMiniTile("Open",open)+'</div>';
+  h+='<div class="csm-card"><h3 style="margin:0 0 12px;font-size:15px">Workload \u2014 open items by assignee</h3>';
+  if(!keys.length){ h+='<div class="csm-muted">No open work items.</div>'; }
+  else { keys.forEach(function(k){ h+=csmBar(k,byA[k],max); }); }
+  h+='</div>';
+  h+=csmStub("Satisfaction (CSAT)","Needs customer survey responses \u2014 wired with the backend.");
+  h+=csmStub("Requests deflected","Needs help-center / AI-agent analytics \u2014 wired with the backend.");
+  return h;
+}
+function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); else if(csmDlg.mode==="ticket") csmSaveTicket(); }
 
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
