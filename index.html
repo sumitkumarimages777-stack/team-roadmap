@@ -13621,10 +13621,21 @@ function scBuildMember(name, role){
   var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
   return { id:scMemberId(), name:name, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[(name.length)%SC_AVATAR_COLORS.length], kpis:kpis };
 }
+function scTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : ((typeof USERS!=="undefined"?USERS:[]).filter(function(u){ return u.super || (u.teams && u.teams[TEAM]); })); }
+function scUserByEmail(email){ if(typeof findUser==="function"){ var u=findUser(email); if(u) return u; } var us=(typeof USERS!=="undefined"?USERS:[]); for(var i=0;i<us.length;i++){ if(us[i].email===email) return us[i]; } return null; }
+function scBuildMemberFromUser(user, role){
+  var tmpl = scRoleByName(role); if(!tmpl || !user) return null;
+  var src = (tmpl.kpis||[]).concat(scUniversal());
+  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
+  var nm = (typeof userDisplayName==="function") ? userDisplayName(user) : (user.name||user.email);
+  return { id:scMemberId(), email:user.email, name:nm, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[((nm||"").length)%SC_AVATAR_COLORS.length], kpis:kpis };
+}
 function scNormMembers(x){
   x.members = Array.isArray(x.members) ? x.members : [];
   x.members.forEach(function(m){
     if(!m.id) m.id = scMemberId();
+    m.email = m.email || "";
+    if(m.email){ var _u=scUserByEmail(m.email); if(_u) m.name = (typeof userDisplayName==="function")?userDisplayName(_u):(_u.name||_u.email); }
     m.name = m.name || "Unnamed";
     m.role = m.role || "";
     m.dept = m.dept || (function(){ var _r=(x.roles||[]).filter(function(rr){return rr.name===m.role;})[0]; return _r?_r.dept:""; })();
@@ -13674,22 +13685,35 @@ function scDelMember(id){
 function scOpenMember(presetDept, presetRole){
   var byDept={}; scRoles().forEach(function(ro){ (byDept[ro.dept]=byDept[ro.dept]||[]).push(ro.name); });
   var optgroups=Object.keys(byDept).map(function(d){ return '<optgroup label="'+mtEsc(d)+'">'+byDept[d].map(function(r){ var sel=(presetRole? (r===presetRole) : (presetDept&&d===presetDept&&byDept[d][0]===r))?" selected":""; return '<option value="'+mtEsc(r)+'"'+sel+'>'+mtEsc(r)+'</option>'; }).join("")+'</optgroup>'; }).join("");
-  scDlg={mode:"member"};
+  var users = scTeamUsers();
+  var taken = {}; (SCORECARD.members||[]).forEach(function(m){ if(m.email) taken[m.email]=1; });
+  var avail = users.filter(function(u){ return !taken[u.email]; });
   $("sc-dlg-title").textContent="Add team member";
-  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Full name</label><input id="sc-m-name" placeholder="e.g. Kabir Singh" autocomplete="off"></div><div class="sc-fld"><label>Role</label><select id="sc-m-role">'+optgroups+'</select></div><div class="sc-msub">Pick a role and their scorecard is built automatically from role KPIs + a universal layer.</div>';
   $("sc-dlg-danger").innerHTML="";
+  if(!avail.length){
+    scDlg={mode:"member", empty:true};
+    $("sc-dlg-body").innerHTML='<div class="sc-msub" style="font-size:13px;line-height:1.5">'+(users.length ? 'Everyone on your team already has a scorecard here.' : 'No teammates yet. Add people to this team in <b>Settings \u2192 Members</b> first, then come back to give them a scorecard.')+'</div>';
+    $("sc-dialog").classList.add("show");
+    return;
+  }
+  var userOpts = avail.map(function(u){ return '<option value="'+mtEsc(u.email)+'">'+mtEsc((typeof userDisplayName==="function")?userDisplayName(u):(u.name||u.email))+'</option>'; }).join("");
+  scDlg={mode:"member"};
+  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Team member</label><select id="sc-m-user">'+userOpts+'</select></div><div class="sc-fld"><label>Role</label><select id="sc-m-role">'+optgroups+'</select></div><div class="sc-msub">Only people already on your team (<b>Settings \u2192 Members</b>) can be added. Pick a role and their scorecard is built automatically.</div>';
   $("sc-dialog").classList.add("show");
-  setTimeout(function(){ var el=$("sc-m-name"); if(el) el.focus(); },40);
+  setTimeout(function(){ var el=$("sc-m-user"); if(el) el.focus(); },40);
 }
 function scSaveMember(){
   if(!scDlg || scDlg.mode!=="member") return;
-  var name=($("sc-m-name").value||"").trim(); var role=$("sc-m-role").value;
-  if(!name){ if(typeof toast==="function") toast("Enter a name"); return; }
-  var m=scBuildMember(name,role); if(!m) return;
+  if(scDlg.empty){ scDlgClose(); return; }
+  var email=($("sc-m-user")?$("sc-m-user").value:"")||""; var role=$("sc-m-role").value;
+  if(!email){ if(typeof toast==="function") toast("Pick a team member"); return; }
+  if((SCORECARD.members||[]).some(function(m){ return m.email===email; })){ if(typeof toast==="function") toast("They already have a scorecard"); return; }
+  var user=scUserByEmail(email); if(!user){ if(typeof toast==="function") toast("That person isn't on the team"); return; }
+  var m=scBuildMemberFromUser(user, role); if(!m) return;
   SCORECARD.members=SCORECARD.members||[]; SCORECARD.members.push(m);
   var fk="people"; (SCORECARD.funcs||[]).forEach(function(f){ if(f.name===m.dept) fk=f.key; });
   scDlgClose(); scView=fk; renderScorecard();
-  if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(name+" added");
+  if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(m.name+" added");
 }
 function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
