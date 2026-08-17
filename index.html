@@ -2909,6 +2909,8 @@ body{margin:0}
 .csm-pub-load{padding:30px;text-align:center;color:#626f86}
 .csm-share-note{font-size:12.5px;color:#294b2a;background:#dcfff1;border:1px solid #a3e0bf;border-radius:8px;padding:10px 12px;line-height:1.5;margin-bottom:14px}
 .csm-linkrow{display:flex;gap:8px}.csm-linkrow .csm-inp{flex:1}
+
+.csm-asgsel{max-width:150px;padding:4px 8px;font-size:12.5px}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -14549,7 +14551,7 @@ var CSM_SECTIONS = [
   {group:"Channels", items:[{key:"website",label:"Support website",icon:"\u25ce"},{key:"email",label:"Email",icon:"\u2709"},{key:"embed",label:"Embed",icon:"\u25a3"},{key:"voice",label:"Voice",icon:"\u260e"}]},
   {group:"Access", items:[{key:"access",label:"Customer access",icon:"\u263a"}]}
 ];
-function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ csmRefreshTiles(); }catch(e){} }
+function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ csmRefreshTiles(); }catch(e){} try{ if(typeof csmImportSubs==="function" && csmCanEdit()) csmImportSubs(true); }catch(e){} }
 function closeCsm(){ $("csm-page").style.display="none"; }
 function csmGo(v){ csmView=v; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function renderCsm(){ csmRenderSidebar(); csmRenderContent(); }
@@ -14853,7 +14855,7 @@ function csmQSet(f,v){ csmQ[f]=v; renderCsm(); }
 function csmQueueHTML(kind, admin){
   var titleMap={open:"All open",mine:"Assigned to me",unassigned:"Unassigned"};
   var rows=csmQueueFilter(kind);
-  var act = admin ? '<button class="csm-btn ghost" onclick="csmImportSubs()">Import submissions</button> <button class="csm-btn" onclick="csmOpenTicket(null)">+ Create work item</button>' : '';
+  var act = admin ? '<button class="csm-btn ghost" onclick="csmImportSubs()">Refresh submissions</button> <button class="csm-btn" onclick="csmOpenTicket(null)">+ Create work item</button>' : '';
   var h=csmTop("Queues", titleMap[kind]||"Queue", "Incoming requests appear here as work items to triage and assign. Create them by hand now; auto-capture from channels arrives with the backend.", act);
   var statusOpts='<option value="">Status</option>'+CSM_STATUSES.map(function(s){return '<option'+(csmQ.status===s?" selected":"")+'>'+s+'</option>';}).join("");
   var users=csmTeamUsers();
@@ -14863,7 +14865,9 @@ function csmQueueHTML(kind, admin){
   if(!rows.length){ h+='<div class="csm-card"><div class="csm-empty"><b>Your queue is empty</b>'+(admin?'Create a work item to start triaging.':'Nothing here right now.')+'</div></div>'; return h; }
   h+='<div class="csm-card csm-qtablewrap"><table class="csm-table csm-qtable"><thead><tr><th>T</th><th>Key</th><th>Summary</th><th>Reporter</th><th>Assignee</th><th>Status</th><th>Created</th></tr></thead><tbody>';
   rows.forEach(function(t){
-    var asg = t.assignee ? mtEsc(csmUserName(t.assignee)) : '<span class="csm-muted">Unassigned</span>';
+    var asg = admin
+      ? '<select class="csm-inp csm-asgsel" onchange="csmAssignTicket(\''+t.id+'\',this.value)"><option value="">Unassigned</option>'+users.map(function(u){return '<option value="'+mtEsc(u.email)+'"'+(t.assignee===u.email?" selected":"")+'>'+mtEsc(csmUserName(u.email))+'</option>';}).join("")+'</select>'
+      : (t.assignee ? mtEsc(csmUserName(t.assignee)) : '<span class="csm-muted">Unassigned</span>');
     var statusCell = admin ? '<select class="csm-stsel csm-st-'+(csmIsDone(t)?"done":"open")+'" onchange="csmSetTicketStatus(\''+t.id+'\',this.value)">'+CSM_STATUSES.map(function(s){return '<option'+(t.status===s?" selected":"")+'>'+s+'</option>';}).join("")+'</select>' : '<span class="csm-stpill">'+mtEsc(t.status)+'</span>';
     h+='<tr><td>'+csmTypeBadge(t.type)+'</td><td class="csm-key">'+mtEsc(t.key)+'</td><td><a class="csm-tlink" onclick="csmViewTicket(\''+t.id+'\')">'+mtEsc(t.summary)+'</a></td><td>'+mtEsc(t.reporter||"\u2014")+'</td><td>'+asg+'</td><td>'+statusCell+'</td><td class="csm-muted">'+mtEsc(t.created||"")+'</td></tr>';
   });
@@ -15142,7 +15146,7 @@ let csmLastQueue = "q-open";
 function csmAddActivity(t, kind, text, auto){ if(!t) return; t.activity=t.activity||[]; t.activity.push({at:(typeof todayStr==="function")?todayStr():"", kind:kind, text:text, auto:!!auto}); }
 function csmViewTicket(id){ csmCurrentTicket=id; if(csmView && csmView.indexOf("q-")===0) csmLastQueue=csmView; csmView="ticket"; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function csmBackToQueue(){ csmCurrentTicket=null; csmView=csmLastQueue||"q-open"; renderCsm(); }
-function csmAssignTicket(id, email){ var t=csmFindTicket(id); if(!t) return; if(t.assignee!==email){ t.assignee=email; csmAddActivity(t,"assign", email?("Assigned to "+csmUserName(email)):"Unassigned"); } csmSave(); csmViewTicket(id); }
+function csmAssignTicket(id, email){ var t=csmFindTicket(id); if(!t) return; if(t.assignee!==email){ t.assignee=email; csmAddActivity(t,"assign", email?("Assigned to "+csmUserName(email)):"Unassigned"); } csmSave(); renderCsm(); }
 function csmAddTicketReply(id, kind){ var el=$("csm-d-reply"); var v=el?(el.value||"").trim():""; if(!v){ if(typeof toast==="function") toast("Write something first"); return; } var t=csmFindTicket(id); if(!t) return; csmAddActivity(t, kind, (kind==="reply"?"Reply to customer: ":"Internal note: ")+v); csmSave(); csmViewTicket(id); if(typeof toast==="function") toast(kind==="reply"?"Reply added":"Note added"); }
 function csmTicketDetailHTML(admin){
   var t=csmFindTicket(csmCurrentTicket);
@@ -15229,9 +15233,10 @@ function csmSubToTicket(sub, form){
     description: descLines.join("\n")
   };
 }
-async function csmImportSubs(){
-  if(typeof toast==="function") toast("Checking for submissions\u2026");
-  var rec = await csmIntakeFetch();
+async function csmImportSubs(auto){
+  if(!auto && typeof toast==="function") toast("Checking for submissions\u2026");
+  var rec;
+  try{ rec = await csmIntakeFetch(); }catch(e){ if(!auto && typeof toast==="function") toast("Couldn't reach the submissions inbox"); return; }
   var pending = (rec.csmSubs||[]).filter(function(s){ return s.team===TEAM && !s.imported; });
   if(!pending.length){ if(typeof toast==="function") toast("No new submissions"); return; }
   var n=0;
