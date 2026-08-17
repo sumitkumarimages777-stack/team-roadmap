@@ -2706,6 +2706,8 @@ body{margin:0}
 .sc-btn.ghost:hover{background:#f2f6ff;border-color:var(--sc-primary)}
 
 .sc-refbtns{display:flex;gap:8px;flex-wrap:wrap}
+
+.sc-refdeptacts{margin-left:auto;display:flex;gap:8px;align-items:center}
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
@@ -13605,6 +13607,9 @@ function scNormTemplates(x){
     x.roles = Object.keys(SC_ROLES).map(function(rn){ var t=SC_ROLES[rn]; return {name:rn, dept:t.dept, kpis:t.kpis.map(function(k){ return {id:scTid(), name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly"}; })}; });
   }
   x.roles.forEach(function(r){ r.name=r.name||"Role"; r.dept=r.dept||""; r.kpis=(r.kpis||[]).map(scNormTplKpi); });
+  if(!Array.isArray(x.depts)) x.depts=[];
+  if(!x.depts.length){ var _seen={}; x.roles.forEach(function(r){ if(r.dept && !_seen[r.dept]){ _seen[r.dept]=1; x.depts.push(r.dept); } }); }
+  x.roles.forEach(function(r){ if(r.dept && x.depts.indexOf(r.dept)<0) x.depts.push(r.dept); });
   return x;
 }
 function scRoles(){ return (SCORECARD && Array.isArray(SCORECARD.roles)) ? SCORECARD.roles : []; }
@@ -13686,7 +13691,7 @@ function scSaveMember(){
   scDlgClose(); scView=fk; renderScorecard();
   if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(name+" added");
 }
-function scDlgSave(){ if(!scDlg) return scSaveKpi(); if(scDlg.mode==="member") scSaveMember(); else if(scDlg.mode==="tpl") scSaveTplKpi(); else scSaveKpi(); }
+function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
   var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
@@ -13744,18 +13749,68 @@ function scDelTplKpi(scope, roleName, id){
   for(var i=0;i<list.length;i++){ if(list[i].id===id){ list.splice(i,1); break; } }
   renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Deleted");
 }
+function scDepts(){ return (SCORECARD && Array.isArray(SCORECARD.depts)) ? SCORECARD.depts : []; }
+function scOpenDept(){
+  scDlg={mode:"dept"};
+  $("sc-dlg-title").textContent="Add department";
+  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Department name</label><input id="sc-d-name" placeholder="e.g. Finance" autocomplete="off"></div><div class="sc-msub">Departments group roles in this library. Add roles to it next. This does not change the sidebar Functions.</div>';
+  $("sc-dlg-danger").innerHTML=""; $("sc-dialog").classList.add("show");
+  setTimeout(function(){ var el=$("sc-d-name"); if(el) el.focus(); },40);
+}
+function scSaveDept(){
+  if(!scDlg || scDlg.mode!=="dept") return;
+  var name=($("sc-d-name").value||"").trim();
+  if(!name){ if(typeof toast==="function") toast("Enter a department name"); return; }
+  SCORECARD.depts=SCORECARD.depts||[];
+  if(SCORECARD.depts.indexOf(name)>=0){ if(typeof toast==="function") toast("That department already exists"); return; }
+  SCORECARD.depts.push(name);
+  scDlgClose(); scView="library"; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Department added");
+}
+function scDelDept(name){
+  if((SCORECARD.roles||[]).some(function(r){return r.dept===name;})){ if(typeof toast==="function") toast("Remove its roles first"); return; }
+  if(typeof confirm==="function" && !confirm("Remove the "+name+" department?")) return;
+  SCORECARD.depts=(SCORECARD.depts||[]).filter(function(d){return d!==name;});
+  renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Department removed");
+}
+function scOpenRole(presetDept){
+  var ds=scDepts(); if(!ds.length) ds=[presetDept||""];
+  var deptOpts=ds.map(function(d){return '<option'+(d===presetDept?" selected":"")+'>'+mtEsc(d)+'</option>';}).join("");
+  scDlg={mode:"role"};
+  $("sc-dlg-title").textContent="Add role";
+  $("sc-dlg-body").innerHTML='<div class="sc-fld"><label>Role name</label><input id="sc-r-name" placeholder="e.g. Data Analyst" autocomplete="off"></div><div class="sc-fld"><label>Department</label><select id="sc-r-dept">'+deptOpts+'</select></div><div class="sc-msub">Creates an empty role template \u2014 add its KPIs next, then add people to it.</div>';
+  $("sc-dlg-danger").innerHTML=""; $("sc-dialog").classList.add("show");
+  setTimeout(function(){ var el=$("sc-r-name"); if(el) el.focus(); },40);
+}
+function scSaveRole(){
+  if(!scDlg || scDlg.mode!=="role") return;
+  var name=($("sc-r-name").value||"").trim(); var dept=$("sc-r-dept").value||"";
+  if(!name){ if(typeof toast==="function") toast("Enter a role name"); return; }
+  if(scRoleByName(name)){ if(typeof toast==="function") toast("That role already exists"); return; }
+  SCORECARD.roles=SCORECARD.roles||[]; SCORECARD.roles.push({name:name, dept:dept, kpis:[]});
+  SCORECARD.depts=SCORECARD.depts||[]; if(dept && SCORECARD.depts.indexOf(dept)<0) SCORECARD.depts.push(dept);
+  SCORECARD=normalizeScorecard(SCORECARD);
+  scDlgClose(); scView="library"; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(name+" role added");
+}
+function scDelRole(name){
+  if(typeof confirm==="function" && !confirm("Delete the "+name+" role template? People already added keep their scorecards.")) return;
+  SCORECARD.roles=(SCORECARD.roles||[]).filter(function(r){return r.name!==name;});
+  renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Role deleted");
+}
 function scLibraryHTML(admin){
   var uCount = scUniversal().length;
   var h='<div class="sc-refnote"><span class="sc-refi">\uD83D\uDCCB</span><div><b>This is the template you can edit.</b> Editing a KPI here changes what future people in that role are measured on \u2014 it does not rewrite scorecards of people already added. The universal KPIs are added to everyone automatically.</div></div>';
   h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>Universal \u00b7 applies to everyone</h3><div class="sc-sub">The baseline every individual is measured on, whatever their role</div></div>'+(admin?'<button class="sc-btn ghost" onclick="scOpenTplKpi(\'universal\',\'\',null)">\uff0b Add universal KPI</button>':'')+'</div>'+scRefTable(scUniversal(),"universal","",admin)+'</div>';
-  var order=["Engineering","Product","Marketing","Customer Support","Educational Content","HR"];
   var byDept={}; scRoles().forEach(function(ro){ (byDept[ro.dept]=byDept[ro.dept]||[]).push(ro); });
-  var depts=order.filter(function(d){return byDept[d];}).concat(Object.keys(byDept).filter(function(d){return order.indexOf(d)<0;}));
+  var depts=scDepts().slice();
+  scRoles().forEach(function(ro){ if(ro.dept && depts.indexOf(ro.dept)<0) depts.push(ro.dept); });
   depts.forEach(function(d){
-    var roles=byDept[d];
-    h+='<div class="sc-refdept"><h3>'+mtEsc(d)+'</h3><span>'+roles.length+' '+(roles.length===1?"role":"roles")+'</span></div>';
+    var roles=byDept[d]||[];
+    var dj=scJsStr(d);
+    h+='<div class="sc-refdept"><h3>'+mtEsc(d)+'</h3><span>'+roles.length+' '+(roles.length===1?"role":"roles")+'</span>'+(admin?'<span class="sc-refdeptacts"><button class="sc-btn ghost" onclick="scOpenRole(\''+dj+'\')">\uff0b Add role</button>'+(roles.length===0?'<button class="sc-kbtn" title="Remove department" onclick="scDelDept(\''+dj+'\')">\u00d7</button>':'')+'</span>':'')+'</div>';
+    if(roles.length===0){ h+='<div class="sc-card"><div class="sc-empty"><b>No roles yet</b>Add a role to define what someone in this department is measured on.</div></div>'; }
     roles.forEach(function(ro){
-      h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>'+mtEsc(ro.name)+'</h3><div class="sc-sub">'+mtEsc(d)+' \u00b7 '+(ro.kpis||[]).length+' role KPIs + '+uCount+' universal</div></div><div class="sc-refbtns">'+(admin?'<button class="sc-btn ghost" onclick="scOpenTplKpi(\'role\',\''+scJsStr(ro.name)+'\',null)">\uff0b Add KPI</button><button class="sc-btn" onclick="scOpenMember(\''+scJsStr(d)+'\',\''+scJsStr(ro.name)+'\')">\uff0b Add someone</button>':'')+'</div></div>'+scRefTable(ro.kpis,"role",ro.name,admin)+'</div>';
+      var rj=scJsStr(ro.name);
+      h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>'+mtEsc(ro.name)+'</h3><div class="sc-sub">'+mtEsc(d)+' \u00b7 '+(ro.kpis||[]).length+' role KPIs + '+uCount+' universal</div></div><div class="sc-refbtns">'+(admin?'<button class="sc-btn ghost" onclick="scOpenTplKpi(\'role\',\''+rj+'\',null)">\uff0b Add KPI</button><button class="sc-btn" onclick="scOpenMember(\''+dj+'\',\''+rj+'\')">\uff0b Add someone</button><button class="sc-kbtn" title="Delete role" onclick="scDelRole(\''+rj+'\')">\u00d7</button>':'')+'</div></div>'+scRefTable(ro.kpis,"role",ro.name,admin)+'</div>';
     });
   });
   return h;
@@ -13891,7 +13946,7 @@ function scRenderContent(){
     body = scPeoplePageHTML(admin);
   } else if(scView==="library"){
     eyebrow="Reference"; title="Individual KPI library";
-    if(admin) action='<button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button>';
+    if(admin) action='<div class="sc-refbtns"><button class="sc-btn ghost" onclick="scOpenDept()">＋ Add department</button><button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button></div>';
     body = scLibraryHTML(admin);
   } else {
     var f=scFuncByKey(scView);
