@@ -2890,6 +2890,25 @@ body{margin:0}
 .csm-tltext{font-size:13.5px;color:#172b4d;line-height:1.5}
 .csm-tlat{font-size:11.5px;color:var(--c-faint);margin-top:2px}
 .csm-build{font-size:10px;color:var(--c-faint);text-align:center;margin-top:8px}
+
+#csm-public{position:fixed;inset:0;z-index:2147483647;background:#f4f5f7;overflow:auto;display:flex;justify-content:center;align-items:flex-start;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:40px 16px}
+.csm-pub-card{background:#fff;border:1px solid #e6e8f0;border-radius:14px;max-width:560px;width:100%;padding:28px 30px;box-shadow:0 10px 40px rgba(9,30,66,.12)}
+.csm-pub-head{font-size:22px;font-weight:700;color:#172b4d;margin-bottom:16px}
+.csm-pub-lbl{display:block;font-size:13px;font-weight:600;color:#44546f;margin:14px 0 6px}
+.csm-pub-in{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #b3b9c4;border-radius:8px;font-size:14px;font-family:inherit}
+.csm-pub-in:focus{outline:none;border-color:#0c66e4;box-shadow:0 0 0 3px #e9f2ff}
+.csm-pub-btn{margin-top:20px;width:100%;background:#0c66e4;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:600;cursor:pointer}
+.csm-pub-btn:hover{background:#0055cc}.csm-pub-btn:disabled{opacity:.6}
+.csm-pub-msg{margin-top:10px;font-size:13px;color:#44546f}
+.csm-pub-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.csm-pub-thumb{width:64px;height:64px;border-radius:8px;overflow:hidden;background:#f1f2f4;border:1px solid #e6e8f0}
+.csm-pub-thumb img{width:100%;height:100%;object-fit:cover}
+.csm-pub-thumb.up{border:2px solid #cdd3dc;border-top-color:#0c66e4;animation:scspin 1s linear infinite}
+.csm-pub-done{text-align:center;padding:24px 8px}
+.csm-pub-check{width:56px;height:56px;border-radius:50%;background:#dcfff1;color:#216e4e;font-size:28px;display:grid;place-items:center;margin:0 auto 14px}
+.csm-pub-load{padding:30px;text-align:center;color:#626f86}
+.csm-share-note{font-size:12.5px;color:#294b2a;background:#dcfff1;border:1px solid #a3e0bf;border-radius:8px;padding:10px 12px;line-height:1.5;margin-bottom:14px}
+.csm-linkrow{display:flex;gap:8px}.csm-linkrow .csm-inp{flex:1}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -4414,6 +4433,8 @@ async function refresh(showMsg){
 }
 
 async function start(){
+  var _pf = new URLSearchParams(location.search).get("form");
+  if(_pf){ try{ return await csmPublicForm(_pf); }catch(e){ document.body.innerHTML='<p style="padding:40px;font-family:sans-serif">Form unavailable. Please try again later.</p>'; return; } }
   if(!TEAM){ return startLanding(null); }
 
   // local defaults while we fetch: dubuddy gets the seed data, other teams start empty
@@ -14584,7 +14605,7 @@ function csmRenderContent(){
     else {
       body+='<div class="csm-card"><table class="csm-table"><thead><tr><th>Name</th><th>Space</th><th>Work item</th><th>Fields</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
       CSM.forms.forEach(function(f){
-        body+='<tr><td class="csm-strong">'+mtEsc(f.name)+'</td><td>'+(f.space?mtEsc(f.space):'<span class="csm-muted">\u2014</span>')+'</td><td><span class="csm-badge">'+mtEsc(f.workType)+'</span></td><td>'+f.fields.length+'</td>'+(admin?'<td><div class="csm-rowact"><button class="csm-ib" title="Edit" onclick="csmOpenForm(\''+f.id+'\')">\u270e</button><button class="csm-ib" title="Delete" onclick="csmDelForm(\''+f.id+'\')">\u00d7</button></div></td>':'')+'</tr>';
+        body+='<tr><td class="csm-strong">'+mtEsc(f.name)+'</td><td>'+(f.space?mtEsc(f.space):'<span class="csm-muted">\u2014</span>')+'</td><td><span class="csm-badge">'+mtEsc(f.workType)+'</span></td><td>'+f.fields.length+'</td>'+(admin?'<td><div class="csm-rowact"><button class="csm-ib" title="Share public link" onclick="csmShareForm(\''+f.id+'\')">\uD83D\uDD17</button><button class="csm-ib" title="Edit" onclick="csmOpenForm(\''+f.id+'\')">\u270e</button><button class="csm-ib" title="Delete" onclick="csmDelForm(\''+f.id+'\')">\u00d7</button></div></td>':'')+'</tr>';
       });
       body+='</tbody></table></div>';
     }
@@ -14832,7 +14853,7 @@ function csmQSet(f,v){ csmQ[f]=v; renderCsm(); }
 function csmQueueHTML(kind, admin){
   var titleMap={open:"All open",mine:"Assigned to me",unassigned:"Unassigned"};
   var rows=csmQueueFilter(kind);
-  var act = admin ? '<button class="csm-btn" onclick="csmOpenTicket(null)">+ Create work item</button>' : '';
+  var act = admin ? '<button class="csm-btn ghost" onclick="csmImportSubs()">Import submissions</button> <button class="csm-btn" onclick="csmOpenTicket(null)">+ Create work item</button>' : '';
   var h=csmTop("Queues", titleMap[kind]||"Queue", "Incoming requests appear here as work items to triage and assign. Create them by hand now; auto-capture from channels arrives with the backend.", act);
   var statusOpts='<option value="">Status</option>'+CSM_STATUSES.map(function(s){return '<option'+(csmQ.status===s?" selected":"")+'>'+s+'</option>';}).join("");
   var users=csmTeamUsers();
@@ -15144,7 +15165,148 @@ function csmTicketDetailHTML(admin){
   h+='</div></div>';
   return h;
 }
-function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); else if(csmDlg.mode==="ticket") csmSaveTicket(); else if(csmDlg.mode==="rule") csmSaveRule(); }
+/* ===== CSM PUBLIC FORMS (shareable link -> isolated bugs bin -> import to queue) ===== */
+/* Reuses the existing isolated BUGS bin so the public link never touches main workspace data,
+   and the existing uploadPhoto() (imgBB) for screenshots. */
+async function csmIntakeFetch(){
+  const r = await fetch(BUGS_URL + "/latest", { headers: { "X-Access-Key": JSONBIN_CONFIG.apiKey, "X-Bin-Meta": "false" } });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  var rec = await r.json();
+  rec = rec && typeof rec==="object" ? rec : {};
+  rec.tickets = Array.isArray(rec.tickets)?rec.tickets:[];
+  rec.csmForms = (rec.csmForms && typeof rec.csmForms==="object") ? rec.csmForms : {};
+  rec.csmSubs = Array.isArray(rec.csmSubs)?rec.csmSubs:[];
+  return rec;
+}
+async function csmIntakePut(rec){
+  const r = await fetch(BUGS_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return true;
+}
+function csmFormLink(formId){ return location.origin + location.pathname + "?form=" + encodeURIComponent(TEAM+":"+formId); }
+function csmParseFormParam(p){ p=(p||""); var i=p.indexOf(":"); if(i<0) return null; return { team:p.slice(0,i).toLowerCase().replace(/[^a-z0-9-]/g,""), formId:p.slice(i+1) }; }
+async function csmPublishForm(formId){
+  var f=csmFindForm(formId); if(!f) return;
+  var rec = await csmIntakeFetch();
+  rec.csmForms[formId] = { id:formId, name:f.name, team:TEAM, fields:(f.fields||[]).map(function(x){return {id:x.id,label:x.label,type:x.type,required:!!x.required};}), workType:f.workType, at:(typeof todayStr==="function")?todayStr():"" };
+  await csmIntakePut(rec);
+  f.published = true; f.publicAt = (typeof todayStr==="function")?todayStr():"";
+  csmSave();
+}
+function csmShareForm(formId){
+  var f=csmFindForm(formId); if(!f) return;
+  csmDlg={mode:"share", id:formId};
+  $("csm-dlg-title").textContent="Share \u201c"+f.name+"\u201d";
+  var link=csmFormLink(formId);
+  $("csm-dlg-body").innerHTML='<div class="csm-share-note">Anyone with this link can open the form and submit an issue with a screenshot. Submissions land in a <b>separate inbox</b> (your bugs bin) \u2014 the public page never sees your workspace data. Import them into the queue below.</div>'
+    +'<div class="csm-fld"><label>Public link</label><div class="csm-linkrow"><input id="csm-share-url" class="csm-inp" readonly value="'+mtEsc(link)+'"><button class="csm-btn" onclick="csmCopyLink()">Copy</button></div></div>'
+    +'<div id="csm-share-status" class="csm-hint">'+(f.published?("Published \u00b7 last "+mtEsc(f.publicAt||"")):"Not published yet \u2014 publish so the link works.")+'</div>'
+    +'<div class="csm-dreplybtns"><button class="csm-btn ghost" onclick="csmDoPublish(\''+formId+'\')">'+(f.published?"Re-publish (update fields)":"Publish this form")+'</button></div>';
+  $("csm-dialog").classList.add("show");
+}
+function csmCopyLink(){ var el=$("csm-share-url"); if(!el) return; el.select&&el.select(); try{ if(navigator.clipboard) navigator.clipboard.writeText(el.value); else document.execCommand("copy"); if(typeof toast==="function") toast("Link copied"); }catch(e){ if(typeof toast==="function") toast("Select and copy the link"); } }
+function csmDoPublish(formId){
+  var st=$("csm-share-status"); if(st) st.textContent="Publishing\u2026";
+  csmPublishForm(formId).then(function(){ if(st) st.textContent="Published \u2713 the link is live now."; if(typeof toast==="function") toast("Form published"); })
+    .catch(function(e){ if(st) st.innerHTML='<span style="color:#c9372c">Publish failed: '+mtEsc(e.message||"error")+'</span>'; });
+}
+/* ---- import submissions into the Service queue ---- */
+function csmSubToTicket(sub, form){
+  var fields = sub.fields || {};
+  var labels = Object.keys(fields);
+  var pick = labels.filter(function(l){ return /issue|summary|subject|problem|title/i.test(l) && (fields[l]||"").trim(); })[0]
+          || labels.filter(function(l){ return (fields[l]||"").trim(); })[0];
+  var summary = pick ? String(fields[pick]).slice(0,120) : ("Submission via "+((form&&form.name)||"form"));
+  var descLines = labels.map(function(l){ return l+": "+(fields[l]||""); });
+  (sub.images||[]).forEach(function(u){ descLines.push("Screenshot: "+u); });
+  descLines.push("\u2014 Submitted "+(sub.at||"")+" via public form"+((form&&form.name)?(" \u201c"+form.name+"\u201d"):""));
+  return {
+    summary: summary,
+    type: (form && form.workType) || "Question",
+    status: "Open",
+    reporter: sub.reporter || "Public submission",
+    priority: "Medium",
+    description: descLines.join("\n")
+  };
+}
+async function csmImportSubs(){
+  if(typeof toast==="function") toast("Checking for submissions\u2026");
+  var rec = await csmIntakeFetch();
+  var pending = (rec.csmSubs||[]).filter(function(s){ return s.team===TEAM && !s.imported; });
+  if(!pending.length){ if(typeof toast==="function") toast("No new submissions"); return; }
+  var n=0;
+  pending.forEach(function(s){
+    var form = rec.csmForms[s.formId] || csmFindForm(s.formId);
+    var t = csmSubToTicket(s, form);
+    CSM.seq=(CSM.seq||0)+1; t.id=csmTicketId(); t.seq=CSM.seq; t.key=(CSM.prefix||"CS")+"-"+t.seq;
+    t.created=(typeof todayStr==="function")?todayStr():""; t.resolvedAt=""; t.activity=[];
+    if(typeof csmAddActivity==="function") csmAddActivity(t,"created","Created from a public form submission");
+    CSM.tickets.unshift(t);
+    if(typeof csmRunRules==="function"){ try{ csmRunRules("created", t, "", "auto"); }catch(e){} }
+    s.imported=true; s.importedKey=t.key; n++;
+  });
+  CSM=normalizeCsm(CSM);
+  try{ await csmIntakePut(rec); }catch(e){}
+  if(typeof pushNow==="function"){ try{ pushNow(); }catch(e){} }
+  renderCsm();
+  if(typeof toast==="function") toast("Imported "+n+" submission"+(n===1?"":"s"));
+}
+/* ---- the public form page (rendered when the app is opened via ?form=...) ---- */
+async function csmPublicForm(param){
+  var info=csmParseFormParam(param);
+  var wrap=document.createElement("div"); wrap.id="csm-public"; document.body.appendChild(wrap);
+  function shell(inner){ wrap.innerHTML='<div class="csm-pub-card">'+inner+'</div>'; }
+  shell('<div class="csm-pub-load">Loading form\u2026</div>');
+  var rec, form;
+  try{ rec = await csmIntakeFetch(); form = info && rec.csmForms[info.formId]; }catch(e){ shell('<h2>Form unavailable</h2><p>Could not load this form. Please try again later.</p>'); return; }
+  if(!form){ shell('<h2>Form not found</h2><p>This link may be old or the form was not published.</p>'); return; }
+  var fieldsHtml=(form.fields||[]).map(function(fl){
+    var id="pf-"+fl.id;
+    var input;
+    if(fl.type==="Paragraph") input='<textarea id="'+id+'" class="csm-pub-in" rows="4"'+(fl.required?" required":"")+'></textarea>';
+    else if(fl.type==="Number") input='<input id="'+id+'" class="csm-pub-in" type="number"'+(fl.required?" required":"")+'>';
+    else if(fl.type==="Email") input='<input id="'+id+'" class="csm-pub-in" type="email"'+(fl.required?" required":"")+'>';
+    else if(fl.type==="Date") input='<input id="'+id+'" class="csm-pub-in" type="date"'+(fl.required?" required":"")+'>';
+    else input='<input id="'+id+'" class="csm-pub-in" type="text"'+(fl.required?" required":"")+'>';
+    return '<label class="csm-pub-lbl">'+mtEsc(fl.label)+(fl.required?' <span style="color:#c9372c">*</span>':'')+'</label>'+input;
+  }).join("");
+  shell('<div class="csm-pub-head">'+mtEsc(form.name)+'</div>'
+    +'<label class="csm-pub-lbl">Your name</label><input id="pf-name" class="csm-pub-in" type="text">'
+    +'<label class="csm-pub-lbl">Your email or phone</label><input id="pf-contact" class="csm-pub-in" type="text">'
+    +fieldsHtml
+    +'<label class="csm-pub-lbl">Attach a screenshot (proof)</label><input id="pf-file" class="csm-pub-in" type="file" accept="image/*" multiple>'
+    +'<div id="pf-imgs" class="csm-pub-imgs"></div>'
+    +'<button id="pf-submit" class="csm-pub-btn">Submit issue</button>'
+    +'<div id="pf-msg" class="csm-pub-msg"></div>');
+  var images=[];
+  var fileEl=document.getElementById("pf-file");
+  if(fileEl) fileEl.addEventListener("change", async function(e){
+    var files=[].slice.call(e.target.files||[]); e.target.value="";
+    var box=document.getElementById("pf-imgs");
+    for(var i=0;i<files.length;i++){
+      var ph=document.createElement("div"); ph.className="csm-pub-thumb up"; if(box) box.appendChild(ph);
+      try{ var url=await uploadPhoto(files[i]); images.push(url); ph.className="csm-pub-thumb"; ph.innerHTML='<img src="'+url+'">'; }
+      catch(err){ ph.remove(); var m=document.getElementById("pf-msg"); if(m) m.textContent="Couldn't upload an image: "+err.message; }
+    }
+  });
+  var btn=document.getElementById("pf-submit");
+  if(btn) btn.addEventListener("click", async function(){
+    var msg=document.getElementById("pf-msg");
+    var fields={};
+    (form.fields||[]).forEach(function(fl){ var el=document.getElementById("pf-"+fl.id); fields[fl.label]=el?el.value.trim():""; });
+    var missing=(form.fields||[]).some(function(fl){ return fl.required && !fields[fl.label]; });
+    if(missing){ if(msg){ msg.style.color="#c9372c"; msg.textContent="Please fill the required fields."; } return; }
+    var nm=(document.getElementById("pf-name")||{}).value||"";
+    var ct=(document.getElementById("pf-contact")||{}).value||"";
+    btn.disabled=true; btn.textContent="Submitting\u2026";
+    var sub={ id:"sub-"+Math.random().toString(36).slice(2,10), formId:info.formId, team:info.team, at:(typeof todayStr==="function")?todayStr():"", fields:fields, images:images.slice(), reporter:(nm?nm:"")+(ct?(" \u00b7 "+ct):""), imported:false };
+    try{
+      var fresh=await csmIntakeFetch(); fresh.csmSubs.push(sub); await csmIntakePut(fresh);
+      shell('<div class="csm-pub-done"><div class="csm-pub-check">\u2713</div><h2>Thank you!</h2><p>Your issue has been sent to our team. We\u2019ll get back to you soon.</p></div>');
+    }catch(e){ btn.disabled=false; btn.textContent="Submit issue"; if(msg){ msg.style.color="#c9372c"; msg.textContent="Couldn\u2019t submit: "+(e.message||"try again"); } }
+  });
+}
+function csmDlgSave(){ if(!csmDlg) return; if(csmDlg.mode==="form") csmSaveForm(); else if(csmDlg.mode==="article") csmSaveArticle(); else if(csmDlg.mode==="tile") csmSaveTile(); else if(csmDlg.mode==="ticket") csmSaveTicket(); else if(csmDlg.mode==="rule") csmSaveRule(); else if(csmDlg.mode==="share") csmDlgClose(); }
 
 let lastWs = "roadmap";
 $("nav-a").onclick = ()=>{ view = lastWs; renderAll(); };
