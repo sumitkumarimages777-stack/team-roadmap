@@ -2704,6 +2704,8 @@ body{margin:0}
 .sc-card-head.sc-refrole{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sc-btn.ghost{background:var(--sc-surface);color:var(--sc-primary);border:1px solid var(--sc-line);box-shadow:none}
 .sc-btn.ghost:hover{background:#f2f6ff;border-color:var(--sc-primary)}
+
+.sc-refbtns{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
@@ -13436,6 +13438,7 @@ function normalizeScorecard(x){
       k.source = (k.source && k.source.type) ? k.source : {type:"manual"};
     });
   });
+  scNormTemplates(x);
   scNormMembers(x);
   return x;
 }
@@ -13591,9 +13594,26 @@ var SC_ROLES = {
 };
 function scMemberId(){ return "mem-"+Math.random().toString(36).slice(2,9); }
 function scMStCls(status){ return {"On track":"on","At risk":"risk","Off track":"off","Not started":"none"}[status] || "none"; }
+function scTid(){ return "tpl-"+Math.random().toString(36).slice(2,9); }
+function scNormTplKpi(k){ k=k||{}; if(!k.id)k.id=scTid(); k.name=k.name||"KPI"; k.what=k.what||""; k.type=(typeof k.type==="string")?k.type:""; k.target=k.target||""; k.cadence=k.cadence||"Monthly"; return k; }
+function scNormTemplates(x){
+  if(!Array.isArray(x.universal) || !x.universal.length){
+    x.universal = SC_UNIVERSAL.map(function(k){ return {id:scTid(), name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Quarterly"}; });
+  }
+  x.universal = x.universal.map(scNormTplKpi);
+  if(!Array.isArray(x.roles) || !x.roles.length){
+    x.roles = Object.keys(SC_ROLES).map(function(rn){ var t=SC_ROLES[rn]; return {name:rn, dept:t.dept, kpis:t.kpis.map(function(k){ return {id:scTid(), name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly"}; })}; });
+  }
+  x.roles.forEach(function(r){ r.name=r.name||"Role"; r.dept=r.dept||""; r.kpis=(r.kpis||[]).map(scNormTplKpi); });
+  return x;
+}
+function scRoles(){ return (SCORECARD && Array.isArray(SCORECARD.roles)) ? SCORECARD.roles : []; }
+function scUniversal(){ return (SCORECARD && Array.isArray(SCORECARD.universal)) ? SCORECARD.universal : []; }
+function scRoleByName(n){ var rs=scRoles(); for(var i=0;i<rs.length;i++){ if(rs[i].name===n) return rs[i]; } return null; }
 function scBuildMember(name, role){
-  var tmpl = SC_ROLES[role]; if(!tmpl) return null;
-  var kpis = tmpl.kpis.concat(SC_UNIVERSAL).map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
+  var tmpl = scRoleByName(role); if(!tmpl) return null;
+  var src = (tmpl.kpis||[]).concat(scUniversal());
+  var kpis = src.map(function(k){ return {name:k.name, what:k.what, type:k.type||"", target:k.target||"", cadence:k.cadence||"Monthly", current:"", status:"Not started", note:""}; });
   return { id:scMemberId(), name:name, role:role, dept:tmpl.dept, color:SC_AVATAR_COLORS[(name.length)%SC_AVATAR_COLORS.length], kpis:kpis };
 }
 function scNormMembers(x){
@@ -13602,7 +13622,7 @@ function scNormMembers(x){
     if(!m.id) m.id = scMemberId();
     m.name = m.name || "Unnamed";
     m.role = m.role || "";
-    m.dept = m.dept || (SC_ROLES[m.role] ? SC_ROLES[m.role].dept : "");
+    m.dept = m.dept || (function(){ var _r=(x.roles||[]).filter(function(rr){return rr.name===m.role;})[0]; return _r?_r.dept:""; })();
     m.color = m.color || SC_AVATAR_COLORS[((m.name||"").length)%SC_AVATAR_COLORS.length];
     m.kpis = Array.isArray(m.kpis) ? m.kpis : [];
     m.kpis.forEach(function(k){
@@ -13647,7 +13667,7 @@ function scDelMember(id){
   renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Removed");
 }
 function scOpenMember(presetDept, presetRole){
-  var byDept={}; Object.keys(SC_ROLES).forEach(function(r){ var d=SC_ROLES[r].dept; (byDept[d]=byDept[d]||[]).push(r); });
+  var byDept={}; scRoles().forEach(function(ro){ (byDept[ro.dept]=byDept[ro.dept]||[]).push(ro.name); });
   var optgroups=Object.keys(byDept).map(function(d){ return '<optgroup label="'+mtEsc(d)+'">'+byDept[d].map(function(r){ var sel=(presetRole? (r===presetRole) : (presetDept&&d===presetDept&&byDept[d][0]===r))?" selected":""; return '<option value="'+mtEsc(r)+'"'+sel+'>'+mtEsc(r)+'</option>'; }).join("")+'</optgroup>'; }).join("");
   scDlg={mode:"member"};
   $("sc-dlg-title").textContent="Add team member";
@@ -13666,7 +13686,7 @@ function scSaveMember(){
   scDlgClose(); scView=fk; renderScorecard();
   if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(name+" added");
 }
-function scDlgSave(){ if(scDlg && scDlg.mode==="member") scSaveMember(); else scSaveKpi(); }
+function scDlgSave(){ if(!scDlg) return scSaveKpi(); if(scDlg.mode==="member") scSaveMember(); else if(scDlg.mode==="tpl") scSaveTplKpi(); else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
   var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
@@ -13675,23 +13695,67 @@ function scMembersSectionHTML(deptName, admin){
   return h;
 }
 function scJsStr(v){ return String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
-function scRefTable(list){
-  var h='<table class="sc-table"><thead><tr><th>KPI</th><th>What good looks like</th><th>Type</th><th>Target</th><th>Cadence</th></tr></thead><tbody>';
-  (list||[]).forEach(function(k){ h+='<tr><td class="sc-kname">'+mtEsc(k.name)+'</td><td class="sc-kmeas" style="max-width:none">'+mtEsc(k.what||"")+'</td><td>'+scTypeBadge(k.type)+'</td><td class="sc-tgt">'+mtEsc(k.target||"\u2014")+'</td><td><span class="sc-cad">'+mtEsc(k.cadence||"")+'</span></td></tr>'; });
+function scRefTable(list, scope, roleName, admin){
+  var editable = admin && scope;
+  var h='<table class="sc-table"><thead><tr><th>KPI</th><th>What good looks like</th><th>Type</th><th>Target</th><th>Cadence</th>'+(editable?'<th></th>':'')+'</tr></thead><tbody>';
+  (list||[]).forEach(function(k){
+    h+='<tr><td class="sc-kname">'+mtEsc(k.name)+'</td><td class="sc-kmeas" style="max-width:none">'+mtEsc(k.what||"")+'</td><td>'+scTypeBadge(k.type)+'</td><td class="sc-tgt">'+mtEsc(k.target||"\u2014")+'</td><td><span class="sc-cad">'+mtEsc(k.cadence||"")+'</span></td>';
+    if(editable){ h+='<td><div class="sc-kact"><button class="sc-kbtn" title="Edit" onclick="scOpenTplKpi(\''+scope+'\',\''+scJsStr(roleName||"")+'\',\''+k.id+'\')">\u270e</button><button class="sc-kbtn" title="Delete" onclick="scDelTplKpi(\''+scope+'\',\''+scJsStr(roleName||"")+'\',\''+k.id+'\')">\u00d7</button></div></td>'; }
+    h+='</tr>';
+  });
   return h+'</tbody></table>';
 }
+function scOpenTplKpi(scope, roleName, id){
+  var list = scope==="universal" ? scUniversal() : (function(){ var r=scRoleByName(roleName); return r?r.kpis:[]; })();
+  var existing = id ? list.filter(function(k){return k.id===id;})[0] : null;
+  var draft = existing ? clean(existing) : {id:null,name:"",what:"",type:"",target:"",cadence:(scope==="universal"?"Quarterly":"Monthly")};
+  scDlg={mode:"tpl", scope:scope, roleName:roleName, id:id, draft:draft};
+  $("sc-dlg-title").textContent=(id?"Edit ":"New ")+(scope==="universal"?"universal KPI":"role KPI");
+  var typeOpts='<option value="">\u2014 None \u2014</option>'+SC_TYPES.map(function(t){return '<option'+(t===draft.type?" selected":"")+'>'+t+'</option>';}).join("");
+  var cads=["Weekly","Monthly","Quarterly","Once"];
+  var cadOpts=cads.map(function(c){return '<option'+(c===draft.cadence?" selected":"")+'>'+c+'</option>';}).join("");
+  var body=''
+   +'<div class="sc-fld"><label>KPI name</label><input id="sc-t-name" value="'+mtEsc(draft.name)+'"></div>'
+   +'<div class="sc-fld"><label>What good looks like</label><input id="sc-t-what" value="'+mtEsc(draft.what)+'"></div>'
+   +'<div class="sc-two"><div class="sc-fld"><label>Type</label><select id="sc-t-type">'+typeOpts+'</select></div>'
+   +'<div class="sc-fld"><label>Cadence</label><select id="sc-t-cad">'+cadOpts+'</select></div></div>'
+   +'<div class="sc-fld"><label>Target</label><input id="sc-t-target" value="'+mtEsc(draft.target)+'"></div>'
+   +(scope==="universal"?'<div class="sc-msub">Universal KPIs apply to everyone. Edits affect people added afterwards, not existing scorecards.</div>':'<div class="sc-msub">Edits to a role template affect people added afterwards, not existing scorecards.</div>');
+  $("sc-dlg-body").innerHTML=body; $("sc-dlg-danger").innerHTML="";
+  $("sc-dialog").classList.add("show");
+  setTimeout(function(){ var el=$("sc-t-name"); if(el) el.focus(); },40);
+}
+function scSaveTplKpi(){
+  if(!scDlg || scDlg.mode!=="tpl") return;
+  var d=scDlg.draft;
+  var name=($("sc-t-name").value||"").trim(); if(!name){ if(typeof toast==="function") toast("Give the KPI a name"); return; }
+  d.name=name; d.what=($("sc-t-what").value||"").trim(); d.type=$("sc-t-type").value||""; d.cadence=$("sc-t-cad").value||"Monthly"; d.target=($("sc-t-target").value||"").trim();
+  var list = scDlg.scope==="universal" ? scUniversal() : (function(){ var r=scRoleByName(scDlg.roleName); return r?r.kpis:null; })();
+  if(!list) return;
+  if(scDlg.id){ for(var i=0;i<list.length;i++){ if(list[i].id===scDlg.id){ list[i]=d; break; } } }
+  else { d.id=scTid(); list.push(d); }
+  SCORECARD=normalizeScorecard(SCORECARD);
+  scDlgClose(); renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Saved");
+}
+function scDelTplKpi(scope, roleName, id){
+  if(typeof confirm==="function" && !confirm("Delete this template KPI?")) return;
+  var list = scope==="universal" ? scUniversal() : (function(){ var r=scRoleByName(roleName); return r?r.kpis:null; })();
+  if(!list) return;
+  for(var i=0;i<list.length;i++){ if(list[i].id===id){ list.splice(i,1); break; } }
+  renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Deleted");
+}
 function scLibraryHTML(admin){
-  var h='<div class="sc-refnote"><span class="sc-refi">\uD83D\uDCCB</span><div><b>This is the template, not live data.</b> It shows what each role is measured on. Add a person in any role and these KPIs become their editable scorecard under Team members. The 3 universal KPIs (personal goals, peer feedback, growth) are added to everyone automatically.</div></div>';
-  h+='<div class="sc-card"><div class="sc-card-head"><div><h3>Universal \u00b7 applies to everyone</h3><div class="sc-sub">The baseline every individual is measured on, whatever their role</div></div></div>'+scRefTable(SC_UNIVERSAL)+'</div>';
+  var uCount = scUniversal().length;
+  var h='<div class="sc-refnote"><span class="sc-refi">\uD83D\uDCCB</span><div><b>This is the template you can edit.</b> Editing a KPI here changes what future people in that role are measured on \u2014 it does not rewrite scorecards of people already added. The universal KPIs are added to everyone automatically.</div></div>';
+  h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>Universal \u00b7 applies to everyone</h3><div class="sc-sub">The baseline every individual is measured on, whatever their role</div></div>'+(admin?'<button class="sc-btn ghost" onclick="scOpenTplKpi(\'universal\',\'\',null)">\uff0b Add universal KPI</button>':'')+'</div>'+scRefTable(scUniversal(),"universal","",admin)+'</div>';
   var order=["Engineering","Product","Marketing","Customer Support","Educational Content","HR"];
-  var byDept={}; Object.keys(SC_ROLES).forEach(function(r){ var d=SC_ROLES[r].dept; (byDept[d]=byDept[d]||[]).push(r); });
+  var byDept={}; scRoles().forEach(function(ro){ (byDept[ro.dept]=byDept[ro.dept]||[]).push(ro); });
   var depts=order.filter(function(d){return byDept[d];}).concat(Object.keys(byDept).filter(function(d){return order.indexOf(d)<0;}));
   depts.forEach(function(d){
     var roles=byDept[d];
     h+='<div class="sc-refdept"><h3>'+mtEsc(d)+'</h3><span>'+roles.length+' '+(roles.length===1?"role":"roles")+'</span></div>';
-    roles.forEach(function(r){
-      var tmpl=SC_ROLES[r];
-      h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>'+mtEsc(r)+'</h3><div class="sc-sub">'+mtEsc(d)+' \u00b7 '+tmpl.kpis.length+' role KPIs + 3 universal</div></div>'+(admin?'<button class="sc-btn ghost" onclick="scOpenMember(\''+scJsStr(d)+'\',\''+scJsStr(r)+'\')">\uff0b Add someone in this role</button>':'')+'</div>'+scRefTable(tmpl.kpis)+'</div>';
+    roles.forEach(function(ro){
+      h+='<div class="sc-card"><div class="sc-card-head sc-refrole"><div><h3>'+mtEsc(ro.name)+'</h3><div class="sc-sub">'+mtEsc(d)+' \u00b7 '+(ro.kpis||[]).length+' role KPIs + '+uCount+' universal</div></div><div class="sc-refbtns">'+(admin?'<button class="sc-btn ghost" onclick="scOpenTplKpi(\'role\',\''+scJsStr(ro.name)+'\',null)">\uff0b Add KPI</button><button class="sc-btn" onclick="scOpenMember(\''+scJsStr(d)+'\',\''+scJsStr(ro.name)+'\')">\uff0b Add someone</button>':'')+'</div></div>'+scRefTable(ro.kpis,"role",ro.name,admin)+'</div>';
     });
   });
   return h;
@@ -13732,7 +13796,7 @@ function scRenderSidebar(){
   others.forEach(function(f){ var n=scAttnCount(f); h+='<a class="sc-nav-a'+(scView===f.key?" on":"")+'" onclick="scGo(\''+f.key+'\')"'+(n?' title="'+n+' need attention"':'')+'><span>'+mtEsc(f.name)+'</span><span class="sc-cnt'+(n?" warn":"")+'">'+(n?n:"\u2013")+'</span></a>'; });
   h+='</div>';
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">People</div><a class="sc-nav-a'+(scView==="people"?" on":"")+'" onclick="scGo(\'people\')"><span>Team members</span><span class="sc-cnt">'+((SCORECARD.members||[]).length||"\u2013")+'</span></a></div>';
-  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Reference</div><a class="sc-nav-a'+(scView==="library"?" on":"")+'" onclick="scGo(\'library\')"><span>Individual KPI library</span><span class="sc-cnt">'+Object.keys(SC_ROLES).length+'</span></a></div>';
+  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Reference</div><a class="sc-nav-a'+(scView==="library"?" on":"")+'" onclick="scGo(\'library\')"><span>Individual KPI library</span><span class="sc-cnt">'+scRoles().length+'</span></a></div>';
   h+='</nav>';
   h+='<div class="sc-foot"><button class="sc-footbtn" onclick="closeScorecard()">\u2190 Back to workspace</button></div>';
   var side=$("sc-side"); if(side) side.innerHTML=h;
