@@ -45,7 +45,7 @@ const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
    1. On jsonbin.io click "Create Bin", type   {"tickets": []}   and save
    2. Copy that bin's ID from the URL and paste it below
    3. Put the same ID into report-bug.html (the student form) too */
-const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
+const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
 
 /* ================================================================
    MULTI-TEAM: every team (Dubuddy, DYNG, ...) gets the same abstract
@@ -14639,7 +14639,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v12 (username login) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v13 (new form bin) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
