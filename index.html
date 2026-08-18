@@ -2725,6 +2725,21 @@ body{margin:0}
 .sc-mconn{width:24px;height:24px;font-size:12px;flex:none}
 .sc-mconncell{display:inline-flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap}
 .sc-mcur{font-size:13px}
+
+.sc-nav-add{opacity:.85;font-weight:600}
+.sc-dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.sc-dcard{background:#fff;border:1px solid var(--sc-line,#e6e8f0);border-radius:12px;padding:16px 18px}
+.sc-dcard-f{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8993a4;font-weight:700}
+.sc-dcard-n{font-size:14px;font-weight:600;color:#172b4d;margin:3px 0 10px;line-height:1.3}
+.sc-dcard-v{font-size:28px;font-weight:700;color:#172b4d;letter-spacing:-.5px}
+.sc-dcard-b{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px}
+.sc-dcard-t{font-size:11.5px;color:#8993a4}
+.sc-dstat{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#f1f2f4;color:#626f86}
+.sc-dstat.sc-st-on{background:#dcfff1;color:#216e4e}.sc-dstat.sc-st-risk{background:#fff7d6;color:#7a5a00}.sc-dstat.sc-st-off{background:#ffece8;color:#c9372c}
+.sc-dpick{max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sc-dpick-gl{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8993a4;font-weight:700;margin-bottom:6px}
+.sc-dpick-i{display:flex;align-items:center;gap:9px;padding:6px 4px;font-size:13.5px;color:#172b4d;cursor:pointer;border-radius:6px}
+.sc-dpick-i:hover{background:#f7f8fa}
 </style>
 <style id="csm-css">
 #csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
@@ -13671,6 +13686,8 @@ function normalizeScorecard(x){
   if(!Array.isArray(x.funcs) || !x.funcs.length){ x = scSeed(); }
   var ns = (x.northStar && typeof x.northStar==="object") ? x.northStar : {};
   x.northStar = { name: ns.name || "Weekly Active Learners", current: (ns.current!=null?String(ns.current):""), target: (ns.target!=null?String(ns.target):"") };
+  x.dashboards = Array.isArray(x.dashboards) ? x.dashboards : [];
+  x.dashboards.forEach(function(d){ if(!d.id) d.id="dash-"+Math.random().toString(36).slice(2,8); d.name=d.name||"Dashboard"; d.kpis=Array.isArray(d.kpis)?d.kpis.filter(function(r){return r&&r.fkey&&r.kid;}):[]; });
   x.funcs.forEach(function(f){
     if(!f.key) f.key = "fn-"+Math.random().toString(36).slice(2,8);
     f.name = f.name || "Function";
@@ -14052,7 +14069,7 @@ function scSaveMember(){
   scDlgClose(); scView=fk; renderScorecard();
   if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(m.name+" added");
 }
-function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else if(m==="msrc") scSaveMemberKpiSource(); else scSaveKpi(); }
+function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else if(m==="msrc") scSaveMemberKpiSource(); else if(m==="dashkpis"){ scDlgClose(); renderScorecard(); } else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
   var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
@@ -14189,6 +14206,44 @@ let SCTAB = 0;                 // kept for back-compat
 let scDlg = null;
 function openScorecard(){ if(!SCORECARD || !SCORECARD.funcs) SCORECARD=normalizeScorecard(null); renderScorecard(); $("scorecard-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ scRefreshAllSheets(); }catch(e){} }
 function closeScorecard(){ $("scorecard-page").style.display="none"; }
+function scDashById(id){ return (SCORECARD.dashboards||[]).filter(function(d){return d.id===id;})[0]||null; }
+function scNewDashboard(){ var nm=(typeof prompt==="function")?prompt("Name this dashboard","New dashboard"):"New dashboard"; if(nm===null) return; nm=(nm||"").trim()||"New dashboard"; SCORECARD.dashboards=SCORECARD.dashboards||[]; var d={id:"dash-"+Math.random().toString(36).slice(2,8), name:nm, kpis:[]}; SCORECARD.dashboards.push(d); scView="dash:"+d.id; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Dashboard created \u2014 add KPIs to it"); }
+function scRenameDashboard(id){ var d=scDashById(id); if(!d) return; var nm=(typeof prompt==="function")?prompt("Rename dashboard", d.name):d.name; if(nm===null) return; d.name=(nm||"").trim()||d.name; renderScorecard(); if(typeof pushAll==="function") pushAll(); }
+function scDelDashboard(id){ if(typeof confirm==="function" && !confirm("Delete this dashboard? (The KPIs themselves are not deleted.)")) return; SCORECARD.dashboards=(SCORECARD.dashboards||[]).filter(function(d){return d.id!==id;}); scView="overview"; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Dashboard deleted"); }
+function scDashboardHTML(d, admin){
+  var refs=(d.kpis||[]).map(function(r){ return {ref:r, k:scFindKpi(r.fkey,r.kid), f:scFuncByKey(r.fkey)}; }).filter(function(x){ return x.k; });
+  if(!refs.length){ return '<div class="sc-card"><div class="sc-empty"><b>No KPIs on this dashboard yet</b>'+(admin?'Click <b>Edit KPIs</b> above to choose which KPIs appear here.':'Ask an admin to add KPIs.')+'</div></div>'; }
+  var cards=refs.map(function(x){
+    var cur=scCurrent(x.k); var st=x.k.status||"";
+    return '<div class="sc-dcard"><div class="sc-dcard-f">'+mtEsc(x.f?x.f.name:"")+'</div><div class="sc-dcard-n">'+mtEsc(x.k.name)+'</div><div class="sc-dcard-v">'+(cur!==""?mtEsc(cur):"\u2014")+'</div><div class="sc-dcard-b"><span class="sc-dcard-t">'+(x.k.target?("target "+mtEsc(x.k.target)):"")+'</span><span class="sc-dstat sc-st-'+(st||"none")+'">'+mtEsc(scStatLabel(st))+'</span></div></div>';
+  }).join("");
+  return '<div class="sc-dgrid">'+cards+'</div>';
+}
+function scEditDashKpis(id){
+  var d=scDashById(id); if(!d) return;
+  scDlg={mode:"dashkpis", id:id};
+  $("sc-dlg-title").textContent="Choose KPIs \u2014 "+d.name;
+  var has={}; (d.kpis||[]).forEach(function(r){ has[r.fkey+"|"+r.kid]=1; });
+  var h='<div class="sc-dpick">';
+  (SCORECARD.funcs||[]).forEach(function(f){
+    if(!(f.kpis||[]).length) return;
+    h+='<div class="sc-dpick-g"><div class="sc-dpick-gl">'+mtEsc(f.name)+'</div>';
+    (f.kpis||[]).forEach(function(k){
+      var on=has[f.key+"|"+k.id]?" checked":"";
+      h+='<label class="sc-dpick-i"><input type="checkbox"'+on+' onchange="scToggleDashKpi(\''+f.key+'\',\''+k.id+'\',this.checked)"> '+mtEsc(k.name)+'</label>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  $("sc-dlg-body").innerHTML=h; $("sc-dlg-danger").innerHTML="";
+  $("sc-dialog").classList.add("show");
+}
+function scToggleDashKpi(fkey, kid, on){
+  var d=scDashById(scDlg && scDlg.id); if(!d) return; d.kpis=d.kpis||[];
+  var i=-1; for(var x=0;x<d.kpis.length;x++){ if(d.kpis[x].fkey===fkey && d.kpis[x].kid===kid){ i=x; break; } }
+  if(on && i<0) d.kpis.push({fkey:fkey, kid:kid}); else if(!on && i>=0) d.kpis.splice(i,1);
+  if(typeof pushAll==="function") pushAll();
+}
 function scGo(v){ scView=v; renderScorecard(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function scGoTab(i){ var f=(SCORECARD.funcs||[])[i]; scView = f?f.key:"overview"; SCTAB=i; renderScorecard(); }   // back-compat for older callers
 function scCompanyFunc(){ var fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(/company/i.test(fs[i].key)||/company/i.test(fs[i].name)) return fs[i]; } return fs[0]||null; }
@@ -14208,6 +14263,13 @@ function scRenderSidebar(){
   var h='<div class="sc-brand"><span class="sc-star">\u2726</span><div><b>'+mtEsc(scBrandName())+'</b><span>KPI Scorecard</span></div></div>';
   h+='<nav class="sc-nav">';
   h+='<a class="sc-nav-a'+(scView==="overview"?" on":"")+'" onclick="scGo(\'overview\')"><span>\u25c9 Overview</span></a>';
+  var _dbs=(SCORECARD.dashboards||[]); var _dadm=scCanEdit();
+  if(_dbs.length || _dadm){
+    h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Dashboards</div>';
+    _dbs.forEach(function(d){ h+='<a class="sc-nav-a'+(scView==="dash:"+d.id?" on":"")+'" onclick="scGo(\'dash:'+d.id+'\')"><span>'+mtEsc(d.name)+'</span><span class="sc-cnt">'+((d.kpis||[]).length||"\u2013")+'</span></a>'; });
+    if(_dadm) h+='<a class="sc-nav-a sc-nav-add" onclick="scNewDashboard()"><span>\uff0b New dashboard</span></a>';
+    h+='</div>';
+  }
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Functions</div>';
   others.forEach(function(f){ var n=scAttnCount(f); h+='<a class="sc-nav-a'+(scView===f.key?" on":"")+'" onclick="scGo(\''+f.key+'\')"'+(n?' title="'+n+' need attention"':'')+'><span>'+mtEsc(f.name)+'</span><span class="sc-cnt'+(n?" warn":"")+'">'+(n?n:"\u2013")+'</span></a>'; });
   h+='</div>';
@@ -14295,7 +14357,7 @@ function scStatusCtl(fkey,k){
 function scRenderContent(){
   var admin = scCanEdit();
   var eyebrow, title, body, action="";
-  if(scView!=="overview" && scView!=="people" && scView!=="library" && !scFuncByKey(scView)) scView="overview";
+  if(scView!=="overview" && scView!=="people" && scView!=="library" && scView.indexOf("dash:")!==0 && !scFuncByKey(scView)) scView="overview";
   if(scView==="overview"){
     eyebrow="Overview"; title="Dashboard";
     var company=scCompanyFunc();
@@ -14309,6 +14371,12 @@ function scRenderContent(){
     eyebrow="Reference"; title="Individual KPI library";
     if(admin) action='<div class="sc-refbtns"><button class="sc-btn ghost" onclick="scOpenDept()">＋ Add department</button><button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button></div>';
     body = scLibraryHTML(admin);
+  } else if(scView.indexOf("dash:")===0){
+    var _dv=scDashById(scView.slice(5));
+    if(!_dv){ scView="overview"; return scRenderContent(); }
+    eyebrow="Dashboard"; title=_dv.name;
+    if(admin) action='<div class="sc-refbtns"><button class="sc-btn ghost" onclick="scEditDashKpis(\''+_dv.id+'\')">Edit KPIs</button><button class="sc-btn ghost" onclick="scRenameDashboard(\''+_dv.id+'\')">Rename</button><button class="sc-btn ghost" onclick="scDelDashboard(\''+_dv.id+'\')">Delete</button></div>';
+    body = scDashboardHTML(_dv, admin);
   } else {
     var f=scFuncByKey(scView);
     eyebrow="Function"; title=f.name;
@@ -14758,7 +14826,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v16 (webhooks) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v17 (custom dashboards) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
