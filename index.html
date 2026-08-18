@@ -2911,6 +2911,11 @@ body{margin:0}
 .csm-linkrow{display:flex;gap:8px}.csm-linkrow .csm-inp{flex:1}
 
 .csm-asgsel{max-width:150px;padding:4px 8px;font-size:12.5px}
+
+.csm-svcbar{display:flex;gap:6px;align-items:center;padding:10px 16px 0}
+.csm-svcsel{flex:1;min-width:0;padding:6px 8px;border:1px solid #d6dbe6;border-radius:8px;font-size:13px;font-weight:600;color:#172b4d;background:#fff}
+.csm-svcbtn{width:30px;height:30px;flex:none;border:1px solid #d6dbe6;background:#fff;border-radius:8px;font-size:15px;cursor:pointer;color:#44546f}
+.csm-svcbtn:hover{background:#f1f2f4;color:#0c66e4}
 </style>
 <div id="csm-page" class="product-page" style="display:none">
   <div class="csm-app">
@@ -4193,7 +4198,7 @@ let saving = false;
 let lastSnapshot = "";
 
 async function pushNow(){
-  if(!db) { renderAll(); return; }
+  if(!db) { renderAll(); try{ if(typeof showBanner==="function") showBanner("\u26a0\ufe0f NOT CONNECTED to storage \u2014 your changes are NOT being saved. The app can read but not write: check the JSONBin Access Key has BOTH Read and Update permission (and the Bin ID) in index.html."); }catch(_){ } return; }
   if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; }
   _pushDirty = false;
   saving = true;
@@ -4271,7 +4276,7 @@ function teamPayload(){
     perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     scorecard: clean(SCORECARD),
-    csm: clean(CSM),
+    csm: csmPayload(),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
 function loadTeamData(t){
@@ -4301,7 +4306,7 @@ function loadTeamData(t){
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
   SCORECARD = normalizeScorecard(t.scorecard);
-  CSM = normalizeCsm(t.csm);
+  CSM_ALL = normalizeCsmAll(t.csm); CSM = csmActive();
   TEAMORG = normalizeOrg(t.orgChart);
   TEAMSQUADS = normalizeSquads(t.squads);
   TEAMOWN = normalizeOwnership(t.ownership);
@@ -4330,6 +4335,7 @@ let TEAMPERF = { people:[] };
 let TEAMDOCS = { spaces:[], docs:[], templates:[] };
 let SCORECARD = { funcs: [] };
 let CSM = {};
+let CSM_ALL = { services: [], activeId: "" };
 let docOpenId = null;
 let docEditing = false;
 let docBackup = null;
@@ -14499,6 +14505,7 @@ function normalizeCsm(x){
   x.name = x.name || "Customers";
   x.desc = x.desc || "Customer Service adapts to match your support model.";
   x.members = Array.isArray(x.members) ? x.members : [];
+  x.owners = Array.isArray(x.owners) ? x.owners : [];
   x.connectedSpaces = Array.isArray(x.connectedSpaces) ? x.connectedSpaces : [];
   x.forms = Array.isArray(x.forms) ? x.forms : [];
   x.forms.forEach(function(f){
@@ -14537,7 +14544,7 @@ function normalizeCsm(x){
   return x;
 }
 function csmCanEdit(){ return (typeof can==="function") ? can("admin") : true; }
-function csmSave(){ if(typeof pushNow==="function"){ try{ pushNow(); }catch(e){ if(typeof pushAll==="function") pushAll(); } } else if(typeof pushAll==="function"){ pushAll(); } }
+function csmSave(){ try{ if(typeof csmSyncActive==="function") csmSyncActive(); }catch(_){ } if(typeof pushNow==="function"){ try{ pushNow(); }catch(e){ if(typeof pushAll==="function") pushAll(); } } else if(typeof pushAll==="function"){ pushAll(); } }
 function csmTeamUsers(){ return (typeof assigneeMembers==="function") ? assigneeMembers() : []; }
 function csmUserName(email){ var us=csmTeamUsers(); for(var i=0;i<us.length;i++){ if(us[i].email===email) return (typeof userDisplayName==="function")?userDisplayName(us[i]):(us[i].name||us[i].email); } return email; }
 /* ---- page shell ---- */
@@ -14551,12 +14558,58 @@ var CSM_SECTIONS = [
   {group:"Channels", items:[{key:"website",label:"Support website",icon:"\u25ce"},{key:"email",label:"Email",icon:"\u2709"},{key:"embed",label:"Embed",icon:"\u25a3"},{key:"voice",label:"Voice",icon:"\u260e"}]},
   {group:"Access", items:[{key:"access",label:"Customer access",icon:"\u263a"}]}
 ];
-function openCsm(){ if(!CSM || !CSM.name) CSM=normalizeCsm(CSM); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ csmRefreshTiles(); }catch(e){} try{ if(typeof csmImportSubs==="function" && csmCanEdit()) csmImportSubs(true); }catch(e){} }
+function normalizeCsmAll(raw){
+  var x = raw;
+  if(!x || typeof x!=="object" || !Array.isArray(x.services)){
+    if(x && typeof x==="object" && (x.name || x.tickets || x.forms || x.rules || x.dashboard || x.articles)){ x = { services:[ x ], activeId:null }; }
+    else { x = { services:[], activeId:null }; }
+  }
+  x.services = (x.services||[]).map(function(sv){ sv = normalizeCsm(sv||{}); if(!sv.id) sv.id = csmId("svc"); sv.owners = Array.isArray(sv.owners)?sv.owners:[]; return sv; });
+  if(!x.services.length){ var d = normalizeCsm({name:"Customers"}); d.id = csmId("svc"); d.owners=[]; x.services.push(d); }
+  if(!x.activeId || !x.services.some(function(sv){return sv.id===x.activeId;})) x.activeId = x.services[0].id;
+  return x;
+}
+function csmServices(){ return (CSM_ALL && Array.isArray(CSM_ALL.services)) ? CSM_ALL.services : []; }
+function csmActive(){ var ss=csmServices(); if(!ss.length) return null; var a=ss.filter(function(sv){return sv.id===CSM_ALL.activeId;})[0]; return a || ss[0]; }
+function csmSyncActive(){ if(!CSM_ALL || !Array.isArray(CSM_ALL.services) || !CSM) return; if(!CSM.id) CSM.id = CSM_ALL.activeId || csmId("svc"); var found=false; for(var i=0;i<CSM_ALL.services.length;i++){ if(CSM_ALL.services[i].id===CSM.id){ CSM_ALL.services[i]=CSM; found=true; break; } } if(!found){ CSM_ALL.services.push(CSM); } CSM_ALL.activeId=CSM.id; }
+function csmPayload(){ if(!CSM_ALL || !Array.isArray(CSM_ALL.services) || !CSM_ALL.services.length){ CSM_ALL = normalizeCsmAll((CSM && CSM.name)?CSM:null); CSM = csmActive(); } try{ csmSyncActive(); }catch(_){ } return clean(CSM_ALL); }
+function csmSetActive(id){ try{ csmSyncActive(); }catch(_){ } CSM_ALL.activeId=id; CSM=csmActive(); if(!(csmView && (csmView.indexOf("q-")===0 || csmView==="ticket"))) { /* keep view */ } if(csmView==="ticket"){ csmView="q-open"; } renderCsm(); csmSave(); try{ csmRefreshTiles(); }catch(e){} }
+function csmNewService(){
+  var nm = (typeof prompt==="function") ? prompt("Name this service (e.g. Payments support)","New service") : "New service";
+  if(nm===null) return; nm=(nm||"").trim()||"New service";
+  try{ csmSyncActive(); }catch(_){ }
+  var sv = normalizeCsm({name:nm}); sv.id=csmId("svc"); sv.owners=[];
+  CSM_ALL.services.push(sv); CSM_ALL.activeId=sv.id; CSM=sv;
+  csmView="get-started"; renderCsm(); csmSave(); if(typeof toast==="function") toast("Service \u201c"+nm+"\u201d created");
+}
+function csmDelService(){
+  if(csmServices().length<=1){ if(typeof toast==="function") toast("Keep at least one service"); return; }
+  if(typeof confirm==="function" && !confirm("Delete the service \u201c"+CSM.name+"\u201d and all its data?")) return;
+  var id=CSM.id;
+  CSM_ALL.services=CSM_ALL.services.filter(function(sv){return sv.id!==id;});
+  CSM_ALL.activeId=CSM_ALL.services[0].id; CSM=csmActive();
+  csmView="q-open"; renderCsm(); csmSave(); if(typeof toast==="function") toast("Service deleted");
+}
+function csmAddOwner(){ var el=$("csm-owner-in"); if(!el||!el.value) return; CSM.owners=CSM.owners||[]; if(CSM.owners.indexOf(el.value)<0) CSM.owners.push(el.value); renderCsm(); csmSave(); }
+function csmDelOwner(em){ CSM.owners=(CSM.owners||[]).filter(function(x){return x!==em;}); renderCsm(); csmSave(); }
+function csmOwnerPicker(){
+  var taken={}; (CSM.owners||[]).forEach(function(e){taken[e]=1;});
+  var avail=csmTeamUsers().filter(function(u){return !taken[u.email];});
+  if(!avail.length) return '<div class="csm-hint">Add teammates in Settings \u2192 Members to assign owners.</div>';
+  var opts=avail.map(function(u){return '<option value="'+mtEsc(u.email)+'">'+mtEsc((typeof userDisplayName==="function")?userDisplayName(u):(u.name||u.email))+'</option>';}).join("");
+  return '<div class="csm-addrow"><select class="csm-inp" id="csm-owner-in">'+opts+'</select><button class="csm-btn ghost" onclick="csmAddOwner()">Add owner</button></div>';
+}
+function openCsm(){ if(!CSM_ALL || !Array.isArray(CSM_ALL.services) || !CSM_ALL.services.length){ CSM_ALL=normalizeCsmAll((CSM && CSM.name)?CSM:null); } CSM=csmActive(); renderCsm(); $("csm-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ csmRefreshTiles(); }catch(e){} try{ if(typeof csmImportSubs==="function" && csmCanEdit()) csmImportSubs(true); }catch(e){} }
 function closeCsm(){ $("csm-page").style.display="none"; }
 function csmGo(v){ csmView=v; renderCsm(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function renderCsm(){ csmRenderSidebar(); csmRenderContent(); }
 function csmRenderSidebar(){
   var h='<div class="csm-brand"><span class="csm-logo">\uD83C\uDFA7</span><div><b>'+mtEsc(CSM.name)+'</b><span>Customer Service</span></div></div>';
+  var _adm=csmCanEdit(); var _svcs=csmServices();
+  if(_svcs.length>1 || _adm){
+    var _opts=_svcs.map(function(sv){return '<option value="'+sv.id+'"'+(sv.id===CSM_ALL.activeId?" selected":"")+'>'+mtEsc(sv.name)+'</option>';}).join("");
+    h+='<div class="csm-svcbar"><select class="csm-svcsel" onchange="csmSetActive(this.value)">'+_opts+'</select>'+(_adm?'<button class="csm-svcbtn" title="New service" onclick="csmNewService()">+</button>':'')+(_adm&&_svcs.length>1?'<button class="csm-svcbtn" title="Delete this service" onclick="csmDelService()">\u00d7</button>':'')+'</div>';
+  }
   h+='<nav class="csm-nav">';
   CSM_SECTIONS.forEach(function(sec){
     if(sec.group) h+='<div class="csm-nav-lbl">'+mtEsc(sec.group)+'</div>';
@@ -14566,7 +14619,8 @@ function csmRenderSidebar(){
     });
   });
   h+='</nav>';
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build 2026-08-17 v7 \u00b7 queues + automation + detail + autosave</div></div>';
+  var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v9 (multi-service) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -14595,7 +14649,8 @@ function csmRenderContent(){
   } else if(v==="overview"){
     var nameField = admin ? '<input class="csm-inp" id="csm-name" value="'+mtEsc(CSM.name)+'" onchange="csmSetName(this.value)">' : '<div class="csm-ro">'+mtEsc(CSM.name)+'</div>';
     body=csmTop("Customer experiences","Overview","Get a snapshot of your customer experience.","");
-    body+='<div class="csm-card"><div class="csm-fld"><label>Customer experience name</label>'+nameField+'</div>';
+    body+='<div class="csm-card"><div class="csm-fld"><label>Service name</label>'+nameField+'</div>';
+    body+='<div class="csm-fld"><label>Accountable owner(s)</label><div class="csm-chips">'+((CSM.owners||[]).length?CSM.owners.map(function(em){return '<span class="csm-chip">'+mtEsc(csmUserName(em))+(admin?' <b onclick="csmDelOwner(\''+mtEsc(em)+'\')">\u00d7</b>':'')+'</span>';}).join(""):'<span class="csm-muted">No owner yet</span>')+'</div>'+(admin?csmOwnerPicker():'')+'</div>';
     body+='<div class="csm-fld"><label>Team members</label><div class="csm-chips">'+(CSM.members.length?CSM.members.map(function(em){ return '<span class="csm-chip">'+mtEsc(csmUserName(em))+(admin?' <b onclick="csmDelMember(\''+mtEsc(em)+'\')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">No one added yet</span>')+'</div>'+(admin?csmMemberPicker():'')+'</div>';
     body+='<div class="csm-fld"><label>Work item key prefix</label>'+(admin?'<input class="csm-inp" style="max-width:160px" value="'+mtEsc(CSM.prefix)+'" maxlength="6" onchange="csmSetPrefix(this.value)">':'<div class="csm-ro">'+mtEsc(CSM.prefix)+'</div>')+'<div class="csm-hint">Used for work item keys, e.g. '+mtEsc(CSM.prefix)+'-1. Changing it only affects new items.</div></div>';
     body+='<div class="csm-fld"><label>Connected spaces</label><div class="csm-chips">'+(CSM.connectedSpaces.length?CSM.connectedSpaces.map(function(sp,i){ return '<span class="csm-chip">'+mtEsc(sp)+(admin?' <b onclick="csmDelSpace('+i+')">\u00d7</b>':'')+'</span>'; }).join(""):'<span class="csm-muted">Requests from this experience are routed to these spaces.</span>')+'</div>'+(admin?'<div class="csm-addrow"><input class="csm-inp" id="csm-space-in" placeholder="e.g. Support board"><button class="csm-btn ghost" onclick="csmAddSpace()">Add</button></div>':'')+'</div>';
