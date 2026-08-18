@@ -14557,8 +14557,8 @@ function normalizeCsm(x){
   x.auditLog = Array.isArray(x.auditLog) ? x.auditLog : [];
   var db=(x.dashboard&&typeof x.dashboard==="object")?x.dashboard:{};
   var defTiles=[["ai","AI Agent conversations"],["resolved","Resolved work items"],["unresolved","Unresolved work items"],["total","Total work items"]];
-  if(!Array.isArray(db.tiles)||!db.tiles.length){ db.tiles=defTiles.map(function(d){return {id:csmId("tile"),key:d[0],label:d[1],value:"0",source:{type:"manual"}};}); }
-  db.tiles.forEach(function(t){ if(!t.id) t.id=csmId("tile"); t.label=t.label||"Metric"; if(t.value==null) t.value=""; t.source=(t.source&&t.source.type)?t.source:{type:"manual"}; });
+  if(!Array.isArray(db.tiles)||!db.tiles.length){ db.tiles=defTiles.map(function(d){ var src=(d[0]==="ai")?{type:"manual"}:{type:"tickets",metric:d[0]}; return {id:csmId("tile"),key:d[0],label:d[1],value:"0",source:src}; }); }
+  db.tiles.forEach(function(t){ if(!t.id) t.id=csmId("tile"); t.label=t.label||"Metric"; if(t.value==null) t.value=""; t.source=(t.source&&t.source.type)?t.source:{type:"manual"}; if((t.key==="resolved"||t.key==="unresolved"||t.key==="total") && t.source.type==="manual" && (t.value==="0"||t.value==="")){ t.source={type:"tickets",metric:t.key}; } });
   x.dashboard=db;
   return x;
 }
@@ -14639,7 +14639,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v13 (new form bin) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v14 (live tiles) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -14840,8 +14840,8 @@ function csmDashboardHTML(admin){
   var h=csmTop("Customer service","Dashboard","A snapshot of your support. Numbers come from manual entry, a connected Google Sheet, or the backend later.","");
   h+='<div class="csm-tiles">';
   ((CSM.dashboard&&CSM.dashboard.tiles)||[]).forEach(function(t){
-    var val=csmTileValue(t); var connected=t.source&&t.source.type==="sheet";
-    h+='<div class="csm-tile"><div class="csm-tile-h"><span>'+mtEsc(t.label)+'</span>'+(admin?'<button class="csm-ib csm-tib" title="Edit / connect" onclick="csmOpenTile(\''+t.id+'\')">\u270e</button>':'')+'</div><div class="csm-tile-v">'+mtEsc(val)+'</div><div class="csm-tile-s">Total value'+(connected?' <span class="csm-tchip">\uD83D\uDD17 sheet</span>':'')+'</div></div>';
+    var val=csmTileValue(t); var _st=(t.source&&t.source.type)||"manual"; var _chip=(_st==="sheet")?"\uD83D\uDD17 sheet":(_st==="tickets")?"live":"";
+    h+='<div class="csm-tile"><div class="csm-tile-h"><span>'+mtEsc(t.label)+'</span>'+(admin?'<button class="csm-ib csm-tib" title="Edit / connect" onclick="csmOpenTile(\''+t.id+'\')">\u270e</button>':'')+'</div><div class="csm-tile-v">'+mtEsc(val)+'</div><div class="csm-tile-s">Total value'+(_chip?' <span class="csm-tchip">'+_chip+'</span>':'')+'</div></div>';
   });
   h+='</div>';
   h+='<div class="csm-charts">'+csmChartCard("Work items created","Work item creation date","Count of work items")+csmChartCard("Full resolution time median","Work item resolution date","Median time (seconds)")+'</div>';
@@ -14911,7 +14911,7 @@ function csmTickets(){ return (CSM && Array.isArray(CSM.tickets)) ? CSM.tickets 
 function csmIsDone(t){ return !!CSM_DONE[t.status]; }
 function csmFindTicket(id){ var ts=csmTickets(); for(var i=0;i<ts.length;i++){ if(ts[i].id===id) return ts[i]; } return null; }
 function csmTypeBadge(ty){ var c={Question:"#f5a623",Problem:"#c9372c",Incident:"#e2483d",Request:"#0c66e4",Change:"#8270db"}; return '<span class="csm-tybadge" style="background:'+(c[ty]||"#8993a4")+'" title="'+mtEsc(ty||"")+'">'+mtEsc((ty||"Q").slice(0,1))+'</span>'; }
-function csmTicketMetric(m){ var ts=csmTickets(); if(m==="resolved") return ts.filter(csmIsDone).length; if(m==="open") return ts.filter(function(t){return !csmIsDone(t);}).length; return ts.length; }
+function csmTicketMetric(m){ var ts=csmTickets(); if(m==="resolved") return ts.filter(csmIsDone).length; if(m==="open"||m==="unresolved") return ts.filter(function(t){return !csmIsDone(t);}).length; return ts.length; }
 function csmQueueFilter(kind){
   var me=(typeof SESSION!=="undefined"&&SESSION)?SESSION.email:"";
   return csmTickets().filter(function(t){
