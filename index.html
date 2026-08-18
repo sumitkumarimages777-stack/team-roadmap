@@ -2742,6 +2742,18 @@ body{margin:0}
 .sc-dpick-i:hover{background:#f7f8fa}
 
 .sc-krowf{display:inline-block;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:#8993a4;font-weight:700;background:#f1f2f4;border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle}
+
+.sc-rvbar{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.sc-rvstatus{display:flex;gap:6px}
+.sc-rvnote{font-size:12.5px;color:#5e6c84;margin-bottom:14px}
+.sc-rvmy{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sc-pk-ctx{background:#f7f8fa;border:1px solid var(--sc-line,#e6e8f0);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+.sc-pk-h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8993a4;font-weight:700;margin-bottom:8px}
+.sc-pk-krow{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:13px}
+.sc-pk-kn{flex:1;color:#172b4d}.sc-pk-kv{font-weight:700;color:#172b4d;min-width:44px;text-align:right}
+.sc-pk-ro{background:#f7f8fa;border-radius:8px;padding:10px 12px;font-size:13.5px;color:#172b4d;white-space:pre-wrap}
+.sc-pk-promo{display:flex;align-items:center;gap:8px;font-size:13.5px;color:#172b4d}
+.sc-pk-promoyes{background:#fff7d6;border:1px solid #f5e6a3;border-radius:8px;padding:8px 12px;font-size:13px;color:#7a5a00}
 </style>
 <style id="csm-css">
 #csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
@@ -13690,6 +13702,22 @@ function normalizeScorecard(x){
   x.northStar = { name: ns.name || "Weekly Active Learners", current: (ns.current!=null?String(ns.current):""), target: (ns.target!=null?String(ns.target):"") };
   x.dashboards = Array.isArray(x.dashboards) ? x.dashboards : [];
   x.dashboards.forEach(function(d){ if(!d.id) d.id="dash-"+Math.random().toString(36).slice(2,8); d.name=d.name||"Dashboard"; d.kpis=Array.isArray(d.kpis)?d.kpis.filter(function(r){return r&&r.fkey&&r.kid;}):[]; });
+  var rv=(x.reviews&&typeof x.reviews==="object")?x.reviews:{};
+  rv.cycles=Array.isArray(rv.cycles)?rv.cycles:[];
+  rv.cycles.forEach(function(c){
+    if(!c.id) c.id="cyc-"+Math.random().toString(36).slice(2,8);
+    c.name=c.name||"Review cycle"; c.created=c.created||"";
+    c.status=["open","calibration","published"].indexOf(c.status)>=0?c.status:"open";
+    c.packets=Array.isArray(c.packets)?c.packets:[];
+    c.packets.forEach(function(p){
+      p.memberId=p.memberId||"";
+      p.self=(p.self&&typeof p.self==="object")?p.self:{}; p.self.text=p.self.text||""; p.self.rating=(p.self.rating!=null?parseInt(p.self.rating,10):-1);
+      p.manager=(p.manager&&typeof p.manager==="object")?p.manager:{}; p.manager.text=p.manager.text||""; p.manager.rating=(p.manager.rating!=null?parseInt(p.manager.rating,10):-1);
+      p.finalRating=(p.finalRating!=null?parseInt(p.finalRating,10):-1);
+      p.promo=(p.promo&&typeof p.promo==="object")?p.promo:{}; p.promo.flag=!!p.promo.flag; p.promo.level=p.promo.level||""; p.promo.note=p.promo.note||"";
+    });
+  });
+  x.reviews=rv;
   x.funcs.forEach(function(f){
     if(!f.key) f.key = "fn-"+Math.random().toString(36).slice(2,8);
     f.name = f.name || "Function";
@@ -14071,7 +14099,7 @@ function scSaveMember(){
   scDlgClose(); scView=fk; renderScorecard();
   if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(m.name+" added");
 }
-function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else if(m==="msrc") scSaveMemberKpiSource(); else if(m==="dashkpis"){ scDlgClose(); renderScorecard(); } else scSaveKpi(); }
+function scDlgSave(){ if(!scDlg) return scSaveKpi(); var m=scDlg.mode; if(m==="member") scSaveMember(); else if(m==="tpl") scSaveTplKpi(); else if(m==="role") scSaveRole(); else if(m==="dept") scSaveDept(); else if(m==="msrc") scSaveMemberKpiSource(); else if(m==="dashkpis"){ scDlgClose(); renderScorecard(); } else if(m==="packet") scSavePacket(); else scSaveKpi(); }
 function scMembersSectionHTML(deptName, admin){
   var members=(SCORECARD.members||[]).filter(function(m){return m.dept===deptName;});
   var dj=deptName.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
@@ -14272,6 +14300,93 @@ function scToggleDashKpi(fkey, kid, on){
   if(on && i<0) d.kpis.push({fkey:fkey, kid:kid}); else if(!on && i>=0) d.kpis.splice(i,1);
   if(typeof pushAll==="function") pushAll();
 }
+var SC_RATINGS = ["Not enough","Below expectations","Meets expectations","Exceeds expectations","Strongly exceeds"];
+var scReviewCid = null;
+function scRatingLabel(i){ i=parseInt(i,10); return (i>=0&&i<SC_RATINGS.length)?SC_RATINGS[i]:"\u2014"; }
+function scReviews(){ return (SCORECARD.reviews&&SCORECARD.reviews.cycles)||[]; }
+function scCycleById(id){ return scReviews().filter(function(c){return c.id===id;})[0]||null; }
+function scActiveReviewCycle(){ var cs=scReviews(); if(!cs.length) return null; var c=scReviewCid?scCycleById(scReviewCid):null; return c||cs[cs.length-1]; }
+function scGoCycle(id){ scReviewCid=id; renderScorecard(); }
+function scNewCycle(){ var nm=(typeof prompt==="function")?prompt("Name this review cycle (e.g. H1 2026)","H1 2026"):"H1 2026"; if(nm===null) return; nm=(nm||"").trim()||"Review cycle"; SCORECARD.reviews=SCORECARD.reviews||{cycles:[]}; SCORECARD.reviews.cycles=SCORECARD.reviews.cycles||[]; var c={id:"cyc-"+Math.random().toString(36).slice(2,8), name:nm, status:"open", created:(typeof todayStr==="function")?todayStr():"", packets:[]}; SCORECARD.reviews.cycles.push(c); scReviewCid=c.id; scView="reviews"; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Cycle \u201c"+nm+"\u201d created \u2014 status: Open"); }
+function scSetCycleStatus(id,st){ var c=scCycleById(id); if(!c) return; c.status=st; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast(st==="published"?"Cycle published \u2014 people can now see their ratings":("Cycle set to "+st)); }
+function scGetPacket(c, mid){ c.packets=c.packets||[]; var p=c.packets.filter(function(x){return x.memberId===mid;})[0]; if(!p){ p={memberId:mid, self:{text:"",rating:-1}, manager:{text:"",rating:-1}, finalRating:-1, promo:{flag:false,level:"",note:""}}; c.packets.push(p); } return p; }
+function scSetFinal(cid,mid,val){ var c=scCycleById(cid); if(!c) return; var p=scGetPacket(c,mid); p.finalRating=parseInt(val,10); if(typeof pushAll==="function") pushAll(); }
+function scMyMemberId(){ var em=(typeof SESSION!=="undefined"&&SESSION)?SESSION.email:""; if(!em) return null; var ms=(SCORECARD.members||[]); for(var i=0;i<ms.length;i++){ if((ms[i].email||"").toLowerCase()===em.toLowerCase()) return ms[i].id; } return null; }
+function scMemberKpiVal(k){ if(k.source && k.source.type && k.source.type!=="manual"){ var c=scComputed(k); if(c) return c.text; } return (k.current!=null?String(k.current):""); }
+function scReviewsHTML(admin){
+  var cs=scReviews();
+  if(!cs.length){ return '<div class="sc-card"><div class="sc-empty"><b>No review cycles yet</b>'+(admin?'Click <b>New cycle</b> to start your first performance review.':'')+'</div></div>'; }
+  var c=scActiveReviewCycle();
+  var h='<div class="sc-rvbar"><select class="sc-inp" style="max-width:280px" onchange="scGoCycle(this.value)">'+cs.map(function(x){return '<option value="'+x.id+'"'+(x.id===c.id?" selected":"")+'>'+mtEsc(x.name)+' \u00b7 '+x.status+'</option>';}).join("")+'</select>';
+  if(admin){ h+='<div class="sc-rvstatus">'+["open","calibration","published"].map(function(st){return '<button class="sc-btn '+(c.status===st?"":"ghost")+'" onclick="scSetCycleStatus(\''+c.id+'\',\''+st+'\')">'+st.charAt(0).toUpperCase()+st.slice(1)+'</button>';}).join("")+'</div>'; }
+  h+='</div>';
+  h+='<div class="sc-rvnote">'+(c.status==="open"?"Open \u2014 people write self-reviews, managers write assessments.":c.status==="calibration"?"Calibration \u2014 compare ratings across the team and set the final rating before publishing.":"Published \u2014 people can now see their final rating.")+'</div>';
+  var members=(SCORECARD.members||[]);
+  h+='<div class="sc-card"><table class="sc-table"><thead><tr><th>Person</th><th>Role</th><th>Self</th><th>Manager</th><th>Final rating</th><th>Promo</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  if(!members.length){ h+='<tr><td colspan="'+(admin?7:6)+'" class="sc-empty" style="text-align:left;padding:18px">Add team members under <b>Team members</b> first.</td></tr>'; }
+  members.forEach(function(m){
+    var p=scGetPacket(c, m.id);
+    h+='<tr><td><b>'+mtEsc(m.name)+'</b></td><td>'+mtEsc(m.role||"")+'</td>';
+    h+='<td>'+mtEsc(scRatingLabel(p.self.rating))+'</td>';
+    h+='<td>'+mtEsc(scRatingLabel(p.manager.rating))+'</td>';
+    if(admin){ h+='<td><select class="sc-inp" onchange="scSetFinal(\''+c.id+'\',\''+m.id+'\',this.value)"><option value="-1">\u2014</option>'+SC_RATINGS.map(function(l,i){return '<option value="'+i+'"'+(i===parseInt(p.finalRating,10)?" selected":"")+'>'+mtEsc(l)+'</option>';}).join("")+'</select></td>'; }
+    else { h+='<td>'+mtEsc(scRatingLabel(p.finalRating))+'</td>'; }
+    h+='<td>'+(p.promo.flag?('\u2b50'+(p.promo.level?(" "+mtEsc(p.promo.level)):"")):"\u2014")+'</td>';
+    if(admin){ h+='<td><button class="sc-kbtn" title="Open review packet" onclick="scOpenPacket(\''+c.id+'\',\''+m.id+'\')">\u270e</button></td>'; }
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+function scMyReviewHTML(){
+  var mid=scMyMemberId(); var c=scActiveReviewCycle();
+  if(!mid) return '<div class="sc-card"><div class="sc-empty"><b>No scorecard linked to your account</b>Ask an admin to add you under Team members.</div></div>';
+  if(!c) return '<div class="sc-card"><div class="sc-empty"><b>No review cycle is running yet</b></div></div>';
+  return '<div class="sc-card"><div class="sc-rvmy"><div><b>'+mtEsc(c.name)+'</b> \u00b7 '+mtEsc(c.status)+'</div><button class="sc-btn" onclick="scOpenPacket(\''+c.id+'\',\''+mid+'\')">Open my review</button></div><div class="sc-msub" style="margin-top:8px">Write your self-assessment here. Your manager\u2019s assessment and final rating appear once the cycle is published.</div></div>';
+}
+function scRatingSelHTML(id,val,dis){ var o='<option value="-1">\u2014 Not rated \u2014</option>'; SC_RATINGS.forEach(function(l,i){ o+='<option value="'+i+'"'+(i===parseInt(val,10)?" selected":"")+'>'+mtEsc(l)+'</option>'; }); return '<select id="'+id+'" class="sc-inp"'+(dis?" disabled":"")+'>'+o+'</select>'; }
+function scOpenPacket(cid, mid){
+  var c=scCycleById(cid); if(!c) return;
+  var m=(SCORECARD.members||[]).filter(function(x){return x.id===mid;})[0]; if(!m) return;
+  var p=scGetPacket(c, mid);
+  var admin=scCanEdit(); var isSelf=(scMyMemberId()===mid); var canSelf=admin||isSelf; var selfEditable=canSelf && (c.status==="open"||admin);
+  scDlg={mode:"packet", cid:cid, mid:mid};
+  $("sc-dlg-title").textContent="Review \u2014 "+(m.name||"Member");
+  var kctx=(m.kpis||[]).map(function(k){ var cur=scMemberKpiVal(k); return '<div class="sc-pk-krow"><span class="sc-pk-kn">'+mtEsc(k.name)+'</span><span class="sc-pk-kv">'+(cur!==""?mtEsc(cur):"\u2014")+'</span><span class="sc-mstat '+scMStCls(k.status)+'">'+mtEsc(k.status||"Not started")+'</span></div>'; }).join("");
+  var body='<div class="sc-pk-ctx"><div class="sc-pk-h">'+mtEsc(m.name)+' \u00b7 '+mtEsc(m.role||"")+' \u2014 their scorecard</div>'+(kctx||'<div class="sc-muted">No KPIs on this scorecard.</div>')+'</div>';
+  body+='<div class="sc-fld"><label>Self-assessment'+(selfEditable?"":" (read-only)")+'</label><textarea id="sc-pk-selftext"'+(selfEditable?"":" disabled")+'>'+mtEsc(p.self.text)+'</textarea></div>';
+  body+='<div class="sc-fld"><label>Self rating</label>'+scRatingSelHTML("sc-pk-selfrating",p.self.rating,!selfEditable)+'</div>';
+  if(admin){
+    body+='<div class="sc-fld"><label>Manager assessment</label><textarea id="sc-pk-mgrtext">'+mtEsc(p.manager.text)+'</textarea></div>';
+    body+='<div class="sc-two"><div class="sc-fld"><label>Manager rating</label>'+scRatingSelHTML("sc-pk-mgrrating",p.manager.rating,false)+'</div><div class="sc-fld"><label>Final rating</label>'+scRatingSelHTML("sc-pk-final",p.finalRating,false)+'</div></div>';
+    body+='<div class="sc-fld"><label>Promotion</label><label class="sc-pk-promo"><input type="checkbox" id="sc-pk-promoflag"'+(p.promo.flag?" checked":"")+'> Recommend for promotion</label><input class="sc-inp" id="sc-pk-promolevel" placeholder="Target level (e.g. Senior Engineer)" value="'+mtEsc(p.promo.level)+'" style="margin-top:8px"><textarea id="sc-pk-promonote" placeholder="Justification for the promo committee\u2026" style="margin-top:8px">'+mtEsc(p.promo.note)+'</textarea></div>';
+  } else if(c.status==="published"){
+    body+='<div class="sc-fld"><label>Manager assessment</label><div class="sc-pk-ro">'+(p.manager.text?mtEsc(p.manager.text):"\u2014")+'</div></div>';
+    body+='<div class="sc-fld"><label>Final rating</label><div class="sc-pk-ro"><b>'+mtEsc(scRatingLabel(p.finalRating))+'</b></div></div>';
+    if(p.promo.flag) body+='<div class="sc-pk-promoyes">\u2b50 Recommended for promotion'+(p.promo.level?(" \u2192 "+mtEsc(p.promo.level)):"")+'</div>';
+  } else {
+    body+='<div class="sc-muted">Your manager\u2019s assessment and final rating will appear here once this cycle is <b>published</b>.</div>';
+  }
+  $("sc-dlg-body").innerHTML=body; $("sc-dlg-danger").innerHTML="";
+  $("sc-dialog").classList.add("show");
+}
+function scSavePacket(){
+  if(!scDlg||scDlg.mode!=="packet") return;
+  var c=scCycleById(scDlg.cid); if(!c){ scDlgClose(); return; }
+  var p=scGetPacket(c, scDlg.mid); var admin=scCanEdit();
+  var st=$("sc-pk-selftext"), sr=$("sc-pk-selfrating");
+  if(st && !st.disabled) p.self.text=st.value;
+  if(sr && !sr.disabled) p.self.rating=parseInt(sr.value,10);
+  if(admin){
+    var mt=$("sc-pk-mgrtext"), mr=$("sc-pk-mgrrating"), fr=$("sc-pk-final");
+    if(mt) p.manager.text=mt.value; if(mr) p.manager.rating=parseInt(mr.value,10); if(fr) p.finalRating=parseInt(fr.value,10);
+    var pf=$("sc-pk-promoflag"), pl=$("sc-pk-promolevel"), pn=$("sc-pk-promonote");
+    if(pf) p.promo.flag=pf.checked; if(pl) p.promo.level=pl.value; if(pn) p.promo.note=pn.value;
+  }
+  SCORECARD=normalizeScorecard(SCORECARD);
+  scDlgClose(); renderScorecard();
+  if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Review saved");
+}
 function scGo(v){ scView=v; renderScorecard(); if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function scGoTab(i){ var f=(SCORECARD.funcs||[])[i]; scView = f?f.key:"overview"; SCTAB=i; renderScorecard(); }   // back-compat for older callers
 function scCompanyFunc(){ var fs=(SCORECARD.funcs||[]); for(var i=0;i<fs.length;i++){ if(/company/i.test(fs[i].key)||/company/i.test(fs[i].name)) return fs[i]; } return fs[0]||null; }
@@ -14301,7 +14416,11 @@ function scRenderSidebar(){
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Functions</div>';
   others.forEach(function(f){ var n=scAttnCount(f); h+='<a class="sc-nav-a'+(scView===f.key?" on":"")+'" onclick="scGo(\''+f.key+'\')"'+(n?' title="'+n+' need attention"':'')+'><span>'+mtEsc(f.name)+'</span><span class="sc-cnt'+(n?" warn":"")+'">'+(n?n:"\u2013")+'</span></a>'; });
   h+='</div>';
-  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">People</div><a class="sc-nav-a'+(scView==="people"?" on":"")+'" onclick="scGo(\'people\')"><span>Team members</span><span class="sc-cnt">'+((SCORECARD.members||[]).length||"\u2013")+'</span></a></div>';
+  h+='<div class="sc-nav-group"><div class="sc-nav-lbl">People</div><a class="sc-nav-a'+(scView==="people"?" on":"")+'" onclick="scGo(\'people\')"><span>Team members</span><span class="sc-cnt">'+((SCORECARD.members||[]).length||"\u2013")+'</span>';
+  if(scCanEdit()){ h+='</a><a class="sc-nav-a'+(scView==="reviews"?" on":"")+'" onclick="scGo(\'reviews\')"><span>Performance reviews</span><span class="sc-cnt">'+(scReviews().length||"\u2013")+'</span></a>'; }
+  else if(scMyMemberId()){ h+='</a><a class="sc-nav-a'+(scView==="myreview"?" on":"")+'" onclick="scGo(\'myreview\')"><span>My review</span></a>'; }
+  else { h+='</a>'; }
+  h+='</div>';
   h+='<div class="sc-nav-group"><div class="sc-nav-lbl">Reference</div><a class="sc-nav-a'+(scView==="library"?" on":"")+'" onclick="scGo(\'library\')"><span>Individual KPI library</span><span class="sc-cnt">'+scRoles().length+'</span></a></div>';
   h+='</nav>';
   h+='<div class="sc-foot"><button class="sc-footbtn" onclick="closeScorecard()">\u2190 Back to workspace</button></div>';
@@ -14385,7 +14504,7 @@ function scStatusCtl(fkey,k){
 function scRenderContent(){
   var admin = scCanEdit();
   var eyebrow, title, body, action="";
-  if(scView!=="overview" && scView!=="people" && scView!=="library" && scView.indexOf("dash:")!==0 && !scFuncByKey(scView)) scView="overview";
+  if(scView!=="overview" && scView!=="people" && scView!=="library" && scView!=="reviews" && scView!=="myreview" && scView.indexOf("dash:")!==0 && !scFuncByKey(scView)) scView="overview";
   if(scView==="overview"){
     eyebrow="Overview"; title="Dashboard";
     var company=scCompanyFunc();
@@ -14399,6 +14518,13 @@ function scRenderContent(){
     eyebrow="Reference"; title="Individual KPI library";
     if(admin) action='<div class="sc-refbtns"><button class="sc-btn ghost" onclick="scOpenDept()">＋ Add department</button><button class="sc-btn" onclick="scOpenMember()">＋ Add team member</button></div>';
     body = scLibraryHTML(admin);
+  } else if(scView==="reviews"){
+    eyebrow="People"; title="Performance reviews";
+    if(admin) action='<button class="sc-btn" onclick="scNewCycle()">\uff0b New cycle</button>';
+    body = scReviewsHTML(admin);
+  } else if(scView==="myreview"){
+    eyebrow="People"; title="My review";
+    body = scMyReviewHTML();
   } else if(scView.indexOf("dash:")===0){
     var _dv=scDashById(scView.slice(5));
     if(!_dv){ scView="overview"; return scRenderContent(); }
@@ -14854,7 +14980,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v18 (interactive dashboards) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v19 (performance reviews) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
