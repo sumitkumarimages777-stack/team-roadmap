@@ -2250,7 +2250,7 @@ body{margin:0}
       <div class="login-card">
         <div class="login-title">Sign in</div>
         <div class="login-sub">Use your Cyberflow account. Contact an owner if you need access.</div>
-        <input id="login-email" class="login-input" type="email" placeholder="you@cyberflow.in" autocomplete="username">
+        <input id="login-email" class="login-input" type="text" placeholder="Email or username" autocomplete="username">
         <input id="login-pass" class="login-input" type="password" placeholder="Password" autocomplete="current-password">
         <div id="login-err" class="login-err"></div>
         <button id="login-btn" class="login-do">Sign in \u2192</button>
@@ -2305,6 +2305,7 @@ body{margin:0}
     <h3>Invite users to this team</h3>
     <div class="dlg-body">
       <div class="field"><label for="iv-email">Email</label><input id="iv-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off"></div>
+      <div class="field"><label for="iv-user">Username (optional \u2014 lets them sign in without an email)</label><input id="iv-user" class="login-input" type="text" placeholder="e.g. reviewer" autocomplete="off"></div>
       <div class="field"><label for="iv-name">Name (optional)</label><input id="iv-name" class="login-input" type="text" autocomplete="off"></div>
       <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="defaults to 'welcome'" autocomplete="off"></div>
       <div class="field"><label for="iv-role">Role</label><select id="iv-role" class="pa-select" style="width:100%"></select></div>
@@ -3142,6 +3143,7 @@ body{margin:0}
       <div class="people-add">
         <div class="pa-title">Add someone to this team</div>
         <input id="pa-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off">
+        <input id="pa-user" class="login-input" type="text" placeholder="Username (optional \u2014 sign in without email)" autocomplete="off">
         <input id="pa-name" class="login-input" type="text" placeholder="Name (optional)" autocomplete="off">
         <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional \u2014 defaults to 'welcome')" autocomplete="off">
         <div class="pa-row">
@@ -3468,6 +3470,7 @@ function normalizeUsers(arr){
     pass: u.pass || "",
     teams: u.teams || {},
     super: !!u.super,
+    username: (u.username||"").toLowerCase().trim(),
     mustChangePw: !!u.mustChangePw,   // true after an invite/reset with a temp password
     profile: u.profile || {},          // all-optional: {photo, displayName, title, dept, org, location, tz, pronouns, bio, avatarColor}
   })).filter(u=>u.email);
@@ -3500,6 +3503,7 @@ function ensureBootstrapOwner(){
 
 function currentUser(){ return SESSION; }
 function findUser(email){ return USERS.find(u=>u.email === (email||"").toLowerCase().trim()); }
+function findUserByLogin(v){ v=(v||"").toLowerCase().trim(); if(!v) return null; return USERS.find(u=> u.email===v || (u.username && u.username===v)) || null; }
 // role of a user in a team ("" if none). Super-admin is owner everywhere.
 function roleOf(user, team){
   if(!user) return "";
@@ -3526,8 +3530,8 @@ function restoreSession(){
   SESSION = null; return false;
 }
 function login(email, pw){
-  const u = findUser(email);
-  if(!u) return { ok:false, err:"No account for that email." };
+  const u = findUserByLogin(email);
+  if(!u) return { ok:false, err:"No account for that email or username." };
   if(u.pass !== fakeHash(pw)) return { ok:false, err:"Wrong password." };
   SESSION = u;
   sessionStorage.setItem("cf-user", u.email);
@@ -14635,7 +14639,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v11 (new bin) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v12 (username login) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16303,13 +16307,15 @@ function persistSpace(ref){
 function openInvite(){
   const ceiling = currentUser().super ? "owner" : "admin";
   roleOptions($("iv-role"), "editor", ceiling);
-  $("iv-email").value=""; $("iv-name").value=""; $("iv-pass").value=""; $("iv-err").textContent="";
+  $("iv-email").value=""; $("iv-name").value=""; $("iv-pass").value=""; $("iv-user") && ($("iv-user").value=""); $("iv-err").textContent="";
   $("iv-add").onclick = ()=>{
     const em = ($("iv-email").value||"").toLowerCase().trim();
     const nm = ($("iv-name").value||"").trim();
     const role = $("iv-role").value;
+    const un = $("iv-user") ? ($("iv-user").value||"").toLowerCase().trim() : "";
     if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ $("iv-err").textContent = "Enter a valid email."; return; }
     if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("iv-err").textContent = "Admins can't grant Owner."; return; }
+    if(un){ var _uc=USERS.find(x=> x.email!==em && (x.username===un || x.email===un)); if(_uc){ $("iv-err").textContent = "That username is already taken."; return; } }
     let u = findUser(em);
     if(!u){
       const startPw = ($("iv-pass").value||"").trim() || TEMP_PW;
@@ -16318,6 +16324,7 @@ function openInvite(){
     } else if(nm){ u.name = nm; }
     u.teams = u.teams || {};
     u.teams[TEAM] = role;
+    if(un) u.username = un;
     pushUsers();
     $("invite-overlay").classList.remove("show");
     renderAdminPage();
@@ -16334,13 +16341,15 @@ function openPeople(){
   const ceiling = currentUser().super ? "owner" : "admin";   // admins can't create owners
   renderPeopleList();
   roleOptions($("pa-role"), "editor", ceiling);
-  $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-err").textContent = "";
+  $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
   $("pa-add").onclick = ()=>{
     const email = ($("pa-email").value||"").toLowerCase().trim();
     const name = ($("pa-name").value||"").trim();
     const role = $("pa-role").value;
+    const un = $("pa-user") ? ($("pa-user").value||"").toLowerCase().trim() : "";
     if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){ $("pa-err").textContent = "Enter a valid email."; return; }
     if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
+    if(un){ var _uc=USERS.find(x=> x.email!==email && (x.username===un || x.email===un)); if(_uc){ $("pa-err").textContent = "That username is already taken."; return; } }
     let u = findUser(email);
     if(!u){
       const startPw = ($("pa-pass").value||"").trim() || TEMP_PW;
@@ -16349,9 +16358,10 @@ function openPeople(){
     } else if(name){ u.name = name; }
     u.teams = u.teams || {};
     u.teams[TEAM] = role;
+    if(un) u.username = un;
     pushUsers();
     renderPeopleList();
-    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-err").textContent = "";
+    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
     toast(ROLE_LABEL[role] + " added");
   };
   $("people-overlay").classList.add("show");
