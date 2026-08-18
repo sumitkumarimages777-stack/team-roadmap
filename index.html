@@ -13760,6 +13760,26 @@ function scBoardById(id){ var a=scBoards(); for(var i=0;i<a.length;i++){ if(a[i]
 function scComputed(k){
   if(!k || !k.source) return null;
   if(k.source.type==="sheet"){ var _c=k.source.cache; return {ok:true, sheet:true, text:(_c && _c.value!=null && _c.value!=="")?String(_c.value):"\u2014"}; }
+  if(k.source.type==="service"){
+    var _svcs=(typeof CSM_ALL!=="undefined" && CSM_ALL && Array.isArray(CSM_ALL.services))?CSM_ALL.services:[];
+    var _svc=null; for(var _i=0;_i<_svcs.length;_i++){ if(_svcs[_i].id===k.source.serviceId){ _svc=_svcs[_i]; break; } }
+    if(!_svc && _svcs.length) _svc=_svcs[0];
+    var _tks=(_svc && Array.isArray(_svc.tickets))?_svc.tickets:[];
+    var _done=function(t){ return (typeof csmIsDone==="function")?csmIsDone(t):(t.status==="Resolved"||t.status==="Done"); };
+    var _m=k.source.metric||"open";
+    var _v=_m==="resolved"?_tks.filter(_done).length:(_m==="total"?_tks.length:_tks.filter(function(t){return !_done(t);}).length);
+    return {ok:true, text:String(_v)};
+  }
+  if(k.source.type==="okr"){
+    var _cy=null, _cys=(typeof OKRS!=="undefined" && OKRS.cycles)?OKRS.cycles:[];
+    for(var _c=0;_c<_cys.length;_c++){ if(_cys[_c].key===k.source.cycle){ _cy=_cys[_c]; break; } }
+    if(!_cy) _cy=_cys[0];
+    var _objs=(_cy && _cy.objectives)?_cy.objectives:[];
+    var _ob=null; for(var _o=0;_o<_objs.length;_o++){ if(_objs[_o].id===k.source.obj){ _ob=_objs[_o]; break; } }
+    if(!_ob) _ob=_objs[0];
+    if(!_ob) return {ok:true, text:"0%"};
+    return {ok:true, text:objRollupPct(_ob)+"%"};
+  }
   if(k.source.type!=="board") return null;
   var b = scBoardById(k.source.boardId);
   if(!b) return {ok:false, text:"\u2014"};
@@ -13974,7 +13994,7 @@ function scMemberCard(m){
   var init=(m.name||"?").split(/\s+/).map(function(x){return x[0]||"";}).slice(0,2).join("").toUpperCase();
   var rows=(m.kpis||[]).map(function(k,i){
     var cur = scCurrent(k);
-    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet");
+    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service");
     var curCell;
     if(connected){ curCell='<span class="sc-mconncell">'+scMemberConnectedCellHTML(m.id,i,k,cur,admin)+'</span>'; }
     else if(admin){ curCell='<input class="sc-inp sc-mval" value="'+mtEsc(k.current||"")+'" placeholder="\u2014" onchange="scSetMemberField(\''+m.id+'\','+i+',\'current\',this.value)">'; }
@@ -14238,7 +14258,7 @@ function scKpiTableCard(f, admin, headTitle){
   if(!(f.kpis||[]).length){ card += '<tr><td colspan="'+(admin?9:8)+'" class="sc-empty" style="text-align:left;padding:20px 14px">No KPIs in this function yet.</td></tr>'; }
   (f.kpis||[]).forEach(function(k){
     var cur = scCurrent(k);
-    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet");
+    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service");
     card += '<tr>';
     card += '<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
     card += '<td>'+scTypeBadge(k.type)+'</td>';
@@ -14386,8 +14406,9 @@ function scConnectedCellHTML(k, fkey, cur, admin){
     if(c.error) return '<span class="sc-cur sc-err" title="'+mtEsc(c.error)+'">error</span> '+chip+' '+refresh;
     return '<span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> '+chip+' '+refresh+scTrend(cur,k.previous);
   }
-  return '<span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> <span class="sc-link" title="Auto from '+mtEsc((scBoardById(s.boardId)||{label:"board"}).label)+'">\uD83D\uDD17</span>'+scTrend(cur,k.previous);
+  return '<span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> <span class="sc-link" title="Auto from '+mtEsc(scSourceLabel(s))+'">\uD83D\uDD17</span>'+scTrend(cur,k.previous);
 }
+function scSourceLabel(s){ if(!s) return "source"; if(s.type==="okr") return "OKR"; if(s.type==="service") return "Service"; if(s.type==="sheet") return "Google Sheet"; return (scBoardById(s.boardId)||{label:"board"}).label; }
 function scSourceFormHTML(src){
   var boards = scBoards();
   var h='<div class="sc-src">';
@@ -14417,6 +14438,36 @@ function scSourceFormHTML(src){
     h+='<div class="sc-srcprev">Live value now: <b>'+(comp?mtEsc(comp.text):"\u2014")+'</b></div>';
     h+='</div>';
   }
+  var _cyc=(typeof OKRS!=="undefined" && OKRS.cycles)?OKRS.cycles:[];
+  h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type==="okr"?"checked":"")+' onclick="scSrcType(\'okr\')"'+(_cyc.length?"":" disabled")+'> Connect an OKR'+(_cyc.length?"":" (no OKRs yet)")+'</label>';
+  if(src.type==="okr"){
+    var _ac=null; _cyc.forEach(function(c){ if(c.key===src.cycle) _ac=c; }); if(!_ac) _ac=_cyc[0];
+    var _aos=(_ac&&_ac.objectives)?_ac.objectives:[];
+    h+='<div class="sc-srcb">';
+    h+='<div class="sc-srcrow"><span>Cycle</span><select id="sc-src-okrcyc" onchange="scSrcOkrCycle(this.value)">';
+    _cyc.forEach(function(c){ h+='<option value="'+mtEsc(c.key)+'"'+((_ac&&c.key===_ac.key)?" selected":"")+'>'+mtEsc(c.name||c.key)+'</option>'; });
+    h+='</select></div>';
+    h+='<div class="sc-srcrow"><span>Objective</span><select id="sc-src-okrobj" onchange="scSrcOkrObj(this.value)">';
+    _aos.forEach(function(o){ h+='<option value="'+mtEsc(o.id)+'"'+(o.id===src.obj?" selected":"")+'>'+mtEsc(o.title||"Objective")+'</option>'; });
+    h+='</select></div>';
+    var _cO=scComputed({source:src}); h+='<div class="sc-srcprev">Live value now: <b>'+(_cO?mtEsc(_cO.text):"\u2014")+'</b></div>';
+    h+='</div>';
+  }
+  var _svcs=(typeof CSM_ALL!=="undefined" && CSM_ALL && CSM_ALL.services)?CSM_ALL.services:[];
+  h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type==="service"?"checked":"")+' onclick="scSrcType(\'service\')"'+(_svcs.length?"":" disabled")+'> Connect a Service'+(_svcs.length?"":" (no services yet)")+'</label>';
+  if(src.type==="service"){
+    h+='<div class="sc-srcb">';
+    h+='<div class="sc-srcrow"><span>Service</span><select id="sc-src-svc" onchange="scSrcService(this.value)">';
+    _svcs.forEach(function(sv){ h+='<option value="'+mtEsc(sv.id)+'"'+(sv.id===src.serviceId?" selected":"")+'>'+mtEsc(sv.name||"Service")+'</option>'; });
+    h+='</select></div>';
+    h+='<div class="sc-srcrow"><span>Measure</span><select id="sc-src-svcm" onchange="scSrcServiceMetric(this.value)">'
+      +'<option value="open"'+(src.metric==="open"?" selected":"")+'>Open / unresolved work items</option>'
+      +'<option value="resolved"'+(src.metric==="resolved"?" selected":"")+'>Resolved work items</option>'
+      +'<option value="total"'+(src.metric==="total"?" selected":"")+'>Total work items</option>'
+      +'</select></div>';
+    var _cS=scComputed({source:src}); h+='<div class="sc-srcprev">Live value now: <b>'+(_cS?mtEsc(_cS.text):"\u2014")+'</b></div>';
+    h+='</div>';
+  }
   h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type==="sheet"?"checked":"")+' onclick="scSrcType(\'sheet\')"> Connect a Google Sheet</label>';
   if(src.type==="sheet"){
     var sc=src.cache||{};
@@ -14439,9 +14490,15 @@ function scSrcType(t){
   var bs=scBoards(); var prev=scDlg.draft.source||{};
   if(t==="board"){ if(!bs.length) return; var b0=bs[0]; scDlg.draft.source = b0.okr?{type:"board",boardId:b0.id}:{type:"board",boardId:b0.id,metric:"count",col:(b0.cols[0]?b0.cols[0].key:"")}; }
   else if(t==="sheet"){ scDlg.draft.source={type:"sheet", url:prev.url||"", cell:prev.cell||"B2", cache:prev.cache||null}; }
+  else if(t==="okr"){ var _cs=(typeof OKRS!=="undefined"&&OKRS.cycles)?OKRS.cycles:[]; if(!_cs.length) return; var _c0=_cs[0]; scDlg.draft.source={type:"okr", cycle:_c0.key, obj:(_c0.objectives&&_c0.objectives[0])?_c0.objectives[0].id:""}; }
+  else if(t==="service"){ var _ss=(typeof CSM_ALL!=="undefined"&&CSM_ALL&&CSM_ALL.services)?CSM_ALL.services:[]; if(!_ss.length) return; scDlg.draft.source={type:"service", serviceId:_ss[0].id, metric:"open"}; }
   else { scDlg.draft.source={type:"manual"}; }
   scDlgRerenderSource();
 }
+function scSrcOkrCycle(key){ var _c=null; ((typeof OKRS!=="undefined"&&OKRS.cycles)?OKRS.cycles:[]).forEach(function(c){ if(c.key===key) _c=c; }); scDlg.draft.source={type:"okr", cycle:key, obj:(_c&&_c.objectives&&_c.objectives[0])?_c.objectives[0].id:""}; scDlgRerenderSource(); }
+function scSrcOkrObj(id){ scDlg.draft.source.obj=id; scDlgRerenderSource(); }
+function scSrcService(id){ scDlg.draft.source.serviceId=id; if(!scDlg.draft.source.metric) scDlg.draft.source.metric="open"; scDlgRerenderSource(); }
+function scSrcServiceMetric(m){ scDlg.draft.source.metric=m; scDlgRerenderSource(); }
 function scSrcBoard(id){ var b=scBoardById(id); scDlg.draft.source = (b&&b.okr)?{type:"board",boardId:id}:{type:"board",boardId:id,metric:"count",col:(b&&b.cols[0])?b.cols[0].key:""}; scDlgRerenderSource(); }
 function scSrcMetric(m){ scDlg.draft.source.metric=m; if(m!=="total" && !scDlg.draft.source.col){ var b=scBoardById(scDlg.draft.source.boardId); scDlg.draft.source.col=(b&&b.cols[0])?b.cols[0].key:""; } scDlgRerenderSource(); }
 function scSrcCol(c){ scDlg.draft.source.col=c; scDlgRerenderSource(); }
@@ -14496,7 +14553,7 @@ function scSaveKpi(){
   d.status=$("sc-f-status").value||"";
   d.previous=($("sc-f-prev").value||"").trim();
   d.notes=($("sc-f-notes").value||"").trim();
-  if(!(d.source && (d.source.type==="board"||d.source.type==="sheet"))){ d.source={type:"manual"}; d.current=($("sc-f-current").value||"").trim(); }
+  if(!(d.source && (d.source.type==="board"||d.source.type==="sheet"||d.source.type==="okr"||d.source.type==="service"))){ d.source={type:"manual"}; d.current=($("sc-f-current").value||"").trim(); }
   if(scDlg.id){ var idx=-1; for(var j=0;j<f.kpis.length;j++){ if(f.kpis[j].id===scDlg.id){ idx=j; break; } } if(idx>=0) f.kpis[idx]=d; }
   else { d.id="kpi-"+Math.random().toString(36).slice(2,9); f.kpis.push(d); }
   SCORECARD = normalizeScorecard(SCORECARD);
@@ -14639,7 +14696,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v14 (live tiles) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v15 (KPI\u2190OKR/Service) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
