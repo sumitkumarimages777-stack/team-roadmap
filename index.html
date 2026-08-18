@@ -13760,6 +13760,7 @@ function scBoardById(id){ var a=scBoards(); for(var i=0;i<a.length;i++){ if(a[i]
 function scComputed(k){
   if(!k || !k.source) return null;
   if(k.source.type==="sheet"){ var _c=k.source.cache; return {ok:true, sheet:true, text:(_c && _c.value!=null && _c.value!=="")?String(_c.value):"\u2014"}; }
+  if(k.source.type==="webhook"){ var _wc=k.source.cache; return {ok:true, text:(_wc && _wc.value!=null && _wc.value!=="")?String(_wc.value):"\u2014"}; }
   if(k.source.type==="service"){
     var _svcs=(typeof CSM_ALL!=="undefined" && CSM_ALL && Array.isArray(CSM_ALL.services))?CSM_ALL.services:[];
     var _svc=null; for(var _i=0;_i<_svcs.length;_i++){ if(_svcs[_i].id===k.source.serviceId){ _svc=_svcs[_i]; break; } }
@@ -13994,7 +13995,7 @@ function scMemberCard(m){
   var init=(m.name||"?").split(/\s+/).map(function(x){return x[0]||"";}).slice(0,2).join("").toUpperCase();
   var rows=(m.kpis||[]).map(function(k,i){
     var cur = scCurrent(k);
-    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service");
+    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service"||k.source.type==="webhook");
     var curCell;
     if(connected){ curCell='<span class="sc-mconncell">'+scMemberConnectedCellHTML(m.id,i,k,cur,admin)+'</span>'; }
     else if(admin){ curCell='<input class="sc-inp sc-mval" value="'+mtEsc(k.current||"")+'" placeholder="\u2014" onchange="scSetMemberField(\''+m.id+'\','+i+',\'current\',this.value)">'; }
@@ -14258,7 +14259,7 @@ function scKpiTableCard(f, admin, headTitle){
   if(!(f.kpis||[]).length){ card += '<tr><td colspan="'+(admin?9:8)+'" class="sc-empty" style="text-align:left;padding:20px 14px">No KPIs in this function yet.</td></tr>'; }
   (f.kpis||[]).forEach(function(k){
     var cur = scCurrent(k);
-    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service");
+    var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service"||k.source.type==="webhook");
     card += '<tr>';
     card += '<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
     card += '<td>'+scTypeBadge(k.type)+'</td>';
@@ -14398,6 +14399,14 @@ function scRefreshAllSheets(){
 }
 function scConnectedCellHTML(k, fkey, cur, admin){
   var s=k.source||{};
+  if(s.type==="webhook"){
+    var wc=s.cache||{};
+    var whchip='<span class="sc-link" title="Webhook: '+mtEsc(s.tag||"default")+'">\uD83D\uDD17 webhook</span>';
+    var whref=admin?'<button class="sc-kbtn sc-refresh'+(wc.loading?" spin":"")+'" title="Refresh from webhook" onclick="scRefreshKpiWebhook(\''+fkey+'\',\''+k.id+'\')">\u21bb</button>':'';
+    if(wc.loading) return '<span class="sc-cur">\u2026</span> '+whchip+' '+whref;
+    if(wc.error) return '<span class="sc-cur sc-err" title="'+mtEsc(wc.error)+'">error</span> '+whchip+' '+whref;
+    return '<span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> '+whchip+' '+whref+scTrend(cur,k.previous);
+  }
   if(s.type==="sheet"){
     var c=s.cache||{};
     var chip='<span class="sc-link" title="Google Sheet, cell '+mtEsc(s.cell||"")+'">\uD83D\uDD17 sheet</span>';
@@ -14408,7 +14417,47 @@ function scConnectedCellHTML(k, fkey, cur, admin){
   }
   return '<span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span> <span class="sc-link" title="Auto from '+mtEsc(scSourceLabel(s))+'">\uD83D\uDD17</span>'+scTrend(cur,k.previous);
 }
-function scSourceLabel(s){ if(!s) return "source"; if(s.type==="okr") return "OKR"; if(s.type==="service") return "Service"; if(s.type==="sheet") return "Google Sheet"; return (scBoardById(s.boardId)||{label:"board"}).label; }
+function scReadPath(obj, path){
+  if(path==null||path==="") return obj;
+  var parts=String(path).split("."); var cur=obj;
+  for(var i=0;i<parts.length;i++){ if(cur==null) return undefined; var k=parts[i]; if(Array.isArray(cur)&&/^\d+$/.test(k)) cur=cur[parseInt(k,10)]; else cur=cur[k]; }
+  return cur;
+}
+function scWebhookUrl(){ try{ return location.origin + "/api/webhook"; }catch(e){ return "/api/webhook"; } }
+function scWebhookInboxUrl(){ return (typeof BUGS_URL!=="undefined") ? (BUGS_URL+"/latest") : ""; }
+function scFetchWebhook(source){
+  if(typeof fetch!=="function") return Promise.resolve({error:"No network"});
+  var url=scWebhookInboxUrl(); if(!url) return Promise.resolve({error:"Inbox not configured"});
+  var hdr={"X-Access-Key":(typeof JSONBIN_CONFIG!=="undefined"?JSONBIN_CONFIG.apiKey:""),"X-Bin-Meta":"false"};
+  return fetch(url,{headers:hdr}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(rec){
+      var evs=(rec&&Array.isArray(rec.webhookEvents))?rec.webhookEvents:[];
+      var tag=(source.tag||"default");
+      var mine=evs.filter(function(e){ return (e.tag||"default")===tag; });
+      if((source.path||"")==="__count"){ return {value:mine.length}; }
+      if(!mine.length) return {error:"No events for tag \u201c"+tag+"\u201d yet"};
+      var latest=mine[mine.length-1];
+      var v=scReadPath(latest.payload, source.path||"");
+      if(v==null||typeof v==="object") return {error:"Field \u201c"+(source.path||"")+"\u201d not found in the latest event"};
+      return {value:v};
+    })
+    .catch(function(e){ return {error:(e&&e.message)?("Couldn't read inbox ("+e.message+")"):"Couldn't read inbox"}; });
+}
+function scRefreshKpiWebhook(fkey,id){
+  var k=scFindKpi(fkey,id); if(!k||!k.source||k.source.type!=="webhook") return;
+  k.source.cache=k.source.cache||{}; k.source.cache.loading=true; renderScorecard();
+  scFetchWebhook(k.source).then(function(res){ k.source.cache={at:Date.now()}; if(res.error) k.source.cache.error=res.error; else k.source.cache.value=res.value; if(typeof pushAll==="function") pushAll(); renderScorecard(); });
+}
+function scSrcWebhookTag(v){ if(scDlg&&scDlg.draft&&scDlg.draft.source) scDlg.draft.source.tag=v; }
+function scSrcWebhookPath(v){ if(scDlg&&scDlg.draft&&scDlg.draft.source){ scDlg.draft.source.path=v; var pe=$("sc-src-whpath"); if(pe&&pe.value!==v) pe.value=v; } }
+function scSrcWebhookTest(){
+  if(!scDlg||!scDlg.draft||!scDlg.draft.source) return;
+  var s=scDlg.draft.source; var tg=$("sc-src-whtag"), pt=$("sc-src-whpath");
+  if(tg) s.tag=tg.value; if(pt) s.path=pt.value;
+  var prev=$("sc-wh-prev"); if(prev) prev.innerHTML="Reading\u2026";
+  scFetchWebhook(s).then(function(res){ s.cache={at:Date.now()}; if(res.error){ s.cache.error=res.error; if(prev) prev.innerHTML='<span class="sc-err">'+mtEsc(res.error)+'</span>'; } else { s.cache.value=res.value; if(prev) prev.innerHTML='Live value: <b>'+mtEsc(String(res.value))+'</b>'; } });
+}
+function scSourceLabel(s){ if(!s) return "source"; if(s.type==="okr") return "OKR"; if(s.type==="service") return "Service"; if(s.type==="webhook") return "Webhook"; if(s.type==="sheet") return "Google Sheet"; return (scBoardById(s.boardId)||{label:"board"}).label; }
 function scSourceFormHTML(src){
   var boards = scBoards();
   var h='<div class="sc-src">';
@@ -14478,6 +14527,18 @@ function scSourceFormHTML(src){
     h+='<div class="sc-sheethelp">In Google Sheets: <b>File \u2192 Share \u2192 Publish to web</b> (or share \u201canyone with the link\u201d), paste the link, pick the cell. The app reads it in your browser \u2014 a published sheet is readable by anyone with the link.</div>';
     h+='</div>';
   }
+  var _whu=scWebhookUrl();
+  h+='<label class="sc-srct"><input type="radio" name="scsrc" '+(src.type==="webhook"?"checked":"")+' onclick="scSrcType(\'webhook\')"> Connect a Webhook</label>';
+  if(src.type==="webhook"){
+    var _wc2=src.cache||{};
+    h+='<div class="sc-srcb">';
+    h+='<div class="sc-srcnote">Point an app\u2019s webhook at:<br><code>'+mtEsc(_whu)+'?tag=YOURTAG</code></div>';
+    h+='<div class="sc-srcrow"><span>Tag</span><input type="text" id="sc-src-whtag" value="'+mtEsc(src.tag||"default")+'" placeholder="e.g. signups" oninput="scSrcWebhookTag(this.value)" style="max-width:180px"></div>';
+    h+='<div class="sc-srcrow"><span>Field</span><input type="text" id="sc-src-whpath" value="'+mtEsc(src.path||"")+'" placeholder="e.g. data.count" oninput="scSrcWebhookPath(this.value)"></div>';
+    h+='<div class="sc-sheettest"><button type="button" class="sc-btn ghost" onclick="scSrcWebhookTest()">Test read</button><button type="button" class="sc-btn ghost" onclick="scSrcWebhookPath(\'__count\')">Use event count</button><span class="sc-sheetprev" id="sc-wh-prev">'+(_wc2.error?('<span class="sc-err">'+mtEsc(_wc2.error)+'</span>'):((_wc2.value!=null&&_wc2.value!=="")?('Live value: <b>'+mtEsc(String(_wc2.value))+'</b>'):'Not tested yet'))+'</span></div>';
+    h+='<div class="sc-sheethelp">One-time setup: deploy the <b>/api/webhook</b> receiver (see README) with your inbox bin + key. Each incoming event is stored; this reads the latest event for the tag and shows the field you name (leave Field blank or use <b>event count</b>).</div>';
+    h+='</div>';
+  }
   h+='</div>';
   return h;
 }
@@ -14492,6 +14553,7 @@ function scSrcType(t){
   else if(t==="sheet"){ scDlg.draft.source={type:"sheet", url:prev.url||"", cell:prev.cell||"B2", cache:prev.cache||null}; }
   else if(t==="okr"){ var _cs=(typeof OKRS!=="undefined"&&OKRS.cycles)?OKRS.cycles:[]; if(!_cs.length) return; var _c0=_cs[0]; scDlg.draft.source={type:"okr", cycle:_c0.key, obj:(_c0.objectives&&_c0.objectives[0])?_c0.objectives[0].id:""}; }
   else if(t==="service"){ var _ss=(typeof CSM_ALL!=="undefined"&&CSM_ALL&&CSM_ALL.services)?CSM_ALL.services:[]; if(!_ss.length) return; scDlg.draft.source={type:"service", serviceId:_ss[0].id, metric:"open"}; }
+  else if(t==="webhook"){ scDlg.draft.source={type:"webhook", tag:(prev.tag||"default"), path:(prev.path||""), cache:prev.cache||null}; }
   else { scDlg.draft.source={type:"manual"}; }
   scDlgRerenderSource();
 }
@@ -14553,7 +14615,7 @@ function scSaveKpi(){
   d.status=$("sc-f-status").value||"";
   d.previous=($("sc-f-prev").value||"").trim();
   d.notes=($("sc-f-notes").value||"").trim();
-  if(!(d.source && (d.source.type==="board"||d.source.type==="sheet"||d.source.type==="okr"||d.source.type==="service"))){ d.source={type:"manual"}; d.current=($("sc-f-current").value||"").trim(); }
+  if(!(d.source && (d.source.type==="board"||d.source.type==="sheet"||d.source.type==="okr"||d.source.type==="service"||d.source.type==="webhook"))){ d.source={type:"manual"}; d.current=($("sc-f-current").value||"").trim(); }
   if(scDlg.id){ var idx=-1; for(var j=0;j<f.kpis.length;j++){ if(f.kpis[j].id===scDlg.id){ idx=j; break; } } if(idx>=0) f.kpis[idx]=d; }
   else { d.id="kpi-"+Math.random().toString(36).slice(2,9); f.kpis.push(d); }
   SCORECARD = normalizeScorecard(SCORECARD);
@@ -14696,7 +14758,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v15 (KPI\u2190OKR/Service) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v16 (webhooks) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
