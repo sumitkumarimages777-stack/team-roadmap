@@ -24,8 +24,8 @@
    so keep the site URL within your team and set EDIT_PASSCODE.
    ============================================================ */
 const JSONBIN_CONFIG = {
-  binId: "6a49401cda38895dfe2e012c",
-  apiKey: "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.",
+  binId: "6a84587af5f4af5e29245943",
+  apiKey: "$2a$10$FUZ/lYTx1eezwmitO71Lf.cRqpiNXay.PYkQyX4RPUXL1PiDDX07S",
 };
 // EDIT_PASSCODE / LEADER_PASSCODE are RETIRED — access is by role now (see the AUTH section).
 // Kept as empty strings so any leftover reference is inert. Safe to delete once confirmed unused.
@@ -2990,6 +2990,7 @@ body{margin:0}
         <button class="tool" id="nav-ideas">💡 Student Ideas</button>
         <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
         <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
+        <button class="tool" id="compact-btn" title="Shrink the saved record to get under the storage size limit — removes never-edited default Scorecard copies (rebuilt from the app). Your edits are kept.">🗜 Compact</button>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none">
         <button class="tool" id="refresh-btn" title="Fetch the latest changes made by teammates">⟳ Refresh</button>
     </div>
@@ -4263,6 +4264,20 @@ function saveContent(){ CONTENT.updated = todayStr(); syncContentSpaces(); rende
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
 function saveRmaps(){ renderAll(); pushAll(); }
+function scStripIds(o){
+  if(Array.isArray(o)) return o.map(scStripIds);
+  if(o && typeof o==="object"){ var r={}; for(var k in o){ if(k==="id") continue; r[k]=scStripIds(o[k]); } return r; }
+  return o;
+}
+function scScorecardForSave(){
+  try{
+    if(typeof SCORECARD==="undefined" || !SCORECARD) return null;
+    var cur = JSON.stringify(scStripIds(clean(SCORECARD)));
+    var def = JSON.stringify(scStripIds(clean(normalizeScorecard(null))));
+    if(cur===def) return null;      // pristine default template -> don't store ~21KB; rebuilt from code on load
+  }catch(e){}
+  return clean(SCORECARD);
+}
 function teamPayload(){
   return { name: (TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"),
     roadmap: clean(DATA), okrs: clean(OKRS), content: clean(CONTENT),
@@ -4275,7 +4290,7 @@ function teamPayload(){
     ownership: (typeof TEAMOWN!=="undefined") ? clean(TEAMOWN) : null,
     perf: (typeof TEAMPERF!=="undefined") ? clean(TEAMPERF) : null,
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
-    scorecard: clean(SCORECARD),
+    scorecard: scScorecardForSave(),
     csm: csmPayload(),
     bugsDefaultBoard: BUGS_DEFAULT_BOARD };
 }
@@ -14620,7 +14635,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v9 (multi-service) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v11 (new bin) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -15597,20 +15612,13 @@ $("refresh-btn").onclick = ()=> refresh(true);
 
 /* ---------- backup (export / import) ---------- */
 $("backup-btn").onclick = ()=>{
-  const payload = {
+  const payload = Object.assign({
     app: "team-roadmap-backup",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
-    roadmap: clean(DATA),
-    okrs: clean(OKRS),
-    content: clean(CONTENT),
-    teamIdeas: clean(TIDEAS),
-    dev: clean(DEV),
-    rmaps: clean(RMAPS),
-    cspaces: clean(CSPACES),
-    bugs: { tickets: clean(teamBugs()) },
     team: TEAM,
-  };
+    bugs: { tickets: clean(teamBugs()) },
+  }, teamPayload());
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -15622,6 +15630,27 @@ $("backup-btn").onclick = ()=>{
   toast("Backup downloaded — keep it somewhere safe");
 };
 
+async function compactStorage(){
+  if(!db){ toast("Not connected to storage — can't compact"); return; }
+  if(typeof confirm==="function" && !confirm("Shrink the saved data record?\n\nThis removes copies of the default Scorecard template that were never edited (they're rebuilt from the app automatically). All your real edits are kept. This can get you back under the 100KB storage limit.")) return;
+  try{
+    var rec = migrateRecord(await fetchAll());
+    var def = JSON.stringify(scStripIds(clean(normalizeScorecard(null))));
+    var before = JSON.stringify(rec).length, trimmed=0;
+    Object.keys(rec.teams||{}).forEach(function(slug){
+      var t=rec.teams[slug];
+      if(t && t.scorecard){ try{ if(JSON.stringify(scStripIds(t.scorecard))===def){ t.scorecard=null; trimmed++; } }catch(e){} }
+    });
+    var after = JSON.stringify(rec).length;
+    await putRecord(rec);
+    lastRecord = rec; if(rec.teams && rec.teams[TEAM]) lastSnapshot = JSON.stringify(rec.teams[TEAM]);
+    try{ $("banner").classList.add("hidden"); }catch(_){ }
+    toast("Compacted "+trimmed+" team(s): "+Math.round(before/1024)+"KB \u2192 "+Math.round(after/1024)+"KB. Saving should work now — try editing something.");
+  }catch(e){
+    if(typeof showBanner==="function") showBanner("Compact couldn't save ("+e.message+"). If it still says over 100KB, the remaining data is too big for the free tier — tell Claude and we'll split storage per-team.");
+  }
+}
+if($("compact-btn")) $("compact-btn").onclick = compactStorage;
 $("import-btn").onclick = ()=>{
   if(!editMode){ toast("Turn on Edit first — importing replaces all data"); return; }
   $("import-file").click();
@@ -15642,17 +15671,12 @@ $("import-file").addEventListener("change", async e=>{
   if(rec.teamIdeas) parts.push((rec.teamIdeas.items||[]).length+" idea(s)");
   if(rec.dev) parts.push((rec.dev.cards||[]).length+" dev card(s)");
   if(rec.bugs) parts.push((rec.bugs.tickets||[]).length+" bug ticket(s)");
+  if(rec.scorecard) parts.push(((rec.scorecard.funcs||[]).length)+" scorecard function(s)");
+  if(rec.csm){ var _svcN = Array.isArray(rec.csm.services)?rec.csm.services.length:(rec.csm.name?1:0); if(_svcN) parts.push(_svcN+" customer-service space(s)"); }
   const when = rec.exportedAt ? "\nBackup taken: "+new Date(rec.exportedAt).toLocaleString() : "";
   if(!confirm("Restore this backup? It will REPLACE the current data for the whole team.\n\nContains: "+parts.join(", ")+when+"\n\nTip: click Backup first if you want a copy of what's there now.")) return;
-  DATA = normalize(rec.roadmap);
-  OKRS = normalizeOkrs(rec.okrs || clean(DEFAULT_OKRS));
-  CONTENT = normalizeContent(rec.content || clean(DEFAULT_CONTENT));
-  TIDEAS = normalizeTeamIdeas(rec.teamIdeas || clean(DEFAULT_TEAM_IDEAS));
-  DEV = normalizeDev(rec.dev || clean(DEFAULT_DEV));
-  RMAPS = normalizeRmaps(rec.rmaps);
-  CSPACES = normalizeCspaces(rec.cspaces);
-  syncContentSpaces();
-  syncModuleSpaces();
+  loadTeamData(rec);
+  try{ syncContentSpaces(); syncModuleSpaces(); }catch(_){ }
   DATA.updated = todayStr();
   activeModule = "all"; activeSection = "all"; activeCycle = null; devSprint = null; activeRmap = null; collapsed.clear();
   renderAll();
