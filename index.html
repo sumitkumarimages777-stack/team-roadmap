@@ -2740,6 +2740,8 @@ body{margin:0}
 .sc-dpick-gl{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8993a4;font-weight:700;margin-bottom:6px}
 .sc-dpick-i{display:flex;align-items:center;gap:9px;padding:6px 4px;font-size:13.5px;color:#172b4d;cursor:pointer;border-radius:6px}
 .sc-dpick-i:hover{background:#f7f8fa}
+
+.sc-krowf{display:inline-block;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:#8993a4;font-weight:700;background:#f1f2f4;border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle}
 </style>
 <style id="csm-css">
 #csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
@@ -14210,14 +14212,40 @@ function scDashById(id){ return (SCORECARD.dashboards||[]).filter(function(d){re
 function scNewDashboard(){ var nm=(typeof prompt==="function")?prompt("Name this dashboard","New dashboard"):"New dashboard"; if(nm===null) return; nm=(nm||"").trim()||"New dashboard"; SCORECARD.dashboards=SCORECARD.dashboards||[]; var d={id:"dash-"+Math.random().toString(36).slice(2,8), name:nm, kpis:[]}; SCORECARD.dashboards.push(d); scView="dash:"+d.id; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Dashboard created \u2014 add KPIs to it"); }
 function scRenameDashboard(id){ var d=scDashById(id); if(!d) return; var nm=(typeof prompt==="function")?prompt("Rename dashboard", d.name):d.name; if(nm===null) return; d.name=(nm||"").trim()||d.name; renderScorecard(); if(typeof pushAll==="function") pushAll(); }
 function scDelDashboard(id){ if(typeof confirm==="function" && !confirm("Delete this dashboard? (The KPIs themselves are not deleted.)")) return; SCORECARD.dashboards=(SCORECARD.dashboards||[]).filter(function(d){return d.id!==id;}); scView="overview"; renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Dashboard deleted"); }
+function scKpiRowHTML(k, f, admin, showFunc, dashId){
+  var cur = scCurrent(k);
+  var connected = k.source && (k.source.type==="board"||k.source.type==="sheet"||k.source.type==="okr"||k.source.type==="service"||k.source.type==="webhook");
+  var r='<tr>';
+  r += '<td><div class="sc-kname"'+(k.why?' title="'+mtEsc(k.why)+'"':'')+'>'+((showFunc&&f)?'<span class="sc-krowf">'+mtEsc(f.name)+'</span> ':'')+mtEsc(k.name)+'</div>'+(k.measures?'<div class="sc-kmeas">'+mtEsc(k.measures)+'</div>':'')+'</td>';
+  r += '<td>'+scTypeBadge(k.type)+'</td>';
+  r += '<td>'+(k.owner?mtEsc(scOwnerName(k.owner)):'<span class="sc-prev">\u2014</span>')+'</td>';
+  r += '<td class="sc-tgt">'+(k.target?mtEsc(k.target):'\u2014')+'</td>';
+  r += '<td><span class="sc-cad">'+mtEsc(k.cadence)+'</span></td>';
+  if(connected){ r += '<td>'+scConnectedCellHTML(k, f.key, cur, admin)+'</td>'; }
+  else if(admin){ r += '<td><div class="sc-curwrap"><input class="sc-inp sc-val" value="'+mtEsc(cur)+'" placeholder="\u2014" onchange="scSetCurrent(\''+f.key+'\',\''+k.id+'\',this.value)">'+scTrend(cur,k.previous)+'</div></td>'; }
+  else { r += '<td><span class="sc-cur">'+(cur!==""?mtEsc(cur):'\u2014')+'</span>'+scTrend(cur,k.previous)+'</td>'; }
+  if(admin){
+    r += '<td>'+scStatusCtl(f.key,k)+'</td>';
+    r += '<td><input class="sc-inp sc-note" value="'+mtEsc(k.notes||"")+'" placeholder="Add a note\u2026" onchange="scSetNote(\''+f.key+'\',\''+k.id+'\',this.value)"></td>';
+    var act='<button class="sc-kbtn" title="Edit / connect a source" onclick="scOpenKpi(\''+f.key+'\',\''+k.id+'\')">\u270e</button>';
+    if(dashId){ act+='<button class="sc-kbtn" title="Remove from this dashboard" onclick="scRemoveFromDash(\''+dashId+'\',\''+f.key+'\',\''+k.id+'\')">\u2296</button>'; }
+    else { act+='<button class="sc-kbtn" title="Delete" onclick="scDelKpi(\''+f.key+'\',\''+k.id+'\')">\u00d7</button>'; }
+    r += '<td><div class="sc-kact">'+act+'</div></td>';
+  } else {
+    r += '<td><span class="sc-pill '+(k.status||"none")+'">'+scStatLabel(k.status)+'</span></td>';
+    r += '<td class="sc-notes">'+(k.notes?mtEsc(k.notes):'')+'</td>';
+  }
+  return r+'</tr>';
+}
+function scRemoveFromDash(dashId, fkey, kid){ var d=scDashById(dashId); if(!d) return; d.kpis=(d.kpis||[]).filter(function(r){ return !(r.fkey===fkey && r.kid===kid); }); renderScorecard(); if(typeof pushAll==="function") pushAll(); if(typeof toast==="function") toast("Removed from dashboard"); }
 function scDashboardHTML(d, admin){
-  var refs=(d.kpis||[]).map(function(r){ return {ref:r, k:scFindKpi(r.fkey,r.kid), f:scFuncByKey(r.fkey)}; }).filter(function(x){ return x.k; });
-  if(!refs.length){ return '<div class="sc-card"><div class="sc-empty"><b>No KPIs on this dashboard yet</b>'+(admin?'Click <b>Edit KPIs</b> above to choose which KPIs appear here.':'Ask an admin to add KPIs.')+'</div></div>'; }
-  var cards=refs.map(function(x){
-    var cur=scCurrent(x.k); var st=x.k.status||"";
-    return '<div class="sc-dcard"><div class="sc-dcard-f">'+mtEsc(x.f?x.f.name:"")+'</div><div class="sc-dcard-n">'+mtEsc(x.k.name)+'</div><div class="sc-dcard-v">'+(cur!==""?mtEsc(cur):"\u2014")+'</div><div class="sc-dcard-b"><span class="sc-dcard-t">'+(x.k.target?("target "+mtEsc(x.k.target)):"")+'</span><span class="sc-dstat sc-st-'+(st||"none")+'">'+mtEsc(scStatLabel(st))+'</span></div></div>';
-  }).join("");
-  return '<div class="sc-dgrid">'+cards+'</div>';
+  var refs=(d.kpis||[]).map(function(r){ return {k:scFindKpi(r.fkey,r.kid), f:scFuncByKey(r.fkey)}; }).filter(function(x){ return x.k && x.f; });
+  var card='<div class="sc-card"><table class="sc-table"><thead><tr><th>KPI</th><th>Type</th><th>Owner</th><th>Target</th><th>Cadence</th><th>Current</th><th>Status</th><th>Note / next action</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>';
+  if(!refs.length){ card+='<tr><td colspan="'+(admin?9:8)+'" class="sc-empty" style="text-align:left;padding:20px 14px">No KPIs on this dashboard yet.'+(admin?' Click <b>Edit KPIs</b> above to add some.':'')+'</td></tr>'; }
+  refs.forEach(function(x){ card += scKpiRowHTML(x.k, x.f, admin, true, d.id); });
+  card+='</tbody></table>';
+  if(admin){ card+='<div class="sc-addk" onclick="scEditDashKpis(\''+d.id+'\')">\uff0b Add KPIs to this dashboard</div>'; }
+  return card+'</div>';
 }
 function scEditDashKpis(id){
   var d=scDashById(id); if(!d) return;
@@ -14826,7 +14854,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v17 (custom dashboards) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v18 (interactive dashboards) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
