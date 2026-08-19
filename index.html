@@ -10403,13 +10403,15 @@ function openConvertModule(mod){
 }
 function openIdeaDialog(cs, idea, presetStage){
   openDialog(idea ? "Edit idea" : "New idea", idea || {}, v=>{
-    if(idea){ idea.title = v.title; idea.note = v.note || ""; }
+    if(idea){ idea.title = v.title; idea.note = v.note || ""; if(v.photos && v.photos.length) idea.photos = v.photos; else delete idea.photos; }
     else{
-      cs.ideas.push({ id:"idea-"+Date.now().toString(36), title:v.title, note:v.note||"",
-        stage: presetStage || "later", state:"Pending" });
+      var _ni={ id:"idea-"+Date.now().toString(36), title:v.title, note:v.note||"",
+        stage: presetStage || "later", state:"Pending" };
+      if(v.photos && v.photos.length) _ni.photos = v.photos;
+      cs.ideas.push(_ni);
     }
     saveDisc();
-  });
+  }, {photos:true});
 }
 function discIdeaActs(cs, idea){
   const acts = document.createElement("div");
@@ -11274,6 +11276,7 @@ function discIdeasPane(cs){
     t.onclick = ()=> openIdeaDialog(cs, idea);
     cSum.appendChild(t);
     if(idea.note){ const n = document.createElement("div"); n.className = "dt-note"; n.textContent = idea.note; cSum.appendChild(n); }
+    const _ips = photoStrip(idea.photos); if(_ips) cSum.appendChild(_ips);
     const cCmt = document.createElement("div");
     cCmt.className = "dt-cell dt-c";
     cCmt.appendChild(commentChip(idea, saveDisc));
@@ -11344,6 +11347,7 @@ function discRoadmapPane(cs){
       card.appendChild(t);
       if(idea.note && cs.type!=="social"){ const n = document.createElement("div"); n.className = "kn"; n.textContent = idea.note; card.appendChild(n); }
       if(idea.note && cs.type==="social") card.title = idea.note;   // keep it available on hover
+      const _kps = photoStrip(idea.photos); if(_kps) card.appendChild(_kps);
       const meta = document.createElement("div"); meta.className = "kcard-meta disc-meta";
       meta.appendChild(discThemeChip(idea, cs));
       if(cs.type!=="social") meta.appendChild(discStateChip(idea));
@@ -14980,7 +14984,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v19 (performance reviews) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v20 (idea screenshots) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
