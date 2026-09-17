@@ -47,6 +47,11 @@ const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
    3. Put the same ID into report-bug.html (the student form) too */
 const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
 
+/* Hide top-nav modules from the team while they\u2019re still being built.
+   Remove a key from this array to switch that module back on for everyone.
+   Valid keys: "okrs","product","team","docs","scorecard","service"          */
+const HIDE_NAV = ["docs","scorecard","service"];
+
 /* ================================================================
    MULTI-TEAM: every team (Dubuddy, DYNG, ...) gets the same abstract
    workspace — its own roadmap, dev boards, bugs, content, OKRs,
@@ -4220,7 +4225,13 @@ function objPct(ob){
 }
 function scoreClass(p){ return p<30 ? "score-low" : p<70 ? "score-mid" : "score-high"; }
 function scoreColor(p){ return p<30 ? "var(--blocked)" : p<70 ? "var(--progress)" : "var(--done)"; }
-function clean(d){ return JSON.parse(JSON.stringify(d)); }
+function clean(d){
+  try{ return JSON.parse(JSON.stringify(d)); }
+  catch(e){
+    try{ var _s=new WeakSet(); return JSON.parse(JSON.stringify(d,function(k,v){ if(v&&typeof v==="object"){ if(_s.has(v)) return undefined; _s.add(v);} return v; })); }
+    catch(_){ return Array.isArray(d)?[]:(d&&typeof d==="object"?{}:d); }
+  }
+}
 function todayStr(){ return new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}); }
 function fmt(n){ n = Number(n)||0; return Number.isInteger(n) ? n : +n.toFixed(2); }
 
@@ -4298,9 +4309,11 @@ function saveContent(){ CONTENT.updated = todayStr(); syncContentSpaces(); rende
 function saveTeamIdeas(){ TIDEAS.updated = todayStr(); renderAll(); pushAll(); }
 function saveDev(){ DEV.updated = todayStr(); syncLinkedBugs(); renderAll(); pushAll(); }
 function saveRmaps(){ renderAll(); pushAll(); }
-function scStripIds(o){
-  if(Array.isArray(o)) return o.map(scStripIds);
-  if(o && typeof o==="object"){ var r={}; for(var k in o){ if(k==="id") continue; r[k]=scStripIds(o[k]); } return r; }
+function scStripIds(o, _seen){
+  _seen = _seen || new WeakSet();
+  if(o && typeof o==="object"){ if(_seen.has(o)) return Array.isArray(o)?[]:{}; _seen.add(o); }
+  if(Array.isArray(o)) return o.map(function(x){ return scStripIds(x,_seen); });
+  if(o && typeof o==="object"){ var r={}; for(var k in o){ if(k==="id") continue; r[k]=scStripIds(o[k],_seen); } return r; }
   return o;
 }
 function scScorecardForSave(){
@@ -4405,7 +4418,8 @@ let docTplEditId = null;
 let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
-  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: JSON.stringify(rec) });
+  var _body; try{ _body=JSON.stringify(rec); }catch(e){ var _s=new WeakSet(); _body=JSON.stringify(rec,function(k,v){ if(v&&typeof v==="object"){ if(_s.has(v)) return undefined; _s.add(v);} return v; }); }
+  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: _body });
   if(!r.ok) throw new Error("HTTP "+r.status);
   lastRecord = rec;
   TEAMS = teamsIndex(rec);
@@ -11584,6 +11598,10 @@ function renderAll(){
       acc.querySelector("span:last-child").textContent = (userDisplayName(u)||"").split(" ")[0] || "Account";
     } else { acc.style.display = "none"; }
   }
+  try{
+    var _navMap={ workspace:"nav-a", okrs:"nav-b", product:"nav-c", team:"nav-d", docs:"nav-e", scorecard:"nav-f", service:"nav-g" };
+    if(typeof HIDE_NAV!=="undefined" && HIDE_NAV.forEach){ HIDE_NAV.forEach(function(kk){ var _el=$(_navMap[kk]); if(_el) _el.style.display="none"; }); }
+  }catch(_){ }
   renderCompanyVision();
   if($("space-crumb")) $("space-crumb").textContent = view==="okr" ? "OKRs" : view==="admin" ? "Administration" : "Workspace";
   if($("vision-toggle")) $("vision-toggle").style.display = (DATA.companyVision || editMode) ? "" : "none";
@@ -14988,7 +15006,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v21 (banner auto-clear) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v22 (save crash fix + focused nav) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
