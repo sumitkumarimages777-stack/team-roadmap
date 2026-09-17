@@ -3022,7 +3022,7 @@ body{margin:0}
       <div class="mods" id="mods"></div>
       <div id="edu-switch"></div>
     </div>
-    <div class="rail-foot" id="rail-foot">
+    <div class="rail-foot" id="rail-foot" style="display:none">
       <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
@@ -3122,6 +3122,7 @@ body{margin:0}
         <div class="acct-av" id="acct-av"></div>
         <div><div class="acct-name" id="acct-name"></div><div class="acct-email" id="acct-email"></div></div>
       </div>
+      <button class="acct-item" id="acct-teams">⌂ Switch team</button>
       <button class="acct-item" id="acct-profile">👤 My profile</button>
       <button class="acct-item" id="acct-password">🔑 Change password</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
@@ -5335,6 +5336,17 @@ function noteRecent(){
   _lastRecentKey = ref.key;
   RECENT = [ref.key].concat(RECENT.filter(x=>x!==ref.key));
   saveRecent();
+}
+/* Sidebar order is STABLE — items stay where they are so the panel never shuffles
+   under your cursor. The active item is only pulled in if it sits past the visible
+   cap, and even then it takes the last slot instead of jumping to the top.        */
+function stableSidebar(items, isActive, cap){
+  var list = items.slice();
+  if(list.length <= cap) return list;
+  var shown = list.slice(0, cap);
+  var act = -1; for(var i=0;i<list.length;i++){ if(isActive(list[i])){ act=i; break; } }
+  if(act >= cap) shown[cap-1] = list[act];
+  return shown;
 }
 function rankByRecent(items, keyFn){
   const rank = k => { const i = RECENT.indexOf(k); return i<0 ? 1e9 : i; };
@@ -11636,9 +11648,8 @@ function renderAll(){
     rl.className = "ws-label"; rl.textContent = "Roadmaps";
     ws.appendChild(rl);
     const _allRm = RMAPS.maps.filter(m=>canViewSpace(rmapRef(m)));
-    let _rmList = rankByRecent(_allRm, m=>"rm:"+m.id);
-    if(view==="rmap" && activeRmap){ const _a=_allRm.find(m=>m.id===activeRmap); if(_a) _rmList=[_a].concat(_rmList.filter(m=>m.id!==_a.id)); }
-    const _shownRm = _rmList.slice(0, SIDEBAR_CAP);
+    const _shownRm = stableSidebar(_allRm, m=>(view==="rmap" && activeRmap===m.id), SIDEBAR_CAP);
+    const _rmList = _allRm;
     _shownRm.forEach(m=>{
       if(!canViewSpace(rmapRef(m))) return;   // private roadmaps hidden from non-members
       const b = document.createElement("button");
@@ -11707,10 +11718,7 @@ function renderAll(){
       });
       /* custom spaces created from templates */
       const _allCs = CSPACES.list.filter(cs=>canViewSpace(csRef(cs)));
-      let _csList = rankByRecent(_allCs, cs=>"cs:"+cs.id);
-      const _actCs = _allCs.find(cs=>csIsActive(cs));
-      if(_actCs) _csList=[_actCs].concat(_csList.filter(cs=>cs.id!==_actCs.id));
-      const _shownCs = _csList.slice(0, SIDEBAR_CAP);
+      const _shownCs = stableSidebar(_allCs, cs=>csIsActive(cs), SIDEBAR_CAP);
       _shownCs.forEach(cs=>{
         if(!canViewSpace(csRef(cs))) return;   // private spaces hidden from non-members
         const active = csIsActive(cs);
@@ -15023,7 +15031,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v24 (focused nav) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v26 (clean rail) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16103,6 +16111,7 @@ function openAccount(){
   $("acct-admin").style.display = canManagePeople() ? "" : "none";
   $("account-overlay").classList.add("show");
 }
+$("acct-teams") && ($("acct-teams").onclick = ()=>{ $("account-overlay").classList.remove("show"); location.href = location.pathname; });
 $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").classList.remove("show"); openProfile(); });
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
