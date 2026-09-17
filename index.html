@@ -2763,6 +2763,15 @@ body{margin:0}
 .sc-pk-ro{background:#f7f8fa;border-radius:8px;padding:10px 12px;font-size:13.5px;color:#172b4d;white-space:pre-wrap}
 .sc-pk-promo{display:flex;align-items:center;gap:8px;font-size:13.5px;color:#172b4d}
 .sc-pk-promoyes{background:#fff7d6;border:1px solid #f5e6a3;border-radius:8px;padding:8px 12px;font-size:13px;color:#7a5a00}
+
+.okr-imp{margin-left:10px}
+.okrimp-sample{background:#f7f8fa;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;white-space:pre;overflow:auto;margin:0 0 10px;color:#42526e}
+.okrimp-prev{margin-top:12px;font-size:13px}
+.okrimp-err{background:#ffece8;border:1px solid #ffbdad;border-radius:8px;padding:9px 12px;color:#c9372c;margin-bottom:10px;line-height:1.5}
+.okrimp-ok{background:#e3fcef;border:1px solid #abf5d1;border-radius:8px;padding:9px 12px;color:#216e4e;margin-bottom:10px}
+.okrimp-tree{border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:220px;overflow:auto;line-height:1.9;font-size:12.5px}
+.okrimp-lv{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8993a4;background:#f1f2f4;border-radius:4px;padding:1px 6px;margin-left:4px}
+.okrimp-kr{font-size:10.5px;color:#5e6c84;margin-left:4px}
 </style>
 <style id="csm-css">
 #csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
@@ -3089,7 +3098,6 @@ body{margin:0}
       </section>
     </div>
     <footer id="foot">
-      Turn on <b>Edit</b> to add or change anything. Roadmap: click status pills to cycle progress. OKRs: use “Update” on a key result to log the latest number.
     </footer>
   </main>
 </div>
@@ -3110,6 +3118,32 @@ body{margin:0}
     <div class="btns">
       <button class="btn" onclick="document.getElementById('rmp-overlay').classList.remove('show')">Cancel</button>
       <button class="btn save" id="rmp-add">Add items</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="okrimp-overlay" style="z-index:430">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:720px">
+    <h3>Import OKRs into <span id="okrimp-cycle"></span></h3>
+    <div class="dlg-body">
+      <div class="hint" style="margin-bottom:10px">
+        Paste an outline — <b>indentation makes the tree</b>. Lines starting with <b>-</b> are key results.<br>
+        Optional on an objective: <b>[Level]</b> and <b>@owner-email</b>. Key result format: <b>- Title: 30/100 %</b>
+      </div>
+      <pre class="okrimp-sample">Get Ready for CUET UG 2027 [Company] @mannat@dubuddy.in
+  - Papers solved: 80/100 %
+  - Reported questions fixed: 100/100 %
+  Optimise the admin panel [Department]
+    - Screens shipped: 3/12
+    Ship the AI verification flow [Team]
+      - Accuracy: 0/95 %</pre>
+      <textarea id="okrimp-text" rows="10" placeholder="Paste your OKR outline here…" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px"></textarea>
+      <div id="okrimp-prev" class="okrimp-prev"></div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn ghost" onclick="document.getElementById('okrimp-overlay').classList.remove('show')">Cancel</button>
+      <button class="btn ghost" onclick="okrImportPreview()">Preview</button>
+      <button class="btn" id="okrimp-go" onclick="okrImportApply()" disabled>Import</button>
     </div>
   </div>
 </div>
@@ -3443,7 +3477,7 @@ let DATA = null, OKRS = null, CONTENT = null, TIDEAS = null, DEV = null, BUGS = 
 const KCOLS = [ {key:"todo",label:"To Do"}, {key:"progress",label:"In Progress"}, {key:"review",label:"In Review"}, {key:"done",label:"Done"} ];
 const OKR_LEVELS = [ {key:"company",label:"Company"}, {key:"department",label:"Department"}, {key:"team",label:"Team"}, {key:"subteam",label:"Sub-team"}, {key:"individual",label:"Individual"} ];
 let okrFilter = null;   // null = all levels; else a level key to focus
-let okrView2 = "list";   // "list" | "tree"
+let okrView2 = "board";   // "board" | "tree"  (List view retired)
 let okrBoardMine = false;   // filter every OKR view to the ones I own (objective or key result)
 let okrTreeExpanded = {};
 let okrPermId = null;
@@ -3748,7 +3782,7 @@ function csOkrUnlink(){
 function csOkrGoto(cs){
   const link = csOkrResolve(cs);
   if(!link){ toast("That objective no longer exists"); return; }
-  view = "okr"; activeCycle = link.cyc.key; okrView2 = "list";
+  view = "okr"; activeCycle = link.cyc.key; if(okrView2!=="tree") okrView2 = "board";
   renderAll();
   setTimeout(()=>{ const el = document.getElementById("obj-"+link.ob.id); if(el && el.scrollIntoView) el.scrollIntoView({block:"center"}); }, 60);
 }
@@ -4316,6 +4350,98 @@ function syncModuleSpaces(){
   CSPACES.list = CSPACES.list.filter(x=> x.type!=="module" || (DATA.modules||[]).some(mod=>mod.key===x.moduleKey));
 }
 function saveRoadmap(){ DATA.updated = todayStr(); syncModuleSpaces(); renderAll(); pushAll(); }
+
+/* ---------- Bulk OKR import -------------------------------------------------
+   Paste an indented outline. Indentation = depth, so a child objective aligns to
+   the objective above it. Lines starting with "-" are key results.
+   Example:
+     Get Ready for CUET UG 2027 [Company] @mannat@dubuddy.in
+       - Papers solved: 80/100 %
+       Optimise the admin panel [Department]
+         - Screens shipped: 3/12
+*/
+function okrParseOutline(text, cyc){
+  var lines = String(text||"").replace(/\t/g, "  ").split(/\r?\n/);
+  var objs = [], errors = [], stack = [], made = 0, krs = 0;
+  var levels = (OKRS.levels||["Company","Department","Team","Sub-team","Individual"]);
+  var seq = 0;
+  lines.forEach(function(raw, i){
+    if(!raw.trim()) return;
+    var indent = raw.match(/^ */)[0].length;
+    var line = raw.trim();
+    var isKr = /^[-*\u2022]\s*/.test(line);
+    if(isKr){
+      line = line.replace(/^[-*\u2022]\s*/, "");
+      var parent = stack.length ? stack[stack.length-1].ob : null;
+      if(!parent){ errors.push("Line "+(i+1)+": a key result must sit under an objective."); return; }
+      // "title: 30/100 %"  |  "title 30/100"  |  "title"
+      var cur=0, tgt=100, unit="%";
+      var m = line.match(/^(.*?)[:\s]\s*(-?[\d.]+)\s*\/\s*(-?[\d.]+)\s*([^\s]*)\s*$/);
+      var title = line;
+      if(m){ title = m[1].trim().replace(/[:\u2014-]\s*$/,""); cur = parseFloat(m[2]); tgt = parseFloat(m[3]); unit = (m[4]||"").trim(); }
+      if(!title){ errors.push("Line "+(i+1)+": key result has no title."); return; }
+      parent.krs.push({ title:title, current:isNaN(cur)?0:cur, target:isNaN(tgt)?100:tgt, unit:unit, invert:false });
+      krs++;
+      return;
+    }
+    // objective:  Title [Level] @owner
+    var level = "", owner = "";
+    line = line.replace(/@(\S+)\s*$/, function(_,o){ owner=o; return ""; }).trim();
+    line = line.replace(/\[([^\]]+)\]\s*$/, function(_,l){ level=l.trim(); return ""; }).trim();
+    if(!line){ errors.push("Line "+(i+1)+": objective has no title."); return; }
+    var lv = level;
+    if(lv){ var hit = levels.filter(function(x){ return String(x).toLowerCase()===lv.toLowerCase(); })[0]; lv = hit || lv; }
+    var ob = { id:"ob-"+cyc.key+"-imp"+(Date.now().toString(36))+(seq++), title:line, krs:[], level: lv || (stack.length?"Team":"Company") };
+    if(owner){ ob.owners=[owner]; ob.assignee=owner; }
+    // find the parent by indentation
+    while(stack.length && indent <= stack[stack.length-1].indent) stack.pop();
+    if(stack.length) ob.alignsTo = stack[stack.length-1].ob.id;
+    stack.push({indent:indent, ob:ob});
+    objs.push(ob); made++;
+  });
+  return { objectives:objs, errors:errors, count:made, krs:krs };
+}
+function okrOpenImport(){
+  var cyc = OKRS.cycles.find(function(c){ return c.key===activeCycle; });
+  if(!cyc){ toast("Pick or create a cycle first"); return; }
+  var ov = $("okrimp-overlay");
+  $("okrimp-cycle").textContent = cyc.name || cyc.key;
+  $("okrimp-text").value = "";
+  $("okrimp-prev").innerHTML = '<span class="hint">Paste your outline, then press <b>Preview</b>.</span>';
+  $("okrimp-go").disabled = true;
+  ov.classList.add("show");
+}
+function okrImportPreview(){
+  var cyc = OKRS.cycles.find(function(c){ return c.key===activeCycle; });
+  if(!cyc) return;
+  var res = okrParseOutline($("okrimp-text").value, cyc);
+  window.__okrImp = res;
+  var h = "";
+  if(res.errors.length){ h += '<div class="okrimp-err"><b>'+res.errors.length+' problem(s):</b><br>'+res.errors.slice(0,6).map(mtEsc).join("<br>")+'</div>'; }
+  if(!res.count){ h += '<div class="hint">Nothing to import yet.</div>'; $("okrimp-go").disabled = true; }
+  else {
+    h += '<div class="okrimp-ok"><b>'+res.count+'</b> objective(s) and <b>'+res.krs+'</b> key result(s) ready.</div>';
+    var byId = {}; res.objectives.forEach(function(o){ byId[o.id]=o; });
+    h += '<div class="okrimp-tree">' + res.objectives.map(function(o){
+      var d=0, cur=o, g=0; while(cur.alignsTo && byId[cur.alignsTo] && g++<20){ d++; cur=byId[cur.alignsTo]; }
+      return '<div style="padding-left:'+(d*18)+'px">'+(d?"\u21b3 ":"")+mtEsc(o.title)+' <span class="okrimp-lv">'+mtEsc(o.level)+'</span>'+(o.krs.length?' <span class="okrimp-kr">'+o.krs.length+' KR</span>':'')+'</div>';
+    }).join("") + '</div>';
+    $("okrimp-go").disabled = false;
+  }
+  $("okrimp-prev").innerHTML = h;
+}
+function okrImportApply(){
+  var cyc = OKRS.cycles.find(function(c){ return c.key===activeCycle; });
+  var res = window.__okrImp;
+  if(!cyc || !res || !res.count) return;
+  if(!confirm("Add "+res.count+" objective(s) to \u201c"+(cyc.name||cyc.key)+"\u201d?\n\nExisting objectives are kept \u2014 this only adds.")) return;
+  cyc.objectives = (cyc.objectives||[]).concat(res.objectives);
+  OKRS = normalizeOkrs(OKRS);
+  $("okrimp-overlay").classList.remove("show");
+  window.__okrImp = null;
+  saveOkrs();
+  toast("Imported "+res.count+" objective(s)");
+}
 function saveOkrs(){ OKRS.updated = todayStr(); renderAll(); pushAll(); }
 function syncContentSpaces(){
   // Educational Content sections live directly under SPACES — one content-space per section
@@ -8130,7 +8256,15 @@ function renderContentOkr(){
     return;
   }
   var _tg=document.createElement('div'); _tg.className='okr-modetg';
-  [['list','List'],['tree','Org tree'],['board','Board']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
+  if(okrView2!=='tree' && okrView2!=='board') okrView2='board';   // old sessions may still hold "list"
+  [['board','Board'],['tree','Org tree']].forEach(function(m){ var b=document.createElement('button'); b.className='okr-mode'+(okrView2===m[0]?' on':''); b.textContent=m[1]; b.onclick=function(){ okrView2=m[0]; renderAll(); }; _tg.appendChild(b); });
+  var _canImp = (typeof canEditHere==="function") ? canEditHere() : editMode;
+  if(_canImp){
+    var _imp=document.createElement('button'); _imp.className='okr-mode okr-imp'; _imp.textContent='\u2b06 Import OKRs';
+    _imp.title='Paste a whole objective tree (any depth) generated with AI or written by hand';
+    _imp.onclick=function(){ okrOpenImport(); };
+    _tg.appendChild(_imp);
+  }
   wrap.appendChild(_tg);
   var _fbar=document.createElement('div'); _fbar.className='okrb-toolbar';
   var _seg=document.createElement('div'); _seg.className='okrb-filter';
@@ -8144,7 +8278,7 @@ function renderContentOkr(){
   });
   _fbar.appendChild(_seg); wrap.appendChild(_fbar);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
-  if(okrView2==='board'){ renderOkrBoard(cyc, wrap); return; }
+  renderOkrBoard(cyc, wrap); return;
   const _scopeL = okrBoardScope(cyc);
   const _listObjs = _scopeL ? cyc.objectives.filter(o=>_scopeL[o.id]) : cyc.objectives;
   const _order=[]; _listObjs.forEach(o=>{ const k=(o.level||"").trim(); if(_order.indexOf(k)<0) _order.push(k); });
@@ -15041,7 +15175,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v28 (save guard) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v31 (OKR import) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16839,7 +16973,29 @@ function toast(msg){
   t._h = setTimeout(()=>t.classList.remove("show"), 3000);
 }
 
-start();
+/* If anything at all goes wrong while booting, say so plainly instead of leaving the
+   person staring at an empty shell with no data and no explanation.                */
+function bootFailed(e){
+  var msg = (e && e.message) ? e.message : String(e||"unknown error");
+  try{ showBanner("\u26a0\ufe0f The app couldn't finish loading (" + msg + "). Your data is safe in the database \u2014 nothing was saved over. Reload the page; if it keeps happening, send this message to Claude."); }catch(_){ }
+  try{ console.error("[BOOT FAILED]", e); }catch(_){ }
+  try{
+    var el = document.getElementById("content");
+    if(el && !el.children.length){
+      el.innerHTML = '<div style="padding:28px;font-family:Inter,system-ui,sans-serif;color:#42526e;max-width:640px">'
+        + '<h2 style="margin:0 0 10px;color:#172b4d">This page didn\u2019t finish loading</h2>'
+        + '<p style="margin:0 0 14px;line-height:1.55">Nothing has been lost \u2014 your team\u2019s data is still in the database. '
+        + 'This screen means the app stopped part-way through starting up.</p>'
+        + '<p style="margin:0 0 16px;line-height:1.55"><b>Details:</b> ' + String(msg).replace(/</g,"&lt;") + '</p>'
+        + '<button onclick="location.reload()" style="background:#3355ff;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer">Reload the page</button>'
+        + '</div>';
+    }
+  }catch(_){ }
+}
+try{
+  var _sp = start();
+  if(_sp && typeof _sp.catch === "function") _sp.catch(bootFailed);
+}catch(e){ bootFailed(e); }
 </script>
 
 <!-- ============ DU BUDDY: STUDENT IDEAS -> PIPELINE ============ -->
