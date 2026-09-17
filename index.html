@@ -50,7 +50,11 @@ const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
 /* Hide top-nav modules from the team while they\u2019re still being built.
    Remove a key from this array to switch that module back on for everyone.
    Valid keys: "okrs","product","team","docs","scorecard","service"          */
-const HIDE_NAV = ["docs","scorecard","service"];
+const HIDE_NAV = ["docs","scorecard","service","product"];
+
+/* My Team tabs to hide. Remove a key to bring that tab back.
+   Valid keys: "org" (Reporting lines), "squads", "matrix", "own" (Ownership), "perf" (Performance) */
+const HIDE_TEAM_TABS = ["squads","matrix","perf"];
 
 /* ================================================================
    MULTI-TEAM: every team (Dubuddy, DYNG, ...) gets the same abstract
@@ -12548,6 +12552,13 @@ function renderTeamPage(){
   ACC_REG={};
   var _pfAdmin=(typeof can==="function")?can("admin"):false;
   if($("mt-view-perf")) $("mt-view-perf").style.display=_pfAdmin?"":"none";
+  try{
+    var _htMap={org:"mt-view-org",squads:"mt-view-squads",matrix:"mt-view-matrix",own:"mt-view-own",perf:"mt-view-perf"};
+    if(typeof HIDE_TEAM_TABS!=="undefined" && HIDE_TEAM_TABS.forEach){
+      HIDE_TEAM_TABS.forEach(function(kk){ var _el=$(_htMap[kk]); if(_el) _el.style.display="none"; });
+      if(HIDE_TEAM_TABS.indexOf(mtView)>=0) mtView="org";
+    }
+  }catch(_){ }
   if($("mt-view-org")) $("mt-view-org").classList.toggle("on", mtView==="org");
   if($("mt-view-squads")) $("mt-view-squads").classList.toggle("on", mtView==="squads");
   if($("mt-view-matrix")) $("mt-view-matrix").classList.toggle("on", mtView==="matrix");
@@ -15012,7 +15023,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v23 (load-loop fix) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v24 (focused nav) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
