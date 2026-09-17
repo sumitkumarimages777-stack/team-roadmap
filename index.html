@@ -4372,8 +4372,7 @@ function loadTeamData(t){
     // keep them visible so nothing disappears.
     // only actual work counts — an empty leftover space must not bring the board back
     var _devUsed  = !!(DEV && ((DEV.cards&&DEV.cards.length) || (DEV.sprints&&DEV.sprints.length)) && (DEV.spaces&&DEV.spaces.length));
-    var _bugsUsed = !!(typeof BUGS!=="undefined" && BUGS && BUGS.tickets && BUGS.tickets.some(function(x){ return x.team===TEAM; }));
-    BUILTIN_HIDDEN = { dev: !_devUsed, bugs: !_bugsUsed };
+    BUILTIN_HIDDEN = { dev: !_devUsed, bugs: true };   // new teams start clean — add Bugs only if wanted
   }
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   SPACE_BG = t.spaceBg || {};
@@ -11580,9 +11579,9 @@ function renderAll(){
     }
     // safety: if tickets exist for this team but Bugs is hidden and no Bugs space
     // can receive them, bring the built-in board back so nothing is stranded.
-    if(BUILTIN_HIDDEN.bugs && !(CSPACES.list||[]).some(x=>x.type==="bugs")){
-      try{ if(typeof teamBugs==="function" && teamBugs().length){ BUILTIN_HIDDEN.bugs = false; } }catch(_){ }
-    }
+    /* Once the built-in Bugs board is hidden, it STAYS hidden — it used to come back
+       whenever tickets existed, which made it impossible to get rid of. Tickets are
+       never lost: bring the board back any time with ＋ Add space → Bugs.          */
     // bounce off a hidden built-in
     // an empty Development board (no dev spaces, no sprints, no cards) is dead weight —
     // treat it as hidden so it can't linger in the sidebar after everything was deleted.
@@ -15031,7 +15030,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v26 (clean rail) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v27 (no default Bugs) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16514,7 +16513,12 @@ function scrumTargetSpaces(){ return (CSPACES.list||[]).filter(x=>x.type==="scru
 function deleteBuiltinBugs(){
   const targets = bugsTargetSpaces();
   if(!targets.length){
-    alert("Create a Bugs space first (＋ Add space \u2192 Bugs), then delete this one to move its tickets there.");
+    var _n = (typeof teamBugs==="function") ? teamBugs().length : 0;
+    if(!confirm("Remove the Bugs board from the sidebar?"+(_n?("\n\nIts "+_n+" ticket(s) are kept, not deleted."):"")+"\n\nYou can bring it back any time with ＋ Add space \u2192 Bugs.")) return;
+    BUILTIN_HIDDEN.bugs = true;
+    if(view==="bugs"){ view = "roadmap"; defaultView(); }
+    pushAll(); renderAll();
+    toast("Bugs board removed");
     return;
   }
   openChoice("Move Bugs into which space?", targets.map(t=>({label:t.name, value:t.id})), targetId=>{
