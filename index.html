@@ -3786,7 +3786,13 @@ function requireLeader(){
 
 let activeModule = "all";
 function firstModuleKey(){ return (DATA.modules && DATA.modules[0] && DATA.modules[0].key) || "all"; }
+let _dvBusy = false;
 function defaultView(){
+  if(_dvBusy){ view = "okr"; activeCspace = null; return; }   // already choosing a view: never recurse into ourselves
+  _dvBusy = true;
+  try{ return _defaultViewImpl(); } finally { _dvBusy = false; }
+}
+function _defaultViewImpl(){
   // entering a team lands on the first module space (Product roadmap container is gone)
   if(DATA.modules && DATA.modules.length){ view = "roadmap"; activeModule = firstModuleKey(); return; }
   // otherwise land on the first real space this team actually has
@@ -11565,7 +11571,7 @@ function renderAll(){
     // an empty Development board (no dev spaces, no sprints, no cards) is dead weight —
     // treat it as hidden so it can't linger in the sidebar after everything was deleted.
     if(!BUILTIN_HIDDEN.dev && devBoardIsEmpty()){ BUILTIN_HIDDEN.dev = true; }
-    if(view==="dev" && BUILTIN_HIDDEN.dev){ view = "roadmap"; defaultView(); }
+    if(view==="dev" && BUILTIN_HIDDEN.dev && !devSpace){ view = "roadmap"; defaultView(); }
     if(view==="bugs" && BUILTIN_HIDDEN.bugs){
       const tb = (CSPACES.list||[]).find(x=>x.id===BUGS_DEFAULT_BOARD && x.type==="bugs") || (CSPACES.list||[]).find(x=>x.type==="bugs");
       if(tb){ view = "cbugs"; activeCspace = tb.id; } else { view = "roadmap"; defaultView(); }
@@ -15006,7 +15012,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v22 (save crash fix + focused nav) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v23 (load-loop fix) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
