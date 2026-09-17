@@ -4246,6 +4246,7 @@ async function pushNow(){
     rec.teams[TEAM] = mine;
     await putRecord(rec);
     lastSnapshot = JSON.stringify(mine);
+    hideBanner();
   }catch(e){ var _sz=0; try{ _sz=Math.round(JSON.stringify(lastRecord||{}).length/1024); }catch(_){ } try{ if(typeof showBanner==="function") showBanner("⚠️ Save FAILED ("+e.message+"). Your data record is ≈"+_sz+" KB. If this shows HTTP 413 or 400, the database is over its size limit — tell Claude this number. Nothing was saved; do not refresh yet."); }catch(_){ } try{ if(typeof console!=="undefined") console.error("[SAVE FAILED]", e && e.message, "record~"+_sz+"KB"); }catch(_){ } toast("⚠️ Save failed — see the red banner at top"); }
   saving = false;
 }
@@ -4515,6 +4516,7 @@ async function start(){
     try{
       const raw = await fetchAll();
       db = true;
+      hideBanner();
       const wasOld = !(raw && raw.teams);
       let rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ await putRecord(rec); }   // one-time migration to the team shape
@@ -4573,6 +4575,7 @@ async function startLanding(err){
     try{
       const raw = await fetchAll();
       db = true;
+      hideBanner();
       const wasOld = !(raw && raw.teams);
       const rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ try{ await putRecord(rec); }catch(_){} }
@@ -4669,6 +4672,7 @@ function createTeamFlow(){
   })();
 }
 function showBanner(msg){ $("banner").textContent = msg; $("banner").classList.remove("hidden"); }
+function hideBanner(){ try{ $("banner").classList.add("hidden"); }catch(_){ } }
 
 /* ---------- filtering (roadmap) ---------- */
 function nodeMatches(node){
@@ -14984,7 +14988,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v20 (idea screenshots) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v21 (banner auto-clear) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
