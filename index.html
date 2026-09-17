@@ -2772,6 +2772,9 @@ body{margin:0}
 .okrimp-tree{border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:220px;overflow:auto;line-height:1.9;font-size:12.5px}
 .okrimp-lv{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8993a4;background:#f1f2f4;border-radius:4px;padding:1px 6px;margin-left:4px}
 .okrimp-kr{font-size:10.5px;color:#5e6c84;margin-left:4px}
+
+.okrb-areas{margin-left:10px;flex-wrap:wrap}
+.okrb-area{display:inline-block;font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:#5e6c84;background:#f1f2f4;border-radius:4px;padding:1px 7px;margin-left:8px;vertical-align:middle}
 </style>
 <style id="csm-css">
 #csm-page{--c-ink:#172b4d;--c-line:#e6e8f0;--c-muted:#626f86;--c-faint:#8993a4;--c-pri:#0c66e4;--c-pri-soft:#e9f2ff;--c-canvas:#f7f8fa;--c-surface:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--c-ink);padding:0;background:var(--c-canvas)}
@@ -3130,7 +3133,7 @@ body{margin:0}
         Paste an outline — <b>indentation makes the tree</b>. Lines starting with <b>-</b> are key results.<br>
         Optional on an objective: <b>[Level]</b> and <b>@owner-email</b>. Key result format: <b>- Title: 30/100 %</b>
       </div>
-      <pre class="okrimp-sample">Get Ready for CUET UG 2027 [Company] @mannat@dubuddy.in
+      <pre class="okrimp-sample">Get Ready for CUET UG 2027 [Company] {Product} @mannat@dubuddy.in
   - Papers solved: 80/100 %
   - Reported questions fixed: 100/100 %
   Optimise the admin panel [Department]
@@ -3425,6 +3428,7 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
     <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"></select></div>
+    <div class="field" id="f-area-wrap"><label for="f-area">Area / function <span class="hint" style="font-weight:400">— e.g. Marketing, Product</span></label><input id="f-area" list="f-area-list" placeholder="Leave blank for none" autocomplete="off"><datalist id="f-area-list"></datalist></div>
     <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
@@ -4388,11 +4392,16 @@ function okrParseOutline(text, cyc){
     var level = "", owner = "";
     line = line.replace(/@(\S+)\s*$/, function(_,o){ owner=o; return ""; }).trim();
     line = line.replace(/\[([^\]]+)\]\s*$/, function(_,l){ level=l.trim(); return ""; }).trim();
+    var area = "";
+    line = line.replace(/\{([^}]+)\}\s*$/, function(_,a){ area=a.trim(); return ""; }).trim();
+    line = line.replace(/\[([^\]]+)\]\s*$/, function(_,l){ if(!level) level=l.trim(); return ""; }).trim();
     if(!line){ errors.push("Line "+(i+1)+": objective has no title."); return; }
     var lv = level;
     if(lv){ var hit = levels.filter(function(x){ return String(x).toLowerCase()===lv.toLowerCase(); })[0]; lv = hit || lv; }
     var ob = { id:"ob-"+cyc.key+"-imp"+(Date.now().toString(36))+(seq++), title:line, krs:[], level: lv || (stack.length?"Team":"Company") };
     if(owner){ ob.owners=[owner]; ob.assignee=owner; }
+    if(area) ob.area = area;
+    else if(stack.length){ var _pa=stack[stack.length-1].ob; if(_pa && _pa.area) ob.area=_pa.area; }   // inherit from the parent
     // find the parent by indentation
     while(stack.length && indent <= stack[stack.length-1].indent) stack.pop();
     if(stack.length) ob.alignsTo = stack[stack.length-1].ob.id;
@@ -5021,6 +5030,11 @@ function openDialog(title, values, onSave, opts={}){
     renderDlgLabels();
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
+  $("f-area-wrap") && ($("f-area-wrap").style.display = opts.level ? "" : "none");
+  if(opts.level && $("f-area")){
+    $("f-area").value = values.area || "";
+    try{ $("f-area-list").innerHTML = okrAreasList().map(function(a){ return '<option value="'+mtEsc(a)+'">'; }).join(""); }catch(_){ }
+  }
   $("f-level-wrap").style.display = opts.level ? "" : "none";
   if(opts.level){
     var _lvsel=$("f-level"); var _lvs=okrLevelsList(); var _cur=values.level||"";
@@ -5162,6 +5176,7 @@ $("dlg-save").onclick = ()=>{
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
     level: $("f-level") ? $("f-level").value : "",
+    area: $("f-area") ? $("f-area").value.trim() : "",
     alignsTo: $("f-alignsto") ? $("f-alignsto").value : "",
     current: $("f-current").value,
     target: $("f-target").value,
@@ -7878,6 +7893,31 @@ function krEl(kr, ob, ki, oi){
   return row;
 }
 
+var okrArea = "";   // "" = every area
+function okrAreasList(){
+  var out=[], seen={};
+  (OKRS.cycles||[]).forEach(function(c){ (c.objectives||[]).forEach(function(o){
+    var a=(o.area||"").trim(); if(a && !seen[a.toLowerCase()]){ seen[a.toLowerCase()]=1; out.push(a); }
+  }); });
+  return out.sort(function(a,b){ return a.localeCompare(b); });
+}
+function okrCycleAreas(cyc){
+  var out=[], seen={};
+  ((cyc&&cyc.objectives)||[]).forEach(function(o){ var a=(o.area||"").trim(); if(a && !seen[a.toLowerCase()]){ seen[a.toLowerCase()]=1; out.push(a); } });
+  return out.sort(function(a,b){ return a.localeCompare(b); });
+}
+/* An objective is in the chosen area if it says so, or if it sits under one that does
+   — so picking "Marketing" keeps that whole branch together.                        */
+function okrInArea(ob, cyc){
+  if(!okrArea) return true;
+  var byId={}; ((cyc&&cyc.objectives)||[]).forEach(function(o){ byId[o.id]=o; });
+  var cur=ob, g=0;
+  while(cur && g++<20){
+    if((cur.area||"").trim().toLowerCase()===okrArea.toLowerCase()) return true;
+    cur = cur.alignsTo ? byId[cur.alignsTo] : null;
+  }
+  return false;
+}
 function okrAlignOptions(cyc, excludeId){
   return (cyc?cyc.objectives:[]).filter(o=>o.id!==excludeId).map(o=>({id:o.id, title:o.title}));
 }
@@ -7913,6 +7953,7 @@ function okrAddOwned(cyc, parentId){
   openDialog("New objective", preset, function(v){
     var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[] }; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
     if(v.note) ob.note=v.note;
+    var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar;
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
     var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
@@ -7933,6 +7974,7 @@ function okrEditNode(ob, cyc){
 }
 
 function renderOkrTree(cyc, wrap){
+  if(okrArea){ var _oc=cyc; cyc = { key:_oc.key, name:_oc.name, objectives:(_oc.objectives||[]).filter(function(o){ return okrInArea(o,_oc); }) }; }
   var _scope = okrBoardScope(cyc);
   var objs = _scope ? cyc.objectives.filter(function(o){ return _scope[o.id]; }) : cyc.objectives;
   if(!objs.length){
@@ -8130,6 +8172,7 @@ function renderOkrBoard(cyc, wrap){
 
   var scope=okrBoardScope(cyc); // null => all
   var vis = scope ? objs.filter(function(o){ return scope[o.id]; }) : objs;
+  if(okrArea) vis = vis.filter(function(o){ return okrInArea(o, cyc); });
 
   var root=document.createElement("div"); root.className="okrb";
   var svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.setAttribute("class","okrb-links"); root.appendChild(svg);
@@ -8143,7 +8186,7 @@ function renderOkrBoard(cyc, wrap){
   var order=used.slice(); if(hasBlank) order.push("");
 
   if(!vis.length){
-    var e=document.createElement("div"); e.className="empty"; e.textContent=(okrBoardMine? "No OKRs owned by you in this cycle." : "No objectives yet.")+((editMode&&!okrBoardMine)?" Add one below.":""); bands.appendChild(e);
+    var e=document.createElement("div"); e.className="empty"; e.textContent= okrArea ? ("Nothing in \u201c"+okrArea+"\u201d for this cycle.") : ((okrBoardMine? "No OKRs owned by you in this cycle." : "No objectives yet.")+((editMode&&!okrBoardMine)?" Add one below.":"")); bands.appendChild(e);
   }
   order.forEach(function(lv){
     var inBand = vis.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
@@ -8180,7 +8223,8 @@ function okrBoardCard(ob, cyc, objs){
   card.appendChild(top);
 
   var meta=document.createElement("div"); meta.className="okrb-meta";
-  meta.innerHTML='<span class="okrb-owner">'+(owners.length?mtEsc(ownerTxt):'<i>unassigned</i>')+(mine?' <span class="okrb-you">· you</span>':'')+'</span>';
+  meta.innerHTML='<span class="okrb-owner">'+(owners.length?mtEsc(ownerTxt):'<i>unassigned</i>')+(mine?' <span class="okrb-you">· you</span>':'')+'</span>'
+    + ((ob.area||"").trim() ? '<span class="okrb-area">'+mtEsc(ob.area.trim())+'</span>' : '');
   card.appendChild(meta);
 
   var barw=document.createElement("div"); barw.className="okrb-barw";
@@ -8276,7 +8320,23 @@ function renderContentOkr(){
     b.onclick=function(){ okrBoardMine=(m[0]==='mine'); renderAll(); };
     _seg.appendChild(b);
   });
-  _fbar.appendChild(_seg); wrap.appendChild(_fbar);
+  _fbar.appendChild(_seg);
+  var _areas = okrCycleAreas(cyc);
+  if(_areas.length){
+    if(okrArea && _areas.filter(function(a){return a.toLowerCase()===okrArea.toLowerCase();}).length===0) okrArea="";
+    var _aseg=document.createElement('div'); _aseg.className='okrb-filter okrb-areas';
+    var _all=document.createElement('button'); _all.className='okrb-fbtn'+(okrArea?'':' on'); _all.textContent='All areas';
+    _all.onclick=function(){ okrArea=""; renderAll(); }; _aseg.appendChild(_all);
+    _areas.forEach(function(a){
+      var b=document.createElement('button');
+      b.className='okrb-fbtn'+(okrArea.toLowerCase()===a.toLowerCase()?' on':'');
+      b.textContent=a; b.title='Only \u201c'+a+'\u201d objectives and everything under them';
+      b.onclick=function(){ okrArea=a; renderAll(); };
+      _aseg.appendChild(b);
+    });
+    _fbar.appendChild(_aseg);
+  }
+  wrap.appendChild(_fbar);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
   renderOkrBoard(cyc, wrap); return;
   const _scopeL = okrBoardScope(cyc);
@@ -8315,7 +8375,7 @@ function renderContentOkr(){
     if(editMode){
       const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
       acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
-        openDialog("Edit objective", (function(){ var _v={}; for(var k in ob){ _v[k]=ob[k]; } _v.owners=okrOwners(ob); return _v; })(), v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; var _ow=Array.isArray(v.owners)?v.owners.slice():[]; if(_ow.length){ ob.owners=_ow; ob.assignee=_ow[0]; } else { delete ob.owners; delete ob.assignee; } saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true})));
+        openDialog("Edit objective", (function(){ var _v={}; for(var k in ob){ _v[k]=ob[k]; } _v.owners=okrOwners(ob); return _v; })(), v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar; else delete ob.area; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; var _ow=Array.isArray(v.owners)?v.owners.slice():[]; if(_ow.length){ ob.owners=_ow; ob.assignee=_ow[0]; } else { delete ob.owners; delete ob.assignee; } saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true})));
       acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
         if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
           cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
@@ -15175,7 +15235,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v31 (OKR import) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v32 (OKR area filter) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
