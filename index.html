@@ -4265,6 +4265,17 @@ async function pushNow(){
     try{ rec = migrateRecord(await fetchAll()); }catch(_){ /* keep lastRecord */ }
     rec.teams = rec.teams || {};
     const mine = teamPayload();
+    // Safety net: if what we're about to write looks like an EMPTY team but the server
+    // copy has real content, something went wrong on this side — refuse rather than wipe.
+    try{
+      const srv = rec.teams[TEAM];
+      const cnt = t => !t ? 0 : ((t.cspaces&&t.cspaces.list||[]).length + (t.content&&t.content.sections||[]).length
+                     + (t.dev&&t.dev.cards||[]).length + (t.okrs&&t.okrs.cycles||[]).length + (t.rmaps&&t.rmaps.maps||[]).length);
+      if(cnt(mine)===0 && cnt(srv)>0){
+        showBanner("\u26a0\ufe0f Save blocked: this page has no team data loaded but the database does. Nothing was overwritten \u2014 refresh the page.");
+        saving = false; return;
+      }
+    }catch(_){ }
     rec.teams[TEAM] = mine;
     await putRecord(rec);
     lastSnapshot = JSON.stringify(mine);
@@ -4429,7 +4440,7 @@ let pfSave = null;
 async function putRecord(rec){
   rec.users = rec.users || USERS;   // never drop the user directory on a team write
   var _body; try{ _body=JSON.stringify(rec); }catch(e){ var _s=new WeakSet(); _body=JSON.stringify(rec,function(k,v){ if(v&&typeof v==="object"){ if(_s.has(v)) return undefined; _s.add(v);} return v; }); }
-  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: _body });
+  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: _body, keepalive: true });
   if(!r.ok) throw new Error("HTTP "+r.status);
   lastRecord = rec;
   TEAMS = teamsIndex(rec);
@@ -15030,7 +15041,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v27 (no default Bugs) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v28 (save guard) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16517,7 +16528,7 @@ function deleteBuiltinBugs(){
     if(!confirm("Remove the Bugs board from the sidebar?"+(_n?("\n\nIts "+_n+" ticket(s) are kept, not deleted."):"")+"\n\nYou can bring it back any time with ＋ Add space \u2192 Bugs.")) return;
     BUILTIN_HIDDEN.bugs = true;
     if(view==="bugs"){ view = "roadmap"; defaultView(); }
-    pushAll(); renderAll();
+    renderAll(); pushNow();
     toast("Bugs board removed");
     return;
   }
