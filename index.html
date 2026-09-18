@@ -52,6 +52,12 @@ const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
    Valid keys: "okrs","product","team","docs","scorecard","service"          */
 const HIDE_NAV = ["docs","scorecard","service","product"];
 
+/* Per-team logo. Key = the team slug in the URL (?team=...).
+   A team with no entry here just shows its coloured letter badge.      */
+const TEAM_LOGOS = {
+  "dubuddy": "data:image/png;base64,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"
+};
+
 /* My Team tabs to hide. Remove a key to bring that tab back.
    Valid keys: "org" (Reporting lines), "squads", "matrix", "own" (Ownership), "perf" (Performance) */
 const HIDE_TEAM_TABS = ["squads","matrix","perf"];
@@ -1069,6 +1075,72 @@ body{margin:0}
 .rail{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:static;top:auto;align-self:stretch}
 .rail-brand{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-height:57px;box-sizing:border-box}
 .brand-dot{width:28px;height:28px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;flex:none}
+.brand-logo{height:30px;width:auto;max-width:180px;object-fit:contain;display:block}
+
+/* ===== Keep in mind ===== */
+.kim-app{max-width:1120px;margin:0 auto;padding:26px 24px 60px}
+.kim-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.kim-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kim-h1{font-size:32px;letter-spacing:-.8px;margin:6px 0 4px;font-family:var(--disp)}
+.kim-tag{color:var(--muted);font-size:14.5px}
+.kim-back{background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:9px 18px;
+  font-weight:600;font-size:13.5px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.kim-back:hover{border-color:var(--indigo);color:var(--indigo)}
+.kim-trailwrap{margin-top:20px;border:1px solid var(--line);border-radius:20px;overflow:hidden;padding:8px 0 4px;
+  background:radial-gradient(800px 300px at 30% 0%, #fff 0%, var(--indigo-soft) 60%, var(--paper) 100%)}
+#kim-trail{display:block;width:100%;height:auto}
+.kim-node{cursor:pointer}.kim-node.kim-locked{cursor:not-allowed}
+.kim-nlabel{font-size:11.5px;font-weight:700;font-family:var(--sans);fill:var(--ink)}
+.kim-nsub{font-size:9px;font-family:var(--sans);fill:#8B7F76;letter-spacing:.08em}
+@keyframes kimpulse{0%,100%{r:25}50%{r:28}}
+.kim-pulse{animation:kimpulse 1.8s ease-in-out infinite}
+.kim-stat{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:13px;color:var(--muted)}
+.kim-bar{flex:1;height:7px;background:var(--indigo-soft);border-radius:99px;overflow:hidden;max-width:300px}
+.kim-bar i{display:block;height:100%;width:0;background:var(--indigo);transition:width .5s}
+.kim-shelf{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.kim-bi{width:58px;height:58px;border-radius:14px;border:1px solid var(--line);background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.35;filter:grayscale(1);transition:.4s;position:relative}
+.kim-bi.on{opacity:1;filter:none;border-color:var(--indigo);box-shadow:0 5px 16px rgba(232,98,43,.16)}
+.kim-bi span{position:absolute;bottom:3px;right:6px;font-size:8.5px;color:var(--muted);font-weight:700}
+.kim-over{position:fixed;inset:0;background:rgba(26,22,20,.45);z-index:500;display:none;
+  align-items:flex-start;justify-content:center;padding:26px 18px;overflow:auto}
+.kim-over.show{display:flex}
+.kim-box{background:var(--paper);border-radius:22px;max-width:1040px;width:100%;padding:24px 26px 30px;position:relative;
+  box-shadow:0 30px 80px rgba(26,22,20,.3)}
+.kim-close{position:absolute;right:18px;top:16px;font-size:18px;color:var(--muted);background:none;border:none;cursor:pointer;line-height:1}
+.kim-gtitle{font-size:27px;letter-spacing:-.6px;margin:2px 0 14px;font-family:var(--disp)}
+.kim-stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;touch-action:none;user-select:none;
+  background:radial-gradient(900px 340px at 70% 34%, #fff 0%, var(--indigo-soft) 58%, var(--paper) 100%)}
+.kim-stage svg{display:block;width:100%;height:auto}
+.kim-hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:5;font-size:12.5px;color:var(--muted);
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:99px;padding:5px 15px;white-space:nowrap}
+.kim-hint b{color:var(--indigo)}
+#kim-ret{cursor:grab}
+.kim-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px;margin-top:14px}
+.kim-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;opacity:.42;filter:grayscale(1);transition:.45s}
+.kim-card.on{opacity:1;filter:none;border-color:var(--indigo);box-shadow:0 6px 20px rgba(232,98,43,.12)}
+.kim-card h3{font-size:14px;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.kim-card p{font-size:13.5px;color:var(--muted);line-height:1.5}
+.kim-lk{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.kim-finale{margin-top:16px;background:linear-gradient(135deg,var(--indigo) 0%,#F0834F 100%);color:#fff;border-radius:18px;
+  padding:28px 32px;opacity:0;transform:translateY(14px);transition:.7s}
+.kim-finale.on{opacity:1;transform:none}
+.kim-q1{font-size:24px;line-height:1.35;font-weight:600;letter-spacing:-.4px;opacity:.95}
+.kim-q2{font-size:32px;line-height:1.25;font-weight:800;letter-spacing:-.8px;margin-top:8px}
+.kim-by{margin-top:12px;font-size:12px;opacity:.9;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.kim-earned{margin-top:16px;display:none;align-items:center;gap:16px;background:var(--card);border:1px solid var(--indigo);
+  border-radius:16px;padding:16px 20px;box-shadow:0 8px 26px rgba(232,98,43,.14)}
+.kim-earned.show{display:flex}
+.kim-ebi{width:56px;height:56px;border-radius:14px;background:var(--indigo-soft);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.kim-et{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kim-en{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.kim-hook{font-size:13.5px;color:var(--muted);margin-top:3px}
+.kim-next{margin-left:auto;background:var(--indigo);color:#fff;border:none;border-radius:99px;padding:11px 22px;
+  font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.kim-next:hover{background:var(--brand-d,#C9501F)}
+@media(max-width:700px){ .kim-earned{flex-wrap:wrap} .kim-next{margin-left:0;width:100%} }
+
+
 .brand-txt{min-width:0}
 .brand-eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .brand-name{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink);line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2986,6 +3058,123 @@ body{margin:0}
   </div>
 </div>
 
+<div id="kim-page" class="product-page" style="display:none">
+  <div class="kim-app">
+    <div class="kim-top">
+      <div>
+        <div class="kim-eyebrow">Keep in mind</div>
+        <h1 class="kim-h1">Ten things worth knowing.</h1>
+        <p class="kim-tag">Finish one to open the next. Collect all ten badges.</p>
+      </div>
+      <button class="kim-back" onclick="closeKim()">\u2190 Back to workspace</button>
+    </div>
+    <div class="kim-trailwrap"><svg id="kim-trail" viewBox="0 0 1060 300"></svg></div>
+    <div class="kim-stat"><span id="kim-stattxt">0 of 10 badges</span><span class="kim-bar"><i id="kim-pbar"></i></span></div>
+    <div class="kim-shelf" id="kim-shelf"></div>
+  </div>
+
+  <div class="kim-over" id="kim-over">
+    <div class="kim-box">
+      <button class="kim-close" onclick="kimCloseGame()">\u2715</button>
+      <div class="kim-eyebrow" id="kim-gnum">Game 1 of 10</div>
+      <h2 class="kim-gtitle" id="kim-gtitle">We are jadugars.</h2>
+
+      <div class="kim-stage" id="kim-stage">
+        <div class="kim-hint" id="kim-hint">Find his <b>mind</b></div>
+        <svg id="kim-scene" viewBox="0 0 980 470">
+          <defs>
+            <radialGradient id="kimGMind" cx="50%" cy="50%"><stop offset="0%" stop-color="#E8622B" stop-opacity=".5"/><stop offset="100%" stop-color="#E8622B" stop-opacity="0"/></radialGradient>
+            <radialGradient id="kimGHeart" cx="50%" cy="50%"><stop offset="0%" stop-color="#E23E57" stop-opacity=".5"/><stop offset="100%" stop-color="#E23E57" stop-opacity="0"/></radialGradient>
+            <linearGradient id="kimBeam" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E8622B" stop-opacity=".26"/><stop offset="100%" stop-color="#E8622B" stop-opacity=".07"/></linearGradient>
+          </defs>
+          <ellipse cx="228" cy="438" rx="104" ry="11" fill="#1A1614" opacity=".06"/>
+          <ellipse cx="748" cy="438" rx="104" ry="11" fill="#1A1614" opacity=".06"/>
+          <g>
+            <path d="M712 232q-18 44 -8 100" stroke="#C9501F" stroke-width="10" fill="none" opacity=".3" stroke-linecap="round"/>
+            <path d="M748 214c-42 0-69 23-75 65-4 27-6 59-6 89h162c0-30-2-62-6-89-6-42-33-65-75-65z" fill="#E3D7CC"/>
+            <path d="M694 258c-17 15-24 40-20 64" stroke="#E3D7CC" stroke-width="19" fill="none" stroke-linecap="round"/>
+            <g transform="rotate(-8 672 330)">
+              <rect x="640" y="310" width="64" height="44" rx="4" fill="#fff" stroke="#DCCEC2" stroke-width="2"/>
+              <rect x="640" y="310" width="9" height="44" rx="3" fill="#E8622B" opacity=".85"/>
+              <line x1="658" y1="324" x2="696" y2="324" stroke="#DCCEC2" stroke-width="3"/>
+              <line x1="658" y1="336" x2="688" y2="336" stroke="#DCCEC2" stroke-width="3"/>
+            </g>
+            <rect x="738" y="186" width="20" height="26" rx="8" fill="#D6C8BC"/>
+            <circle cx="748" cy="150" r="47" fill="#EBDFD4"/>
+            <path d="M703 142c1-31 21-49 45-49s44 18 45 49c-9-17-24-25-45-25s-36 8-45 25z" fill="#2F2622"/>
+            <circle cx="735" cy="152" r="3.6" fill="#2F2622"/><circle cx="762" cy="152" r="3.6" fill="#2F2622"/>
+            <path d="M739 170q9 8 19 0" stroke="#2F2622" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <g id="kim-t-mind">
+              <circle cx="748" cy="112" r="54" fill="url(#kimGMind)"/>
+              <g transform="translate(748,110)">
+                <path d="M-3-20c-8-4-19-1-22 7-8 2-12 10-9 17-4 6-2 14 5 17 1 8 9 13 17 10 3 4 8 6 12 4V-20z" fill="#fff" stroke="#E8622B" stroke-width="2.2" stroke-linejoin="round"/>
+                <path d="M3-20c8-4 19-1 22 7 8 2 12 10 9 17 4 6 2 14-5 17-1 8-9 13-17 10-3 4-8 6-12 4V-20z" fill="#fff" stroke="#E8622B" stroke-width="2.2" stroke-linejoin="round"/>
+                <path d="M-12-8c4 0 6 3 6 6M12-8c-4 0-6 3-6 6M-8 6c3 1 5 3 6 6M8 6c-3 1-5 3-6 6" stroke="#E8622B" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".8"/>
+              </g>
+            </g>
+            <g id="kim-t-heart">
+              <circle cx="722" cy="286" r="48" fill="url(#kimGHeart)"/>
+              <path transform="translate(722,286) scale(1.45)" d="M0 12C-14 2 -18-6 -12-12c5-5 10-2 12 2 2-4 7-7 12-2 6 6 2 14-12 24z" fill="#fff" stroke="#E23E57" stroke-width="2.1"/>
+            </g>
+          </g>
+          <g id="kim-beam"></g>
+          <g>
+            <path d="M196 402v-52h64v52" stroke="#4A3B33" stroke-width="26" fill="none" stroke-linecap="round"/>
+            <path d="M228 236c-36 0-58 20-63 54-3 22-5 44-5 62h136c0-18-2-40-5-62-5-34-27-54-63-54z" fill="#E8622B"/>
+            <rect x="218" y="182" width="20" height="26" rx="8" fill="#D6C8BC"/>
+            <circle cx="228" cy="150" r="44" fill="#EBDFD4"/>
+            <path d="M185 144c1-29 20-46 43-46s42 17 43 46c-9-16-23-24-43-24s-34 8-43 24z" fill="#2F2622"/>
+            <circle cx="190" cy="154" r="7" fill="#DDCFC3"/>
+            <path d="M236 176q8 5 15 1" stroke="#2F2622" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".75"/>
+            <path d="M196 250 L214 226 L250 178" stroke="#D9CABE" stroke-width="17" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M262 252 L276 224 L272 180" stroke="#EBDFD4" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <g id="kim-binos">
+              <rect x="-8" y="-19" width="30" height="38" rx="10" fill="#2B2320"/>
+              <rect x="22" y="-15" width="26" height="30" rx="8" fill="#3A2E28"/>
+              <rect x="-10" y="-23" width="32" height="7" rx="3" fill="#E8622B"/>
+              <circle cx="48" cy="0" r="12" fill="#5B4A42"/><circle cx="48" cy="0" r="8" fill="#BFE4F2" opacity=".95"/>
+              <circle cx="45" cy="-3" r="3" fill="#fff" opacity=".9"/>
+              <circle cx="6" cy="10" r="10" fill="#EBDFD4"/><circle cx="26" cy="10" r="9" fill="#D9CABE"/>
+            </g>
+          </g>
+          <g id="kim-ret">
+            <circle cx="0" cy="0" r="46" fill="transparent"/>
+            <circle cx="0" cy="0" r="30" fill="rgba(255,255,255,.35)" stroke="#E8622B" stroke-width="2.5"/>
+            <circle id="kim-retprog" cx="0" cy="0" r="30" fill="none" stroke="#1F7A4D" stroke-width="5" stroke-linecap="round" transform="rotate(-90)"/>
+            <line x1="-42" y1="0" x2="-14" y2="0" stroke="#E8622B" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="14" y1="0" x2="42" y2="0" stroke="#E8622B" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="0" y1="-42" x2="0" y2="-14" stroke="#E8622B" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="0" y1="14" x2="0" y2="42" stroke="#E8622B" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="0" cy="0" r="3" fill="#E8622B"/>
+            <text id="kim-rett" x="0" y="62" text-anchor="middle" font-size="11.5" font-weight="700" font-family="Inter,sans-serif" fill="#C9501F">drag me</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="kim-cards">
+        <div class="kim-card" id="kim-card-mind"><h3><span>\U0001F9E0</span><span id="kim-h-mind">Locked</span></h3><p id="kim-p-mind" class="kim-lk">Aim at the mind</p></div>
+        <div class="kim-card" id="kim-card-heart"><h3><span>\U0001F9E1</span><span id="kim-h-heart">Locked</span></h3><p id="kim-p-heart" class="kim-lk">Aim at the heart</p></div>
+      </div>
+
+      <div class="kim-finale" id="kim-finale">
+        <p class="kim-q1">Only a jadugar can win the hearts of people.</p>
+        <p class="kim-q2">Are you a jadugar or not?</p>
+        <div class="kim-by">Sumit \u00b7 Cyberflow</div>
+      </div>
+
+      <div class="kim-earned" id="kim-earned">
+        <div class="kim-ebi" id="kim-ebi">\U0001F52E</div>
+        <div>
+          <div class="kim-et">Badge earned</div>
+          <div class="kim-en" id="kim-ename">Jadugar</div>
+          <div class="kim-hook" id="kim-ehook"></div>
+        </div>
+        <button class="kim-next" id="kim-next">Back to the trail \u2192</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="scorecard-page" class="product-page" style="display:none">
   <div class="sc-app">
     <aside class="sc-side" id="sc-side"></aside>
@@ -3023,6 +3212,7 @@ body{margin:0}
   <aside class="rail">
     <div class="rail-brand">
       <div class="brand-dot" id="rail-dot">T</div>
+      <img id="rail-logo" class="brand-logo" alt="" style="display:none">
       <div class="brand-txt">
         <div class="brand-eyebrow">Internal · Team Workspace</div>
         <div class="brand-name" id="rail-teamname">Team</div>
@@ -3056,6 +3246,7 @@ body{margin:0}
       <button class="corner-nav ghost" id="nav-e">Docs</button>
       <button class="corner-nav ghost" id="nav-f">📊 Scorecard</button>
       <button class="corner-nav ghost" id="nav-g">🎧 Service</button>
+      <button class="corner-nav ghost" id="nav-h">🔮 Keep in mind</button>
       <button class="corner-nav corner-account" id="nav-account" title="Your account" style="display:none">👤 Account</button>
     </div>
     </div>
@@ -4496,7 +4687,7 @@ function teamPayload(){
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     scorecard: scScorecardForSave(),
     csm: csmPayload(),
-    bugsDefaultBoard: BUGS_DEFAULT_BOARD };
+    bugsDefaultBoard: BUGS_DEFAULT_BOARD, kim: KIM };
 }
 function loadTeamData(t){
   t = t || {};
@@ -4521,6 +4712,8 @@ function loadTeamData(t){
     BUILTIN_HIDDEN = { dev: !_devUsed, bugs: true };   // new teams start clean — add Bugs only if wanted
   }
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
+  KIM = (t.kim && typeof t.kim==="object") ? t.kim : { byUser:{} };
+  if(!KIM.byUser || typeof KIM.byUser!=="object") KIM.byUser={};
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
   SCORECARD = normalizeScorecard(t.scorecard);
@@ -5670,7 +5863,24 @@ function renderHeader(){
     ? "A timeline across every space \u2014 pull in tasks, dev cards, and bugs from anywhere and schedule them."
     : (DATA.subtitle||"");
   document.title = $("rm-title").textContent + " \u00b7 " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM || "Cyberflow");
-  (function(){ var _tn=(TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team"); var _n=$("rail-teamname"); if(_n) _n.textContent=_tn; var _d=$("rail-dot"); if(_d) _d.textContent=(_tn.charAt(0)||"T").toUpperCase(); })();
+  (function(){
+    var _tn=(TEAMS[TEAM] && TEAMS[TEAM].name) || (TEAM ? TEAM.charAt(0).toUpperCase()+TEAM.slice(1) : "Team");
+    var _n=$("rail-teamname"); if(_n) _n.textContent=_tn;
+    var _d=$("rail-dot"); if(_d) _d.textContent=(_tn.charAt(0)||"T").toUpperCase();
+    var _logo = (typeof TEAM_LOGOS!=="undefined" && TEAM_LOGOS) ? TEAM_LOGOS[TEAM] : null;
+    var _img=$("rail-logo"), _txt=document.querySelector(".rail-brand .brand-txt");
+    if(_img){
+      if(_logo){
+        _img.src=_logo; _img.alt=_tn; _img.style.display="";
+        if(_d) _d.style.display="none";
+        if(_txt) _txt.style.display="none";          // the wordmark already says the name
+      } else {
+        _img.style.display="none";
+        if(_d) _d.style.display="";
+        if(_txt) _txt.style.display="";
+      }
+    }
+  })();
   const stats = $("stats");
   stats.innerHTML = "";
   const mkStat = (val,label)=>{
@@ -11825,7 +12035,7 @@ function renderAll(){
     } else { acc.style.display = "none"; }
   }
   try{
-    var _navMap={ workspace:"nav-a", okrs:"nav-b", product:"nav-c", team:"nav-d", docs:"nav-e", scorecard:"nav-f", service:"nav-g" };
+    var _navMap={ workspace:"nav-a", okrs:"nav-b", product:"nav-c", team:"nav-d", docs:"nav-e", scorecard:"nav-f", service:"nav-g", keepinmind:"nav-h" };
     if(typeof HIDE_NAV!=="undefined" && HIDE_NAV.forEach){ HIDE_NAV.forEach(function(kk){ var _el=$(_navMap[kk]); if(_el) _el.style.display="none"; }); }
   }catch(_){ }
   renderCompanyVision();
@@ -14489,6 +14699,170 @@ function scPeoplePageHTML(admin){
 let scView = "overview";       // "overview" | function-key
 let SCTAB = 0;                 // kept for back-compat
 let scDlg = null;
+
+/* ===================== KEEP IN MIND ===================== */
+var KIM = { byUser:{} };
+var KIM_GAMES=[
+  {n:1, name:"Jadugar", icon:"\uD83D\uDD2E", title:"We are jadugars.", hook:"Nine more to go.", ready:true},
+  {n:2, name:"Game 2", icon:"\u26A1", title:"", hook:"", ready:false},
+  {n:3, name:"Game 3", icon:"\uD83C\uDFAF", title:"", hook:"", ready:false},
+  {n:4, name:"Game 4", icon:"\uD83D\uDD0D", title:"", hook:"", ready:false},
+  {n:5, name:"Game 5", icon:"\uD83D\uDEE0", title:"", hook:"", ready:false},
+  {n:6, name:"Game 6", icon:"\uD83E\uDD1D", title:"", hook:"", ready:false},
+  {n:7, name:"Game 7", icon:"\uD83D\uDCE3", title:"", hook:"", ready:false},
+  {n:8, name:"Game 8", icon:"\uD83E\uDDED", title:"", hook:"", ready:false},
+  {n:9, name:"Game 9", icon:"\uD83D\uDD25", title:"", hook:"", ready:false},
+  {n:10,name:"Game 10",icon:"\uD83D\uDC51", title:"", hook:"", ready:false}
+];
+function kimMe(){ return (typeof SESSION!=="undefined" && SESSION && SESSION.email) ? SESSION.email.toLowerCase() : "_guest"; }
+function kimMine(){ KIM=KIM||{byUser:{}}; KIM.byUser=KIM.byUser||{}; if(!KIM.byUser[kimMe()]) KIM.byUser[kimMe()]={}; return KIM.byUser[kimMe()]; }
+function kimDone(n){ return !!kimMine()[n]; }
+function kimOpenAt(i){ return i===0 || kimDone(KIM_GAMES[i-1].n); }
+
+function openKim(){ kimDrawTrail(); $("kim-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function closeKim(){ $("kim-page").style.display="none"; }
+
+function kimNodePos(i){ return { x:70+i*102, y:150+Math.sin(i*0.9)*58 }; }
+function kimDrawTrail(){
+  var t=$("kim-trail"); if(!t) return;
+  var parts=[]; for(var i=0;i<10;i++){ var p=kimNodePos(i); parts.push((i?"L":"M")+p.x+" "+p.y); }
+  var h='<path d="'+parts.join(" ")+'" stroke="#DCCEC2" stroke-width="4" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>';
+  var reach=0; for(var i=0;i<10;i++){ if(kimDone(KIM_GAMES[i].n)) reach=i+1; }
+  if(reach>0){ var sp=[]; for(var i=0;i<=reach && i<10;i++){ var p=kimNodePos(i); sp.push((i?"L":"M")+p.x+" "+p.y); }
+    h+='<path d="'+sp.join(" ")+'" stroke="#E8622B" stroke-width="4" fill="none" stroke-linecap="round"/>'; }
+  for(var i=0;i<10;i++){
+    var g=KIM_GAMES[i], p=kimNodePos(i), dn=kimDone(g.n), op=!dn && kimOpenAt(i);
+    h+='<g class="kim-node'+((dn||op)?"":" kim-locked")+'" data-i="'+i+'">';
+    if(dn){ h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="25" fill="#E8622B"/><text x="'+p.x+'" y="'+(p.y+8)+'" text-anchor="middle" font-size="21">'+g.icon+'</text>'; }
+    else if(op){ h+='<circle class="kim-pulse" cx="'+p.x+'" cy="'+p.y+'" r="25" fill="#fff" stroke="#E8622B" stroke-width="3"/><text x="'+p.x+'" y="'+(p.y+8)+'" text-anchor="middle" font-size="20">'+g.icon+'</text>'; }
+    else { h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="#F2EAE3" stroke="#DCCEC2" stroke-width="2"/><text x="'+p.x+'" y="'+(p.y+7)+'" text-anchor="middle" font-size="16" opacity=".5">\uD83D\uDD12</text>'; }
+    h+='<text class="kim-nlabel" x="'+p.x+'" y="'+(p.y+45)+'" text-anchor="middle">'+mtEsc(g.name)+'</text>';
+    if(op) h+='<text class="kim-nsub" x="'+p.x+'" y="'+(p.y+59)+'" text-anchor="middle">PLAY NOW</text>';
+    h+='</g>';
+  }
+  t.innerHTML=h;
+  Array.prototype.forEach.call(t.querySelectorAll(".kim-node"),function(el){
+    el.onclick=function(){
+      var i=+el.getAttribute("data-i"), g=KIM_GAMES[i];
+      if(!kimDone(g.n) && !kimOpenAt(i)) return;
+      if(!g.ready){ toast("Game "+g.n+" isn't built yet"); return; }
+      kimOpenGame(i);
+    };
+  });
+  var n=0; for(var i=0;i<10;i++){ if(kimDone(KIM_GAMES[i].n)) n++; }
+  $("kim-stattxt").textContent=n+" of 10 badges";
+  $("kim-pbar").style.width=(n/10*100)+"%";
+  var shelf=""; for(var i=0;i<10;i++){ var g=KIM_GAMES[i];
+    shelf+='<div class="kim-bi'+(kimDone(g.n)?" on":"")+'" title="'+mtEsc(kimDone(g.n)?g.name:"Locked")+'">'+g.icon+'<span>'+g.n+'</span></div>'; }
+  $("kim-shelf").innerHTML=shelf;
+}
+
+/* ---- game 1: the jadugar ---- */
+var kimEYE={x:262,y:150}, kimT={mind:{x:748,y:112,r:52}, heart:{x:722,y:286,r:48}};
+var kimCOPY={ mind:{t:"1 \u00b7 Mind", p:"A jadugar knows what is in his audience\u2019s mind."},
+              heart:{t:"2 \u00b7 Heart", p:"A jadugar knows what is in his audience\u2019s heart."} };
+var kimAim={x:470,y:250}, kimDrag=false, kimFound={mind:false,heart:false};
+var kimHoldKey=null, kimHoldStart=0, kimT0=0, kimGameDone=false, kimLive=false, kimRaf=null;
+var KIMC=2*Math.PI*30;
+
+function kimOpenGame(i){
+  var g=KIM_GAMES[i];
+  $("kim-gnum").textContent="Game "+g.n+" of 10";
+  $("kim-gtitle").textContent=g.title;
+  $("kim-ebi").textContent=g.icon; $("kim-ename").textContent=g.name; $("kim-ehook").textContent=g.hook;
+  kimReset(); $("kim-over").classList.add("show");
+  kimLive=true; kimT0=(typeof performance!=="undefined"?performance.now():Date.now());
+  if(!kimRaf) kimRaf=requestAnimationFrame(kimLoop);
+}
+function kimCloseGame(){ $("kim-over").classList.remove("show"); kimLive=false; kimDrawTrail(); }
+function kimReset(){
+  kimFound={mind:false,heart:false}; kimGameDone=false; kimHoldKey=null; kimAim={x:470,y:250};
+  $("kim-ret").style.opacity=""; $("kim-beam").style.opacity="";
+  $("kim-retprog").setAttribute("stroke-dasharray",KIMC); $("kim-retprog").setAttribute("stroke-dashoffset",KIMC);
+  ["mind","heart"].forEach(function(k){
+    $("kim-card-"+k).classList.remove("on");
+    $("kim-h-"+k).textContent="Locked";
+    var p=$("kim-p-"+k); p.textContent=(k==="mind"?"Aim at the mind":"Aim at the heart"); p.classList.add("kim-lk");
+    var g=$("kim-t-"+k); if(g) g.setAttribute("opacity","1");
+  });
+  $("kim-finale").classList.remove("on");
+  $("kim-earned").classList.remove("show");
+  $("kim-hint").innerHTML='Find his <b>mind</b>';
+}
+function kimPt(e){
+  var svg=$("kim-scene"), r=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal;
+  var cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left, cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  return { x:cx/r.width*vb.width, y:cy/r.height*vb.height };
+}
+function kimDraw(){
+  var dx=kimAim.x-kimEYE.x, dy=kimAim.y-kimEYE.y, ang=Math.atan2(dy,dx), deg=ang*180/Math.PI;
+  $("kim-binos").setAttribute("transform","translate("+kimEYE.x+","+kimEYE.y+") rotate("+Math.max(-38,Math.min(38,deg))+")");
+  var perp=ang+Math.PI/2, half=26;
+  var fx=kimEYE.x+Math.cos(ang)*58, fy=kimEYE.y+Math.sin(ang)*58;
+  var ax=fx+Math.cos(perp)*half, ay=fy+Math.sin(perp)*half;
+  var bx=fx-Math.cos(perp)*half, by=fy-Math.sin(perp)*half;
+  $("kim-beam").innerHTML='<path d="M'+ax+' '+ay+' L'+kimAim.x+' '+kimAim.y+' L'+bx+' '+by+' Z" fill="url(#kimBeam)"/>'
+    +'<line x1="'+fx+'" y1="'+fy+'" x2="'+kimAim.x+'" y2="'+kimAim.y+'" stroke="#E8622B" stroke-width="1.2" opacity=".45" stroke-dasharray="5 6"/>';
+  $("kim-ret").setAttribute("transform","translate("+kimAim.x+","+kimAim.y+")");
+}
+function kimNearest(){
+  var best=null,bd=1e9;
+  for(var k in kimT){ if(kimFound[k]) continue; var t=kimT[k], d=Math.hypot(kimAim.x-t.x,kimAim.y-t.y);
+    if(d<t.r && d<bd){ bd=d; best=k; } }
+  return best;
+}
+function kimLoop(now){
+  if(!kimLive){ kimRaf=null; return; }
+  if(!kimDrag && !kimGameDone){ var t=(now-kimT0)/1000;
+    kimAim.x=470+Math.sin(t*0.75)*120+Math.sin(t*0.29)*40; kimAim.y=250+Math.cos(t*0.58)*80; }
+  kimDraw();
+  var over=kimNearest();
+  if(over && kimDrag){
+    if(kimHoldKey!==over){ kimHoldKey=over; kimHoldStart=now; }
+    var p=Math.min(1,(now-kimHoldStart)/1000);
+    $("kim-retprog").setAttribute("stroke-dashoffset",KIMC*(1-p));
+    $("kim-rett").textContent = p<1 ? ("hold\u2026 "+Math.round(p*100)+"%") : "locked";
+    if(p>=1) kimUnlock(over);
+  } else {
+    kimHoldKey=null; $("kim-retprog").setAttribute("stroke-dashoffset",KIMC);
+    $("kim-rett").textContent = kimDrag?"":(kimGameDone?"":"drag me");
+  }
+  kimRaf=requestAnimationFrame(kimLoop);
+}
+function kimUnlock(k){
+  if(kimFound[k]) return; kimFound[k]=true; kimHoldKey=null;
+  $("kim-retprog").setAttribute("stroke-dashoffset",KIMC); $("kim-rett").textContent="";
+  $("kim-card-"+k).classList.add("on");
+  $("kim-h-"+k).textContent=kimCOPY[k].t;
+  var p=$("kim-p-"+k); p.textContent=kimCOPY[k].p; p.classList.remove("kim-lk");
+  var g=$("kim-t-"+k); if(g) g.setAttribute("opacity",".4");
+  var n=(kimFound.mind?1:0)+(kimFound.heart?1:0);
+  $("kim-hint").innerHTML = n<2 ? "Now his <b>heart</b>" : "";
+  if(n===2){
+    kimGameDone=true; kimDrag=false;
+    $("kim-ret").style.opacity="0"; $("kim-beam").style.opacity="0";
+    setTimeout(function(){
+      $("kim-finale").classList.add("on");
+      kimAward(1);
+      setTimeout(function(){ $("kim-earned").classList.add("show"); kimDrawTrail(); },700);
+    },380);
+  }
+}
+function kimAward(n){
+  var mine=kimMine();
+  if(!mine[n]){ mine[n]=true; if(typeof pushAll==="function") pushAll(); }
+}
+function kimBind(){
+  var stage=$("kim-stage"); if(!stage || stage.__kimBound) return; stage.__kimBound=true;
+  function down(e){ if(kimGameDone||!kimLive) return; kimDrag=true; kimAim=kimPt(e); }
+  function move(e){ if(!kimDrag||kimGameDone||!kimLive) return; kimAim=kimPt(e); if(e.cancelable) e.preventDefault(); }
+  function up(){ if(!kimDrag) return; kimDrag=false; kimHoldKey=null; }
+  stage.addEventListener("mousedown",down); stage.addEventListener("touchstart",down,{passive:true});
+  window.addEventListener("mousemove",move); window.addEventListener("touchmove",move,{passive:false});
+  window.addEventListener("mouseup",up); window.addEventListener("touchend",up);
+  var nb=$("kim-next"); if(nb) nb.onclick=kimCloseGame;
+}
+
 function openScorecard(){ if(!SCORECARD || !SCORECARD.funcs) SCORECARD=normalizeScorecard(null); renderScorecard(); $("scorecard-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); try{ scRefreshAllSheets(); }catch(e){} }
 function closeScorecard(){ $("scorecard-page").style.display="none"; }
 function scDashById(id){ return (SCORECARD.dashboards||[]).filter(function(d){return d.id===id;})[0]||null; }
@@ -15235,7 +15609,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v33 (Dubuddy theme) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v35 (Keep in mind) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -16000,6 +16374,8 @@ if($("sc-dlg-cancel")){ $("sc-dlg-cancel").onclick = scDlgClose; }
 if($("sc-dlg-save")){ $("sc-dlg-save").onclick = scDlgSave; }
 if($("sc-dialog")){ $("sc-dialog").onclick = function(e){ if(e.target.id==="sc-dialog") scDlgClose(); }; }
 if($("nav-g")){ $("nav-g").onclick = openCsm; }
+if($("nav-h")){ $("nav-h").onclick = openKim; }
+try{ kimBind(); }catch(_){ }
 if($("csm-dlg-cancel")){ $("csm-dlg-cancel").onclick = csmDlgClose; }
 if($("csm-dlg-save")){ $("csm-dlg-save").onclick = csmDlgSave; }
 if($("csm-dialog")){ $("csm-dialog").onclick = function(e){ if(e.target.id==="csm-dialog") csmDlgClose(); }; }
