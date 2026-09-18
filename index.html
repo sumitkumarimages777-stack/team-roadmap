@@ -1138,6 +1138,13 @@ body{margin:0}
 .kim-next{margin-left:auto;background:var(--indigo);color:#fff;border:none;border-radius:99px;padding:11px 22px;
   font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
 .kim-next:hover{background:var(--brand-d,#C9501F)}
+.kim2-readout{position:absolute;left:18px;top:14px;z-index:5;background:rgba(255,255,255,.93);border:1px solid var(--line);
+  border-radius:14px;padding:10px 16px;display:flex;flex-direction:column;line-height:1.15}
+.kim2-pct{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--indigo);font-variant-numeric:tabular-nums}
+.kim2-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kim2-pull{position:absolute;right:16px;bottom:14px;z-index:5;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+  font-weight:700;color:var(--muted);background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:99px;padding:6px 14px}
+#kim2-scene{cursor:grab}#kim2-scene.dragging{cursor:grabbing}
 @media(max-width:700px){ .kim-earned{flex-wrap:wrap} .kim-next{margin-left:0;width:100%} }
 
 
@@ -3066,7 +3073,7 @@ body{margin:0}
         <h1 class="kim-h1">Ten things worth knowing.</h1>
         <p class="kim-tag">Finish one to open the next. Collect all ten badges.</p>
       </div>
-      <button class="kim-back" onclick="closeKim()">\u2190 Back to workspace</button>
+      <button class="kim-back" onclick="closeKim()">← Back to workspace</button>
     </div>
     <div class="kim-trailwrap"><svg id="kim-trail" viewBox="0 0 1060 300"></svg></div>
     <div class="kim-stat"><span id="kim-stattxt">0 of 10 badges</span><span class="kim-bar"><i id="kim-pbar"></i></span></div>
@@ -3075,11 +3082,11 @@ body{margin:0}
 
   <div class="kim-over" id="kim-over">
     <div class="kim-box">
-      <button class="kim-close" onclick="kimCloseGame()">\u2715</button>
+      <button class="kim-close" onclick="kimCloseGame()">✕</button>
       <div class="kim-eyebrow" id="kim-gnum">Game 1 of 10</div>
       <h2 class="kim-gtitle" id="kim-gtitle">We are jadugars.</h2>
 
-      <div class="kim-stage" id="kim-stage">
+      <div class="kim-stage kim-scene-wrap" id="kim-stage" data-g="1">
         <div class="kim-hint" id="kim-hint">Find his <b>mind</b></div>
         <svg id="kim-scene" viewBox="0 0 980 470">
           <defs>
@@ -3151,25 +3158,49 @@ body{margin:0}
         </svg>
       </div>
 
+      <div class="kim-stage kim-scene-wrap" id="kim-stage2" data-g="2" style="display:none">
+        <div class="kim-hint" id="kim2-hint">Pull back — <b>drag anywhere</b></div>
+        <div class="kim2-readout"><span class="kim2-pct" id="kim2-pct">100%</span><span class="kim2-lbl">of what there is to know</span></div>
+        <svg id="kim2-scene" viewBox="0 0 980 470" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="kim2Sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FDEDE4"/><stop offset="100%" stop-color="#FBF6F1"/>
+            </linearGradient>
+            <linearGradient id="kim2Glass" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#DCEBF2"/><stop offset="55%" stop-color="#C7DEE9"/><stop offset="100%" stop-color="#B9D5E3"/>
+            </linearGradient>
+          </defs>
+          <rect x="-4000" y="-4000" width="9000" height="9000" fill="url(#kim2Sky)"/>
+          <g id="kim2-world"></g>
+        </svg>
+        <div class="kim2-pull" id="kim2-pull">drag to pull back</div>
+      </div>
+
       <div class="kim-cards">
-        <div class="kim-card" id="kim-card-mind"><h3><span>\U0001F9E0</span><span id="kim-h-mind">Locked</span></h3><p id="kim-p-mind" class="kim-lk">Aim at the mind</p></div>
-        <div class="kim-card" id="kim-card-heart"><h3><span>\U0001F9E1</span><span id="kim-h-heart">Locked</span></h3><p id="kim-p-heart" class="kim-lk">Aim at the heart</p></div>
+        <div class="kim-card" id="kim-card-mind"><h3><span>🧠</span><span id="kim-h-mind">Locked</span></h3><p id="kim-p-mind" class="kim-lk">Aim at the mind</p></div>
+        <div class="kim-card" id="kim-card-heart"><h3><span>🧡</span><span id="kim-h-heart">Locked</span></h3><p id="kim-p-heart" class="kim-lk">Aim at the heart</p></div>
       </div>
 
       <div class="kim-finale" id="kim-finale">
-        <p class="kim-q1">Only a jadugar can win the hearts of people.</p>
-        <p class="kim-q2">Are you a jadugar or not?</p>
-        <div class="kim-by">Sumit \u00b7 Cyberflow</div>
+        <div id="kim-f1">
+          <p class="kim-q1">Only a jadugar can win the hearts of people.</p>
+          <p class="kim-q2">Are you a jadugar or not?</p>
+        </div>
+        <div id="kim-f2" style="display:none">
+          <p class="kim-q1">He cleaned one pane and thought he knew the building.</p>
+          <p class="kim-q2">We know 1%. Stay curious.</p>
+        </div>
+        <div class="kim-by">Sumit · Cyberflow</div>
       </div>
 
       <div class="kim-earned" id="kim-earned">
-        <div class="kim-ebi" id="kim-ebi">\U0001F52E</div>
+        <div class="kim-ebi" id="kim-ebi">🔮</div>
         <div>
           <div class="kim-et">Badge earned</div>
           <div class="kim-en" id="kim-ename">Jadugar</div>
           <div class="kim-hook" id="kim-ehook"></div>
         </div>
-        <button class="kim-next" id="kim-next">Back to the trail \u2192</button>
+        <button class="kim-next" id="kim-next">Back to the trail →</button>
       </div>
     </div>
   </div>
@@ -14704,7 +14735,7 @@ let scDlg = null;
 var KIM = { byUser:{} };
 var KIM_GAMES=[
   {n:1, name:"Jadugar", icon:"\uD83D\uDD2E", title:"We are jadugars.", hook:"Nine more to go.", ready:true},
-  {n:2, name:"Game 2", icon:"\u26A1", title:"", hook:"", ready:false},
+  {n:2, name:"1%", icon:"\uD83D\uDD0E", title:"You know 1%.", hook:"Eight more to go.", ready:true},
   {n:3, name:"Game 3", icon:"\uD83C\uDFAF", title:"", hook:"", ready:false},
   {n:4, name:"Game 4", icon:"\uD83D\uDD0D", title:"", hook:"", ready:false},
   {n:5, name:"Game 5", icon:"\uD83D\uDEE0", title:"", hook:"", ready:false},
@@ -14770,9 +14801,17 @@ function kimOpenGame(i){
   $("kim-gnum").textContent="Game "+g.n+" of 10";
   $("kim-gtitle").textContent=g.title;
   $("kim-ebi").textContent=g.icon; $("kim-ename").textContent=g.name; $("kim-ehook").textContent=g.hook;
-  kimReset(); $("kim-over").classList.add("show");
-  kimLive=true; kimT0=(typeof performance!=="undefined"?performance.now():Date.now());
-  if(!kimRaf) kimRaf=requestAnimationFrame(kimLoop);
+  $("kim-stage").style.display  = (g.n===1)?"":"none";
+  $("kim-stage2").style.display = (g.n===2)?"":"none";
+  if(g.n===1){
+    $("kim-f1").style.display=""; $("kim-f2").style.display="none";
+    kimReset(); kimLive=true; kimT0=(typeof performance!=="undefined"?performance.now():Date.now());
+    if(!kimRaf) kimRaf=requestAnimationFrame(kimLoop);
+  } else if(g.n===2){
+    $("kim-f1").style.display="none"; $("kim-f2").style.display="";
+    kimLive=false; kim2Bind(); kim2Reset();
+  }
+  $("kim-over").classList.add("show");
 }
 function kimCloseGame(){ $("kim-over").classList.remove("show"); kimLive=false; kimDrawTrail(); }
 function kimReset(){
@@ -14852,6 +14891,98 @@ function kimAward(n){
   var mine=kimMine();
   if(!mine[n]){ mine[n]=true; if(typeof pushAll==="function") pushAll(); }
 }
+
+/* ---- game 2: the glass ---- */
+var kim2Z=1, kim2Drag=false, kim2Last=null, kim2Live=false, kim2Raf=null, kim2Done=false;
+var kim2Hit={a:false,b:false};
+var KIM2_COPY={
+  a:{t:"1 \u00b7 The pane", p:"You cleaned one pane and thought you knew the building."},
+  b:{t:"2 \u00b7 The building", p:"Pull back far enough and your certainty is 1%."}
+};
+function kim2Pct(){ return Math.max(1, Math.round(100/(kim2Z*kim2Z))); }
+function kim2Build(){
+  var w=$("kim2-world"); if(!w) return;
+  var PW=300, PH=190;                        // one pane
+  var span=Math.ceil(kim2Z)+3;               // how many panes to draw around centre
+  var h="", cx=490, cy=235;
+  for(var gx=-span; gx<=span; gx++){
+    for(var gy=-span; gy<=span; gy++){
+      var x=cx+gx*PW-PW/2, y=cy+gy*PH-PH/2;
+      h+='<rect x="'+x+'" y="'+y+'" width="'+(PW-8)+'" height="'+(PH-8)+'" rx="3" fill="url(#kim2Glass)" stroke="#9FBECD" stroke-width="2"/>';
+      h+='<path d="M'+x+' '+(y+PH-8)+' L'+(x+PW-8)+' '+y+'" stroke="#fff" stroke-width="10" opacity=".22"/>';
+      h+='<path d="M'+x+' '+(y+60)+' L'+(x+PW-8)+' '+(y-70)+'" stroke="#fff" stroke-width="5" opacity=".14"/>';
+    }
+  }
+  // the man, always on the same pane at the centre
+  h+='<g id="kim2-man" transform="translate('+cx+','+(cy+18)+')">'
+   + '<rect x="-30" y="26" width="60" height="7" rx="3" fill="#8A6A55"/>'         /* his little platform */
+   + '<line x1="-26" y1="-120" x2="-26" y2="26" stroke="#8A6A55" stroke-width="3"/>'
+   + '<line x1="26" y1="-120" x2="26" y2="26" stroke="#8A6A55" stroke-width="3"/>'
+   + '<path d="M-16 26 q0-22 8-30" stroke="#E8622B" stroke-width="13" fill="none" stroke-linecap="round"/>'
+   + '<circle cx="-2" cy="-14" r="11" fill="#EBDFD4"/>'
+   + '<path d="M-13 -18c0-8 5-13 11-13s11 5 11 13c-3-4-6-6-11-6s-8 2-11 6z" fill="#2F2622"/>'
+   + '<path d="M6 -2 q14 4 20 14" stroke="#EBDFD4" stroke-width="7" fill="none" stroke-linecap="round"/>'
+   + '<rect x="22" y="8" width="18" height="12" rx="3" fill="#F2C744" transform="rotate(20 31 14)"/>'  /* squeegee */
+   + '</g>';
+  w.innerHTML=h;
+  // the whole world scales down as you pull back
+  var sc=1/kim2Z;
+  w.setAttribute("transform","translate("+cx+","+cy+") scale("+sc+") translate("+(-cx)+","+(-cy)+")");
+}
+function kim2Render(){
+  kim2Build();
+  var p=kim2Pct();
+  $("kim2-pct").textContent=p+"%";
+  if(!kim2Hit.a && kim2Z>=2){ kim2Unlock("a"); }
+  if(!kim2Hit.b && p<=1){ kim2Unlock("b"); }
+  $("kim2-hint").innerHTML = kim2Done ? "" : (kim2Z<2 ? "Pull back \u2014 <b>drag anywhere</b>" : (p>1? "Keep going\u2026" : ""));
+}
+function kim2Unlock(k){
+  if(kim2Hit[k]) return; kim2Hit[k]=true;
+  var id = (k==="a") ? "mind" : "heart";      // reuse the two card slots
+  $("kim-card-"+id).classList.add("on");
+  $("kim-h-"+id).textContent=KIM2_COPY[k].t;
+  var p=$("kim-p-"+id); p.textContent=KIM2_COPY[k].p; p.classList.remove("kim-lk");
+  if(kim2Hit.a && kim2Hit.b){
+    kim2Done=true;
+    $("kim2-pull").style.display="none";
+    setTimeout(function(){
+      $("kim-finale").classList.add("on");
+      kimAward(2);
+      setTimeout(function(){ $("kim-earned").classList.add("show"); kimDrawTrail(); },700);
+    },380);
+  }
+}
+function kim2Reset(){
+  kim2Z=1; kim2Hit={a:false,b:false}; kim2Done=false; kim2Drag=false; kim2Last=null;
+  $("kim2-pull").style.display="";
+  ["mind","heart"].forEach(function(id){
+    $("kim-card-"+id).classList.remove("on");
+    $("kim-h-"+id).textContent="Locked";
+    var p=$("kim-p-"+id); p.textContent="Keep pulling back"; p.classList.add("kim-lk");
+  });
+  $("kim-finale").classList.remove("on");
+  $("kim-earned").classList.remove("show");
+  kim2Render();
+}
+function kim2Bind(){
+  var sv=$("kim2-scene"); if(!sv || sv.__b) return; sv.__b=true;
+  function yOf(e){ return e.touches?e.touches[0].clientY:e.clientY; }
+  function down(e){ if(kim2Done) return; kim2Drag=true; kim2Last=yOf(e); sv.classList.add("dragging"); }
+  function move(e){
+    if(!kim2Drag||kim2Done) return;
+    var y=yOf(e), d=y-kim2Last; kim2Last=y;
+    kim2Z=Math.max(1, Math.min(11, kim2Z + Math.abs(d)*0.012));   // any drag pulls you back
+    kim2Render();
+    if(e.cancelable) e.preventDefault();
+  }
+  function up(){ kim2Drag=false; kim2Last=null; sv.classList.remove("dragging"); }
+  sv.addEventListener("mousedown",down); sv.addEventListener("touchstart",down,{passive:true});
+  window.addEventListener("mousemove",move); window.addEventListener("touchmove",move,{passive:false});
+  window.addEventListener("mouseup",up); window.addEventListener("touchend",up);
+  sv.addEventListener("wheel",function(e){ if(kim2Done) return; kim2Z=Math.max(1,Math.min(11,kim2Z+(e.deltaY>0?0.35:-0.35))); kim2Render(); e.preventDefault(); },{passive:false});
+}
+
 function kimBind(){
   var stage=$("kim-stage"); if(!stage || stage.__kimBound) return; stage.__kimBound=true;
   function down(e){ if(kimGameDone||!kimLive) return; kimDrag=true; kimAim=kimPt(e); }
@@ -15609,7 +15740,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v35 (Keep in mind) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v36 (game 2: 1%) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
