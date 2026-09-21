@@ -8558,80 +8558,75 @@ function okrBoardScope(cyc){
   });
   return keep;
 }
-/* ---------- board filter by org unit (one dropdown per level band) ---------- */
-var okrUnitF = {};                      /* tier -> unit id;  absent / "" = all */
-function okrUnitFAny(){ return !!(okrUnitF[1]||okrUnitF[2]||okrUnitF[3]); }
-function okrUnitFClear(){ okrUnitF={}; }
-/* drop any selection whose unit was deleted, or which no longer sits under the tier above it */
-function okrUnitFPrune(){
-  [1,2,3].forEach(function(t){ if(okrUnitF[t] && !okrUnitById(okrUnitF[t])) okrUnitF[t]=""; });
-  var all=okrOrgUnits(0), by={}; all.forEach(function(u){ by[u.id]=u; });
-  if(okrUnitF[2] && okrUnitF[1] && by[okrUnitF[2]] && by[okrUnitF[2]].p1!==okrUnitF[1]) okrUnitF[2]="";
-  if(okrUnitF[3] && okrUnitF[1] && by[okrUnitF[3]] && by[okrUnitF[3]].p1!==okrUnitF[1]) okrUnitF[3]="";
-  if(okrUnitF[3] && okrUnitF[2] && by[okrUnitF[3]] && by[okrUnitF[3]].p2!==okrUnitF[2]) okrUnitF[3]="";
+/* ---------- board filter: ONE dropdown, the whole org nested inside it ---------- */
+var okrUnitPick = "";                   /* "" = everything;  otherwise a unit id at any depth */
+function okrUnitFAny(){ return !!okrUnitPick; }
+function okrUnitFClear(){ okrUnitPick = ""; }
+function okrUnitFPrune(){ if(okrUnitPick && !okrUnitById(okrUnitPick)) okrUnitPick = ""; }
+/* the picked unit plus everything nested under it */
+function okrUnitSubtree(id){
+  var set={}; if(!id) return set;
+  set[id]=1;
+  okrOrgUnits(0).forEach(function(u){ if(u.p1===id || u.p2===id) set[u.id]=1; });
+  return set;
 }
-/* units to offer in the tier-t dropdown, narrowed by whatever is picked above it */
-function okrUnitFOptions(t){
-  return okrOrgUnits(t).filter(function(u){
-    if(t>=2 && okrUnitF[1] && u.p1!==okrUnitF[1]) return false;
-    if(t===3 && okrUnitF[2] && u.p2!==okrUnitF[2]) return false;
-    return true;
-  });
-}
-/* how many objectives in this cycle sit on a unit (itself or anything under it) */
+/* objectives in this cycle sitting on a unit or anything under it */
 function okrUnitCount(cyc, id){
-  var kids={}; kids[id]=1;
-  okrOrgUnits(0).forEach(function(u){ if(u.p1===id || u.p2===id) kids[u.id]=1; });
-  var n=0; ((cyc&&cyc.objectives)||[]).forEach(function(o){ if(o.orgUnit && kids[o.orgUnit]) n++; });
+  var set=okrUnitSubtree(id), n=0;
+  ((cyc&&cyc.objectives)||[]).forEach(function(o){ if(o.orgUnit && set[o.orgUnit]) n++; });
   return n;
 }
-/* an objective passes if it, or anything it aligns up to, sits on the chosen unit.
-   matches keep their whole parent chain so the board still reads top-down.        */
+/* every unit, in tree order, with its depth — this is what the single dropdown shows */
+function okrUnitTreeList(){
+  var out=[];
+  okrOrg().forEach(function(d){
+    out.push({id:d.id, name:d.name, depth:0});
+    (d.subs||[]).forEach(function(sb){
+      out.push({id:sb.id, name:sb.name, depth:1});
+      (sb.teams||[]).forEach(function(tm){ out.push({id:tm.id, name:tm.name, depth:2}); });
+    });
+  });
+  return out;
+}
+/* an objective passes if it — or anything it aligns up to — sits inside the picked branch.
+   matches keep their parent chain so the board still reads top-down.                      */
 function okrFilterByUnit(vis, cyc){
   okrUnitFPrune();
-  if(!okrUnitFAny()) return vis;
+  if(!okrUnitPick) return vis;
+  var set=okrUnitSubtree(okrUnitPick);
   var byId={}; ((cyc&&cyc.objectives)||[]).forEach(function(o){ byId[o.id]=o; });
-  function chainHas(o, id){
-    var cur=o, g=0;
-    while(cur && g++<20){ if(cur.orgUnit===id) return true; cur = cur.alignsTo ? byId[cur.alignsTo] : null; }
-    return false;
-  }
   var keep={};
   vis.forEach(function(o){
-    var okAll=true;
-    [1,2,3].forEach(function(t){ if(okrUnitF[t] && !chainHas(o, okrUnitF[t])) okAll=false; });
-    if(!okAll) return;
+    var cur=o, g=0, hit=false;
+    while(cur && g++<20){ if(cur.orgUnit && set[cur.orgUnit]){ hit=true; break; } cur = cur.alignsTo ? byId[cur.alignsTo] : null; }
+    if(!hit) return;
     keep[o.id]=true;
-    var cur=o, g=0;
+    cur=o; g=0;
     while(cur && cur.alignsTo && byId[cur.alignsTo] && g++<20){ cur=byId[cur.alignsTo]; keep[cur.id]=true; }
   });
   return vis.filter(function(o){ return keep[o.id]; });
 }
-/* the dropdown that sits beside a level band's label */
-function okrBandFilter(lv, cyc){
-  var t = okrTierForLevel(lv);
-  if(!t) return null;
-  var units = okrUnitFOptions(t);
+/* the one dropdown. sits beside the first org-level band on the board. */
+function okrBandFilter(cyc){
+  var units = okrUnitTreeList();
   if(!units.length) return null;
   var tiers = okrOrgTiers();
   var sel = document.createElement("select");
   sel.className = "okrb-unitf";
-  var plural = tiers[t-1] + (/s$/i.test(tiers[t-1]) ? "" : "s");
+  var plural = tiers[0] + (/s$/i.test(tiers[0]) ? "" : "s");
+  var PAD = "   ", ARROW = "└ ";
   var h = '<option value="">All ' + mtEsc(plural.toLowerCase()) + '</option>';
   units.forEach(function(u){
     var n = okrUnitCount(cyc, u.id);
-    h += '<option value="'+mtEsc(u.id)+'">'+mtEsc(u.name)+(n?' · '+n:'')+'</option>';
+    var lead = u.depth ? (new Array(u.depth*2+1).join(PAD) + ARROW) : "";
+    h += '<option value="'+mtEsc(u.id)+'">'+mtEsc(lead+u.name)+(n?' · '+n:'')+'</option>';
   });
   sel.innerHTML = h;
-  sel.value = okrUnitF[t] || "";
-  if(okrUnitF[t]) sel.classList.add("on");
-  sel.title = "Filter this board to one " + tiers[t-1].toLowerCase();
-  sel.onchange = function(){
-    okrUnitF[t] = sel.value;
-    if(t===1){ okrUnitF[2]=""; okrUnitF[3]=""; }
-    if(t===2){ okrUnitF[3]=""; }
-    renderAll();
-  };
+  sel.value = okrUnitPick || "";
+  if(okrUnitPick) sel.classList.add("on");
+  var picked = okrUnitById(okrUnitPick);
+  sel.title = picked ? ("Showing " + picked.path) : ("Filter the board to one " + tiers[0].toLowerCase() + ", or anything under it");
+  sel.onchange = function(){ okrUnitPick = sel.value; renderAll(); };
   return sel;
 }
 function renderOkrBoard(cyc, wrap){
@@ -8652,12 +8647,13 @@ function renderOkrBoard(cyc, wrap){
   var levels=okrLevelsList();
   var used=[];
   levels.forEach(function(lv){ if(vis.some(function(o){return (o.level||"")===lv;})) used.push(lv); });
-  /* a level whose filter is on always keeps its band, so the dropdown stays reachable
-     even when the pick empties the board */
+  /* the single org dropdown rides on the shallowest org-level band — computed from the
+     UNfiltered set, so it never vanishes just because the pick emptied that band */
+  var _filterLv=null;
   levels.forEach(function(lv){
-    var t=okrTierForLevel(lv);
-    if(t && okrUnitF[t] && used.indexOf(lv)<0 && visPre.some(function(o){return (o.level||"")===lv;})) used.push(lv);
+    if(_filterLv===null && okrTierForLevel(lv) && visPre.some(function(o){ return (o.level||"")===lv; })) _filterLv=lv;
   });
+  if(_filterLv!==null && used.indexOf(_filterLv)<0) used.push(_filterLv);
   used.sort(function(a,b){ return levels.indexOf(a)-levels.indexOf(b); });
   var hasBlank=vis.some(function(o){ var l=(o.level||""); return !l || levels.indexOf(l)<0; });
   var order=used.slice(); if(hasBlank) order.push("");
@@ -8676,12 +8672,11 @@ function renderOkrBoard(cyc, wrap){
   }
   order.forEach(function(lv){
     var inBand = vis.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
-    var _bt = okrTierForLevel(lv);
-    if(!inBand.length && !(_bt && okrUnitF[_bt])) return;
+    if(!inBand.length && lv!==_filterLv) return;
     var band=document.createElement("div"); band.className="okrb-band";
     var headrow=document.createElement("div"); headrow.className="okrb-bandrow";
     var head=document.createElement("div"); head.className="okrb-bandhead"; head.textContent=(lv||"No level").toUpperCase(); headrow.appendChild(head);
-    var _bf = okrBandFilter(lv, cyc);
+    var _bf = (lv===_filterLv) ? okrBandFilter(cyc) : null;
     if(_bf) headrow.appendChild(_bf);
     band.appendChild(headrow);
     if(!inBand.length){
@@ -16276,7 +16271,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v40 (org filter) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v41 (org filter) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
