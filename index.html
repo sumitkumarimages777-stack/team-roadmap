@@ -2082,6 +2082,13 @@ body{margin:0}
 .okrb-links{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
 .okrb-bands{position:relative;z-index:1;display:flex;flex-direction:column;gap:26px}
 .okrb-band{position:relative}
+.okrb-bandrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.okrb-bandrow .okrb-bandhead{margin-bottom:0}
+.okrb-unitf{font-family:var(--disp);font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:6px 12px;cursor:pointer;max-width:260px}
+.okrb-unitf.on{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.okrb-bandempty{font-size:13px;color:var(--muted);padding:6px 2px 10px}
+.okrb-clearf{margin-top:10px;border:1px solid var(--line-strong);background:var(--card);color:inherit;border-radius:99px;padding:7px 16px;font-weight:600;font-size:12.5px;cursor:pointer;font-family:var(--disp)}
+.okrb-clearf:hover{background:rgba(0,0,0,.05)}
 .okrb-bandhead{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:6px 18px;margin-bottom:14px}
 .okrb-row{display:flex;flex-wrap:wrap;gap:18px}
 .okrb-card{width:300px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px 14px;position:relative;box-shadow:0 1px 2px rgba(9,30,66,.05)}
@@ -4200,11 +4207,11 @@ function okrOrgId(p){ return p+"-"+Math.random().toString(36).slice(2,8); }
 function okrOrgUnits(tier){
   var out=[], SEP=" › ";
   okrOrg().forEach(function(d){
-    if(!tier || tier===1) out.push({id:d.id, name:d.name, tier:1, path:d.name});
+    if(!tier || tier===1) out.push({id:d.id, name:d.name, tier:1, path:d.name, p1:"", p2:""});
     (d.subs||[]).forEach(function(sb){
-      if(!tier || tier===2) out.push({id:sb.id, name:sb.name, tier:2, path:d.name+SEP+sb.name});
+      if(!tier || tier===2) out.push({id:sb.id, name:sb.name, tier:2, path:d.name+SEP+sb.name, p1:d.id, p2:""});
       (sb.teams||[]).forEach(function(tm){
-        if(!tier || tier===3) out.push({id:tm.id, name:tm.name, tier:3, path:d.name+SEP+sb.name+SEP+tm.name});
+        if(!tier || tier===3) out.push({id:tm.id, name:tm.name, tier:3, path:d.name+SEP+sb.name+SEP+tm.name, p1:d.id, p2:sb.id});
       });
     });
   });
@@ -8551,6 +8558,82 @@ function okrBoardScope(cyc){
   });
   return keep;
 }
+/* ---------- board filter by org unit (one dropdown per level band) ---------- */
+var okrUnitF = {};                      /* tier -> unit id;  absent / "" = all */
+function okrUnitFAny(){ return !!(okrUnitF[1]||okrUnitF[2]||okrUnitF[3]); }
+function okrUnitFClear(){ okrUnitF={}; }
+/* drop any selection whose unit was deleted, or which no longer sits under the tier above it */
+function okrUnitFPrune(){
+  [1,2,3].forEach(function(t){ if(okrUnitF[t] && !okrUnitById(okrUnitF[t])) okrUnitF[t]=""; });
+  var all=okrOrgUnits(0), by={}; all.forEach(function(u){ by[u.id]=u; });
+  if(okrUnitF[2] && okrUnitF[1] && by[okrUnitF[2]] && by[okrUnitF[2]].p1!==okrUnitF[1]) okrUnitF[2]="";
+  if(okrUnitF[3] && okrUnitF[1] && by[okrUnitF[3]] && by[okrUnitF[3]].p1!==okrUnitF[1]) okrUnitF[3]="";
+  if(okrUnitF[3] && okrUnitF[2] && by[okrUnitF[3]] && by[okrUnitF[3]].p2!==okrUnitF[2]) okrUnitF[3]="";
+}
+/* units to offer in the tier-t dropdown, narrowed by whatever is picked above it */
+function okrUnitFOptions(t){
+  return okrOrgUnits(t).filter(function(u){
+    if(t>=2 && okrUnitF[1] && u.p1!==okrUnitF[1]) return false;
+    if(t===3 && okrUnitF[2] && u.p2!==okrUnitF[2]) return false;
+    return true;
+  });
+}
+/* how many objectives in this cycle sit on a unit (itself or anything under it) */
+function okrUnitCount(cyc, id){
+  var kids={}; kids[id]=1;
+  okrOrgUnits(0).forEach(function(u){ if(u.p1===id || u.p2===id) kids[u.id]=1; });
+  var n=0; ((cyc&&cyc.objectives)||[]).forEach(function(o){ if(o.orgUnit && kids[o.orgUnit]) n++; });
+  return n;
+}
+/* an objective passes if it, or anything it aligns up to, sits on the chosen unit.
+   matches keep their whole parent chain so the board still reads top-down.        */
+function okrFilterByUnit(vis, cyc){
+  okrUnitFPrune();
+  if(!okrUnitFAny()) return vis;
+  var byId={}; ((cyc&&cyc.objectives)||[]).forEach(function(o){ byId[o.id]=o; });
+  function chainHas(o, id){
+    var cur=o, g=0;
+    while(cur && g++<20){ if(cur.orgUnit===id) return true; cur = cur.alignsTo ? byId[cur.alignsTo] : null; }
+    return false;
+  }
+  var keep={};
+  vis.forEach(function(o){
+    var okAll=true;
+    [1,2,3].forEach(function(t){ if(okrUnitF[t] && !chainHas(o, okrUnitF[t])) okAll=false; });
+    if(!okAll) return;
+    keep[o.id]=true;
+    var cur=o, g=0;
+    while(cur && cur.alignsTo && byId[cur.alignsTo] && g++<20){ cur=byId[cur.alignsTo]; keep[cur.id]=true; }
+  });
+  return vis.filter(function(o){ return keep[o.id]; });
+}
+/* the dropdown that sits beside a level band's label */
+function okrBandFilter(lv, cyc){
+  var t = okrTierForLevel(lv);
+  if(!t) return null;
+  var units = okrUnitFOptions(t);
+  if(!units.length) return null;
+  var tiers = okrOrgTiers();
+  var sel = document.createElement("select");
+  sel.className = "okrb-unitf";
+  var plural = tiers[t-1] + (/s$/i.test(tiers[t-1]) ? "" : "s");
+  var h = '<option value="">All ' + mtEsc(plural.toLowerCase()) + '</option>';
+  units.forEach(function(u){
+    var n = okrUnitCount(cyc, u.id);
+    h += '<option value="'+mtEsc(u.id)+'">'+mtEsc(u.name)+(n?' · '+n:'')+'</option>';
+  });
+  sel.innerHTML = h;
+  sel.value = okrUnitF[t] || "";
+  if(okrUnitF[t]) sel.classList.add("on");
+  sel.title = "Filter this board to one " + tiers[t-1].toLowerCase();
+  sel.onchange = function(){
+    okrUnitF[t] = sel.value;
+    if(t===1){ okrUnitF[2]=""; okrUnitF[3]=""; }
+    if(t===2){ okrUnitF[3]=""; }
+    renderAll();
+  };
+  return sel;
+}
 function renderOkrBoard(cyc, wrap){
   var objs=cyc.objectives;
   // filter toolbar (top-right)
@@ -8558,6 +8641,8 @@ function renderOkrBoard(cyc, wrap){
   var scope=okrBoardScope(cyc); // null => all
   var vis = scope ? objs.filter(function(o){ return scope[o.id]; }) : objs;
   if(okrArea) vis = vis.filter(function(o){ return okrInArea(o, cyc); });
+  var visPre = vis;
+  vis = okrFilterByUnit(vis, cyc);
 
   var root=document.createElement("div"); root.className="okrb";
   var svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.setAttribute("class","okrb-links"); root.appendChild(svg);
@@ -8567,17 +8652,43 @@ function renderOkrBoard(cyc, wrap){
   var levels=okrLevelsList();
   var used=[];
   levels.forEach(function(lv){ if(vis.some(function(o){return (o.level||"")===lv;})) used.push(lv); });
+  /* a level whose filter is on always keeps its band, so the dropdown stays reachable
+     even when the pick empties the board */
+  levels.forEach(function(lv){
+    var t=okrTierForLevel(lv);
+    if(t && okrUnitF[t] && used.indexOf(lv)<0 && visPre.some(function(o){return (o.level||"")===lv;})) used.push(lv);
+  });
+  used.sort(function(a,b){ return levels.indexOf(a)-levels.indexOf(b); });
   var hasBlank=vis.some(function(o){ var l=(o.level||""); return !l || levels.indexOf(l)<0; });
   var order=used.slice(); if(hasBlank) order.push("");
 
   if(!vis.length){
-    var e=document.createElement("div"); e.className="empty"; e.textContent= okrArea ? ("Nothing in \u201c"+okrArea+"\u201d for this cycle.") : ((okrBoardMine? "No OKRs owned by you in this cycle." : "No objectives yet.")+((editMode&&!okrBoardMine)?" Add one below.":"")); bands.appendChild(e);
+    var e=document.createElement("div"); e.className="empty";
+    e.textContent = okrUnitFAny() ? "Nothing here for that pick."
+      : okrArea ? ("Nothing in \u201c"+okrArea+"\u201d for this cycle.")
+      : ((okrBoardMine? "No OKRs owned by you in this cycle." : "No objectives yet.")+((editMode&&!okrBoardMine)?" Add one below.":""));
+    bands.appendChild(e);
+    if(okrUnitFAny()){
+      var _cl=document.createElement("button"); _cl.className="okrb-clearf"; _cl.textContent="Show all again";
+      _cl.onclick=function(){ okrUnitFClear(); renderAll(); };
+      bands.appendChild(_cl);
+    }
   }
   order.forEach(function(lv){
     var inBand = vis.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
-    if(!inBand.length) return;
+    var _bt = okrTierForLevel(lv);
+    if(!inBand.length && !(_bt && okrUnitF[_bt])) return;
     var band=document.createElement("div"); band.className="okrb-band";
-    var head=document.createElement("div"); head.className="okrb-bandhead"; head.textContent=(lv||"No level").toUpperCase(); band.appendChild(head);
+    var headrow=document.createElement("div"); headrow.className="okrb-bandrow";
+    var head=document.createElement("div"); head.className="okrb-bandhead"; head.textContent=(lv||"No level").toUpperCase(); headrow.appendChild(head);
+    var _bf = okrBandFilter(lv, cyc);
+    if(_bf) headrow.appendChild(_bf);
+    band.appendChild(headrow);
+    if(!inBand.length){
+      var _be=document.createElement("div"); _be.className="okrb-bandempty";
+      _be.textContent="Nothing here for that pick.";
+      band.appendChild(_be); bands.appendChild(band); return;
+    }
     var row=document.createElement("div"); row.className="okrb-row";
     inBand.forEach(function(ob){ row.appendChild(okrBoardCard(ob, cyc, objs)); });
     band.appendChild(row); bands.appendChild(band);
@@ -16165,7 +16276,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v39 (org structure) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v40 (org filter) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
