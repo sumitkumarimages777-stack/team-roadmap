@@ -3719,7 +3719,6 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
     <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"></select></div>
-    <div class="field" id="f-okrarea-wrap"><label for="f-okrarea">Area / function <span class="hint" style="font-weight:400">— e.g. Marketing, Product</span></label><input id="f-okrarea" list="f-okrarea-list" placeholder="Leave blank for none" autocomplete="off"><datalist id="f-okrarea-list"></datalist></div>
     <div class="field" id="f-unit-wrap"><label for="f-unitsel" id="f-unit-lbl">Unit</label><select id="f-unitsel"></select></div>
     <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
@@ -5401,11 +5400,6 @@ function openDialog(title, values, onSave, opts={}){
     renderDlgLabels();
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
-  $("f-okrarea-wrap") && ($("f-okrarea-wrap").style.display = opts.level ? "" : "none");
-  if(opts.level && $("f-okrarea")){
-    $("f-okrarea").value = values.area || "";
-    try{ $("f-okrarea-list").innerHTML = okrAreasList().map(function(a){ return '<option value="'+mtEsc(a)+'">'; }).join(""); }catch(_){ }
-  }
   $("f-level-wrap").style.display = opts.level ? "" : "none";
   if(!opts.level && $("f-unit-wrap")) $("f-unit-wrap").style.display = "none";
   if(opts.level){
@@ -5559,8 +5553,7 @@ $("dlg-save").onclick = ()=>{
     deadline: $("f-deadline").value.trim(),
     budget: $("f-budget").value.trim(),
     okr: $("f-okr").value,
-    area: ($("f-area-wrap") && $("f-area-wrap").style.display!=="none") ? $("f-area").value
-        : (($("f-okrarea-wrap") && $("f-okrarea-wrap").style.display!=="none") ? $("f-okrarea").value.trim() : ""),
+    area: $("f-area").value,
     blockedBy: [...dlgDeps],
     spendTask: $("f-spendtask").value,
     photos: dlgPhotos.slice(),
@@ -8344,7 +8337,6 @@ function okrAddOwned(cyc, parentId){
   openDialog("New objective", preset, function(v){
     var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[] }; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
     if(v.note) ob.note=v.note;
-    var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar;
     okrApplyUnit(ob, v);
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
@@ -8358,7 +8350,6 @@ function okrEditNode(ob, cyc){
   var vals = {}; for(var k in ob){ vals[k]=ob[k]; } vals.owners = okrOwners(ob);
   openDialog("Edit objective", vals, function(v){
     applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level;
-    var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar; else delete ob.area;
     okrApplyUnit(ob, v);
     if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo;
     var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
@@ -8754,8 +8745,7 @@ function okrBoardCard(ob, cyc, objs){
   var meta=document.createElement("div"); meta.className="okrb-meta";
   var _unit=okrUnitById(ob.orgUnit);
   meta.innerHTML='<span class="okrb-owner">'+(owners.length?mtEsc(ownerTxt):'<i>unassigned</i>')+(mine?' <span class="okrb-you">· you</span>':'')+'</span>'
-    + (_unit ? '<span class="okrb-unit" title="'+mtEsc(_unit.path)+'">'+mtEsc(_unit.name)+'</span>' : '')
-    + ((ob.area||"").trim() ? '<span class="okrb-area">'+mtEsc(ob.area.trim())+'</span>' : '');
+    + (_unit ? '<span class="okrb-unit" title="'+mtEsc(_unit.path)+'">'+mtEsc(_unit.name)+'</span>' : '');
   card.appendChild(meta);
 
   var barw=document.createElement("div"); barw.className="okrb-barw";
@@ -8852,21 +8842,7 @@ function renderContentOkr(){
     _seg.appendChild(b);
   });
   _fbar.appendChild(_seg);
-  var _areas = okrCycleAreas(cyc);
-  if(_areas.length){
-    if(okrArea && _areas.filter(function(a){return a.toLowerCase()===okrArea.toLowerCase();}).length===0) okrArea="";
-    var _aseg=document.createElement('div'); _aseg.className='okrb-filter okrb-areas';
-    var _all=document.createElement('button'); _all.className='okrb-fbtn'+(okrArea?'':' on'); _all.textContent='All areas';
-    _all.onclick=function(){ okrArea=""; renderAll(); }; _aseg.appendChild(_all);
-    _areas.forEach(function(a){
-      var b=document.createElement('button');
-      b.className='okrb-fbtn'+(okrArea.toLowerCase()===a.toLowerCase()?' on':'');
-      b.textContent=a; b.title='Only \u201c'+a+'\u201d objectives and everything under them';
-      b.onclick=function(){ okrArea=a; renderAll(); };
-      _aseg.appendChild(b);
-    });
-    _fbar.appendChild(_aseg);
-  }
+  okrArea = "";   /* the org dropdown on the DEPARTMENT band is the filter now */
   wrap.appendChild(_fbar);
   if(okrView2==='tree'){ renderOkrTree(cyc, wrap); return; }
   renderOkrBoard(cyc, wrap); return;
@@ -8906,7 +8882,7 @@ function renderContentOkr(){
     if(editMode){
       const acts = document.createElement("div"); acts.className="acts"; acts.style.marginTop="4px";
       acts.appendChild(actBtn("pencil","Edit objective",false, ()=>
-        openDialog("Edit objective", (function(){ var _v={}; for(var k in ob){ _v[k]=ob[k]; } _v.owners=okrOwners(ob); return _v; })(), v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar; else delete ob.area; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; var _ow=Array.isArray(v.owners)?v.owners.slice():[]; if(_ow.length){ ob.owners=_ow; ob.assignee=_ow[0]; } else { delete ob.owners; delete ob.assignee; } saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true})));
+        openDialog("Edit objective", (function(){ var _v={}; for(var k in ob){ _v[k]=ob[k]; } _v.owners=okrOwners(ob); return _v; })(), v=>{ applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level; if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo; var _ow=Array.isArray(v.owners)?v.owners.slice():[]; if(_ow.length){ ob.owners=_ow; ob.assignee=_ow[0]; } else { delete ob.owners; delete ob.assignee; } saveOkrs(); }, {level:true, alignTo:true, alignOptions:okrAlignOptions(cyc, ob.id), owners:true})));
       acts.appendChild(actBtn("trash","Delete objective",true, ()=>{
         if(confirm(`Delete objective “${ob.title}” and its ${ob.krs.length} key result(s)?`)){
           cyc.objectives.splice(oi,1); saveOkrs(); toast("Deleted");
@@ -16281,7 +16257,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v42 (org filter) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v43 (org filter) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
