@@ -2039,6 +2039,27 @@ body{margin:0}
 .pp-none{padding:9px;font-size:12.5px;color:var(--muted)}
 
 /* ===== admin OKR levels ===== */
+.org-tiers{max-width:640px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px;background:var(--card,#fff)}
+.org-tierslbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:#6b778c;margin-bottom:10px}
+.org-tierrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.org-tierf{flex:1 1 150px;min-width:120px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;background:transparent;color:inherit}
+.org-tierarrow{color:#9aa4b2;font-size:16px}
+.org-list{max-width:640px;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.org-empty{padding:18px;color:#6b778c;font-size:13px}
+.org-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.org-row:last-child{border-bottom:none}
+.org-row.t1{font-weight:700}
+.org-row.t2{padding-left:34px;font-weight:600}
+.org-row.t3{padding-left:58px;font-weight:500;font-size:13px}
+.org-row.t2 .org-name,.org-row.t3 .org-name{color:#42526e}
+.org-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.org-count{font-size:11px;color:#8993a4;white-space:nowrap}
+.org-acts{display:flex;gap:5px;flex:0 0 auto}
+.org-btn{border:1px solid var(--line);background:transparent;color:inherit;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;line-height:1.4}
+.org-btn:hover{background:rgba(0,0,0,.05)}
+.org-btn.add{font-weight:600;color:var(--indigo);border-color:var(--indigo)}
+.org-btn.danger:hover{background:#ffebe6;border-color:#ff8f73}
+.okrb-unit{display:inline-block;font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:#0747a6;background:#deebff;border-radius:4px;padding:1px 7px;margin-left:8px;vertical-align:middle}
 .okrlv-list{max-width:560px;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px}
 .okrlv-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
 .okrlv-row:last-child{border-bottom:none}
@@ -2084,6 +2105,9 @@ body{margin:0}
 .okrb-kr-bar{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:4px}
 .okrb-kr-bar i{display:block;height:100%}
 .okrb-kr-fig{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.okr-kract{margin-left:5px;min-width:26px;text-align:center;font-size:12px;line-height:1.15}
+.okr-kract:hover{border-color:var(--indigo);color:var(--indigo)}
+.okr-krdel:hover{border-color:#C9372C;color:#C9372C}
 .okrb-krupd{margin-top:5px;border:1px solid var(--line-strong);background:var(--card);border-radius:6px;padding:2px 9px;font-size:10.5px;cursor:pointer;color:var(--muted);font-family:var(--disp)}
 .okrb-krupd:hover{border-color:var(--indigo);color:var(--indigo)}
 .okrb-kradd{border:none;background:none;color:var(--indigo);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0;text-align:left;font-family:var(--disp)}
@@ -3686,7 +3710,8 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
     </div>
     <div class="field" id="f-labels-wrap"><label for="f-labels-input">Labels</label><input id="f-labels-input" placeholder="Type a label and press Enter" autocomplete="off"><div id="f-labels-chips" class="dlg-labels-chips"></div></div>
     <div class="field" id="f-level-wrap"><label for="f-level">Level</label><select id="f-level"></select></div>
-    <div class="field" id="f-area-wrap"><label for="f-area">Area / function <span class="hint" style="font-weight:400">— e.g. Marketing, Product</span></label><input id="f-area" list="f-area-list" placeholder="Leave blank for none" autocomplete="off"><datalist id="f-area-list"></datalist></div>
+    <div class="field" id="f-okrarea-wrap"><label for="f-okrarea">Area / function <span class="hint" style="font-weight:400">— e.g. Marketing, Product</span></label><input id="f-okrarea" list="f-okrarea-list" placeholder="Leave blank for none" autocomplete="off"><datalist id="f-okrarea-list"></datalist></div>
+    <div class="field" id="f-unit-wrap"><label for="f-unitsel" id="f-unit-lbl">Unit</label><select id="f-unitsel"></select></div>
     <div class="field" id="f-alignsto-wrap"><label for="f-alignsto">Aligns to (rolls up to)</label><select id="f-alignsto"></select></div>
     <div class="field" id="f-note-wrap"><label for="f-note">Note (optional)</label><textarea id="f-note" placeholder="One-line detail, dependency, deadline…"></textarea></div>
     <div class="field-row" id="f-dates-wrap">
@@ -4140,6 +4165,19 @@ function normalizeOkrs(o){
   o = o || {};
   o.cycles = o.cycles || [];
   if(!("levels" in o) || !Array.isArray(o.levels)){ o.levels = ["Company","Department","Team","Sub-team","Individual"]; }
+  if(!Array.isArray(o.orgTiers) || o.orgTiers.length!==3) o.orgTiers = ["Department","Sub-department","Team"];
+  o.orgTiers = o.orgTiers.map(function(x,i){ return (typeof x==="string" && x.trim()) ? x.trim() : ["Department","Sub-department","Team"][i]; });
+  o.org = Array.isArray(o.org) ? o.org : [];
+  var _oid=function(p){ return p+"-"+Math.random().toString(36).slice(2,8); };
+  o.org.forEach(function(d){
+    if(!d.id) d.id=_oid("dep"); d.name=(d.name||"Untitled");
+    d.subs = Array.isArray(d.subs) ? d.subs : [];
+    d.subs.forEach(function(sb){
+      if(!sb.id) sb.id=_oid("sub"); sb.name=(sb.name||"Untitled");
+      sb.teams = Array.isArray(sb.teams) ? sb.teams : [];
+      sb.teams.forEach(function(tm){ if(!tm.id) tm.id=_oid("tm"); tm.name=(tm.name||"Untitled"); });
+    });
+  });
   o.cycles.forEach(c => {
     c.objectives = c.objectives || [];
     c.objectives.forEach((ob,i) => {
@@ -4149,6 +4187,70 @@ function normalizeOkrs(o){
     });
   });
   return o;
+}
+/* ---------- org structure:  tier1 > tier2 > tier3  (default Department > Sub-department > Team) ---------- */
+function okrOrgTiers(){
+  var t = (typeof OKRS!=="undefined" && OKRS && Array.isArray(OKRS.orgTiers) && OKRS.orgTiers.length===3) ? OKRS.orgTiers : null;
+  return t ? t.slice() : ["Department","Sub-department","Team"];
+}
+function okrOrg(){ return (typeof OKRS!=="undefined" && OKRS && Array.isArray(OKRS.org)) ? OKRS.org : []; }
+function okrOrgSave(){ if(typeof OKRS!=="undefined" && OKRS) OKRS.updated = todayStr(); if(typeof pushAll==="function") pushAll(); }
+function okrOrgId(p){ return p+"-"+Math.random().toString(36).slice(2,8); }
+/* every unit flattened. tier 1|2|3 filters; 0 or omitted returns all. */
+function okrOrgUnits(tier){
+  var out=[], SEP=" › ";
+  okrOrg().forEach(function(d){
+    if(!tier || tier===1) out.push({id:d.id, name:d.name, tier:1, path:d.name});
+    (d.subs||[]).forEach(function(sb){
+      if(!tier || tier===2) out.push({id:sb.id, name:sb.name, tier:2, path:d.name+SEP+sb.name});
+      (sb.teams||[]).forEach(function(tm){
+        if(!tier || tier===3) out.push({id:tm.id, name:tm.name, tier:3, path:d.name+SEP+sb.name+SEP+tm.name});
+      });
+    });
+  });
+  return out;
+}
+function okrUnitById(id){
+  if(!id) return null;
+  var all=okrOrgUnits(0);
+  for(var i=0;i<all.length;i++){ if(all[i].id===id) return all[i]; }
+  return null;
+}
+/* which tier of the org does this level name point at?  0 = no unit applies (Company, Individual, ...) */
+function okrTierForLevel(lv){
+  lv=(lv||"").toLowerCase().trim(); if(!lv) return 0;
+  var t=okrOrgTiers();
+  for(var i=0;i<3;i++){ if((t[i]||"").toLowerCase().trim()===lv) return i+1; }
+  if(/^sub/.test(lv)) return 2;
+  if(/depart|division|vertical/.test(lv)) return 1;
+  if(/team|squad|pod|crew/.test(lv)) return 3;
+  return 0;
+}
+function okrApplyUnit(ob, v){
+  var u=(v && v.orgUnit ? String(v.orgUnit) : "").trim();
+  if(u && okrUnitById(u)) ob.orgUnit=u; else delete ob.orgUnit;
+}
+/* the Level select drives which units are offered */
+function okrUnitFieldInit(cur){
+  var w=$("f-unit-wrap"); if(!w) return;
+  cur = cur || "";
+  function paint(){
+    var lv = $("f-level") ? $("f-level").value : "";
+    var tier = okrTierForLevel(lv);
+    var units = tier ? okrOrgUnits(tier) : [];
+    var sel = $("f-unitsel");
+    if(!tier || !units.length){ w.style.display="none"; if(sel) sel.innerHTML=""; return; }
+    w.style.display="";
+    $("f-unit-lbl").textContent = okrOrgTiers()[tier-1];
+    var h='<option value="">— none —</option>';
+    units.forEach(function(u){ h+='<option value="'+mtEsc(u.id)+'">'+mtEsc(tier===1?u.name:u.path)+'</option>'; });
+    sel.innerHTML=h;
+    var ok=false; for(var i=0;i<units.length;i++){ if(units[i].id===cur){ ok=true; break; } }
+    sel.value = ok ? cur : "";
+  }
+  paint();
+  var lvsel=$("f-level");
+  if(lvsel) lvsel.onchange=function(){ var s=$("f-unitsel"); cur = s ? s.value : ""; paint(); };
 }
 function okrLevelsList(){ return (OKRS && Array.isArray(OKRS.levels)) ? OKRS.levels.slice() : []; }
 function okrLevelsSave(){ OKRS.updated = todayStr(); if(typeof pushAll==="function") pushAll(); }
@@ -5290,18 +5392,20 @@ function openDialog(title, values, onSave, opts={}){
     renderDlgLabels();
     $("f-labels-input").onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); const v=$("f-labels-input").value.trim(); if(v && dlgLabels.indexOf(v)<0){ dlgLabels.push(v); renderDlgLabels(); } $("f-labels-input").value=""; } };
   } else { dlgLabels = []; }
-  $("f-area-wrap") && ($("f-area-wrap").style.display = opts.level ? "" : "none");
-  if(opts.level && $("f-area")){
-    $("f-area").value = values.area || "";
-    try{ $("f-area-list").innerHTML = okrAreasList().map(function(a){ return '<option value="'+mtEsc(a)+'">'; }).join(""); }catch(_){ }
+  $("f-okrarea-wrap") && ($("f-okrarea-wrap").style.display = opts.level ? "" : "none");
+  if(opts.level && $("f-okrarea")){
+    $("f-okrarea").value = values.area || "";
+    try{ $("f-okrarea-list").innerHTML = okrAreasList().map(function(a){ return '<option value="'+mtEsc(a)+'">'; }).join(""); }catch(_){ }
   }
   $("f-level-wrap").style.display = opts.level ? "" : "none";
+  if(!opts.level && $("f-unit-wrap")) $("f-unit-wrap").style.display = "none";
   if(opts.level){
     var _lvsel=$("f-level"); var _lvs=okrLevelsList(); var _cur=values.level||"";
     var _opts='<option value="">— none —</option>';
     _lvs.forEach(function(nm){ _opts+='<option value="'+mtEsc(nm)+'">'+mtEsc(nm)+'</option>'; });
     if(_cur && _lvs.indexOf(_cur)<0){ _opts+='<option value="'+mtEsc(_cur)+'">'+mtEsc(_cur)+' (custom)</option>'; }
     _lvsel.innerHTML=_opts; _lvsel.value=_cur;
+    try{ okrUnitFieldInit(values.orgUnit||""); }catch(_){ }
   }
   $("f-alignsto-wrap").style.display = opts.alignTo ? "" : "none";
   if(opts.alignTo){
@@ -5436,7 +5540,7 @@ $("dlg-save").onclick = ()=>{
     priority: $("f-priority") ? $("f-priority").value : "",
     labels: dlgLabels.slice(),
     level: $("f-level") ? $("f-level").value : "",
-    area: $("f-area") ? $("f-area").value.trim() : "",
+    orgUnit: ($("f-unitsel") && $("f-unit-wrap") && $("f-unit-wrap").style.display!=="none") ? $("f-unitsel").value : "",
     alignsTo: $("f-alignsto") ? $("f-alignsto").value : "",
     current: $("f-current").value,
     target: $("f-target").value,
@@ -5446,7 +5550,8 @@ $("dlg-save").onclick = ()=>{
     deadline: $("f-deadline").value.trim(),
     budget: $("f-budget").value.trim(),
     okr: $("f-okr").value,
-    area: $("f-area").value,
+    area: ($("f-area-wrap") && $("f-area-wrap").style.display!=="none") ? $("f-area").value
+        : (($("f-okrarea-wrap") && $("f-okrarea-wrap").style.display!=="none") ? $("f-okrarea").value.trim() : ""),
     blockedBy: [...dlgDeps],
     spendTask: $("f-spendtask").value,
     photos: dlgPhotos.slice(),
@@ -8231,6 +8336,7 @@ function okrAddOwned(cyc, parentId){
     var ob={ id:"ob-"+cyc.key+"-"+Date.now().toString(36), title:v.title, krs:[] }; var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv;
     if(v.note) ob.note=v.note;
     var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar;
+    okrApplyUnit(ob, v);
     var al = parentId || (v.alignsTo||"");
     if(al) ob.alignsTo=al;
     var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
@@ -8243,6 +8349,8 @@ function okrEditNode(ob, cyc){
   var vals = {}; for(var k in ob){ vals[k]=ob[k]; } vals.owners = okrOwners(ob);
   openDialog("Edit objective", vals, function(v){
     applyFields(ob, v); var _lv=(v.level||"").trim(); if(_lv) ob.level=_lv; else delete ob.level;
+    var _ar=(v.area||"").trim(); if(_ar) ob.area=_ar; else delete ob.area;
+    okrApplyUnit(ob, v);
     if(v.alignsTo) ob.alignsTo=v.alignsTo; else delete ob.alignsTo;
     var _owners = Array.isArray(v.owners) ? v.owners.slice() : [];
     if(_owners.length){ ob.owners=_owners; ob.assignee=_owners[0]; } else { delete ob.owners; delete ob.assignee; }
@@ -8302,7 +8410,7 @@ function okrTreeNode(ob, cyc, objs){
         row.innerHTML='<div class="okrtree-kr-t">KR'+(ki+1)+' · '+mtEsc(kr.title)+(krOwners(kr).length?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrtree-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrtree-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
-        if(canEdit){ var up=document.createElement("button"); up.className="okrtree-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; row.appendChild(up); }
+        if(canEdit){ var up=document.createElement("button"); up.className="okrtree-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; row.appendChild(up); okrKrActBtns(row, kr, ob, ki, "okrtree-krupd"); }
         kb.appendChild(row);
       });
       if(canEdit){ var addkr=document.createElement("button"); addkr.className="okrtree-kradd"; addkr.textContent="＋ Add key result"; addkr.onclick=function(e){ e.stopPropagation(); openDialog("New key result", {current:0,target:100,unit:"%"}, function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.note)kr.note=v.note; if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); }; kb.appendChild(addkr); }
@@ -8487,6 +8595,34 @@ function renderOkrBoard(cyc, wrap){
   else okrDrawLinks(root);
   if(!_okrBoardResizeBound){ _okrBoardResizeBound=true; window.addEventListener("resize", function(){ var r=document.querySelector(".okrb"); if(r) okrDrawLinks(r); }); }
 }
+function okrEditKr(kr, ob){
+  if(!kr) return;
+  openDialog("Edit key result", kr, function(v){
+    kr.title = v.title;
+    if(v.note) kr.note = v.note; else delete kr.note;
+    kr.current = Number(v.current)||0;
+    kr.target  = Number(v.target)||0;
+    kr.unit    = v.unit;
+    if(v.invert){ kr.invert = true; if(kr.start===undefined) kr.start = Number(v.current)||0; }
+    else { delete kr.invert; }
+    if(v.owners && v.owners.length){ kr.owners = v.owners.slice(); kr.assignee = v.owners[0]; }
+    else { delete kr.owners; delete kr.assignee; }
+    saveOkrs(); toast("Key result updated");
+  }, {metric:true, owners:true});
+}
+function okrDelKr(ob, ki){
+  var kr = ob && ob.krs ? ob.krs[ki] : null; if(!kr) return;
+  if(typeof confirm==="function" && !confirm("Delete key result \u201c"+kr.title+"\u201d?")) return;
+  ob.krs.splice(ki,1); saveOkrs(); toast("Key result deleted");
+}
+function okrKrActBtns(row, kr, ob, ki, cls){
+  var ed=document.createElement("button"); ed.className=cls+" okr-kract"; ed.textContent="\u270E"; ed.title="Edit key result";
+  ed.onclick=function(e){ e.stopPropagation(); okrEditKr(kr, ob); };
+  row.appendChild(ed);
+  var dl=document.createElement("button"); dl.className=cls+" okr-kract okr-krdel"; dl.textContent="\u00D7"; dl.title="Delete key result";
+  dl.onclick=function(e){ e.stopPropagation(); okrDelKr(ob, ki); };
+  row.appendChild(dl);
+}
 function okrBoardCard(ob, cyc, objs){
   var card=document.createElement("div"); card.className="okrb-card"; card.id="okrb-"+ob.id;
   var p=objRollupPct(ob), auto=ob.rollup==="auto";
@@ -8500,7 +8636,9 @@ function okrBoardCard(ob, cyc, objs){
   card.appendChild(top);
 
   var meta=document.createElement("div"); meta.className="okrb-meta";
+  var _unit=okrUnitById(ob.orgUnit);
   meta.innerHTML='<span class="okrb-owner">'+(owners.length?mtEsc(ownerTxt):'<i>unassigned</i>')+(mine?' <span class="okrb-you">· you</span>':'')+'</span>'
+    + (_unit ? '<span class="okrb-unit" title="'+mtEsc(_unit.path)+'">'+mtEsc(_unit.name)+'</span>' : '')
     + ((ob.area||"").trim() ? '<span class="okrb-area">'+mtEsc(ob.area.trim())+'</span>' : '');
   card.appendChild(meta);
 
@@ -8520,7 +8658,7 @@ function okrBoardCard(ob, cyc, objs){
         r.innerHTML='<div class="okrb-kr-t"><span class="okrb-kr-tag">KR'+(ki+1)+'</span>'+mtEsc(kr.title)+(krOwners(kr).length?' <span class="kr-own">'+mtEsc(krOwnerName(kr))+'</span>':'')+'</div>'
           +'<div class="okrb-kr-bar"><i style="width:'+pc+'%;background:'+scoreColor(pc)+'"></i></div>'
           +'<div class="okrb-kr-fig"><b>'+fmt(kr.current)+'</b> / '+fmt(kr.target)+' '+mtEsc(kr.unit||"")+' · '+pc+'%</div>';
-        if(canEdit){ var up=document.createElement("button"); up.className="okrb-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; r.appendChild(up); }
+        if(canEdit){ var up=document.createElement("button"); up.className="okrb-krupd"; up.textContent="Update"; up.onclick=function(e){ e.stopPropagation(); openDialog("Update: "+kr.title, kr, function(v){ if(kr.start===undefined) kr.start=Number(kr.current)||0; kr.current=Number(v.current)||0; saveOkrs(); toast("Updated"); }, {hideTitle:true, metric:true, simple:true}); }; r.appendChild(up); okrKrActBtns(r, kr, ob, ki, "okrb-krupd"); }
         kb.appendChild(r);
       });
       if(canEdit){ var ak=document.createElement("button"); ak.className="okrb-kradd"; ak.textContent="＋ Add key result"; ak.onclick=function(e){ e.stopPropagation(); openDialog("New key result",{current:0,target:100,unit:"%"},function(v){ var kr={title:v.title,current:Number(v.current)||0,target:Number(v.target)||0,unit:v.unit}; if(v.owners && v.owners.length) kr.owners=v.owners.slice(); if(v.invert){kr.invert=true;kr.start=Number(v.current)||0;} ob.krs.push(kr); saveOkrs(); toast("Key result added"); }, {metric:true, owners:true}); }; kb.appendChild(ak); }
@@ -16027,7 +16165,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v37 (game 2: galaxies \u2192 your chair) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v39 (org structure) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -17212,6 +17350,7 @@ function renderAdminPage(){
   const nav = $("admin-nav");
   nav.innerHTML = "";
   const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
+  if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
   _navItems.forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
@@ -17228,10 +17367,11 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
-  if(adminView === "danger" && !(currentUser() && currentUser().super)) adminView = "users";
+  if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
+  else if(adminView === "org") renderAdminOrg(main);
   else if(adminView === "okrlevels") renderAdminOkrLevels(main);
   else if(adminView === "danger") renderAdminDanger(main);
   else renderAdminUsers(main);
@@ -17303,6 +17443,130 @@ function deleteTeamFlow(slug){
       }
     }catch(e){ alert("Couldn't delete the team: "+e.message); }
   })();
+}
+function orgPrompt(title, cur){ var v=window.prompt(title, cur||""); if(v===null) return null; v=v.trim(); return v; }
+function orgUnitInUse(id){
+  var n=0;
+  if(!id) return 0;
+  try{
+    ((typeof OKRS!=="undefined" && OKRS && OKRS.cycles)||[]).forEach(function(c){
+      ((c&&c.objectives)||[]).forEach(function(o){ if(o && o.orgUnit===id) n++; });
+    });
+  }catch(_){ }
+  return n;
+}
+function renderAdminOrg(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Org structure";
+  head.appendChild(h2); wrap.appendChild(head);
+  const intro = document.createElement("div"); intro.className="hint"; intro.style.margin="0 0 18px";
+  intro.textContent = "Three levels, nested. When someone creates an objective and picks a Level, they choose the actual unit from here — the Level decides which of the three lists they see.";
+  wrap.appendChild(intro);
+
+  const tiers = okrOrgTiers();
+
+  // tier labels
+  const tw = document.createElement("div"); tw.className="org-tiers";
+  const tl = document.createElement("div"); tl.className="org-tierslbl"; tl.textContent="What you call each level"; tw.appendChild(tl);
+  const trow = document.createElement("div"); trow.className="org-tierrow";
+  tiers.forEach(function(nm,i){
+    const f=document.createElement("input"); f.className="org-tierf"; f.value=nm; f.autocomplete="off";
+    f.onchange=function(){
+      var v=f.value.trim(); if(!v){ f.value=tiers[i]; return; }
+      OKRS.orgTiers = okrOrgTiers(); OKRS.orgTiers[i]=v; okrOrgSave(); renderAdminPage();
+    };
+    trow.appendChild(f);
+    if(i<2){ const a=document.createElement("span"); a.className="org-tierarrow"; a.textContent="›"; trow.appendChild(a); }
+  });
+  tw.appendChild(trow);
+  const th=document.createElement("div"); th.className="hint"; th.style.marginTop="8px";
+  th.textContent = "These names must match your OKR levels for the picker to fire — e.g. a level called “"+tiers[0]+"” offers the list below.";
+  tw.appendChild(th);
+  wrap.appendChild(tw);
+
+  const org = okrOrg();
+  const list = document.createElement("div"); list.className="org-list";
+  if(!org.length){
+    const e=document.createElement("div"); e.className="org-empty";
+    e.textContent="Nothing here yet. Add your first "+tiers[0].toLowerCase()+" below.";
+    list.appendChild(e);
+  }
+
+  function actBtn(txt, title, cls, fn){
+    const b=document.createElement("button"); b.className="org-btn"+(cls?" "+cls:""); b.textContent=txt; b.title=title; b.onclick=fn; return b;
+  }
+  function delUnit(arr, i, nm, kind){
+    var used=orgUnitInUse(arr[i].id);
+    var msg = 'Delete '+kind.toLowerCase()+' “'+nm+'”?';
+    if(kind!=="Team") msg += ' Everything nested under it goes too.';
+    if(used) msg += '\n\n'+used+' objective'+(used===1?'':'s')+' point'+(used===1?'s':'')+' at it — they keep their level but lose the unit.';
+    if(!window.confirm(msg)) return;
+    arr.splice(i,1); okrOrgSave(); renderAdminPage();
+  }
+
+  org.forEach(function(d, di){
+    const dr=document.createElement("div"); dr.className="org-row t1";
+    const nm=document.createElement("span"); nm.className="org-name"; nm.textContent=d.name; dr.appendChild(nm);
+    const ct=document.createElement("span"); ct.className="org-count";
+    var tcount=0; (d.subs||[]).forEach(function(sb){ tcount += (sb.teams||[]).length; });
+    ct.textContent = (d.subs||[]).length+" "+tiers[1].toLowerCase()+((d.subs||[]).length===1?"":"s")+" · "+tcount+" "+tiers[2].toLowerCase()+(tcount===1?"":"s");
+    dr.appendChild(ct);
+    const da=document.createElement("div"); da.className="org-acts";
+    da.appendChild(actBtn("＋ "+tiers[1], "Add a "+tiers[1].toLowerCase(), "add", function(){
+      var v=orgPrompt("New "+tiers[1].toLowerCase()+" under “"+d.name+"”:"); if(!v) return;
+      d.subs = d.subs||[]; d.subs.push({id:okrOrgId("sub"), name:v, teams:[]}); okrOrgSave(); renderAdminPage();
+    }));
+    da.appendChild(actBtn("✎","Rename","",function(){
+      var v=orgPrompt("Rename "+tiers[0].toLowerCase()+":", d.name); if(!v) return; d.name=v; okrOrgSave(); renderAdminPage();
+    }));
+    da.appendChild(actBtn("🗑","Delete","danger",function(){ delUnit(org, di, d.name, tiers[0]); }));
+    dr.appendChild(da); list.appendChild(dr);
+
+    (d.subs||[]).forEach(function(sb, si){
+      const sr=document.createElement("div"); sr.className="org-row t2";
+      const sn=document.createElement("span"); sn.className="org-name"; sn.textContent=sb.name; sr.appendChild(sn);
+      const sc=document.createElement("span"); sc.className="org-count";
+      sc.textContent=(sb.teams||[]).length+" "+tiers[2].toLowerCase()+((sb.teams||[]).length===1?"":"s");
+      sr.appendChild(sc);
+      const sa=document.createElement("div"); sa.className="org-acts";
+      sa.appendChild(actBtn("＋ "+tiers[2], "Add a "+tiers[2].toLowerCase(), "add", function(){
+        var v=orgPrompt("New "+tiers[2].toLowerCase()+" under “"+sb.name+"”:"); if(!v) return;
+        sb.teams = sb.teams||[]; sb.teams.push({id:okrOrgId("tm"), name:v}); okrOrgSave(); renderAdminPage();
+      }));
+      sa.appendChild(actBtn("✎","Rename","",function(){
+        var v=orgPrompt("Rename "+tiers[1].toLowerCase()+":", sb.name); if(!v) return; sb.name=v; okrOrgSave(); renderAdminPage();
+      }));
+      sa.appendChild(actBtn("🗑","Delete","danger",function(){ delUnit(d.subs, si, sb.name, tiers[1]); }));
+      sr.appendChild(sa); list.appendChild(sr);
+
+      (sb.teams||[]).forEach(function(tm, ti){
+        const tr=document.createElement("div"); tr.className="org-row t3";
+        const tn=document.createElement("span"); tn.className="org-name"; tn.textContent=tm.name; tr.appendChild(tn);
+        const ta=document.createElement("div"); ta.className="org-acts";
+        ta.appendChild(actBtn("✎","Rename","",function(){
+          var v=orgPrompt("Rename "+tiers[2].toLowerCase()+":", tm.name); if(!v) return; tm.name=v; okrOrgSave(); renderAdminPage();
+        }));
+        ta.appendChild(actBtn("🗑","Delete","danger",function(){ delUnit(sb.teams, ti, tm.name, tiers[2]); }));
+        tr.appendChild(ta); list.appendChild(tr);
+      });
+    });
+  });
+  wrap.appendChild(list);
+
+  const add=document.createElement("div"); add.className="okrlv-add";
+  const inp=document.createElement("input"); inp.className="okrlv-input"; inp.placeholder="Add a "+tiers[0].toLowerCase()+" (e.g. Engineering)"; inp.autocomplete="off";
+  const btn=document.createElement("button"); btn.className="okrlv-addbtn"; btn.textContent="＋ Add "+tiers[0].toLowerCase();
+  function doAdd(){
+    var v=inp.value.trim(); if(!v) return;
+    OKRS.org = okrOrg(); OKRS.org.push({id:okrOrgId("dep"), name:v, subs:[]});
+    okrOrgSave(); renderAdminPage();
+  }
+  btn.onclick=doAdd; inp.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); doAdd(); } };
+  add.append(inp, btn); wrap.appendChild(add);
+
+  const note = document.createElement("div"); note.className="hint"; note.style.marginTop="14px";
+  note.textContent = "Only a super-admin sees this page.";
+  wrap.appendChild(note);
 }
 function renderAdminOkrLevels(wrap){
   const head = document.createElement("div"); head.className = "module-head";
