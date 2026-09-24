@@ -3269,7 +3269,7 @@ body{margin:0}
     <div class="dl-top">
       <div>
         <div class="dl-eyebrow">Team wiki</div>
-        <h1 class="dl-h1">My Docs Library</h1>
+        <h1 class="dl-h1">Our Wiki</h1>
         <p class="dl-tag">How we work, and why — every doc, playbook and video in one place.</p>
       </div>
       <button class="dl-back" onclick="closeDocLib()">← Back to workspace</button>
@@ -3291,7 +3291,7 @@ body{margin:0}
 
 <div class="overlay" id="dl-overlay" style="z-index:430">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:600px">
-    <h3 id="dl-dlg-h">Add to the library</h3>
+    <h3 id="dl-dlg-h">Add to the wiki</h3>
     <div class="dlg-body">
       <div class="field"><label for="dl-f-url">Link</label><input id="dl-f-url" placeholder="Google Doc, Sheet, Drive, Loom, YouTube (unlisted), Notion…" autocomplete="off"></div>
       <div class="field"><label for="dl-f-title">Title</label><input id="dl-f-title" placeholder="e.g. How we handle a refund request" autocomplete="off"></div>
@@ -3650,7 +3650,7 @@ body{margin:0}
       </div>
       <button class="acct-item" id="acct-teams">⌂ Switch team</button>
       <button class="acct-item" id="acct-profile">👤 My profile</button>
-      <button class="acct-item" id="acct-doclib">📚 My Docs Library</button>
+      <button class="acct-item" id="acct-doclib">📚 Our Wiki</button>
       <button class="acct-item" id="acct-password">🔑 Change password</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
       <button class="acct-item danger" id="acct-logout">→] Sign out</button>
@@ -15702,8 +15702,8 @@ function dlRow(l, idx, rows, inStart){
       var dn=btn("↓", "", "Move later in the reading order", function(){ dlMove(l, 1, rows); }); dn.disabled = idx===rows.length-1;
     }
     btn("✎", "", "Edit", function(){ dlOpenDialog(l.id); });
-    btn("×", "del", "Remove from the library", function(){
-      if(window.confirm('Remove “'+l.title+'” from the library? The document itself is not touched.')){
+    btn("×", "del", "Remove from the wiki", function(){
+      if(window.confirm('Remove “'+l.title+'” from the wiki? The document itself is not touched.')){
         DOCLIB.links=DOCLIB.links.filter(function(x){ return x.id!==l.id; }); dlSave(); renderDocLib(); toast("Removed");
       }
     });
@@ -15754,7 +15754,7 @@ function dlOpenDialog(id){
   var l = id ? DOCLIB.links.find(function(x){ return x.id===id; }) : null;
   dlEditId = l ? l.id : null;
   dlFillSelects(l);
-  $("dl-dlg-h").textContent = l ? "Edit" : "Add to the library";
+  $("dl-dlg-h").textContent = l ? "Edit" : "Add to the wiki";
   $("dl-f-url").value   = l ? l.url : "";
   $("dl-f-title").value = l ? l.title : "";
   $("dl-f-why").value   = l ? (l.why||"") : "";
