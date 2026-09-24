@@ -2457,43 +2457,74 @@ body{margin:0}
     text-shadow:0 0 22px rgba(255,140,50,.55),0 2px 18px #0b0705;transform:translate(-50%,-50%)}@media (max-width:520px){#cul-root .ember{width:13px;height:13px}#cul-root .fuel{font-size:13px;white-space:normal;max-width:78vw;text-align:center} }
 
 
-/* ===== My Docs Library ===== */
-.dl-app{max-width:1060px;margin:0 auto;padding:34px 28px 80px}
+/* ===== My Docs Library (team wiki) ===== */
+.dl-app{max-width:1180px;margin:0 auto;padding:34px 28px 80px}
 .dl-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}
 .dl-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .dl-h1{font-family:var(--disp);font-size:34px;margin:0 0 6px}
 .dl-tag{color:var(--muted);margin:0;font-size:15px}
 .dl-back{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:9px 16px;font-weight:600;cursor:pointer;white-space:nowrap}
-.dl-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.dl-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
 .dl-search{flex:1 1 260px;border:1px solid var(--line-strong);border-radius:10px;padding:10px 13px;font:inherit;background:var(--card);color:inherit}
 .dl-seg{display:flex;border:1px solid var(--line-strong);border-radius:99px;padding:3px;background:var(--card)}
 .dl-seg button{border:none;background:none;border-radius:99px;padding:6px 13px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
 .dl-seg button.on{background:var(--indigo);color:#fff}
 .dl-add{border:none;background:var(--indigo);color:#fff;border-radius:99px;padding:10px 18px;font-weight:700;cursor:pointer;font-family:var(--disp)}
-.dl-cats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
-.dl-cat{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
-.dl-cat.on{border-color:var(--indigo);color:var(--indigo)}
-.dl-row{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
+.dl-body{display:grid;grid-template-columns:230px 1fr;gap:24px;align-items:start}
+.dl-nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}
+.dl-navh{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:16px 10px 6px}
+.dl-navi{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;border-radius:9px;padding:8px 10px;font:inherit;font-size:14px;cursor:pointer;color:inherit}
+.dl-navi:hover{background:rgba(0,0,0,.04)}
+.dl-navi.on{background:var(--card);box-shadow:0 0 0 1px var(--line-strong);font-weight:700}
+.dl-navi .n{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+.dl-navi.sub{padding-left:30px;font-size:13px}
+.dl-navi.warn .n{color:#b54708}
+.dl-vhead{margin-bottom:14px}
+.dl-vhead h2{font-family:var(--disp);font-size:22px;margin:0 0 4px}
+.dl-vhead p{margin:0;color:var(--muted);font-size:14px}
+.dl-prog{margin-top:12px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600}
+.dl-prog .bar{flex:0 0 220px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.dl-prog .bar i{display:block;height:100%;background:#1f845a;border-radius:99px}
+.dl-teamprog{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:10px 14px;font-size:13px}
+.dl-teamprog div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)}
+.dl-teamprog div:last-child{border-bottom:none}
+.dl-row{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
+.dl-row.official{border-left:4px solid #1f845a}
+.dl-num{flex:0 0 26px;height:26px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin-top:7px}
+.dl-num.done{background:#1f845a;color:#fff}
 .dl-ico{flex:0 0 44px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff}
 .dl-main{flex:1;min-width:0}
-.dl-title{font-weight:700;font-size:15px;color:inherit;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-title{font-weight:700;font-size:15px;color:inherit;text-decoration:none;display:inline;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;text-align:left}
 .dl-title:hover{text-decoration:underline}
-.dl-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dl-why{font-size:13.5px;margin-top:4px;color:#44546f;line-height:1.45}
+.dl-why b{color:inherit}
+.dl-meta{font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .dl-chip{font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;background:#f1f2f4;color:#5e6c84;border-radius:4px;padding:1px 7px}
-.dl-acc{font-size:11.5px;font-weight:600;border-radius:99px;padding:3px 10px;white-space:nowrap}
+.dl-chip.unit{background:#deebff;color:#0747a6}
+.dl-off{font-size:11px;font-weight:700;background:#dcfff1;color:#1f845a;border-radius:99px;padding:2px 9px}
+.dl-stale{font-size:11px;font-weight:700;background:#fff7d6;color:#b54708;border-radius:99px;padding:2px 9px}
+.dl-acc{font-size:11.5px;font-weight:600;border-radius:99px;padding:2px 9px;white-space:nowrap}
 .dl-acc.all{background:#e3fcef;color:#006644}
 .dl-acc.people{background:#deebff;color:#0747a6}
 .dl-acc.me{background:#fff0b3;color:#7a5c00}
-.dl-acts{display:flex;gap:5px;flex:0 0 auto}
-.dl-btn{border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer;color:inherit}
+.dl-acts{display:flex;gap:5px;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;max-width:380px}
+.dl-btn{border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer;color:inherit;white-space:nowrap}
 .dl-btn:hover{background:rgba(0,0,0,.05)}
+.dl-btn.go{border-color:#1f845a;color:#1f845a;font-weight:700}
+.dl-btn.play{border-color:var(--indigo);color:var(--indigo);font-weight:700}
 .dl-btn.del:hover{background:#ffebe6;border-color:#ff8f73}
 .dl-empty{border:1px dashed var(--line-strong);border-radius:12px;padding:34px;text-align:center;color:var(--muted)}
-.dl-access{display:flex;flex-direction:column;gap:7px;margin-top:4px}
-#dl-overlay .dl-access label{display:flex;justify-content:flex-start;gap:9px;align-items:center;font-weight:500;cursor:pointer;text-transform:none;letter-spacing:0;font-family:inherit;font-size:14px;color:inherit;margin:0;padding:3px 0}
-#dl-overlay .dl-access input[type=radio]{width:auto;flex:0 0 auto;margin:0;padding:0;box-shadow:none}
+.dl-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#dl-overlay .dl-access{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+#dl-overlay .dl-access label,#dl-overlay .dl-check{display:flex;justify-content:flex-start;gap:9px;align-items:center;font-weight:500;cursor:pointer;text-transform:none;letter-spacing:0;font-family:inherit;font-size:14px;color:inherit;margin:0;padding:3px 0}
+#dl-overlay .dl-access input[type=radio],#dl-overlay .dl-check input{width:auto;flex:0 0 auto;margin:0;padding:0;box-shadow:none}
 .dl-warn{margin-top:12px;font-size:12px;color:#7a5c00;background:#fffae6;border-radius:8px;padding:9px 11px;line-height:1.45}
-@media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{width:100%;justify-content:flex-end} }
+.dl-viddlg{max-width:980px!important;width:94vw;padding:0!important;overflow:hidden}
+.dl-vidhead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px}
+.dl-vidbox{position:relative;padding-top:56.25%;background:#000}
+.dl-vidbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media (max-width:820px){ .dl-body{grid-template-columns:1fr} .dl-nav{position:static;flex-direction:row;flex-wrap:wrap} .dl-navh{width:100%} .dl-navi{width:auto} .dl-navi.sub{padding-left:10px} }
+@media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{max-width:none;width:100%} .dl-row2{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -3237,44 +3268,63 @@ body{margin:0}
   <div class="dl-app">
     <div class="dl-top">
       <div>
-        <div class="dl-eyebrow">Library</div>
+        <div class="dl-eyebrow">Team wiki</div>
         <h1 class="dl-h1">My Docs Library</h1>
-        <p class="dl-tag">Every important doc, sheet and deck in one place — and who can see each one.</p>
+        <p class="dl-tag">How we work, and why — every doc, playbook and video in one place.</p>
       </div>
       <button class="dl-back" onclick="closeDocLib()">← Back to workspace</button>
     </div>
     <div class="dl-bar">
-      <input id="dl-q" class="dl-search" placeholder="Search by title, category or note…" autocomplete="off">
+      <input id="dl-q" class="dl-search" placeholder="Search everything — titles, reasons, teams…" autocomplete="off">
       <div class="dl-seg" id="dl-seg"></div>
-      <button class="dl-add" id="dl-addbtn">＋ Add link</button>
+      <button class="dl-add" id="dl-addbtn">＋ Add</button>
     </div>
-    <div class="dl-cats" id="dl-cats"></div>
-    <div id="dl-list"></div>
+    <div class="dl-body">
+      <nav class="dl-nav" id="dl-nav"></nav>
+      <main class="dl-main-col">
+        <div class="dl-vhead" id="dl-vhead"></div>
+        <div id="dl-list"></div>
+      </main>
+    </div>
   </div>
 </div>
 
 <div class="overlay" id="dl-overlay" style="z-index:430">
-  <div class="dialog" role="dialog" aria-modal="true" style="max-width:560px">
-    <h3 id="dl-dlg-h">Add a link</h3>
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:600px">
+    <h3 id="dl-dlg-h">Add to the library</h3>
     <div class="dlg-body">
-      <div class="field"><label for="dl-f-url">Link</label><input id="dl-f-url" placeholder="Paste the link — Google Doc, Sheet, Drive folder, Notion, Figma…" autocomplete="off"></div>
-      <div class="field"><label for="dl-f-title">Title</label><input id="dl-f-title" placeholder="e.g. Q4 Marketing Plan" autocomplete="off"></div>
-      <div class="field"><label for="dl-f-cat">Category <span class="hint" style="font-weight:400">— e.g. Marketing, SEO, Meetings</span></label><input id="dl-f-cat" list="dl-f-catlist" placeholder="Leave blank for none" autocomplete="off"><datalist id="dl-f-catlist"></datalist></div>
-      <div class="field"><label for="dl-f-note">Note (optional)</label><input id="dl-f-note" placeholder="One line on what this is" autocomplete="off"></div>
-      <div class="field"><label>Who can see this link</label>
+      <div class="field"><label for="dl-f-url">Link</label><input id="dl-f-url" placeholder="Google Doc, Sheet, Drive, Loom, YouTube (unlisted), Notion…" autocomplete="off"></div>
+      <div class="field"><label for="dl-f-title">Title</label><input id="dl-f-title" placeholder="e.g. How we handle a refund request" autocomplete="off"></div>
+      <div class="dl-row2">
+        <div class="field"><label for="dl-f-sec">Section</label><select id="dl-f-sec"></select></div>
+        <div class="field"><label for="dl-f-unit">Department / team</label><select id="dl-f-unit"></select></div>
+      </div>
+      <div class="field"><label for="dl-f-why">Why this exists</label><input id="dl-f-why" placeholder="One line. e.g. Every refund is verified first, or we lose money." autocomplete="off"></div>
+      <div class="dl-row2">
+        <div class="field"><label for="dl-f-owner">Owner <span class="hint" style="font-weight:400">— keeps it up to date</span></label><select id="dl-f-owner"></select></div>
+        <div class="field" id="dl-f-offwrap"><label>Status</label><label class="dl-check"><input type="checkbox" id="dl-f-off"> ✅ Official — this is how we work</label></div>
+      </div>
+      <div class="field"><label>Who can see this</label>
         <div class="dl-access" id="dl-access">
           <label><input type="radio" name="dl-acc" value="all"> 🌐 Everyone in the team</label>
           <label><input type="radio" name="dl-acc" value="people"> 👥 Only specific people</label>
           <label><input type="radio" name="dl-acc" value="me"> 🔒 Only me</label>
         </div>
         <div class="pp" id="dlpp" style="display:none;margin-top:10px"></div>
-        <div class="dl-warn">This decides who sees the link <b>here</b>. It does not change who can open the document itself — set that in the document’s own Share settings (e.g. Google Drive).</div>
+        <div class="dl-warn">This decides who sees it <b>here</b>. It does not change who can open the document itself — set that in the document’s own Share settings. For YouTube use <b>Unlisted</b>, not Private.</div>
       </div>
     </div>
     <div class="dlg-actions" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 22px 20px">
       <button class="btn" id="dl-cancel">Cancel</button>
       <button class="btn save" id="dl-save">Save</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="dl-vid" style="z-index:440">
+  <div class="dialog dl-viddlg" role="dialog" aria-modal="true">
+    <div class="dl-vidhead"><b id="dl-vid-t"></b><button class="dl-btn" id="dl-vid-x">✕ Close</button></div>
+    <div class="dl-vidbox"><iframe id="dl-vid-f" title="Video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>
   </div>
 </div>
 
@@ -15381,61 +15431,143 @@ function kimOpenAt(i){ return i===0 || kimDone(KIM_GAMES[i-1].n); }
 
 
 /* ================= My Docs Library ================= */
-var DOCLIB = (typeof DOCLIB!=="undefined" && DOCLIB) ? DOCLIB : { links:[] };   /* never reset data loaded earlier */
-var dlFilter = "all", dlCat = "", dlEditId = null;
+/* A team wiki whose pages live in Google Docs / Loom / YouTube.
+   The app holds the structure: sections, department, owner, the "why",
+   Official status, review dates and the Start-here reading path.        */
+var DOCLIB = (typeof DOCLIB!=="undefined" && DOCLIB) ? DOCLIB : { links:[], read:{} };   /* never reset data loaded earlier */
+var DL_SECTIONS = [
+  ["start",  "🏠", "Start here",      "Read these first, in this order. Mark each one when you have read it."],
+  ["how",    "📘", "How we work",     "Playbooks — how we do things here, and why we do them this way."],
+  ["meet",   "🗓", "Meetings & MoMs", "Meeting notes and minutes. One doc per recurring meeting, or one per meeting."],
+  ["plan",   "🎯", "Planning",        "Quarterly plans, roadmaps and OKR documents."],
+  ["decide", "⚖️", "Decision log",    "What we decided, why, and what we chose not to do."],
+  ["video",  "🎥", "Training videos", "Loom and YouTube walkthroughs. They play right here."],
+  ["more",   "📎", "Everything else", "Useful links that don’t fit a section yet."]
+];
+var DL_STALE_DAYS = 90;
+var dlFilter = "all", dlView = { kind:"sec", id:"start" }, dlEditId = null, dlShowTeam = false;
+
+function dlSec(id){ for(var i=0;i<DL_SECTIONS.length;i++){ if(DL_SECTIONS[i][0]===id) return DL_SECTIONS[i]; } return DL_SECTIONS[DL_SECTIONS.length-1]; }
 function normalizeDoclib(d){
   d = (d && typeof d==="object") ? d : {};
   d.links = Array.isArray(d.links) ? d.links.filter(function(l){ return l && l.url; }) : [];
-  d.links.forEach(function(l){
+  d.read = (d.read && typeof d.read==="object") ? d.read : {};
+  var secIds = DL_SECTIONS.map(function(x){ return x[0]; });
+  d.links.forEach(function(l, i){
     if(!l.id) l.id = "dl-"+Math.random().toString(36).slice(2,9);
     if(["all","people","me"].indexOf(l.access)<0) l.access = "all";
     l.people = Array.isArray(l.people) ? l.people : [];
     l.title = (l.title||"").trim() || dlGuessTitle(l.url);
+    if(secIds.indexOf(l.section)<0) l.section = dlIsVideo(l.url) ? "video" : "more";
+    if(!l.why && l.note){ l.why = l.note; delete l.note; }          /* older links: the note becomes the reason */
+    l.official = !!l.official;
+    if(!l.owner) l.owner = l.by || "";
+    l.at = dlIso(l.at) || dlToday();
+    l.reviewed = dlIso(l.reviewed) || l.at;
+    if(typeof l.order!=="number") l.order = i;
   });
   return d;
 }
 function dlMe(){ return (SESSION && SESSION.email) || ""; }
 function dlIsAdmin(){ var u = (typeof currentUser==="function") ? currentUser() : null; return !!(u && (u.super || (typeof can==="function" && can("admin")))); }
-function dlCanSee(l){
+function dlCanSeeFor(l, email){
   if(l.access==="all") return true;
-  var me=dlMe(); if(!me) return false;
-  if(l.by===me) return true;
-  if(dlIsAdmin()) return true;
-  return l.access==="people" && l.people.indexOf(me)>=0;
+  if(!email) return false;
+  if(l.by===email || l.owner===email) return true;
+  return l.access==="people" && l.people.indexOf(email)>=0;
 }
-function dlCanEdit(l){ return !!dlMe() && (l.by===dlMe() || dlIsAdmin()); }
+function dlCanSee(l){ return dlCanSeeFor(l, dlMe()) || (!!dlMe() && dlIsAdmin()); }
+function dlCanEdit(l){ var me=dlMe(); return !!me && (l.by===me || l.owner===me || dlIsAdmin()); }
+
+/* ---------- link types ---------- */
+function dlIsVideo(url){ return !!dlEmbedUrl(url); }
+function dlEmbedUrl(url){
+  var u=(url||"").trim(), m;
+  if((m=u.match(/youtu\.be\/([\w-]{6,})/))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=u.match(/youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)([\w-]{6,})/))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=u.match(/loom\.com\/(?:share|embed)\/([\w]{10,})/))) return "https://www.loom.com/embed/"+m[1];
+  if((m=u.match(/drive\.google\.com\/file\/d\/([\w-]{10,})/)) && /\.(mp4|mov|webm)|video/i.test(u)) return "https://drive.google.com/file/d/"+m[1]+"/preview";
+  return "";
+}
 function dlKind(url){
   var u=(url||"").toLowerCase();
   if(u.indexOf("docs.google.com/document")>=0) return ["Doc","#4285f4"];
   if(u.indexOf("docs.google.com/spreadsheets")>=0) return ["Sheet","#0f9d58"];
   if(u.indexOf("docs.google.com/presentation")>=0) return ["Slides","#f4b400"];
   if(u.indexOf("docs.google.com/forms")>=0) return ["Form","#7248b9"];
+  if(u.indexOf("loom.com")>=0) return ["Loom","#625df5"];
+  if(u.indexOf("youtube.com")>=0 || u.indexOf("youtu.be")>=0) return ["Video","#ff0000"];
   if(u.indexOf("drive.google.com")>=0) return ["Drive","#1a73e8"];
   if(u.indexOf("notion.")>=0) return ["Notion","#191919"];
   if(u.indexOf("figma.com")>=0) return ["Figma","#a259ff"];
   if(u.indexOf("atlassian.net")>=0 || u.indexOf("confluence")>=0) return ["Wiki","#0052cc"];
   if(u.indexOf("github.com")>=0) return ["Code","#24292f"];
-  if(u.indexOf("youtube.com")>=0 || u.indexOf("youtu.be")>=0) return ["Video","#ff0000"];
   if(/\.pdf(\?|$)/.test(u)) return ["PDF","#d93025"];
   return ["Link","#6b778c"];
 }
 function dlGuessTitle(url){
   var k=dlKind(url)[0];
-  if(k!=="Link") return "Untitled "+(k==="Doc"?"Google Doc":k==="Sheet"?"Google Sheet":k);
+  var names={Doc:"Google Doc",Sheet:"Google Sheet",Slides:"Google Slides",Form:"Google Form",Loom:"Loom video",Video:"YouTube video",Drive:"Drive file"};
+  if(names[k]) return "Untitled "+names[k];
   try{ return new URL(url).hostname.replace(/^www\./,""); }catch(e){ return "Untitled link"; }
 }
 function dlCleanUrl(u){ u=(u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u="https://"+u; return u; }
-function dlCats(){ var seen={},out=[]; DOCLIB.links.filter(dlCanSee).forEach(function(l){ var c=(l.cat||"").trim(); if(c && !seen[c.toLowerCase()]){ seen[c.toLowerCase()]=1; out.push(c); } }); return out.sort(function(a,b){ return a.localeCompare(b); }); }
-function dlVisible(){
-  var q=(($("dl-q")||{}).value||"").trim().toLowerCase(), me=dlMe();
-  return DOCLIB.links.filter(dlCanSee).filter(function(l){
-    if(dlFilter==="mine" && l.by!==me) return false;
-    if(dlFilter==="shared" && !(l.by!==me && l.access==="people" && l.people.indexOf(me)>=0)) return false;
-    if(dlCat && (l.cat||"").trim().toLowerCase()!==dlCat.toLowerCase()) return false;
-    if(q && ((l.title||"")+" "+(l.cat||"")+" "+(l.note||"")+" "+(l.url||"")).toLowerCase().indexOf(q)<0) return false;
-    return true;
-  }).sort(function(a,b){ return (b.at||"").localeCompare(a.at||""); });
+
+/* ---------- dates, review, reading ---------- */
+/* the app's dlToday() is for display ("24 September 2026"); the wiki needs dates it can compare */
+function dlToday(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dlIso(d){
+  if(!d) return "";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  var t=Date.parse(d); if(isNaN(t)) return "";
+  var x=new Date(t); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
 }
+function dlDaysSince(d){ d=dlIso(d); if(!d) return 9999; var t=Date.parse(d+"T00:00:00"); if(isNaN(t)) return 9999; return Math.floor((Date.now()-t)/86400000); }
+function dlIsStale(l){ return dlDaysSince(l.reviewed) > DL_STALE_DAYS; }
+function dlReadBy(email){ return (DOCLIB.read && DOCLIB.read[email]) || {}; }
+function dlHasRead(l, email){ return !!dlReadBy(email||dlMe())[l.id]; }
+function dlStartItems(email){
+  return DOCLIB.links.filter(function(l){ return l.section==="start" && (email ? dlCanSeeFor(l,email) : dlCanSee(l)); })
+    .sort(function(a,b){ return (a.order-b.order) || (a.at||"").localeCompare(b.at||""); });
+}
+
+/* ---------- units (from Admin → Org structure) ---------- */
+function dlUnits(){ try{ return (typeof okrOrgUnits==="function") ? okrOrgUnits(0) : []; }catch(e){ return []; } }
+function dlUnit(id){ try{ return id && typeof okrUnitById==="function" ? okrUnitById(id) : null; }catch(e){ return null; } }
+function dlInUnit(l, unitId){
+  if(!l.unit) return false;
+  if(typeof okrUnitSubtree==="function"){ var set=okrUnitSubtree(unitId); return !!set[l.unit]; }
+  return l.unit===unitId;
+}
+
+/* ---------- what is on screen ---------- */
+function dlQuery(){ return (($("dl-q")||{}).value||"").trim().toLowerCase(); }
+function dlPassesFilter(l){
+  var me=dlMe();
+  if(dlFilter==="mine") return l.by===me || l.owner===me;
+  if(dlFilter==="shared") return l.by!==me && l.access==="people" && l.people.indexOf(me)>=0;
+  return true;
+}
+function dlVisible(){
+  var q=dlQuery();
+  var rows = DOCLIB.links.filter(dlCanSee).filter(dlPassesFilter);
+  if(q){
+    return rows.filter(function(l){
+      var u=dlUnit(l.unit);
+      return ((l.title||"")+" "+(l.why||"")+" "+(l.cat||"")+" "+(u?u.path:"")+" "+dlSec(l.section)[2]+" "+(l.url||"")).toLowerCase().indexOf(q)>=0;
+    }).sort(dlSortDefault);
+  }
+  if(dlView.kind==="sec"){
+    rows = rows.filter(function(l){ return l.section===dlView.id; });
+    if(dlView.id==="start") return rows.sort(function(a,b){ return (a.order-b.order) || (a.at||"").localeCompare(b.at||""); });
+    return rows.sort(dlSortDefault);
+  }
+  if(dlView.kind==="unit") return rows.filter(function(l){ return dlInUnit(l, dlView.id); }).sort(dlSortDefault);
+  if(dlView.kind==="review") return rows.filter(dlIsStale).sort(function(a,b){ return (a.reviewed||"").localeCompare(b.reviewed||""); });
+  return rows.sort(dlSortDefault);
+}
+function dlSortDefault(a,b){ return (b.official-a.official) || (b.at||"").localeCompare(a.at||""); }
+
 function dlAccessBadge(l){
   if(l.access==="me") return '<span class="dl-acc me">🔒 Only '+(l.by===dlMe()?"me":mtEsc(ppMemName(l.by)))+'</span>';
   if(l.access==="people"){
@@ -15444,63 +15576,193 @@ function dlAccessBadge(l){
   }
   return '<span class="dl-acc all">🌐 Everyone</span>';
 }
+
+/* ---------- render ---------- */
 function renderDocLib(){
   var seg=$("dl-seg"); seg.innerHTML="";
-  [["all","All I can see"],["mine","Added by me"],["shared","Shared with me"]].forEach(function(m){
+  [["all","All I can see"],["mine","Mine"],["shared","Shared with me"]].forEach(function(m){
     var b=document.createElement("button"); b.textContent=m[1]; if(dlFilter===m[0]) b.className="on";
     b.onclick=function(){ dlFilter=m[0]; renderDocLib(); }; seg.appendChild(b);
   });
-  var cats=dlCats(), cw=$("dl-cats"); cw.innerHTML="";
-  if(dlCat && cats.map(function(c){return c.toLowerCase();}).indexOf(dlCat.toLowerCase())<0) dlCat="";
-  if(cats.length){
-    var all=document.createElement("button"); all.className="dl-cat"+(dlCat?"":" on"); all.textContent="All categories";
-    all.onclick=function(){ dlCat=""; renderDocLib(); }; cw.appendChild(all);
-    cats.forEach(function(c){ var b=document.createElement("button"); b.className="dl-cat"+(dlCat.toLowerCase()===c.toLowerCase()?" on":""); b.textContent=c; b.onclick=function(){ dlCat=c; renderDocLib(); }; cw.appendChild(b); });
+  dlRenderNav();
+  dlRenderHead();
+  dlRenderList();
+}
+function dlNavBtn(label, count, on, fn, extra){
+  var b=document.createElement("button"); b.className="dl-navi"+(on?" on":"")+(extra?" "+extra:"");
+  b.innerHTML='<span></span><span class="n"></span>';
+  b.firstChild.textContent=label; b.lastChild.textContent = count ? count : "";
+  b.onclick=fn; return b;
+}
+function dlRenderNav(){
+  var nav=$("dl-nav"); nav.innerHTML="";
+  var vis=DOCLIB.links.filter(dlCanSee).filter(dlPassesFilter);
+  var searching=!!dlQuery();
+  DL_SECTIONS.forEach(function(sc){
+    var n=vis.filter(function(l){ return l.section===sc[0]; }).length;
+    if(sc[0]==="more" && !n) return;
+    nav.appendChild(dlNavBtn(sc[1]+"  "+sc[2], n, !searching && dlView.kind==="sec" && dlView.id===sc[0], function(){ dlView={kind:"sec",id:sc[0]}; $("dl-q").value=""; renderDocLib(); }));
+  });
+  var units=dlUnits();
+  if(units.length){
+    var h=document.createElement("div"); h.className="dl-navh"; h.textContent="Departments & teams"; nav.appendChild(h);
+    units.forEach(function(u){
+      if(u.tier>2) return;                                   /* departments and sub-departments; teams are reachable by search */
+      var n=vis.filter(function(l){ return dlInUnit(l,u.id); }).length;
+      nav.appendChild(dlNavBtn(u.name, n, !searching && dlView.kind==="unit" && dlView.id===u.id, function(){ dlView={kind:"unit",id:u.id}; $("dl-q").value=""; renderDocLib(); }, u.tier===2?"sub":""));
+    });
   }
+  var stale=vis.filter(dlIsStale).length;
+  if(stale && (dlIsAdmin() || vis.some(function(l){ return dlIsStale(l) && l.owner===dlMe(); }))){
+    var h2=document.createElement("div"); h2.className="dl-navh"; h2.textContent="Upkeep"; nav.appendChild(h2);
+    nav.appendChild(dlNavBtn("⚠️  Needs review", stale, !searching && dlView.kind==="review", function(){ dlView={kind:"review"}; $("dl-q").value=""; renderDocLib(); }, "warn"));
+  }
+}
+function dlRenderHead(){
+  var h=$("dl-vhead"), q=dlQuery(), t="", p="";
+  if(q){ t="Search results"; p="Everything that matches “"+q+"”, across all sections."; }
+  else if(dlView.kind==="sec"){ var sc=dlSec(dlView.id); t=sc[1]+"  "+sc[2]; p=sc[3]; }
+  else if(dlView.kind==="unit"){ var u=dlUnit(dlView.id); t=u?u.name:"Team"; p=u?("Everything filed under "+u.path+", including its teams."):""; }
+  else if(dlView.kind==="review"){ t="⚠️  Needs review"; p="Not reviewed in over "+DL_STALE_DAYS+" days. Open it, fix anything out of date, then press “Mark reviewed”."; }
+  h.innerHTML='<h2></h2><p></p>';
+  h.querySelector("h2").textContent=t; h.querySelector("p").textContent=p;
+  if(!q && dlView.kind==="sec" && dlView.id==="start" && dlMe()){
+    var items=dlStartItems(), done=items.filter(function(l){ return dlHasRead(l); }).length;
+    if(items.length){
+      var pr=document.createElement("div"); pr.className="dl-prog";
+      pr.innerHTML='<span class="bar"><i style="width:'+Math.round(done/items.length*100)+'%"></i></span><span></span>';
+      pr.lastChild.textContent = done===items.length ? "✅ You have read all "+items.length+"." : "You have read "+done+" of "+items.length+".";
+      if(dlIsAdmin()){
+        var tb=document.createElement("button"); tb.className="dl-btn"; tb.textContent=dlShowTeam?"Hide team progress":"Team progress";
+        tb.onclick=function(){ dlShowTeam=!dlShowTeam; renderDocLib(); }; pr.appendChild(tb);
+      }
+      h.appendChild(pr);
+      if(dlIsAdmin() && dlShowTeam){
+        var tp=document.createElement("div"); tp.className="dl-teamprog"; tp.id="dl-teamprog";
+        var mem=(typeof assigneeMembers==="function") ? assigneeMembers() : [];
+        if(!mem.length) tp.textContent="No team members yet.";
+        mem.forEach(function(m){
+          var its=dlStartItems(m.email), d=its.filter(function(l){ return dlHasRead(l, m.email); }).length;
+          var r=document.createElement("div"); r.innerHTML='<span></span><b></b>';
+          r.firstChild.textContent=userDisplayName(m); r.lastChild.textContent = its.length ? (d===its.length?"✅ done":d+" of "+its.length) : "—";
+          tp.appendChild(r);
+        });
+        h.appendChild(tp);
+      }
+    }
+  }
+}
+function dlRenderList(){
   var list=$("dl-list"); list.innerHTML="";
-  var rows=dlVisible();
+  var rows=dlVisible(), q=dlQuery();
   if(!rows.length){
     var e=document.createElement("div"); e.className="dl-empty";
-    e.textContent = DOCLIB.links.filter(dlCanSee).length ? "Nothing matches that." : "No links yet. Click ＋ Add link to put the first one in.";
+    e.textContent = q ? "Nothing matches that." : (dlView.kind==="review" ? "Nothing needs review. Everything is up to date." : "Nothing here yet. Click ＋ Add to put the first one in.");
     list.appendChild(e); return;
   }
-  rows.forEach(function(l){
-    var k=dlKind(l.url);
-    var r=document.createElement("div"); r.className="dl-row"; r.dataset.id=l.id;
-    r.innerHTML='<div class="dl-ico" style="background:'+k[1]+'">'+mtEsc(k[0])+'</div>'
-      +'<div class="dl-main"><a class="dl-title" target="_blank" rel="noopener noreferrer"></a>'
-      +'<div class="dl-meta">'+((l.cat||"").trim()?'<span class="dl-chip">'+mtEsc(l.cat.trim())+'</span>':'')
-      +dlAccessBadge(l)+'<span>by '+mtEsc(l.by===dlMe()?"you":ppMemName(l.by||""))+(l.at?' · '+mtEsc(l.at):'')+'</span>'
-      +(l.note?'<span>· '+mtEsc(l.note)+'</span>':'')+'</div></div><div class="dl-acts"></div>';
-    var a=r.querySelector(".dl-title"); a.textContent=l.title; a.href=l.url;
-    var acts=r.querySelector(".dl-acts");
-    var cp=document.createElement("button"); cp.className="dl-btn"; cp.textContent="Copy link"; cp.title="Copy the link";
-    cp.onclick=function(){ try{ navigator.clipboard.writeText(l.url); toast("Link copied"); }catch(e){ window.prompt("Copy this link:", l.url); } };
-    acts.appendChild(cp);
-    if(dlCanEdit(l)){
-      var ed=document.createElement("button"); ed.className="dl-btn"; ed.textContent="✎"; ed.title="Edit"; ed.onclick=function(){ dlOpenDialog(l.id); }; acts.appendChild(ed);
-      var dl=document.createElement("button"); dl.className="dl-btn del"; dl.textContent="×"; dl.title="Remove from library";
-      dl.onclick=function(){ if(window.confirm('Remove “'+l.title+'” from the library? The document itself is not touched.')){ DOCLIB.links=DOCLIB.links.filter(function(x){return x.id!==l.id;}); dlSave(); renderDocLib(); toast("Removed"); } };
-      acts.appendChild(dl);
-    }
-    list.appendChild(r);
-  });
+  var inStart = !q && dlView.kind==="sec" && dlView.id==="start";
+  rows.forEach(function(l, idx){ list.appendChild(dlRow(l, idx, rows, inStart)); });
 }
+function dlRow(l, idx, rows, inStart){
+  var k=dlKind(l.url), emb=dlEmbedUrl(l.url), u=dlUnit(l.unit), me=dlMe();
+  var r=document.createElement("div"); r.className="dl-row"+(l.official?" official":""); r.dataset.id=l.id;
+  var lead = inStart ? '<div class="dl-num'+(dlHasRead(l)?' done':'')+'">'+(dlHasRead(l)?'✓':(idx+1))+'</div>' : '';
+  r.innerHTML = lead + '<div class="dl-ico" style="background:'+k[1]+'">'+mtEsc(k[0])+'</div>'
+    + '<div class="dl-main"><span class="dl-tslot"></span>'
+    + (l.why ? '<div class="dl-why"><b>Why:</b> <span class="dl-whyt"></span></div>' : '')
+    + '<div class="dl-meta">'
+      + (l.official ? '<span class="dl-off">✅ Official</span>' : '')
+      + (dlIsStale(l) ? '<span class="dl-stale" title="Last reviewed '+mtEsc(l.reviewed||"never")+'">⚠️ May be outdated</span>' : '')
+      + ((dlView.kind!=="sec" || dlQuery()) ? '<span class="dl-chip">'+mtEsc(dlSec(l.section)[2])+'</span>' : '')
+      + (u ? '<span class="dl-chip unit" title="'+mtEsc(u.path)+'">'+mtEsc(u.name)+'</span>' : '')
+      + ((l.cat||"").trim() ? '<span class="dl-chip">'+mtEsc(l.cat.trim())+'</span>' : '')
+      + dlAccessBadge(l)
+      + '<span>Owner: '+mtEsc(l.owner===me?"you":ppMemName(l.owner||l.by||""))+'</span>'
+      + '<span>· reviewed '+mtEsc(l.reviewed||"never")+'</span>'
+    + '</div></div><div class="dl-acts"></div>';
+  var slot=r.querySelector(".dl-tslot");
+  var t;
+  if(emb){ t=document.createElement("button"); t.className="dl-title"; t.onclick=function(){ dlPlay(l); }; }
+  else { t=document.createElement("a"); t.className="dl-title"; t.href=l.url; t.target="_blank"; t.rel="noopener noreferrer"; }
+  t.textContent=l.title; slot.appendChild(t);
+  if(l.why) r.querySelector(".dl-whyt").textContent=l.why;
+  var acts=r.querySelector(".dl-acts");
+  function btn(txt, cls, title, fn){ var b=document.createElement("button"); b.className="dl-btn"+(cls?" "+cls:""); b.textContent=txt; if(title) b.title=title; b.onclick=fn; acts.appendChild(b); return b; }
+  if(emb) btn("▶ Play", "play", "Play it here", function(){ dlPlay(l); });
+  else btn("Open ↗", "", "Opens in a new tab", function(){ window.open(l.url, "_blank", "noopener"); });
+  if(inStart && me){
+    var read=dlHasRead(l);
+    btn(read ? "✓ Read" : "Mark as read", read ? "" : "go", read ? "Click to undo" : "Tick it off once you have read it", function(){ dlToggleRead(l); });
+  }
+  btn("Copy link", "", "Copy the link", function(){ try{ navigator.clipboard.writeText(l.url); toast("Link copied"); }catch(e){ window.prompt("Copy this link:", l.url); } });
+  if(dlCanEdit(l)){
+    if(dlIsStale(l) || dlView.kind==="review") btn("Mark reviewed", "go", "It is still correct — reset the review clock", function(){ l.reviewed=dlToday(); l.reviewedBy=me; dlSave(); renderDocLib(); toast("Marked as reviewed"); });
+    if(inStart && dlIsAdmin()){
+      var up=btn("↑", "", "Move earlier in the reading order", function(){ dlMove(l, -1, rows); }); up.disabled = idx===0;
+      var dn=btn("↓", "", "Move later in the reading order", function(){ dlMove(l, 1, rows); }); dn.disabled = idx===rows.length-1;
+    }
+    btn("✎", "", "Edit", function(){ dlOpenDialog(l.id); });
+    btn("×", "del", "Remove from the library", function(){
+      if(window.confirm('Remove “'+l.title+'” from the library? The document itself is not touched.')){
+        DOCLIB.links=DOCLIB.links.filter(function(x){ return x.id!==l.id; }); dlSave(); renderDocLib(); toast("Removed");
+      }
+    });
+  }
+  return r;
+}
+
+/* ---------- actions ---------- */
 function dlSave(){ DOCLIB.updated=todayStr(); if(typeof pushAll==="function") pushAll(); }
+function dlToggleRead(l){
+  var me=dlMe(); if(!me) return;
+  DOCLIB.read[me] = DOCLIB.read[me] || {};
+  if(DOCLIB.read[me][l.id]) delete DOCLIB.read[me][l.id]; else DOCLIB.read[me][l.id]=dlToday();
+  dlSave(); renderDocLib();
+}
+function dlMove(l, dir, rows){
+  var i=rows.indexOf(l), j=i+dir; if(i<0 || j<0 || j>=rows.length) return;
+  rows.forEach(function(x, n){ x.order=n; });                  /* renumber first so gaps never break the swap */
+  var o=rows[j].order; rows[j].order=l.order; l.order=o;
+  dlSave(); renderDocLib();
+}
+function dlPlay(l){
+  var src=dlEmbedUrl(l.url); if(!src){ window.open(l.url,"_blank","noopener"); return; }
+  $("dl-vid-t").textContent=l.title; $("dl-vid-f").src=src;
+  $("dl-vid").classList.add("show");
+}
+function dlClosePlay(){ $("dl-vid").classList.remove("show"); $("dl-vid-f").src="about:blank"; }
+
+/* ---------- add / edit dialog ---------- */
 function dlAccSet(v){
   document.querySelectorAll('input[name="dl-acc"]').forEach(function(r){ r.checked = (r.value===v); });
   $("dlpp").style.display = (v==="people") ? "" : "none";
 }
+function dlFillSelects(l){
+  $("dl-f-sec").innerHTML = DL_SECTIONS.map(function(sc){ return '<option value="'+sc[0]+'">'+sc[1]+' '+mtEsc(sc[2])+'</option>'; }).join("");
+  var units=dlUnits();
+  $("dl-f-unit").innerHTML = '<option value="">— Company-wide —</option>' + units.map(function(u){
+    return '<option value="'+mtEsc(u.id)+'">'+mtEsc(u.path)+'</option>'; }).join("");
+  $("dl-f-unit").disabled = !units.length;
+  var mem=(typeof assigneeMembers==="function") ? assigneeMembers() : [];
+  var opts = mem.map(function(m){ return '<option value="'+mtEsc(m.email)+'">'+mtEsc(userDisplayName(m))+'</option>'; });
+  var cur = (l && l.owner) || dlMe();
+  if(cur && !mem.some(function(m){ return m.email===cur; })) opts.unshift('<option value="'+mtEsc(cur)+'">'+mtEsc(ppMemName(cur))+'</option>');
+  $("dl-f-owner").innerHTML = opts.join("");
+}
 function dlOpenDialog(id){
-  if(!dlMe()){ toast("Sign in to add links"); return; }
+  if(!dlMe()){ toast("Sign in to add to the library"); return; }
   var l = id ? DOCLIB.links.find(function(x){ return x.id===id; }) : null;
   dlEditId = l ? l.id : null;
-  $("dl-dlg-h").textContent = l ? "Edit link" : "Add a link";
-  $("dl-f-url").value = l ? l.url : "";
+  dlFillSelects(l);
+  $("dl-dlg-h").textContent = l ? "Edit" : "Add to the library";
+  $("dl-f-url").value   = l ? l.url : "";
   $("dl-f-title").value = l ? l.title : "";
-  $("dl-f-cat").value = l ? (l.cat||"") : (dlCat||"");
-  $("dl-f-note").value = l ? (l.note||"") : "";
-  $("dl-f-catlist").innerHTML = dlCats().map(function(c){ return '<option value="'+mtEsc(c)+'">'; }).join("");
+  $("dl-f-why").value   = l ? (l.why||"") : "";
+  $("dl-f-sec").value   = l ? l.section : (dlView.kind==="sec" ? dlView.id : "how");
+  $("dl-f-unit").value  = l ? (l.unit||"") : (dlView.kind==="unit" ? dlView.id : "");
+  $("dl-f-owner").value = l ? (l.owner||l.by) : dlMe();
+  $("dl-f-off").checked = l ? !!l.official : false;
+  $("dl-f-offwrap").style.display = dlIsAdmin() ? "" : "none";
   ppInit("dlpp", l ? l.people : []); ppRender("dlpp");
   dlAccSet(l ? l.access : "all");
   $("dl-overlay").classList.add("show");
@@ -15510,28 +15772,49 @@ function dlCloseDialog(){ $("dl-overlay").classList.remove("show"); dlEditId=nul
 function dlSaveDialog(){
   var url=dlCleanUrl($("dl-f-url").value);
   if(!url){ toast("Paste a link first"); $("dl-f-url").focus(); return; }
+  var why=$("dl-f-why").value.trim();
+  if(!why){ toast("Add one line on why this exists"); $("dl-f-why").focus(); return; }
   var acc=(document.querySelector('input[name="dl-acc"]:checked')||{}).value||"all";
   var people=ppGet("dlpp");
   if(acc==="people" && !people.length){ toast("Pick at least one person, or choose Everyone"); return; }
   var rec = dlEditId ? DOCLIB.links.find(function(x){ return x.id===dlEditId; }) : null;
-  if(!rec){ rec={ id:"dl-"+Math.random().toString(36).slice(2,9), by:dlMe(), at:todayStr() }; DOCLIB.links.push(rec); }
+  var sec=$("dl-f-sec").value || "more";
+  if(!rec){
+    rec={ id:"dl-"+Math.random().toString(36).slice(2,9), by:dlMe(), at:dlToday() };
+    rec.order = DOCLIB.links.filter(function(x){ return x.section===sec; }).reduce(function(m,x){ return Math.max(m, x.order+1); }, 0);
+    DOCLIB.links.push(rec);
+  } else if(rec.section!==sec){
+    rec.order = DOCLIB.links.filter(function(x){ return x.section===sec; }).reduce(function(m,x){ return Math.max(m, x.order+1); }, 0);
+  }
   rec.url=url;
   rec.title=$("dl-f-title").value.trim() || dlGuessTitle(url);
-  var c=$("dl-f-cat").value.trim(); if(c) rec.cat=c; else delete rec.cat;
-  var n=$("dl-f-note").value.trim(); if(n) rec.note=n; else delete rec.note;
+  rec.section=sec;
+  var un=$("dl-f-unit").value; if(un) rec.unit=un; else delete rec.unit;
+  rec.why=why;
+  rec.owner=$("dl-f-owner").value || dlMe();
+  if(dlIsAdmin()) rec.official = $("dl-f-off").checked;
+  rec.reviewed=dlToday(); rec.reviewedBy=dlMe();              /* saving it counts as a review */
   rec.access=acc; rec.people = acc==="people" ? people : [];
-  dlCloseDialog(); dlSave(); renderDocLib(); toast("Saved to library");
+  dlCloseDialog(); dlSave();
+  if(!dlQuery() && dlVisible().indexOf(rec)<0) dlView={kind:"sec", id:sec};   /* not visible here? jump to where it went */
+  renderDocLib(); toast("Saved");
 }
 function openDocLib(){ renderDocLib(); $("dl-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
-function closeDocLib(){ $("dl-page").style.display="none"; }
+function closeDocLib(){ dlClosePlay(); $("dl-page").style.display="none"; }
 (function(){
   if(!$("dl-page")) return;
   $("dl-addbtn").onclick=function(){ dlOpenDialog(null); };
   $("dl-cancel").onclick=dlCloseDialog;
   $("dl-save").onclick=dlSaveDialog;
   $("dl-q").oninput=function(){ renderDocLib(); };
+  $("dl-vid-x").onclick=dlClosePlay;
+  $("dl-vid").addEventListener("click", function(e){ if(e.target===this) dlClosePlay(); });
   document.querySelectorAll('input[name="dl-acc"]').forEach(function(r){ r.onchange=function(){ dlAccSet(r.value); }; });
-  $("dl-f-url").addEventListener("blur", function(){ if(!$("dl-f-title").value.trim() && this.value.trim()) $("dl-f-title").placeholder = dlGuessTitle(dlCleanUrl(this.value)); });
+  $("dl-f-url").addEventListener("blur", function(){
+    var u=dlCleanUrl(this.value); if(!u) return;
+    if(!$("dl-f-title").value.trim()) $("dl-f-title").placeholder = dlGuessTitle(u);
+    if(dlIsVideo(u) && !dlEditId && $("dl-f-sec").value!=="start") $("dl-f-sec").value="video";
+  });
 })();
 
 function openKim(){ kimDrawTrail(); $("kim-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
@@ -16775,7 +17058,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v46 (docs library) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v47 (team wiki) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
