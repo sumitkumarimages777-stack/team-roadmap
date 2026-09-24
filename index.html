@@ -2456,6 +2456,44 @@ body{margin:0}
     color:#ffca8a;white-space:nowrap;pointer-events:none;opacity:0;
     text-shadow:0 0 22px rgba(255,140,50,.55),0 2px 18px #0b0705;transform:translate(-50%,-50%)}@media (max-width:520px){#cul-root .ember{width:13px;height:13px}#cul-root .fuel{font-size:13px;white-space:normal;max-width:78vw;text-align:center} }
 
+
+/* ===== My Docs Library ===== */
+.dl-app{max-width:1060px;margin:0 auto;padding:34px 28px 80px}
+.dl-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}
+.dl-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.dl-h1{font-family:var(--disp);font-size:34px;margin:0 0 6px}
+.dl-tag{color:var(--muted);margin:0;font-size:15px}
+.dl-back{border:1px solid var(--line-strong);background:var(--card);border-radius:99px;padding:9px 16px;font-weight:600;cursor:pointer;white-space:nowrap}
+.dl-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.dl-search{flex:1 1 260px;border:1px solid var(--line-strong);border-radius:10px;padding:10px 13px;font:inherit;background:var(--card);color:inherit}
+.dl-seg{display:flex;border:1px solid var(--line-strong);border-radius:99px;padding:3px;background:var(--card)}
+.dl-seg button{border:none;background:none;border-radius:99px;padding:6px 13px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:var(--disp)}
+.dl-seg button.on{background:var(--indigo);color:#fff}
+.dl-add{border:none;background:var(--indigo);color:#fff;border-radius:99px;padding:10px 18px;font-weight:700;cursor:pointer;font-family:var(--disp)}
+.dl-cats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+.dl-cat{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.dl-cat.on{border-color:var(--indigo);color:var(--indigo)}
+.dl-row{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
+.dl-ico{flex:0 0 44px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff}
+.dl-main{flex:1;min-width:0}
+.dl-title{font-weight:700;font-size:15px;color:inherit;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-title:hover{text-decoration:underline}
+.dl-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dl-chip{font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;background:#f1f2f4;color:#5e6c84;border-radius:4px;padding:1px 7px}
+.dl-acc{font-size:11.5px;font-weight:600;border-radius:99px;padding:3px 10px;white-space:nowrap}
+.dl-acc.all{background:#e3fcef;color:#006644}
+.dl-acc.people{background:#deebff;color:#0747a6}
+.dl-acc.me{background:#fff0b3;color:#7a5c00}
+.dl-acts{display:flex;gap:5px;flex:0 0 auto}
+.dl-btn{border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer;color:inherit}
+.dl-btn:hover{background:rgba(0,0,0,.05)}
+.dl-btn.del:hover{background:#ffebe6;border-color:#ff8f73}
+.dl-empty{border:1px dashed var(--line-strong);border-radius:12px;padding:34px;text-align:center;color:var(--muted)}
+.dl-access{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+#dl-overlay .dl-access label{display:flex;justify-content:flex-start;gap:9px;align-items:center;font-weight:500;cursor:pointer;text-transform:none;letter-spacing:0;font-family:inherit;font-size:14px;color:inherit;margin:0;padding:3px 0}
+#dl-overlay .dl-access input[type=radio]{width:auto;flex:0 0 auto;margin:0;padding:0;box-shadow:none}
+.dl-warn{margin-top:12px;font-size:12px;color:#7a5c00;background:#fffae6;border-radius:8px;padding:9px 11px;line-height:1.45}
+@media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{width:100%;justify-content:flex-end} }
 </style>
 </head>
 <body>
@@ -3195,6 +3233,51 @@ body{margin:0}
   </div>
 </div>
 
+<div id="dl-page" class="product-page" style="display:none">
+  <div class="dl-app">
+    <div class="dl-top">
+      <div>
+        <div class="dl-eyebrow">Library</div>
+        <h1 class="dl-h1">My Docs Library</h1>
+        <p class="dl-tag">Every important doc, sheet and deck in one place — and who can see each one.</p>
+      </div>
+      <button class="dl-back" onclick="closeDocLib()">← Back to workspace</button>
+    </div>
+    <div class="dl-bar">
+      <input id="dl-q" class="dl-search" placeholder="Search by title, category or note…" autocomplete="off">
+      <div class="dl-seg" id="dl-seg"></div>
+      <button class="dl-add" id="dl-addbtn">＋ Add link</button>
+    </div>
+    <div class="dl-cats" id="dl-cats"></div>
+    <div id="dl-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="dl-overlay" style="z-index:430">
+  <div class="dialog" role="dialog" aria-modal="true" style="max-width:560px">
+    <h3 id="dl-dlg-h">Add a link</h3>
+    <div class="dlg-body">
+      <div class="field"><label for="dl-f-url">Link</label><input id="dl-f-url" placeholder="Paste the link — Google Doc, Sheet, Drive folder, Notion, Figma…" autocomplete="off"></div>
+      <div class="field"><label for="dl-f-title">Title</label><input id="dl-f-title" placeholder="e.g. Q4 Marketing Plan" autocomplete="off"></div>
+      <div class="field"><label for="dl-f-cat">Category <span class="hint" style="font-weight:400">— e.g. Marketing, SEO, Meetings</span></label><input id="dl-f-cat" list="dl-f-catlist" placeholder="Leave blank for none" autocomplete="off"><datalist id="dl-f-catlist"></datalist></div>
+      <div class="field"><label for="dl-f-note">Note (optional)</label><input id="dl-f-note" placeholder="One line on what this is" autocomplete="off"></div>
+      <div class="field"><label>Who can see this link</label>
+        <div class="dl-access" id="dl-access">
+          <label><input type="radio" name="dl-acc" value="all"> 🌐 Everyone in the team</label>
+          <label><input type="radio" name="dl-acc" value="people"> 👥 Only specific people</label>
+          <label><input type="radio" name="dl-acc" value="me"> 🔒 Only me</label>
+        </div>
+        <div class="pp" id="dlpp" style="display:none;margin-top:10px"></div>
+        <div class="dl-warn">This decides who sees the link <b>here</b>. It does not change who can open the document itself — set that in the document’s own Share settings (e.g. Google Drive).</div>
+      </div>
+    </div>
+    <div class="dlg-actions" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 22px 20px">
+      <button class="btn" id="dl-cancel">Cancel</button>
+      <button class="btn save" id="dl-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="kim-page" class="product-page" style="display:none">
   <div class="kim-app">
     <div class="kim-top">
@@ -3517,6 +3600,7 @@ body{margin:0}
       </div>
       <button class="acct-item" id="acct-teams">⌂ Switch team</button>
       <button class="acct-item" id="acct-profile">👤 My profile</button>
+      <button class="acct-item" id="acct-doclib">📚 My Docs Library</button>
       <button class="acct-item" id="acct-password">🔑 Change password</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
       <button class="acct-item danger" id="acct-logout">→] Sign out</button>
@@ -4929,7 +5013,7 @@ function teamPayload(){
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     scorecard: scScorecardForSave(),
     csm: csmPayload(),
-    bugsDefaultBoard: BUGS_DEFAULT_BOARD, kim: KIM };
+    bugsDefaultBoard: BUGS_DEFAULT_BOARD, kim: KIM, doclib: clean(DOCLIB) };
 }
 function loadTeamData(t){
   t = t || {};
@@ -4955,6 +5039,7 @@ function loadTeamData(t){
   }
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   KIM = (t.kim && typeof t.kim==="object") ? t.kim : { byUser:{} };
+  DOCLIB = normalizeDoclib(t.doclib);
   if(!KIM.byUser || typeof KIM.byUser!=="object") KIM.byUser={};
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
@@ -15294,6 +15379,161 @@ function kimMine(){ KIM=KIM||{byUser:{}}; KIM.byUser=KIM.byUser||{}; if(!KIM.byU
 function kimDone(n){ return !!kimMine()[n]; }
 function kimOpenAt(i){ return i===0 || kimDone(KIM_GAMES[i-1].n); }
 
+
+/* ================= My Docs Library ================= */
+var DOCLIB = (typeof DOCLIB!=="undefined" && DOCLIB) ? DOCLIB : { links:[] };   /* never reset data loaded earlier */
+var dlFilter = "all", dlCat = "", dlEditId = null;
+function normalizeDoclib(d){
+  d = (d && typeof d==="object") ? d : {};
+  d.links = Array.isArray(d.links) ? d.links.filter(function(l){ return l && l.url; }) : [];
+  d.links.forEach(function(l){
+    if(!l.id) l.id = "dl-"+Math.random().toString(36).slice(2,9);
+    if(["all","people","me"].indexOf(l.access)<0) l.access = "all";
+    l.people = Array.isArray(l.people) ? l.people : [];
+    l.title = (l.title||"").trim() || dlGuessTitle(l.url);
+  });
+  return d;
+}
+function dlMe(){ return (SESSION && SESSION.email) || ""; }
+function dlIsAdmin(){ var u = (typeof currentUser==="function") ? currentUser() : null; return !!(u && (u.super || (typeof can==="function" && can("admin")))); }
+function dlCanSee(l){
+  if(l.access==="all") return true;
+  var me=dlMe(); if(!me) return false;
+  if(l.by===me) return true;
+  if(dlIsAdmin()) return true;
+  return l.access==="people" && l.people.indexOf(me)>=0;
+}
+function dlCanEdit(l){ return !!dlMe() && (l.by===dlMe() || dlIsAdmin()); }
+function dlKind(url){
+  var u=(url||"").toLowerCase();
+  if(u.indexOf("docs.google.com/document")>=0) return ["Doc","#4285f4"];
+  if(u.indexOf("docs.google.com/spreadsheets")>=0) return ["Sheet","#0f9d58"];
+  if(u.indexOf("docs.google.com/presentation")>=0) return ["Slides","#f4b400"];
+  if(u.indexOf("docs.google.com/forms")>=0) return ["Form","#7248b9"];
+  if(u.indexOf("drive.google.com")>=0) return ["Drive","#1a73e8"];
+  if(u.indexOf("notion.")>=0) return ["Notion","#191919"];
+  if(u.indexOf("figma.com")>=0) return ["Figma","#a259ff"];
+  if(u.indexOf("atlassian.net")>=0 || u.indexOf("confluence")>=0) return ["Wiki","#0052cc"];
+  if(u.indexOf("github.com")>=0) return ["Code","#24292f"];
+  if(u.indexOf("youtube.com")>=0 || u.indexOf("youtu.be")>=0) return ["Video","#ff0000"];
+  if(/\.pdf(\?|$)/.test(u)) return ["PDF","#d93025"];
+  return ["Link","#6b778c"];
+}
+function dlGuessTitle(url){
+  var k=dlKind(url)[0];
+  if(k!=="Link") return "Untitled "+(k==="Doc"?"Google Doc":k==="Sheet"?"Google Sheet":k);
+  try{ return new URL(url).hostname.replace(/^www\./,""); }catch(e){ return "Untitled link"; }
+}
+function dlCleanUrl(u){ u=(u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u="https://"+u; return u; }
+function dlCats(){ var seen={},out=[]; DOCLIB.links.filter(dlCanSee).forEach(function(l){ var c=(l.cat||"").trim(); if(c && !seen[c.toLowerCase()]){ seen[c.toLowerCase()]=1; out.push(c); } }); return out.sort(function(a,b){ return a.localeCompare(b); }); }
+function dlVisible(){
+  var q=(($("dl-q")||{}).value||"").trim().toLowerCase(), me=dlMe();
+  return DOCLIB.links.filter(dlCanSee).filter(function(l){
+    if(dlFilter==="mine" && l.by!==me) return false;
+    if(dlFilter==="shared" && !(l.by!==me && l.access==="people" && l.people.indexOf(me)>=0)) return false;
+    if(dlCat && (l.cat||"").trim().toLowerCase()!==dlCat.toLowerCase()) return false;
+    if(q && ((l.title||"")+" "+(l.cat||"")+" "+(l.note||"")+" "+(l.url||"")).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }).sort(function(a,b){ return (b.at||"").localeCompare(a.at||""); });
+}
+function dlAccessBadge(l){
+  if(l.access==="me") return '<span class="dl-acc me">🔒 Only '+(l.by===dlMe()?"me":mtEsc(ppMemName(l.by)))+'</span>';
+  if(l.access==="people"){
+    var names=l.people.map(ppMemName);
+    return '<span class="dl-acc people" title="'+mtEsc(names.join(", "))+'">👥 '+l.people.length+' '+(l.people.length===1?"person":"people")+'</span>';
+  }
+  return '<span class="dl-acc all">🌐 Everyone</span>';
+}
+function renderDocLib(){
+  var seg=$("dl-seg"); seg.innerHTML="";
+  [["all","All I can see"],["mine","Added by me"],["shared","Shared with me"]].forEach(function(m){
+    var b=document.createElement("button"); b.textContent=m[1]; if(dlFilter===m[0]) b.className="on";
+    b.onclick=function(){ dlFilter=m[0]; renderDocLib(); }; seg.appendChild(b);
+  });
+  var cats=dlCats(), cw=$("dl-cats"); cw.innerHTML="";
+  if(dlCat && cats.map(function(c){return c.toLowerCase();}).indexOf(dlCat.toLowerCase())<0) dlCat="";
+  if(cats.length){
+    var all=document.createElement("button"); all.className="dl-cat"+(dlCat?"":" on"); all.textContent="All categories";
+    all.onclick=function(){ dlCat=""; renderDocLib(); }; cw.appendChild(all);
+    cats.forEach(function(c){ var b=document.createElement("button"); b.className="dl-cat"+(dlCat.toLowerCase()===c.toLowerCase()?" on":""); b.textContent=c; b.onclick=function(){ dlCat=c; renderDocLib(); }; cw.appendChild(b); });
+  }
+  var list=$("dl-list"); list.innerHTML="";
+  var rows=dlVisible();
+  if(!rows.length){
+    var e=document.createElement("div"); e.className="dl-empty";
+    e.textContent = DOCLIB.links.filter(dlCanSee).length ? "Nothing matches that." : "No links yet. Click ＋ Add link to put the first one in.";
+    list.appendChild(e); return;
+  }
+  rows.forEach(function(l){
+    var k=dlKind(l.url);
+    var r=document.createElement("div"); r.className="dl-row"; r.dataset.id=l.id;
+    r.innerHTML='<div class="dl-ico" style="background:'+k[1]+'">'+mtEsc(k[0])+'</div>'
+      +'<div class="dl-main"><a class="dl-title" target="_blank" rel="noopener noreferrer"></a>'
+      +'<div class="dl-meta">'+((l.cat||"").trim()?'<span class="dl-chip">'+mtEsc(l.cat.trim())+'</span>':'')
+      +dlAccessBadge(l)+'<span>by '+mtEsc(l.by===dlMe()?"you":ppMemName(l.by||""))+(l.at?' · '+mtEsc(l.at):'')+'</span>'
+      +(l.note?'<span>· '+mtEsc(l.note)+'</span>':'')+'</div></div><div class="dl-acts"></div>';
+    var a=r.querySelector(".dl-title"); a.textContent=l.title; a.href=l.url;
+    var acts=r.querySelector(".dl-acts");
+    var cp=document.createElement("button"); cp.className="dl-btn"; cp.textContent="Copy link"; cp.title="Copy the link";
+    cp.onclick=function(){ try{ navigator.clipboard.writeText(l.url); toast("Link copied"); }catch(e){ window.prompt("Copy this link:", l.url); } };
+    acts.appendChild(cp);
+    if(dlCanEdit(l)){
+      var ed=document.createElement("button"); ed.className="dl-btn"; ed.textContent="✎"; ed.title="Edit"; ed.onclick=function(){ dlOpenDialog(l.id); }; acts.appendChild(ed);
+      var dl=document.createElement("button"); dl.className="dl-btn del"; dl.textContent="×"; dl.title="Remove from library";
+      dl.onclick=function(){ if(window.confirm('Remove “'+l.title+'” from the library? The document itself is not touched.')){ DOCLIB.links=DOCLIB.links.filter(function(x){return x.id!==l.id;}); dlSave(); renderDocLib(); toast("Removed"); } };
+      acts.appendChild(dl);
+    }
+    list.appendChild(r);
+  });
+}
+function dlSave(){ DOCLIB.updated=todayStr(); if(typeof pushAll==="function") pushAll(); }
+function dlAccSet(v){
+  document.querySelectorAll('input[name="dl-acc"]').forEach(function(r){ r.checked = (r.value===v); });
+  $("dlpp").style.display = (v==="people") ? "" : "none";
+}
+function dlOpenDialog(id){
+  if(!dlMe()){ toast("Sign in to add links"); return; }
+  var l = id ? DOCLIB.links.find(function(x){ return x.id===id; }) : null;
+  dlEditId = l ? l.id : null;
+  $("dl-dlg-h").textContent = l ? "Edit link" : "Add a link";
+  $("dl-f-url").value = l ? l.url : "";
+  $("dl-f-title").value = l ? l.title : "";
+  $("dl-f-cat").value = l ? (l.cat||"") : (dlCat||"");
+  $("dl-f-note").value = l ? (l.note||"") : "";
+  $("dl-f-catlist").innerHTML = dlCats().map(function(c){ return '<option value="'+mtEsc(c)+'">'; }).join("");
+  ppInit("dlpp", l ? l.people : []); ppRender("dlpp");
+  dlAccSet(l ? l.access : "all");
+  $("dl-overlay").classList.add("show");
+  setTimeout(function(){ $("dl-f-url").focus(); }, 30);
+}
+function dlCloseDialog(){ $("dl-overlay").classList.remove("show"); dlEditId=null; }
+function dlSaveDialog(){
+  var url=dlCleanUrl($("dl-f-url").value);
+  if(!url){ toast("Paste a link first"); $("dl-f-url").focus(); return; }
+  var acc=(document.querySelector('input[name="dl-acc"]:checked')||{}).value||"all";
+  var people=ppGet("dlpp");
+  if(acc==="people" && !people.length){ toast("Pick at least one person, or choose Everyone"); return; }
+  var rec = dlEditId ? DOCLIB.links.find(function(x){ return x.id===dlEditId; }) : null;
+  if(!rec){ rec={ id:"dl-"+Math.random().toString(36).slice(2,9), by:dlMe(), at:todayStr() }; DOCLIB.links.push(rec); }
+  rec.url=url;
+  rec.title=$("dl-f-title").value.trim() || dlGuessTitle(url);
+  var c=$("dl-f-cat").value.trim(); if(c) rec.cat=c; else delete rec.cat;
+  var n=$("dl-f-note").value.trim(); if(n) rec.note=n; else delete rec.note;
+  rec.access=acc; rec.people = acc==="people" ? people : [];
+  dlCloseDialog(); dlSave(); renderDocLib(); toast("Saved to library");
+}
+function openDocLib(){ renderDocLib(); $("dl-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function closeDocLib(){ $("dl-page").style.display="none"; }
+(function(){
+  if(!$("dl-page")) return;
+  $("dl-addbtn").onclick=function(){ dlOpenDialog(null); };
+  $("dl-cancel").onclick=dlCloseDialog;
+  $("dl-save").onclick=dlSaveDialog;
+  $("dl-q").oninput=function(){ renderDocLib(); };
+  document.querySelectorAll('input[name="dl-acc"]').forEach(function(r){ r.onchange=function(){ dlAccSet(r.value); }; });
+  $("dl-f-url").addEventListener("blur", function(){ if(!$("dl-f-title").value.trim() && this.value.trim()) $("dl-f-title").placeholder = dlGuessTitle(dlCleanUrl(this.value)); });
+})();
+
 function openKim(){ kimDrawTrail(); $("kim-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
 function closeKim(){ $("kim-page").style.display="none"; }
 
@@ -16535,7 +16775,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v45 (our culture) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v46 (docs library) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
@@ -17620,6 +17860,7 @@ function openAccount(){
 }
 $("acct-teams") && ($("acct-teams").onclick = ()=>{ $("account-overlay").classList.remove("show"); location.href = location.pathname; });
 $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").classList.remove("show"); openProfile(); });
+$("acct-doclib") && ($("acct-doclib").onclick = ()=>{ $("account-overlay").classList.remove("show"); openDocLib(); });
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
