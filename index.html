@@ -2093,7 +2093,8 @@ body{margin:0}
 .okrlv-addbtn:hover{filter:brightness(1.05)}
 
 /* ===== OKR Board view ===== */
-.okrb{position:relative;padding:6px 0 8px}
+.okrb-scroll{overflow-x:auto;overflow-y:visible;padding-bottom:6px}
+.okrb{position:relative;padding:6px 0 8px;width:max-content;min-width:100%}
 .okrb-links{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
 .okrb-bands{position:relative;z-index:1;display:flex;flex-direction:column;gap:26px}
 .okrb-band{position:relative}
@@ -2107,7 +2108,12 @@ body{margin:0}
 .okrb-clearf{margin-top:10px;border:1px solid var(--line-strong);background:var(--card);color:inherit;border-radius:99px;padding:7px 16px;font-weight:600;font-size:12.5px;cursor:pointer;font-family:var(--disp)}
 .okrb-clearf:hover{background:rgba(0,0,0,.05)}
 .okrb-bandhead{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line-strong);border-radius:99px;padding:6px 18px;margin-bottom:14px}
-.okrb-row{display:flex;flex-wrap:wrap;gap:18px}
+.okrb-row{display:flex;flex-wrap:nowrap;gap:18px}
+.okrb-card{flex:0 0 auto}
+.okrb-card[draggable=true]{cursor:grab}
+.okrb-card.dragging{opacity:.45}
+.okrb-card.drop-before{box-shadow:-4px 0 0 0 var(--indigo)}
+.okrb-card.drop-after{box-shadow:4px 0 0 0 var(--indigo)}
 .okrb-card{width:300px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px 14px;position:relative;box-shadow:0 1px 2px rgba(9,30,66,.05)}
 .okrb-top{display:flex;align-items:flex-start;gap:8px}
 .okrb-title{flex:1;font-weight:700;font-size:14.5px;line-height:1.35;color:var(--ink)}
@@ -9043,6 +9049,46 @@ function okrBandFilter(cyc){
   sel.onchange = function(){ okrUnitPick = sel.value; renderAll(); };
   return sel;
 }
+var _okrDrag=null;
+function okrBoardDragWire(card, ob, band){
+  if(!(editMode || okrCanEdit(ob))) return;
+  card.draggable=true;
+  card.addEventListener("dragstart", function(e){
+    if(e.target.closest && e.target.closest("button,a,input,select,textarea")){ e.preventDefault(); return; }
+    _okrDrag={ id:ob.id, band:band }; card.classList.add("dragging");
+    try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain", ob.id); }catch(_){}
+  });
+  card.addEventListener("dragend", function(){
+    card.classList.remove("dragging"); _okrDrag=null;
+    document.querySelectorAll(".okrb-card.drop-before,.okrb-card.drop-after").forEach(function(x){ x.classList.remove("drop-before","drop-after"); });
+  });
+  card.addEventListener("dragover", function(e){
+    if(!_okrDrag || _okrDrag.id===ob.id || _okrDrag.band.indexOf(ob)<0) return;   /* same level only */
+    e.preventDefault();
+    var r=card.getBoundingClientRect(), after = e.clientX > r.left + r.width/2;
+    card.classList.toggle("drop-after", after); card.classList.toggle("drop-before", !after);
+  });
+  card.addEventListener("dragleave", function(){ card.classList.remove("drop-before","drop-after"); });
+  card.addEventListener("drop", function(e){
+    if(!_okrDrag || _okrDrag.band.indexOf(ob)<0) return;
+    e.preventDefault();
+    var after=card.classList.contains("drop-after");
+    card.classList.remove("drop-before","drop-after");
+    okrBoardMove(_okrDrag.id, ob.id, after, _okrDrag.band);
+  });
+}
+function okrBoardMove(dragId, targetId, after, band){
+  var list=band.slice(), from=-1, moving=null;
+  for(var i=0;i<list.length;i++){ if(list[i].id===dragId){ from=i; moving=list[i]; } }
+  if(!moving || dragId===targetId) return false;
+  list.splice(from,1);
+  var to=-1; for(var j=0;j<list.length;j++){ if(list[j].id===targetId) to=j; }
+  if(to<0) return false;
+  list.splice(after?to+1:to, 0, moving);
+  list.forEach(function(o,n){ o.bord=n; });
+  saveOkrs(); toast("Order saved");
+  return true;
+}
 function renderOkrBoard(cyc, wrap){
   var objs=cyc.objectives;
   // filter toolbar (top-right)
@@ -9086,6 +9132,10 @@ function renderOkrBoard(cyc, wrap){
   }
   order.forEach(function(lv){
     var inBand = vis.filter(function(o){ var l=(o.level||""); return lv ? l===lv : (!l || levels.indexOf(l)<0); });
+    inBand.sort(function(a,b){
+      var ba=(typeof a.bord==="number")?a.bord:1e6, bb=(typeof b.bord==="number")?b.bord:1e6;
+      return (ba-bb) || (objs.indexOf(a)-objs.indexOf(b));
+    });
     if(!inBand.length && lv!==_filterLv) return;
     var band=document.createElement("div"); band.className="okrb-band";
     var headrow=document.createElement("div"); headrow.className="okrb-bandrow";
@@ -9099,10 +9149,18 @@ function renderOkrBoard(cyc, wrap){
       band.appendChild(_be); bands.appendChild(band); return;
     }
     var row=document.createElement("div"); row.className="okrb-row";
-    inBand.forEach(function(ob){ row.appendChild(okrBoardCard(ob, cyc, objs)); });
+    inBand.forEach(function(ob){ var c=okrBoardCard(ob, cyc, objs); okrBoardDragWire(c, ob, inBand); row.appendChild(c); });
     band.appendChild(row); bands.appendChild(band);
   });
-  wrap.appendChild(root);
+  var _okrScroll=document.createElement("div"); _okrScroll.className="okrb-scroll";
+  _okrScroll.appendChild(root); wrap.appendChild(_okrScroll);
+  /* while dragging a card, touching the left/right edge slides the board so off-screen cards are reachable */
+  _okrScroll.addEventListener("dragover", function(e){
+    if(!_okrDrag) return;
+    var r=_okrScroll.getBoundingClientRect(), edge=70;
+    if(e.clientX < r.left+edge) _okrScroll.scrollLeft -= 22;
+    else if(e.clientX > r.right-edge) _okrScroll.scrollLeft += 22;
+  });
 
   if(editMode){
     var add=document.createElement("button"); add.className="addline"; add.style.padding="12px"; add.style.marginTop="12px";
@@ -17058,7 +17116,7 @@ function csmRenderSidebar(){
   });
   h+='</nav>';
   var _stor = (typeof db!=="undefined" && db) ? "online \u2713" : ((typeof configured!=="undefined" && !configured) ? "OFFLINE (not configured)" : "OFFLINE \u2014 NOT saving");
-  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v47 (team wiki) \u00b7 storage: '+_stor+'</div></div>';
+  h+='<div class="csm-foot"><button class="csm-footbtn" onclick="closeCsm()">\u2190 Back to workspace</button><div class="csm-build">Build v48 (board rows) \u00b7 storage: '+_stor+'</div></div>';
   var s=$("csm-side"); if(s) s.innerHTML=h;
 }
 function csmStub(title, msg){ return '<div class="csm-stub"><div class="csm-stub-tag">Needs backend</div><h3>'+mtEsc(title)+'</h3><p>'+msg+'</p></div>'; }
