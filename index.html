@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Product Roadmap</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<link rel="apple-touch-icon" href="logo-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Supabase: logins, people and roles (Stage 3). Loaded from a public CDN. -->
@@ -64,8 +64,10 @@ const HIDE_NAV = ["docs","scorecard","service","product"];
 
 /* Per-team logo. Key = the team slug in the URL (?team=...).
    A team with no entry here just shows its coloured letter badge.      */
+/* Words shown next to a team's logo in the sidebar, as sharp text: [dark part, orange part] */
+const TEAM_WORDMARK = { "dubuddy": ["DU", "Buddy"] };
 const TEAM_LOGOS = {
-  "dubuddy": "data:image/png;base64,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"
+  "dubuddy": "logo-mark.png"
 };
 
 /* My Team tabs to hide. Remove a key to bring that tab back.
@@ -1085,7 +1087,9 @@ body{margin:0}
 .rail{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:static;top:auto;align-self:stretch}
 .rail-brand{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-height:57px;box-sizing:border-box}
 .brand-dot{width:28px;height:28px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;flex:none}
-.brand-logo{height:30px;width:auto;max-width:180px;object-fit:contain;display:block}
+.brand-logo{height:34px;width:auto;max-width:180px;object-fit:contain;display:block}
+.brand-word{font-family:Inter,system-ui,sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em;color:#000;white-space:nowrap}
+.brand-word b{color:#FF6B35;font-weight:700;margin-left:4px}
 
 /* ===== Keep in mind ===== */
 .kim-app{max-width:1120px;margin:0 auto;padding:26px 24px 60px}
@@ -2543,14 +2547,14 @@ body{margin:0}
 @media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{max-width:none;width:100%} .dl-row2{grid-template-columns:1fr} }
 /* loading screen: covers the half-built page until sign-in and data are ready */
 #boot-splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#FAF5F0;transition:opacity .25s ease}
-#boot-splash img{width:56px;height:56px;animation:boot-pulse 1.2s ease-in-out infinite}
+#boot-splash img{width:72px;height:72px;animation:boot-pulse 1.2s ease-in-out infinite}
 #boot-splash div{font-family:Inter,system-ui,sans-serif;font-size:14px;color:#5C6A82;letter-spacing:.02em}
 #boot-splash.gone{opacity:0;pointer-events:none}
 @keyframes boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.92);opacity:.75}}
 </style>
 </head>
 <body>
-<div id="boot-splash"><img src="favicon.png" alt=""><div>Loading your workspace…</div></div>
+<div id="boot-splash"><img src="logo-mark.png" alt=""><div>Loading your workspace…</div></div>
 <div id="landing" class="landing" style="display:none">
   <div class="landing-inner">
     <div class="landing-eyebrow">CYBERFLOW · TEAM WORKSPACES</div>
@@ -3533,6 +3537,7 @@ body{margin:0}
     <div class="rail-brand">
       <div class="brand-dot" id="rail-dot">T</div>
       <img id="rail-logo" class="brand-logo" alt="" style="display:none">
+      <div id="rail-word" class="brand-word" style="display:none"></div>
       <div class="brand-txt">
         <div class="brand-eyebrow">Internal · Team Workspace</div>
         <div class="brand-name" id="rail-teamname">Team</div>
@@ -6502,9 +6507,15 @@ function renderHeader(){
       if(_logo){
         _img.src=_logo; _img.alt=_tn; _img.style.display="";
         if(_d) _d.style.display="none";
-        if(_txt) _txt.style.display="none";          // the wordmark already says the name
+        if(_txt) _txt.style.display="none";          // the logo (and wordmark) already say the name
+        var _w=$("rail-word"), _wm=(typeof TEAM_WORDMARK!=="undefined") ? TEAM_WORDMARK[TEAM] : null;
+        if(_w){
+          if(_wm){ _w.textContent=_wm[0]; var _b=document.createElement("b"); _b.textContent=_wm[1]; _w.appendChild(_b); _w.style.display=""; }
+          else _w.style.display="none";
+        }
       } else {
         _img.style.display="none";
+        if($("rail-word")) $("rail-word").style.display="none";
         if(_d) _d.style.display="";
         if(_txt) _txt.style.display="";
       }
