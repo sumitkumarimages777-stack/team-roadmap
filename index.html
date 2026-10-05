@@ -3680,6 +3680,7 @@ body{margin:0}
       <button class="acct-item" id="acct-profile">👤 My profile</button>
       <button class="acct-item" id="acct-doclib">📚 Our Wiki</button>
       <button class="acct-item" id="acct-password">🔑 Change password</button>
+      <button class="acct-item" id="acct-request" style="display:none">🙋 Request a teammate</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
       <button class="acct-item danger" id="acct-logout">→] Sign out</button>
     </div>
@@ -5651,6 +5652,10 @@ async function start(){
   }
   restorePageAfterRender();
   try{ docOpenFromUrl(); }catch(_){ }
+  // approvers: a gentle nudge when teammate requests are waiting
+  if(db && hasPerm("approve_requests")){
+    refreshPendingCount().then(n=>{ if(n) toast("\uD83D\uDE4B " + n + " teammate request" + (n>1?"s":"") + " waiting \u2014 Administration \u2192 Requests"); });
+  }
 }
 
 /* ---------- the landing page: pick a team or create one ---------- */
@@ -18515,7 +18520,8 @@ function openAccount(){
   const av = $("acct-av");
   if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; av.textContent = ""; }
   else { av.style.backgroundImage = "none"; av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
-  $("acct-admin").style.display = canManagePeople() ? "" : "none";
+  $("acct-admin").style.display = (canManagePeople() || hasPerm("approve_requests")) ? "" : "none";
+  if($("acct-request")) $("acct-request").style.display = (hasPerm("request_members") && !canManagePeople()) ? "" : "none";
   $("account-overlay").classList.add("show");
 }
 $("acct-teams") && ($("acct-teams").onclick = ()=>{ $("account-overlay").classList.remove("show"); location.href = location.pathname; });
@@ -18523,6 +18529,7 @@ $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").cla
 $("acct-doclib") && ($("acct-doclib").onclick = ()=>{ $("account-overlay").classList.remove("show"); openDocLib(); });
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
+$("acct-request") && ($("acct-request").onclick = ()=>{ $("account-overlay").classList.remove("show"); openRequestTeammate(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
 $("account-overlay") && $("account-overlay").addEventListener("click", e=>{ if(e.target===$("account-overlay")) $("account-overlay").classList.remove("show"); });
 
@@ -18612,8 +18619,8 @@ function roleOptions(sel, current, maxRole){
   });
 }
 function openAdmin(section){
-  if(!canManagePeople()){ toast("Only Owners and Admins can open Administration"); return; }
-  adminView = section || "users";
+  if(!canManagePeople() && !hasPerm("approve_requests")){ toast("Only Owners and Admins can open Administration"); return; }
+  adminView = section || (canManagePeople() ? "users" : "requests");
   renderAdminPage();
   $("admin-page").style.display = "block";
   window.scrollTo(0,0);
@@ -18624,7 +18631,10 @@ function renderAdminPage(){
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Roles & permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
+  const _canPeople = canManagePeople(), _canApprove = hasPerm("approve_requests");
+  if(!_canPeople && adminView !== "requests") adminView = "requests";   // approvers who can't manage people only see Requests
+  const _navItems = _canPeople ? [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Roles & permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]] : [];
+  if(_canApprove) _navItems.splice(_canPeople ? 1 : 0, 0, ["requests","\uD83D\uDE4B","Requests" + (PENDING_REQUESTS ? " (" + PENDING_REQUESTS + ")" : "")]);
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
   _navItems.forEach(([k,ico,lbl])=>{
@@ -18642,14 +18652,166 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Roles & permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="requests" ? "Requests" : adminView==="permissions" ? "Roles & permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
   if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
   else if(adminView === "org") renderAdminOrg(main);
   else if(adminView === "okrlevels") renderAdminOkrLevels(main);
   else if(adminView === "danger") renderAdminDanger(main);
+  else if(adminView === "requests") renderAdminRequests(main);
   else renderAdminUsers(main);
+}
+/* ===== Teammate requests ===================================================
+   A role with "Request teammates" (e.g. Manager) asks for someone to be added;
+   a role with "Approve requests" approves or rejects. Requests live in the
+   member_requests table (rules: supabase/stage5b). Approving / rejecting goes
+   through the manage-people server function, which creates the login and sends
+   the emails (sign-in details to the person, the answer to the requester). */
+let PENDING_REQUESTS = 0;
+async function loadRequests(onlyMine){
+  let q = SUPA.from("member_requests").select("*").eq("team_slug", TEAM).order("created_at", { ascending:false }).limit(100);
+  if(onlyMine && currentUser()) q = q.eq("requested_by", currentUser().id);
+  const { data, error } = await q;
+  if(error) throw new Error(error.message);
+  return data || [];
+}
+async function refreshPendingCount(){
+  if(!hasPerm("approve_requests")){ PENDING_REQUESTS = 0; return 0; }
+  try{ PENDING_REQUESTS = (await loadRequests(false)).filter(r=> r.status === "pending").length; }catch(_){ PENDING_REQUESTS = 0; }
+  return PENDING_REQUESTS;
+}
+function requestStatusChip(r){
+  const c = document.createElement("span");
+  const map = { pending:["⏳ Waiting for approval","#9A6A1B","#FFF4DD"], approved:["✅ Approved","#1F7A4D","#E3F2EA"], rejected:["❌ Not approved","#B03A34","#FBE7E5"] };
+  const m = map[r.status] || [r.status,"#5C6A82","#EEF1F5"];
+  c.textContent = m[0]; c.style.cssText = "font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;color:"+m[1]+";background:"+m[2]+";white-space:nowrap";
+  return c;
+}
+function fmtWhen(iso){ try{ return new Date(iso).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }); }catch(_){ return ""; } }
+
+// Manager: the request form + "My requests"
+function openRequestTeammate(){
+  if(!hasPerm("request_members")){ toast("Your role can't request teammates"); return; }
+  const old = document.getElementById("request-overlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.className = "overlay show"; ov.id = "request-overlay"; ov.style.zIndex = "430";
+  ov.innerHTML = '<div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">'
+    + '<h3>Request a teammate</h3><div class="dlg-body">'
+    + '<div class="hint" style="margin-bottom:12px">Fill in their details. An Owner or Admin will review it. Once approved, they get an email with their sign-in details, and you get an email too.</div>'
+    + '<div class="field"><label for="rq-name">Full name</label><input id="rq-name" class="login-input" type="text" autocomplete="off"></div>'
+    + '<div class="field"><label for="rq-email">Email</label><input id="rq-email" class="login-input" type="email" autocomplete="off" placeholder="their@email.com"></div>'
+    + '<div class="field"><label for="rq-role">Role</label><select id="rq-role" class="pa-select" style="width:100%"></select></div>'
+    + '<div class="field"><label for="rq-note">Note for the approver (optional)</label><textarea id="rq-note" class="login-input" rows="2" placeholder="e.g. Joining the design team from Monday"></textarea></div>'
+    + '<div class="login-err" id="rq-err"></div>'
+    + '<div style="margin-top:16px;font-weight:600">My requests</div><div id="rq-mine" class="hint" style="margin-top:6px">Loading…</div>'
+    + '</div><div class="btns"><button class="btn" id="rq-close">Close</button><button class="btn save" id="rq-send">Send for approval</button></div></div>';
+  document.body.appendChild(ov);
+  const $r = id => ov.querySelector("#"+id);
+  roleOptions($r("rq-role"), "", "admin");   // never Owner; defaults to the most basic role
+  $r("rq-close").onclick = ()=> ov.remove();
+  ov.addEventListener("click", e=>{ if(e.target === ov) ov.remove(); });
+  async function drawMine(){
+    const box = $r("rq-mine");
+    try{
+      const rows = await loadRequests(true);
+      box.textContent = rows.length ? "" : "None yet.";
+      rows.slice(0, 20).forEach(r=>{
+        const line = document.createElement("div");
+        line.style.cssText = "display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)";
+        const who = document.createElement("div"); who.style.minWidth = "0";
+        const n = document.createElement("div"); n.style.cssText = "color:var(--ink);font-weight:600"; n.textContent = (r.name || r.email) + " · " + roleLabel(r.role);
+        const e = document.createElement("div"); e.textContent = r.email + " · " + fmtWhen(r.created_at) + (r.status === "rejected" && r.reason ? " · Reason: " + r.reason : "");
+        who.append(n, e); line.append(who, requestStatusChip(r)); box.appendChild(line);
+      });
+    }catch(e){ box.textContent = "Couldn't load your requests (" + e.message + ")."; }
+  }
+  $r("rq-send").onclick = async ()=>{
+    const name = $r("rq-name").value.trim(), email = $r("rq-email").value.trim().toLowerCase(), role = $r("rq-role").value, note = $r("rq-note").value.trim();
+    if(!name){ $r("rq-err").textContent = "Enter their name."; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $r("rq-err").textContent = "Enter a valid email."; return; }
+    if(USERS.some(u=> u.email === email && u.teams && u.teams[TEAM])){ $r("rq-err").textContent = "They're already in this team."; return; }
+    $r("rq-send").disabled = true; $r("rq-err").textContent = "Sending…";
+    const { error } = await SUPA.from("member_requests").insert({ team_slug:TEAM, email, name, role, note, requested_by: currentUser().id });
+    $r("rq-send").disabled = false;
+    if(error){ $r("rq-err").textContent = /one_pending|duplicate/i.test(error.message) ? "There's already a request waiting for this email." : error.message; return; }
+    $r("rq-err").textContent = "";
+    ["rq-name","rq-email","rq-note"].forEach(id=> $r(id).value = "");
+    toast("Request sent — you'll get an email when it's decided");
+    drawMine();
+  };
+  drawMine();
+  setTimeout(()=> $r("rq-name").focus(), 50);
+}
+
+// Approvers: Administration -> Requests
+function renderAdminRequests(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Teammate requests"; head.appendChild(h2); wrap.appendChild(head);
+  const intro = document.createElement("div"); intro.className = "hint"; intro.style.cssText = "margin:0 0 16px;line-height:1.6";
+  intro.textContent = "People your Managers asked to add. Approving creates their login, adds them to this team and emails them their sign-in details; the requester gets an email too. Rejecting emails the requester your reason.";
+  wrap.appendChild(intro);
+  const pend = document.createElement("div"); const done = document.createElement("div");
+  pend.textContent = "Loading…"; wrap.append(pend, done);
+  const byId = id => USERS.find(u=> u.id === id);
+  (async ()=>{
+    let rows = [];
+    try{ rows = await loadRequests(false); }catch(e){ pend.textContent = "Couldn't load requests (" + e.message + ")."; return; }
+    const waiting = rows.filter(r=> r.status === "pending");
+    PENDING_REQUESTS = waiting.length;
+    pend.textContent = waiting.length ? "" : "Nothing waiting — all caught up.";
+    waiting.forEach(r=>{
+      const card = document.createElement("div");
+      card.style.cssText = "border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--card,#fff)";
+      const top = document.createElement("div"); top.style.cssText = "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap";
+      const who = document.createElement("div");
+      const n = document.createElement("div"); n.style.cssText = "font-weight:700;font-size:15px"; n.textContent = r.name || r.email;
+      const e = document.createElement("div"); e.className = "hint"; const rb = byId(r.requested_by);
+      e.textContent = r.email + " · requested by " + (rb ? userDisplayName(rb) : "someone") + " on " + fmtWhen(r.created_at);
+      who.append(n, e);
+      if(r.note){ const nt = document.createElement("div"); nt.style.cssText = "margin-top:6px;font-size:13px"; nt.textContent = "“" + r.note + "”"; who.appendChild(nt); }
+      const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+      const sel = document.createElement("select"); sel.className = "person-role"; roleOptions(sel, r.role, currentUser().super ? "owner" : "admin"); sel.title = "Role they'll get (you can change it)";
+      const ok = document.createElement("button"); ok.className = "btn save"; ok.textContent = "Approve";
+      const no = document.createElement("button"); no.className = "btn"; no.textContent = "Reject";
+      ok.onclick = async ()=>{
+        if(!confirm("Approve " + (r.name || r.email) + " as " + roleLabel(sel.value) + "?\n\nTheir login will be created and they'll get an email with their sign-in details.")) return;
+        ok.disabled = no.disabled = true; ok.textContent = "Approving…";
+        try{
+          const res = await peopleCall({ action:"approve_request", request_id:r.id, role:sel.value });
+          await loadPeople();
+          if(res.tempPassword){
+            alert("Approved, but the email to " + r.email + " couldn't be sent (" + res.emailError + ").\n\nTheir temporary password is shown next — send it to them yourself.");
+            showTempPassword(r.name || r.email, res.tempPassword);
+          } else toast("✅ Approved — " + r.email + " has their sign-in details" + (res.requesterEmailed ? ", and the requester was told" : ""));
+        }catch(err){ alert("Couldn't approve: " + err.message); }
+        renderAdminPage();
+      };
+      no.onclick = async ()=>{
+        const reason = prompt("Reject this request? Give a short reason — it's emailed to the person who asked:", "");
+        if(reason === null) return;
+        ok.disabled = no.disabled = true; no.textContent = "Rejecting…";
+        try{ await peopleCall({ action:"reject_request", request_id:r.id, reason }); toast("Rejected — the requester was emailed"); }
+        catch(err){ alert("Couldn't reject: " + err.message); }
+        renderAdminPage();
+      };
+      acts.append(sel, ok, no);
+      top.append(who, acts); card.appendChild(top); pend.appendChild(card);
+    });
+    const decided = rows.filter(r=> r.status !== "pending").slice(0, 20);
+    if(decided.length){
+      const h = document.createElement("div"); h.style.cssText = "font-weight:600;margin:20px 0 6px"; h.textContent = "Recently decided"; done.appendChild(h);
+      decided.forEach(r=>{
+        const line = document.createElement("div");
+        line.style.cssText = "display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px";
+        const t = document.createElement("div"); const db_ = byId(r.decided_by);
+        t.textContent = (r.name || r.email) + " (" + r.email + ") · " + roleLabel(r.role) + " · " + fmtWhen(r.decided_at) + (db_ ? " by " + userDisplayName(db_) : "") + (r.reason ? " · " + r.reason : "");
+        line.append(t, requestStatusChip(r)); done.appendChild(line);
+      });
+    }
+    // keep the nav count in step
+    const navReq = [...document.querySelectorAll("#admin-nav .admin-navitem")].find(b=> /Requests/.test(b.textContent));
+    if(navReq) navReq.querySelector("span:last-child").textContent = "Requests" + (PENDING_REQUESTS ? " (" + PENDING_REQUESTS + ")" : "");
+  })();
 }
 function renderAdminDanger(wrap){
   const head = document.createElement("div"); head.className = "module-head";
