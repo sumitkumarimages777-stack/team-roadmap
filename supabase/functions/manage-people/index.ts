@@ -15,6 +15,9 @@
 //   email_login     Owner/Admin: gives a teammate a new temporary password and
 //                   EMAILS it to them (with the sign-in link). The admin never
 //                   sees the password. Needs the email settings below.
+//   edit_person     Owner/Admin: change a teammate's name, username, sign-in
+//                   email and/or password. A changed email is also updated
+//                   inside the team content (OKR owners, game progress...).
 //   fresh_temp_passwords  Super-admin only: gives a NEW random temporary
 //                   password to everyone who hasn't set their own password yet
 //                   (so any temporary password seen earlier stops working).
@@ -89,6 +92,7 @@ Deno.serve(async (req) => {
     if (body.action === "import_users") return reply(200, await importUsers(caller, admin, body));
     if (body.action === "fresh_temp_passwords") return reply(200, await freshTempPasswords(caller, admin));
     if (body.action === "email_login") return reply(200, await emailLogin(caller, admin, me, body));
+    if (body.action === "edit_person") return reply(200, await editPerson(caller, admin, me, body));
     return reply(400, { error: "Unknown action." });
   } catch (e) {
     return reply(400, { error: (e && e.message) || String(e) });
@@ -343,4 +347,80 @@ async function emailLogin(caller, admin, me, b) {
 
   if (sendError) return { ok: true, emailed: false, email: p.email, emailError: sendError, tempPassword: pw };
   return { ok: true, emailed: true, email: p.email };
+}
+
+// ---------- edit_person -------------------------------------------------
+// body: { action, team, user_id, name?, username?, email?, password?, must_change? }
+// Only the fields that are sent are changed. Same permission rules as a reset.
+async function editPerson(caller, admin, me, b) {
+  const team = String(b.team || "");
+  const userId = String(b.user_id || "");
+  await checkMayReset(caller, admin, me, team, userId);
+
+  const { data: cur, error: curErr } = await admin.from("profiles").select("email,name,username").eq("id", userId).maybeSingle();
+  if (curErr || !cur) throw new Error("Couldn't find that person.");
+  const oldEmail = cur.email, oldName = cur.name, oldUsername = cur.username || null;   // remember before anything changes
+  const changes = [];
+  const prof = {};
+
+  if (b.name !== undefined) {
+    const name = String(b.name || "").trim();
+    if (!name) throw new Error("The name can't be empty.");
+    if (name !== oldName) { prof.name = name; changes.push("name"); }
+  }
+  if (b.username !== undefined) {
+    const username = cleanUsername(b.username);
+    if (username !== oldUsername) {
+      if (username && !/^[a-z0-9._-]{2,40}$/.test(username)) throw new Error("A username can use letters, numbers, dot, dash and underscore (2\u201340 characters).");
+      if (await usernameTakenByOther(admin, username, oldEmail)) throw new Error("That username is already taken.");
+      prof.username = username; changes.push("username");
+    }
+  }
+
+  let newEmail = null;
+  if (b.email !== undefined) {
+    const email = cleanEmail(b.email);
+    if (email !== oldEmail) {
+      if (!validEmail(email)) throw new Error("Enter a valid email.");
+      const { data: taken } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+      if (taken) throw new Error("Someone else already uses that email.");
+      newEmail = email;
+    }
+  }
+
+  const password = String(b.password || "");
+  if (password && password.length < 8) throw new Error("The password needs at least 8 characters.");
+
+  // 1. the login itself (email and/or password)
+  const authUpd = {};
+  if (newEmail) { authUpd.email = newEmail; authUpd.email_confirm = true; }
+  if (password) authUpd.password = password;
+  if (Object.keys(authUpd).length) {
+    const { error } = await admin.auth.admin.updateUserById(userId, authUpd);
+    if (error) throw new Error(error.message);
+  }
+  if (newEmail) { prof.email = newEmail; changes.push("email"); }
+  if (password) { prof.must_change_pw = b.must_change !== false; changes.push("password"); }
+
+  // 2. the profile
+  if (Object.keys(prof).length) {
+    const { error } = await admin.from("profiles").update(prof).eq("id", userId);
+    if (error) throw new Error(error.code === "23505" ? "That username or email is already taken." : error.message);
+  }
+
+  // 3. the old email inside team content (OKR owners, assignees, game progress...)
+  let sectionsUpdated = 0;
+  if (newEmail) {
+    const { data: rows, error } = await admin.from("team_data").select("team_slug,section,data");
+    if (error) throw new Error("Email changed, but the team content couldn't be updated: " + error.message);
+    for (const r of (rows || [])) {
+      const txt = JSON.stringify(r.data);
+      if (!txt || txt.indexOf(oldEmail) < 0) continue;
+      const next = JSON.parse(txt.split(oldEmail).join(newEmail));
+      const { error: wErr } = await admin.from("team_data").update({ data: next }).eq("team_slug", r.team_slug).eq("section", r.section);
+      if (wErr) throw new Error("Email changed, but some team content couldn't be updated: " + wErr.message);
+      sectionsUpdated++;
+    }
+  }
+  return { ok: true, changes, sectionsUpdated };
 }

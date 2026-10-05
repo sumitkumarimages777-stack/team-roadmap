@@ -2611,7 +2611,7 @@ body{margin:0}
       <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="leave empty for a random one (shown to you once)" autocomplete="off"></div>
       <div class="field"><label for="iv-role">Role</label><select id="iv-role" class="pa-select" style="width:100%"></select></div>
       <div id="iv-err" class="login-err"></div>
-      <div class="hint">If they don't have an account yet, one is created with the starting password above (default 'welcome'), which they set on first login.</div>
+      <div class="hint">If they don't have an account yet, one is created with the starting password above, or a random one shown to you once. They choose their own when they first sign in.</div>
     </div>
     <div class="btns">
       <button class="btn" onclick="document.getElementById('invite-overlay').classList.remove('show')">Cancel</button>
@@ -4234,6 +4234,55 @@ async function emailLoginDetails(user){
       showTempPassword(userDisplayName(user), r.tempPassword);
     }
   }catch(e){ toast("Couldn't email them: "+e.message); }
+}
+// Owner/Admin edits a teammate's name, username, sign-in email and/or password.
+// Built on the fly so it needs no extra HTML; saved through the server function,
+// which applies the same rules as a password reset.
+function openEditPerson(user, afterSave){
+  const old = document.getElementById("editperson-overlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.className = "overlay show"; ov.id = "editperson-overlay"; ov.style.zIndex = "430";
+  ov.innerHTML = '<div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">'
+    + '<h3>Edit person</h3><div class="dlg-body">'
+    + '<div class="field"><label for="ep-name">Name</label><input id="ep-name" class="login-input" type="text" autocomplete="off"></div>'
+    + '<div class="field"><label for="ep-email">Sign-in email</label><input id="ep-email" class="login-input" type="email" autocomplete="off"></div>'
+    + '<div class="field"><label for="ep-user">Username (optional)</label><input id="ep-user" class="login-input" type="text" autocomplete="off" placeholder="lets them sign in with a short name"></div>'
+    + '<div class="field"><label for="ep-pass">New password</label><input id="ep-pass" class="login-input" type="text" autocomplete="off" placeholder="leave empty to keep their current password"></div>'
+    + '<label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0 2px"><input id="ep-must" type="checkbox" checked> Ask them to choose their own password at next sign-in</label>'
+    + '<div class="hint" id="ep-note" style="margin-top:10px"></div>'
+    + '<div class="login-err" id="ep-err"></div>'
+    + '</div><div class="btns">'
+    + '<button class="btn" id="ep-cancel">Cancel</button><button class="btn save" id="ep-save">Save changes</button></div></div>';
+  document.body.appendChild(ov);
+  const $e = id => ov.querySelector("#"+id);
+  $e("ep-name").value = user.name || "";
+  $e("ep-email").value = user.email || "";
+  $e("ep-user").value = user.username || "";
+  $e("ep-note").textContent = "Changing the email changes what they sign in with. The old email is also replaced everywhere in the team's content (OKR owners, game progress…).";
+  const close = ()=> ov.remove();
+  $e("ep-cancel").onclick = close;
+  ov.addEventListener("click", e=>{ if(e.target === ov) close(); });
+  $e("ep-save").onclick = async ()=>{
+    const body = { action:"edit_person", team:TEAM, user_id:user.id };
+    const nm = $e("ep-name").value.trim(), em = $e("ep-email").value.trim().toLowerCase(), un = $e("ep-user").value.trim().toLowerCase(), pw = $e("ep-pass").value;
+    if(nm !== (user.name||"")) body.name = nm;
+    if(em !== (user.email||"")) body.email = em;
+    if(un !== (user.username||"")) body.username = un;
+    if(pw){ body.password = pw; body.must_change = $e("ep-must").checked; }
+    if(Object.keys(body).length === 3){ close(); return; }
+    if(pw && pw.length < 8){ $e("ep-err").textContent = "The password needs at least 8 characters."; return; }
+    if(body.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ $e("ep-err").textContent = "Enter a valid email."; return; }
+    $e("ep-save").disabled = true; $e("ep-err").textContent = "Saving…";
+    try{
+      const r = await peopleCall(body);
+      await loadPeople();
+      // the team content may have changed too (a new email inside OKRs etc.): reload it
+      if(r.sectionsUpdated && typeof refresh === "function"){ try{ await refresh(false); }catch(_){ } }
+      close();
+      toast(r.changes && r.changes.length ? ("Saved: " + r.changes.join(", ")) : "Nothing changed");
+      if(afterSave) afterSave();
+    }catch(e){ $e("ep-err").textContent = e.message; $e("ep-save").disabled = false; }
+  };
+  setTimeout(()=> $e("ep-name").focus(), 50);
 }
 function logout(){
   SUPA.auth.signOut().catch(()=>{}).then(()=>{
@@ -18991,9 +19040,11 @@ function renderAdminUsers(wrap){
         rp.onclick = ()=>{ if(confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")){ resetUserPassword(u); } };
         const mailBtn = document.createElement("button"); mailBtn.className="person-del"; mailBtn.textContent="\u2709\uFE0F"; mailBtn.title="Email them their sign-in details (new temporary password)";
         mailBtn.onclick = ()=> emailLoginDetails(u);
+        const editBtn = document.createElement("button"); editBtn.className="person-del"; editBtn.textContent="\u270F\uFE0F"; editBtn.title="Edit name, email, username or password";
+        editBtn.onclick = ()=> openEditPerson(u, ()=> renderAdminPage());
         const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
         del.onclick = async ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ await removeMemberFromTeam(u); renderAdminPage(); } };
-        ac.append(mailBtn, rp, del);
+        ac.append(editBtn, mailBtn, rp, del);
       }
       r.append(uc, rc, ac);
       table.appendChild(r);
@@ -19292,7 +19343,10 @@ function renderPeopleList(target){
         const mailBtn = document.createElement("button"); mailBtn.className = "person-del"; mailBtn.textContent = "\u2709\uFE0F";
         mailBtn.title = "Email them their sign-in details (new temporary password)";
         mailBtn.onclick = ()=> emailLoginDetails(u);
-        row.append(mailBtn, rp);
+        const editBtn = document.createElement("button"); editBtn.className = "person-del"; editBtn.textContent = "\u270F\uFE0F";
+        editBtn.title = "Edit name, email, username or password";
+        editBtn.onclick = ()=> openEditPerson(u, ()=> renderPeopleList(wrap));
+        row.append(editBtn, mailBtn, rp);
       }
       // remove from team (not allowed on yourself or, for admins, on owners)
       const canRemove = u.id!==currentUser().id && !(targetIsOwner && !iAmSuper);
