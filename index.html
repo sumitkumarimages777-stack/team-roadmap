@@ -3680,7 +3680,6 @@ body{margin:0}
       <button class="acct-item" id="acct-profile">👤 My profile</button>
       <button class="acct-item" id="acct-doclib">📚 Our Wiki</button>
       <button class="acct-item" id="acct-password">🔑 Change password</button>
-      <button class="acct-item" id="acct-request" style="display:none">🙋 Request a teammate</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
       <button class="acct-item danger" id="acct-logout">→] Sign out</button>
     </div>
@@ -4628,7 +4627,7 @@ function restorePageAfterRender(){
   const pp = _pendingPlace; _pendingPlace = null;
   if(!pp) return;
   try{
-    if(pp.page === "admin" && canManagePeople()) openAdmin(pp.adminView || "users");
+    if(pp.page === "admin") openAdmin(pp.adminView);
     else if(pp.page === "team"){ openTeam(); if(pp.mtView && pp.mtView !== mtView){ mtView = pp.mtView; renderTeamPage(); } }
     else if(pp.page === "kim") openKim();
     if(pp.y) setTimeout(()=> window.scrollTo(0, pp.y), 50);
@@ -18520,8 +18519,7 @@ function openAccount(){
   const av = $("acct-av");
   if(u.profile && u.profile.photo){ av.style.backgroundImage = "url("+u.profile.photo+")"; av.textContent = ""; }
   else { av.style.backgroundImage = "none"; av.style.background = userAvatarColor(u); av.textContent = (userDisplayName(u)||"?").charAt(0).toUpperCase(); }
-  $("acct-admin").style.display = (canManagePeople() || hasPerm("approve_requests")) ? "" : "none";
-  if($("acct-request")) $("acct-request").style.display = (hasPerm("request_members") && !canManagePeople()) ? "" : "none";
+  $("acct-admin").style.display = roleOf(currentUser(), TEAM) ? "" : "none";   // everyone in the team; sections follow their role
   $("account-overlay").classList.add("show");
 }
 $("acct-teams") && ($("acct-teams").onclick = ()=>{ $("account-overlay").classList.remove("show"); location.href = location.pathname; });
@@ -18529,7 +18527,6 @@ $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").cla
 $("acct-doclib") && ($("acct-doclib").onclick = ()=>{ $("account-overlay").classList.remove("show"); openDocLib(); });
 $("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
-$("acct-request") && ($("acct-request").onclick = ()=>{ $("account-overlay").classList.remove("show"); openRequestTeammate(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
 $("account-overlay") && $("account-overlay").addEventListener("click", e=>{ if(e.target===$("account-overlay")) $("account-overlay").classList.remove("show"); });
 
@@ -18618,49 +18615,76 @@ function roleOptions(sel, current, maxRole){
     sel.appendChild(o);
   });
 }
+/* Administration is the one place everyone goes. Each section says who sees it;
+   to add a new kind of section later (e.g. "Raise a request", "Game support"),
+   add one line here and a render function. */
+function adminSections(){
+  const me = currentUser(), sup = !!(me && me.super), people = canManagePeople();
+  return [
+    { k:"users",       ico:"👥", lbl:"Users",                show: people,                         render: renderAdminUsers },
+    { k:"requests",    ico:"🙋", lbl:"Requests" + (PENDING_REQUESTS ? " (" + PENDING_REQUESTS + ")" : ""), crumb:"Requests",
+                                                                        show: hasPerm("approve_requests"),    render: renderAdminRequests },
+    { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
+    { k:"permissions", ico:"🔐", lbl:"Roles & permissions",  show: people,                         render: renderAdminPermissions },
+    { k:"okrlevels",   ico:"🪜", lbl:"OKR levels",           show: people,                         render: renderAdminOkrLevels },
+    { k:"myaccess",    ico:"🔎", lbl:"My access",            show: !!me,                           render: renderMyAccess },
+    { k:"org",         ico:"🏢", lbl:"Org structure",        show: sup,                            render: renderAdminOrg },
+    { k:"danger",      ico:"⚠️", lbl:"Danger zone",          show: sup,                            render: renderAdminDanger },
+  ].filter(x=> x.show);
+}
 function openAdmin(section){
-  if(!canManagePeople() && !hasPerm("approve_requests")){ toast("Only Owners and Admins can open Administration"); return; }
-  adminView = section || (canManagePeople() ? "users" : "requests");
+  if(!currentUser() || !roleOf(currentUser(), TEAM)){ toast("Sign in to a team first"); return; }
+  const secs = adminSections();
+  adminView = (section && secs.some(x=> x.k === section)) ? section : secs[0].k;
   renderAdminPage();
   $("admin-page").style.display = "block";
   window.scrollTo(0,0);
 }
 function closeAdmin(){ $("admin-page").style.display = "none"; }
 function renderAdminPage(){
-  // left nav (only Users + Permissions for now)
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
+  const secs = adminSections();
+  if(!secs.some(x=> x.k === adminView)) adminView = secs[0].k;   // never show a section this role can't use
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  const _canPeople = canManagePeople(), _canApprove = hasPerm("approve_requests");
-  if(!_canPeople && adminView !== "requests") adminView = "requests";   // approvers who can't manage people only see Requests
-  const _navItems = _canPeople ? [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Roles & permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]] : [];
-  if(_canApprove) _navItems.splice(_canPeople ? 1 : 0, 0, ["requests","\uD83D\uDE4B","Requests" + (PENDING_REQUESTS ? " (" + PENDING_REQUESTS + ")" : "")]);
-  if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
-  if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
-  _navItems.forEach(([k,ico,lbl])=>{
+  secs.forEach(sec=>{
     const b = document.createElement("button");
-    b.className = "admin-navitem" + (adminView===k ? " active" : "");
+    b.className = "admin-navitem" + (adminView===sec.k ? " active" : "");
     b.innerHTML = '<span></span><span></span>';
-    b.querySelector("span:first-child").textContent = ico;
-    b.querySelector("span:last-child").textContent = lbl;
-    b.onclick = ()=>{ adminView = k; renderAdminPage(); };
+    b.querySelector("span:first-child").textContent = sec.ico;
+    b.querySelector("span:last-child").textContent = sec.lbl;
+    b.onclick = ()=>{ adminView = sec.k; renderAdminPage(); };
     nav.appendChild(b);
   });
   $("admin-back").onclick = ()=> closeAdmin();
-  // main
   const main = $("admin-main");
   main.innerHTML = "";
+  const cur = secs.find(x=> x.k === adminView);
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="requests" ? "Requests" : adminView==="permissions" ? "Roles & permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "⚙️ Administration › " + (cur.crumb || cur.lbl);
   main.appendChild(crumb);
-  if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
-  if(adminView === "permissions") renderAdminPermissions(main);
-  else if(adminView === "org") renderAdminOrg(main);
-  else if(adminView === "okrlevels") renderAdminOkrLevels(main);
-  else if(adminView === "danger") renderAdminDanger(main);
-  else if(adminView === "requests") renderAdminRequests(main);
-  else renderAdminUsers(main);
+  cur.render(main);
+}
+// everyone: what my role is and what it lets me do
+function renderMyAccess(wrap){
+  const me = currentUser(), r = roleOf(me, TEAM), perms = me.super ? PERMS.map(p=>p.key) : rolePerms(r);
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "My access"; head.appendChild(h2); wrap.appendChild(head);
+  const who = document.createElement("div"); who.className = "hint"; who.style.cssText = "margin:0 0 16px;line-height:1.6";
+  who.textContent = "Your role in " + ((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM) + ": " + (me.super ? "Owner (super-admin, all teams)" : roleLabel(r))
+    + ". Here's what it lets you do. If you need more, ask an Owner.";
+  wrap.appendChild(who);
+  const list = document.createElement("div"); list.className = "perm-caps";
+  PERMS.forEach(p=>{
+    const has = perms.indexOf(p.key) >= 0;
+    const chip = document.createElement("div"); chip.className = "perm-chip" + (has ? " on" : " off");
+    chip.innerHTML = '<span class="perm-tick"></span><span></span>';
+    chip.querySelector(".perm-tick").textContent = has ? "✓" : "—";
+    chip.querySelector("span:last-child").textContent = p.label + " — " + p.hint;
+    list.appendChild(chip);
+  });
+  wrap.appendChild(list);
 }
 /* ===== Teammate requests ===================================================
    A role with "Request teammates" (e.g. Manager) asks for someone to be added;
@@ -18690,40 +18714,37 @@ function requestStatusChip(r){
 }
 function fmtWhen(iso){ try{ return new Date(iso).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }); }catch(_){ return ""; } }
 
-// Manager: the request form + "My requests"
-function openRequestTeammate(){
-  if(!hasPerm("request_members")){ toast("Your role can't request teammates"); return; }
-  const old = document.getElementById("request-overlay"); if(old) old.remove();
-  const ov = document.createElement("div"); ov.className = "overlay show"; ov.id = "request-overlay"; ov.style.zIndex = "430";
-  ov.innerHTML = '<div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">'
-    + '<h3>Request a teammate</h3><div class="dlg-body">'
-    + '<div class="hint" style="margin-bottom:12px">Fill in their details. An Owner or Admin will review it. Once approved, they get an email with their sign-in details, and you get an email too.</div>'
+// Manager: the request form + "My requests" (Administration -> Request a teammate)
+function openRequestTeammate(){ openAdmin("request"); }
+function renderRequestTeammate(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Request a teammate"; head.appendChild(h2); wrap.appendChild(head);
+  const box = document.createElement("div"); box.style.maxWidth = "560px";
+  box.innerHTML = '<div class="hint" style="margin-bottom:12px;line-height:1.6">Fill in their details. An Owner or Admin will review it. Once approved, they get an email with their sign-in details, and you get an email too.</div>'
     + '<div class="field"><label for="rq-name">Full name</label><input id="rq-name" class="login-input" type="text" autocomplete="off"></div>'
     + '<div class="field"><label for="rq-email">Email</label><input id="rq-email" class="login-input" type="email" autocomplete="off" placeholder="their@email.com"></div>'
     + '<div class="field"><label for="rq-role">Role</label><select id="rq-role" class="pa-select" style="width:100%"></select></div>'
     + '<div class="field"><label for="rq-note">Note for the approver (optional)</label><textarea id="rq-note" class="login-input" rows="2" placeholder="e.g. Joining the design team from Monday"></textarea></div>'
     + '<div class="login-err" id="rq-err"></div>'
-    + '<div style="margin-top:16px;font-weight:600">My requests</div><div id="rq-mine" class="hint" style="margin-top:6px">Loading…</div>'
-    + '</div><div class="btns"><button class="btn" id="rq-close">Close</button><button class="btn save" id="rq-send">Send for approval</button></div></div>';
-  document.body.appendChild(ov);
-  const $r = id => ov.querySelector("#"+id);
+    + '<button class="btn save" id="rq-send" style="margin-top:6px">Send for approval</button>'
+    + '<div style="margin-top:24px;font-weight:600">My requests</div><div id="rq-mine" class="hint" style="margin-top:6px">Loading…</div>';
+  wrap.appendChild(box);
+  const $r = id => box.querySelector("#"+id);
   roleOptions($r("rq-role"), "", "admin");   // never Owner; defaults to the most basic role
-  $r("rq-close").onclick = ()=> ov.remove();
-  ov.addEventListener("click", e=>{ if(e.target === ov) ov.remove(); });
   async function drawMine(){
-    const box = $r("rq-mine");
+    const list = $r("rq-mine");
     try{
       const rows = await loadRequests(true);
-      box.textContent = rows.length ? "" : "None yet.";
+      list.textContent = rows.length ? "" : "None yet.";
       rows.slice(0, 20).forEach(r=>{
         const line = document.createElement("div");
         line.style.cssText = "display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)";
         const who = document.createElement("div"); who.style.minWidth = "0";
         const n = document.createElement("div"); n.style.cssText = "color:var(--ink);font-weight:600"; n.textContent = (r.name || r.email) + " · " + roleLabel(r.role);
         const e = document.createElement("div"); e.textContent = r.email + " · " + fmtWhen(r.created_at) + (r.status === "rejected" && r.reason ? " · Reason: " + r.reason : "");
-        who.append(n, e); line.append(who, requestStatusChip(r)); box.appendChild(line);
+        who.append(n, e); line.append(who, requestStatusChip(r)); list.appendChild(line);
       });
-    }catch(e){ box.textContent = "Couldn't load your requests (" + e.message + ")."; }
+    }catch(e){ list.textContent = "Couldn't load your requests (" + e.message + ")."; }
   }
   $r("rq-send").onclick = async ()=>{
     const name = $r("rq-name").value.trim(), email = $r("rq-email").value.trim().toLowerCase(), role = $r("rq-role").value, note = $r("rq-note").value.trim();
@@ -18740,7 +18761,6 @@ function openRequestTeammate(){
     drawMine();
   };
   drawMine();
-  setTimeout(()=> $r("rq-name").focus(), 50);
 }
 
 // Approvers: Administration -> Requests
