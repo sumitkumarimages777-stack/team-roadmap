@@ -2541,9 +2541,16 @@ body{margin:0}
 .dl-vidbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media (max-width:820px){ .dl-body{grid-template-columns:1fr} .dl-nav{position:static;flex-direction:row;flex-wrap:wrap} .dl-navh{width:100%} .dl-navi{width:auto} .dl-navi.sub{padding-left:10px} }
 @media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{max-width:none;width:100%} .dl-row2{grid-template-columns:1fr} }
+/* loading screen: covers the half-built page until sign-in and data are ready */
+#boot-splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#FAF5F0;transition:opacity .25s ease}
+#boot-splash img{width:56px;height:56px;animation:boot-pulse 1.2s ease-in-out infinite}
+#boot-splash div{font-family:Inter,system-ui,sans-serif;font-size:14px;color:#5C6A82;letter-spacing:.02em}
+#boot-splash.gone{opacity:0;pointer-events:none}
+@keyframes boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.92);opacity:.75}}
 </style>
 </head>
 <body>
+<div id="boot-splash"><img src="favicon.png" alt=""><div>Loading your workspace…</div></div>
 <div id="landing" class="landing" style="display:none">
   <div class="landing-inner">
     <div class="landing-eyebrow">CYBERFLOW · TEAM WORKSPACES</div>
@@ -2556,7 +2563,7 @@ body{margin:0}
         <input id="login-email" class="login-input" type="text" placeholder="Email or username" autocomplete="username">
         <input id="login-pass" class="login-input" type="password" placeholder="Password" autocomplete="current-password">
         <div id="login-err" class="login-err"></div>
-        <button id="login-btn" class="login-do">Sign in \u2192</button>
+        <button id="login-btn" class="login-do">Sign in →</button>
       </div>
     </div>
     <div id="landing-list" class="landing-list"></div>
@@ -2569,14 +2576,14 @@ body{margin:0}
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">
     <h3 id="access-heading">Space access</h3>
     <div class="dlg-body">
-      <div class="hint" style="margin-bottom:12px">Who can see and work in this space? You can change this later in \u2699 Space settings.</div>
+      <div class="hint" style="margin-bottom:12px">Who can see and work in this space? You can change this later in ⚙ Space settings.</div>
       <div id="access-opts" class="access-opts"></div>
       <div id="access-people" class="access-people">
         <div class="ap-head">Add people to this space <span class="ap-opt">(optional)</span></div>
         <div class="ap-sub" id="access-people-sub"></div>
         <div class="ap-picker">
           <div id="access-chips" class="ap-chips"></div>
-          <input id="access-personinput" class="login-input" type="text" placeholder="Type a name or email\u2026" autocomplete="off" style="margin:0">
+          <input id="access-personinput" class="login-input" type="text" placeholder="Type a name or email…" autocomplete="off" style="margin:0">
           <div id="access-suggest" class="ap-suggest"></div>
         </div>
       </div>
@@ -2608,7 +2615,7 @@ body{margin:0}
     <h3>Invite users to this team</h3>
     <div class="dlg-body">
       <div class="field"><label for="iv-email">Email</label><input id="iv-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off"></div>
-      <div class="field"><label for="iv-user">Username (optional \u2014 lets them sign in without an email)</label><input id="iv-user" class="login-input" type="text" placeholder="e.g. reviewer" autocomplete="off"></div>
+      <div class="field"><label for="iv-user">Username (optional — lets them sign in without an email)</label><input id="iv-user" class="login-input" type="text" placeholder="e.g. reviewer" autocomplete="off"></div>
       <div class="field"><label for="iv-name">Name (optional)</label><input id="iv-name" class="login-input" type="text" autocomplete="off"></div>
       <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="leave empty for a random one (shown to you once)" autocomplete="off"></div>
       <div class="field"><label for="iv-role">Role</label><select id="iv-role" class="pa-select" style="width:100%"></select></div>
@@ -3725,9 +3732,9 @@ body{margin:0}
       <div class="people-add">
         <div class="pa-title">Add someone to this team</div>
         <input id="pa-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off">
-        <input id="pa-user" class="login-input" type="text" placeholder="Username (optional \u2014 sign in without email)" autocomplete="off">
+        <input id="pa-user" class="login-input" type="text" placeholder="Username (optional — sign in without email)" autocomplete="off">
         <input id="pa-name" class="login-input" type="text" placeholder="Name (optional)" autocomplete="off">
-        <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional \u2014 leave empty for a random one)" autocomplete="off">
+        <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional — leave empty for a random one)" autocomplete="off">
         <div class="pa-row">
           <select id="pa-role" class="pa-select"></select>
           <button id="pa-add" class="btn save">Add / invite</button>
@@ -3859,12 +3866,12 @@ body{margin:0}
 
 <div class="overlay" id="comment-overlay">
   <div class="dialog" role="dialog" aria-modal="true" style="max-width:460px">
-    <h3>Comments \u00b7 <span id="cmt-heading" style="font-weight:400;color:var(--muted)"></span></h3>
+    <h3>Comments · <span id="cmt-heading" style="font-weight:400;color:var(--muted)"></span></h3>
     <div class="dlg-body">
       <div id="cmt-list" class="cmt-list"></div>
       <div class="cmt-form">
         <input id="cmt-who" class="cmt-who-in" placeholder="Your name" autocomplete="off">
-        <textarea id="cmt-text" rows="2" placeholder="Write a comment\u2026"></textarea>
+        <textarea id="cmt-text" rows="2" placeholder="Write a comment…"></textarea>
       </div>
     </div>
     <div class="btns">
@@ -3883,7 +3890,7 @@ body{margin:0}
         <div class="hint">Ask your AI to output the format below, then paste it here. Each becomes a To-Do card.</div>
         <details class="imp-format">
           <summary>Show the format / AI prompt</summary>
-          <p class="imp-fhead">Simplest \u2014 one story per line:</p>
+          <p class="imp-fhead">Simplest — one story per line:</p>
           <pre class="imp-fmt">As a student, I want my live rank so I know where I stand
 As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team</pre>
           <p class="imp-fhead">Or JSON (more detail):</p>
@@ -3892,9 +3899,9 @@ As a teacher, I want to bulk-upload questions | supports CSV + XLSX | Panel team
   {"title": "As a teacher, I want bulk upload", "note": "CSV + XLSX", "owner": "Panel team"}
 ]</pre>
           <p class="imp-fhead">Prompt you can give any AI:</p>
-          <pre class="imp-fmt">Break this feature into user stories. Output ONLY a JSON array where each item has "title" (As a\u2026 I want\u2026 so that\u2026), "note" (acceptance criteria), and "owner" (which team). No prose.</pre>
+          <pre class="imp-fmt">Break this feature into user stories. Output ONLY a JSON array where each item has "title" (As a… I want… so that…), "note" (acceptance criteria), and "owner" (which team). No prose.</pre>
         </details>
-        <textarea id="imp-text" rows="7" placeholder="Paste here\u2026"></textarea>
+        <textarea id="imp-text" rows="7" placeholder="Paste here…"></textarea>
       </div>
       <div class="field-row">
         <div class="field"><label for="imp-space">Team / dev space</label><select id="imp-space"></select></div>
@@ -4047,7 +4054,7 @@ function roleRank(r){ const i = ROLES.indexOf(r); return i<0 ? ROLES.length : i;
 let USERS = [];
 let SESSION = null;   // the logged-in user object (a reference into USERS)
 let AUTH_UID = null;  // the signed-in login's id, as proven by Supabase Auth
-const SUPA = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPA = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 function normalizeUsers(arr){
   const out = (arr||[]).map(u=>({
@@ -5437,6 +5444,7 @@ async function refresh(showMsg){
 }
 
 async function start(){
+  if(!SUPA) throw new Error("the sign-in library couldn't be loaded \u2014 check your internet connection and reload the page");
   var _pf = new URLSearchParams(location.search).get("form");
   if(_pf){ try{ return await csmPublicForm(_pf); }catch(e){ document.body.innerHTML='<p style="padding:40px;font-family:sans-serif">Form unavailable. Please try again later.</p>'; return; } }
   if(!TEAM){ return startLanding(null); }
@@ -19226,10 +19234,17 @@ function bootFailed(e){
     }
   }catch(_){ }
 }
+// hide the loading screen once start() has finished (team page, landing page, form or error)
+function hideBootSplash(){
+  var el = document.getElementById("boot-splash"); if(!el) return;
+  el.classList.add("gone"); setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300);
+}
+setTimeout(hideBootSplash, 15000);   // safety net: never leave it on screen
 try{
   var _sp = start();
-  if(_sp && typeof _sp.catch === "function") _sp.catch(bootFailed);
-}catch(e){ bootFailed(e); }
+  if(_sp && typeof _sp.then === "function") _sp.then(hideBootSplash, function(e){ hideBootSplash(); bootFailed(e); });
+  else hideBootSplash();
+}catch(e){ hideBootSplash(); bootFailed(e); }
 </script>
 
 <!-- ============ DU BUDDY: STUDENT IDEAS -> PIPELINE ============ -->
