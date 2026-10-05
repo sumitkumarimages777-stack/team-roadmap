@@ -722,7 +722,7 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .admin-reset{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:12.5px;cursor:pointer}
 .admin-reset:hover{color:var(--indigo)}
 .admin-table{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
-.au-row{display:grid;grid-template-columns:1fr minmax(200px,auto) 90px;align-items:center;border-bottom:1px solid var(--line)}
+.au-row{display:grid;grid-template-columns:1fr minmax(200px,auto) 150px;align-items:center;border-bottom:1px solid var(--line)}
 .admin-table .au-row:last-child{border-bottom:none}
 .au-head{background:var(--paper)}
 .au-head .au-cell{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 16px}
@@ -783,7 +783,7 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .ap-sugg .ap-av{width:26px;height:26px;border-radius:50%;background:var(--indigo);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;flex:none}
 .ap-sugg-name{font-size:13px;color:var(--ink);font-weight:600}
 .ap-sugg-email{font-size:11px;color:var(--muted)}
-.au-acts{display:flex;gap:4px;justify-content:flex-end}
+.au-acts{display:flex;gap:4px;justify-content:flex-end;flex-wrap:nowrap}
 @media(max-width:640px){.au-row{grid-template-columns:1fr auto}.au-acts{grid-column:1/-1;justify-content:flex-start;padding-top:0}}
 .pf-photo-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
 .pf-av{width:76px;height:76px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px;background-size:cover;background-position:center;flex:none}
@@ -4003,7 +4003,7 @@ let view = "roadmap";           // "roadmap" | "okr" | "content"
    STATUS (Stages 3 + 4): sign-in, passwords, people, roles AND team data
    now live in Supabase (Auth + Row Level Security + the manage-people Edge
    Function + the team_data table; see supabase/ in the repo). The main
-   JSONBin record is only READ, once, by the "Move data to Supabase" page.
+   JSONBin record is no longer used (the one-time move is done and its page removed).
    Still on JSONBin: the bugs bin and the ideas bin (later stage).
    The notes below are the original prototype handoff, kept as the spec.
 
@@ -4285,6 +4285,21 @@ function openEditPerson(user, afterSave){
     }catch(e){ $e("ep-err").textContent = e.message; $e("ep-save").disabled = false; }
   };
   setTimeout(()=> $e("ep-name").focus(), 50);
+}
+// Super-admin deletes a person's account for good: login, profile, every team.
+// Their work in the team content stays. Asks them to type the email to confirm.
+async function deletePersonForever(user, afterDone){
+  const typed = prompt("PERMANENTLY delete " + userDisplayName(user) + "?\n\n"
+    + "They lose their login and are removed from EVERY team. This can't be undone. "
+    + "(Their cards, OKRs and other work stay.)\n\nType their email to confirm:");
+  if(typed === null) return;
+  if(typed.trim().toLowerCase() !== String(user.email).toLowerCase()){ alert("That didn't match \u2014 nothing was deleted."); return; }
+  try{
+    await peopleCall({ action:"delete_person", user_id:user.id });
+    await loadPeople();
+    toast(userDisplayName(user) + " was deleted permanently");
+    if(afterDone) afterDone();
+  }catch(e){ toast("Couldn't delete: " + e.message); }
 }
 function logout(){
   SUPA.auth.signOut().catch(()=>{}).then(()=>{
@@ -5473,7 +5488,7 @@ async function start(){
     db = false;
     loadTeamData(emptyTeam(TEAMS[TEAM].name));
     showBanner(currentUser().super
-      ? "This team's data hasn't been moved to the new database yet. Open \u2699 Administration \u2192 \u201CMove data to Supabase\u201D."
+      ? "This team has no data in the database yet. If you expected content here, tell Claude."
       : "This team's data is being moved to the new system. Please check back shortly.");
   }
   refreshLeaderFromRole();
@@ -18456,7 +18471,6 @@ function renderAdminPage(){
   const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
-  if(currentUser() && currentUser().super) _navItems.push(["migrate","\uD83D\uDE9A","Move data to Supabase"]);
   _navItems.forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
     b.className = "admin-navitem" + (adminView===k ? " active" : "");
@@ -18472,198 +18486,14 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : adminView==="migrate" ? "Move data to Supabase" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
-  if((adminView === "danger" || adminView === "org" || adminView === "migrate") && !(currentUser() && currentUser().super)) adminView = "users";
+  if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
   else if(adminView === "org") renderAdminOrg(main);
   else if(adminView === "okrlevels") renderAdminOkrLevels(main);
   else if(adminView === "danger") renderAdminDanger(main);
-  else if(adminView === "migrate") renderAdminMigrate(main);
   else renderAdminUsers(main);
-}
-/* One-time move of the OLD data (in JSONBin) into Supabase. Super-admin only.
-   1) People: emails, names, usernames, team roles and profile details go to the
-      manage-people server function \u2014 never the old password hashes. Each new
-      person gets a random temporary password, shown once.
-   2) Team data: every section of every team is copied as-is, then read back and
-      compared, so you can see that nothing was lost.
-   Both are safe to run again. Running "team data" again copies the LATEST old
-   data over the Supabase copy \u2014 do that on switch-over day. JSONBin itself is
-   only read, never changed. */
-function canonJSON(v){   // same value \u2192 same text, whatever the key order
-  if(Array.isArray(v)) return "[" + v.map(canonJSON).join(",") + "]";
-  if(v && typeof v === "object") return "{" + Object.keys(v).filter(k=> v[k] !== undefined).sort().map(k=> JSON.stringify(k) + ":" + canonJSON(v[k])).join(",") + "}";
-  return JSON.stringify(v === undefined ? null : v);
-}
-function renderAdminMigrate(wrap){
-  if(!lastRecord){
-    const wait = document.createElement("div"); wait.className = "hint"; wait.textContent = "Reading the old data\u2026";
-    wrap.appendChild(wait);
-    fetchAll().then(raw=>{ lastRecord = migrateRecord(raw); if(adminView === "migrate") renderAdminPage(); })
-      .catch(e=>{ wait.textContent = "Couldn't read the old data: " + e.message; });
-    return;
-  }
-  const oldTeams = lastRecord.teams || {};
-  const slugs = Object.keys(oldTeams);
-  const old = (Array.isArray(lastRecord.users) ? lastRecord.users : []).filter(u=> u && u.email);
-
-  const h2 = document.createElement("h2"); h2.textContent = "Move data to Supabase"; h2.style.margin = "0 0 6px";
-  const p0 = document.createElement("div"); p0.className = "hint"; p0.style.lineHeight = "1.6";
-  p0.textContent = "Copies everything from the old storage (JSONBin) into the new, secure database. The old copy is only read, never changed, so it stays as a backup.";
-  wrap.append(h2, p0);
-
-  // ---- 1. people ----
-  const h3a = document.createElement("h3"); h3a.textContent = "1. People"; h3a.style.margin = "22px 0 6px";
-  const p1 = document.createElement("div"); p1.className = "hint"; p1.style.lineHeight = "1.6";
-  p1.textContent = "Old passwords can't be moved, so each new person gets a temporary password, shown ONCE. "
-    + "People already moved are skipped (their passwords are not touched).";
-  const stat = document.createElement("div"); stat.className = "hint"; stat.style.margin = "10px 0";
-  stat.innerHTML = "Found in the old system: <b></b> people and <b></b> teams.";
-  stat.querySelectorAll("b")[0].textContent = old.length;
-  stat.querySelectorAll("b")[1].textContent = slugs.length;
-  const go = document.createElement("button"); go.className = "btn save";
-  go.textContent = "Move " + old.length + " people now";
-  go.disabled = !old.length || !slugs.length;
-  const out = document.createElement("div"); out.style.marginTop = "14px";
-  wrap.append(h3a, p1, stat, go, out);
-
-  go.onclick = async ()=>{
-    if(!confirm("Move " + old.length + " people and " + slugs.length + " teams into Supabase now?")) return;
-    go.disabled = true; go.textContent = "Moving\u2026 (this can take a minute)";
-    out.textContent = "";
-    try{
-      const r = await peopleCall({
-        action: "import_users",
-        teams: slugs.map(slug=> ({ slug, name: (oldTeams[slug] && oldTeams[slug].name) || slug })),
-        users: old.map(u=> ({ email:u.email, name:u.name, username:u.username || "", super:!!u.super, teams:u.teams || {}, profile:u.profile || {} })),
-      });
-      await loadPeople();
-      drawPeopleResults(r.results || []);
-      go.textContent = "Done";
-    }catch(e){
-      out.textContent = "Couldn't move people: " + e.message;
-      go.disabled = false; go.textContent = "Try again";
-    }
-  };
-  function drawPeopleResults(rows){
-    const made = rows.filter(x=> x.tempPassword);
-    const kept = rows.filter(x=> !x.error && !x.tempPassword);
-    const bad  = rows.filter(x=> x.error);
-    const sum = document.createElement("div"); sum.style.margin = "0 0 12px"; sum.style.fontWeight = "600";
-    sum.textContent = made.length + " new \u00b7 " + kept.length + " already there (unchanged) \u00b7 " + bad.length + " problem(s)";
-    out.appendChild(sum);
-    if(made.length){
-      const warn = document.createElement("div"); warn.className = "hint"; warn.style.margin = "0 0 8px";
-      warn.textContent = "\u26A0\uFE0F These passwords are shown only now. Copy them before leaving this page.";
-      const copy = document.createElement("button"); copy.className = "btn"; copy.textContent = "Copy the whole list";
-      const text = made.map(x=> x.email + "  \u2192  temporary password: " + x.tempPassword).join("\n");
-      copy.onclick = ()=>{
-        (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
-          .then(()=> toast("Copied \u2014 paste it somewhere safe"), ()=> prompt("Copy this list:", text));
-      };
-      out.append(warn, copy);
-    }
-    rows.forEach(x=>{
-      const line = document.createElement("div");
-      line.style.cssText = "padding:8px 0;border-bottom:1px solid var(--line, #e5e7eb);font-family:var(--mono, monospace);font-size:13px";
-      line.textContent = x.email + "  \u2014  " + (x.error ? ("problem: " + x.error)
-        : x.tempPassword ? ("NEW \u00b7 temporary password: " + x.tempPassword + " \u00b7 " + x.teams + " team(s)")
-        : "already there, left unchanged");
-      out.appendChild(line);
-    });
-  }
-
-  // ---- 1b. fresh temporary passwords (switch-over day) ----
-  const h3c = document.createElement("h3"); h3c.textContent = "1b. Fresh temporary passwords"; h3c.style.margin = "28px 0 6px";
-  const p3 = document.createElement("div"); p3.className = "hint"; p3.style.lineHeight = "1.6";
-  p3.textContent = "Gives a NEW temporary password to everyone who hasn't chosen their own password yet. Any temporary password "
-    + "shown earlier stops working. People who already set their own password are not touched. Use this on switch-over day.";
-  const go3 = document.createElement("button"); go3.className = "btn save"; go3.textContent = "Make fresh temporary passwords";
-  const out3 = document.createElement("div"); out3.style.marginTop = "14px";
-  wrap.append(h3c, p3, go3, out3);
-  go3.onclick = async ()=>{
-    if(!confirm("Give everyone who hasn't set their own password a NEW temporary password?\n\nThe old temporary passwords will stop working.")) return;
-    go3.disabled = true; go3.textContent = "Working\u2026";
-    out3.textContent = "";
-    try{
-      const r = await peopleCall({ action: "fresh_temp_passwords" });
-      const rows = r.results || [];
-      const made = rows.filter(x=> x.tempPassword);
-      const sum = document.createElement("div"); sum.style.cssText = "margin:0 0 10px;font-weight:600";
-      sum.textContent = made.length + " new temporary password(s)" + (rows.length - made.length ? " \u00b7 " + (rows.length - made.length) + " problem(s)" : "");
-      out3.appendChild(sum);
-      if(made.length){
-        const warn = document.createElement("div"); warn.className = "hint"; warn.style.margin = "0 0 8px";
-        warn.textContent = "\u26A0\uFE0F Shown only now. Copy the list, then send each person ONLY their own line, privately.";
-        const copy = document.createElement("button"); copy.className = "btn"; copy.textContent = "Copy the whole list";
-        const text = made.map(x=> x.email + "  \u2192  temporary password: " + x.tempPassword).join("\n");
-        copy.onclick = ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
-          .then(()=> toast("Copied \u2014 paste it somewhere safe"), ()=> prompt("Copy this list:", text)); };
-        out3.append(warn, copy);
-      }
-      rows.forEach(x=>{
-        const line = document.createElement("div");
-        line.style.cssText = "padding:8px 0;border-bottom:1px solid var(--line, #e5e7eb);font-family:var(--mono, monospace);font-size:13px";
-        line.textContent = x.email + "  \u2014  " + (x.error ? ("problem: " + x.error) : ("temporary password: " + x.tempPassword));
-        out3.appendChild(line);
-      });
-      go3.textContent = "Done";
-    }catch(e){ out3.textContent = "Couldn't do it: " + e.message; go3.disabled = false; go3.textContent = "Try again"; }
-  };
-
-  // ---- 2. team data ----
-  const h3b = document.createElement("h3"); h3b.textContent = "2. Team data"; h3b.style.margin = "28px 0 6px";
-  const p2 = document.createElement("div"); p2.className = "hint"; p2.style.lineHeight = "1.6";
-  p2.textContent = "Copies each team's roadmap, OKRs, content, boards, docs, org chart, games and everything else, "
-    + "then reads it back and checks every piece matches. Running it again replaces the Supabase copy with the latest old data "
-    + "\u2014 do that once more on switch-over day, right before everyone moves.";
-  const go2 = document.createElement("button"); go2.className = "btn save";
-  go2.textContent = "Move data of " + slugs.length + " team(s) now";
-  go2.disabled = !slugs.length;
-  const out2 = document.createElement("div"); out2.style.marginTop = "14px";
-  wrap.append(h3b, p2, go2, out2);
-
-  go2.onclick = async ()=>{
-    if(!confirm("Copy the data of " + slugs.length + " team(s) into Supabase now?\n\nIf a team was already copied, its Supabase copy is replaced with the old data.")) return;
-    go2.disabled = true; go2.textContent = "Moving\u2026";
-    out2.textContent = "";
-    const say = (txt, bad)=>{ const d = document.createElement("div");
-      d.style.cssText = "padding:6px 0;font-family:var(--mono, monospace);font-size:13px" + (bad ? ";color:#B03A34;font-weight:600" : "");
-      d.textContent = txt; out2.appendChild(d); };
-    let problems = 0;
-    try{
-      const raw = migrateRecord(await fetchAll());       // the LATEST old data, not the copy from page load
-      await fetchTeamsList();
-      for(const slug of Object.keys(raw.teams || {})){
-        const t = raw.teams[slug] || {};
-        if(!TEAMS[slug]){
-          const made = await SUPA.rpc("create_team", { p_slug: slug, p_name: t.name || slug });
-          if(made.error){ say(slug + ": couldn't create the team \u2014 " + made.error.message, true); problems++; continue; }
-        }
-        const secs = payloadSections(t);
-        const keys = Object.keys(secs);
-        let kb = 0;
-        for(const k of keys){
-          kb += JSON.stringify(secs[k]).length / 1024;
-          try{ await saveSection(slug, k, secs[k]); }
-          catch(e){ say(slug + " / " + k + ": NOT copied \u2014 " + e.message, true); problems++; }
-        }
-        // read back and compare every section
-        const back = await fetchTeamSections(slug);
-        const wrong = keys.filter(k=> canonJSON(back.team[k]) !== canonJSON(secs[k]));
-        wrong.forEach(k=>{ say(slug + " / " + k + ": copy does NOT match the original", true); problems++; });
-        say(((raw.teams[slug] && raw.teams[slug].name) || slug) + ": " + keys.length + " sections copied (" + Math.round(kb) + " KB), "
-          + (keys.length - wrong.length) + " of " + keys.length + " checked and identical");
-      }
-      await fetchTeamsList();
-      say(problems ? ("\u26A0\uFE0F Finished with " + problems + " problem(s) \u2014 send Claude a screenshot.") : "\u2705 All done. Every section matches the original.", !!problems);
-      go2.textContent = "Done";
-    }catch(e){
-      say("Stopped: " + e.message, true);
-      go2.disabled = false; go2.textContent = "Try again";
-    }
-  };
 }
 function renderAdminDanger(wrap){
   const head = document.createElement("div"); head.className = "module-head";
@@ -19038,15 +18868,18 @@ function renderAdminUsers(wrap){
       // actions cell
       const ac = document.createElement("div"); ac.className = "au-cell au-acts";
       if(!u.super && u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
-        const rp = document.createElement("button"); rp.className="person-del"; rp.textContent="\u21BA"; rp.title="Reset password";
-        rp.onclick = ()=>{ if(confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")){ resetUserPassword(u); } };
         const mailBtn = document.createElement("button"); mailBtn.className="person-del"; mailBtn.textContent="\u2709\uFE0F"; mailBtn.title="Email them their sign-in details (new temporary password)";
         mailBtn.onclick = ()=> emailLoginDetails(u);
         const editBtn = document.createElement("button"); editBtn.className="person-del"; editBtn.textContent="\u270F\uFE0F"; editBtn.title="Edit name, email, username or password";
         editBtn.onclick = ()=> openEditPerson(u, ()=> renderAdminPage());
         const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
         del.onclick = async ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ await removeMemberFromTeam(u); renderAdminPage(); } };
-        ac.append(editBtn, mailBtn, rp, del);
+        ac.append(editBtn, mailBtn, del);
+        if(iAmSuper){
+          const gone = document.createElement("button"); gone.className="person-del"; gone.textContent="\uD83D\uDDD1\uFE0F"; gone.title="Delete this person permanently (all teams)";
+          gone.onclick = ()=> deletePersonForever(u, ()=> renderAdminPage());
+          ac.appendChild(gone);
+        }
       }
       r.append(uc, rc, ac);
       table.appendChild(r);
@@ -19336,19 +19169,13 @@ function renderPeopleList(target){
       row.appendChild(sel);
       // reset password (Owner/Admin, not on owners you can't manage)
       if(u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
-        const rp = document.createElement("button"); rp.className = "person-del"; rp.textContent = "\u21BA";
-        rp.title = "Reset this person's password to a temporary one";
-        rp.onclick = ()=>{
-          if(!confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")) return;
-          resetUserPassword(u);
-        };
         const mailBtn = document.createElement("button"); mailBtn.className = "person-del"; mailBtn.textContent = "\u2709\uFE0F";
         mailBtn.title = "Email them their sign-in details (new temporary password)";
         mailBtn.onclick = ()=> emailLoginDetails(u);
         const editBtn = document.createElement("button"); editBtn.className = "person-del"; editBtn.textContent = "\u270F\uFE0F";
         editBtn.title = "Edit name, email, username or password";
         editBtn.onclick = ()=> openEditPerson(u, ()=> renderPeopleList(wrap));
-        row.append(editBtn, mailBtn, rp);
+        row.append(editBtn, mailBtn);
       }
       // remove from team (not allowed on yourself or, for admins, on owners)
       const canRemove = u.id!==currentUser().id && !(targetIsOwner && !iAmSuper);
@@ -19360,6 +19187,12 @@ function renderPeopleList(target){
           removeMemberFromTeam(u).then(()=> renderPeopleList(wrap));
         };
         row.appendChild(del);
+        if(iAmSuper){
+          const gone = document.createElement("button"); gone.className = "person-del"; gone.textContent = "\uD83D\uDDD1\uFE0F";
+          gone.title = "Delete this person permanently (all teams)";
+          gone.onclick = ()=> deletePersonForever(u, ()=> renderPeopleList(wrap));
+          row.appendChild(gone);
+        }
       }
     }
     wrap.appendChild(row);
