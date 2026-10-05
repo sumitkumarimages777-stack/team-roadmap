@@ -4218,6 +4218,23 @@ async function resetUserPassword(user){
     showTempPassword(userDisplayName(user), r.tempPassword);
   }catch(e){ toast("Couldn't reset the password: "+e.message); }
 }
+// an Owner/Admin emails a teammate a new temporary password + sign-in link.
+// The password goes from the server straight to their inbox; the admin never sees it
+// (unless the email fails, then it's shown once so nobody is locked out).
+async function emailLoginDetails(user){
+  if(!confirm("Email "+userDisplayName(user)+" ("+user.email+") a new temporary password and the sign-in link?\n\n"
+    + "Their current password stops working. They'll choose their own when they sign in.")) return;
+  toast("Sending\u2026");
+  try{
+    const r = await peopleCall({ action:"email_login", team:TEAM, user_id:user.id });
+    user.mustChangePw = true;
+    if(r.emailed) toast("\u2709\uFE0F Sign-in details emailed to "+r.email);
+    else{
+      alert("The password was changed, but the email couldn't be sent ("+r.emailError+").\n\nThe new temporary password is shown next \u2014 send it to them yourself.");
+      showTempPassword(userDisplayName(user), r.tempPassword);
+    }
+  }catch(e){ toast("Couldn't email them: "+e.message); }
+}
 function logout(){
   SUPA.auth.signOut().catch(()=>{}).then(()=>{
     SESSION = null; AUTH_UID = null;
@@ -18972,9 +18989,11 @@ function renderAdminUsers(wrap){
       if(!u.super && u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
         const rp = document.createElement("button"); rp.className="person-del"; rp.textContent="\u21BA"; rp.title="Reset password";
         rp.onclick = ()=>{ if(confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")){ resetUserPassword(u); } };
+        const mailBtn = document.createElement("button"); mailBtn.className="person-del"; mailBtn.textContent="\u2709\uFE0F"; mailBtn.title="Email them their sign-in details (new temporary password)";
+        mailBtn.onclick = ()=> emailLoginDetails(u);
         const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
         del.onclick = async ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ await removeMemberFromTeam(u); renderAdminPage(); } };
-        ac.append(rp, del);
+        ac.append(mailBtn, rp, del);
       }
       r.append(uc, rc, ac);
       table.appendChild(r);
@@ -19270,7 +19289,10 @@ function renderPeopleList(target){
           if(!confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")) return;
           resetUserPassword(u);
         };
-        row.appendChild(rp);
+        const mailBtn = document.createElement("button"); mailBtn.className = "person-del"; mailBtn.textContent = "\u2709\uFE0F";
+        mailBtn.title = "Email them their sign-in details (new temporary password)";
+        mailBtn.onclick = ()=> emailLoginDetails(u);
+        row.append(mailBtn, rp);
       }
       // remove from team (not allowed on yourself or, for admins, on owners)
       const canRemove = u.id!==currentUser().id && !(targetIsOwner && !iAmSuper);

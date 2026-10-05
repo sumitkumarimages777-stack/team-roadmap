@@ -12,6 +12,9 @@
 //                   password (replaces the old fixed "welcome").
 //   import_users    Super-admin only, run once: copies the existing teams and
 //                   people from JSONBin into Supabase.
+//   email_login     Owner/Admin: gives a teammate a new temporary password and
+//                   EMAILS it to them (with the sign-in link). The admin never
+//                   sees the password. Needs the email settings below.
 //   fresh_temp_passwords  Super-admin only: gives a NEW random temporary
 //                   password to everyone who hasn't set their own password yet
 //                   (so any temporary password seen earlier stops working).
@@ -20,12 +23,21 @@
 // the same database functions as everything else (has_role, is_super,
 // set_member_role), so the rules live in one place: stage3a SQL.
 //
+// EMAIL SETTINGS (for email_login), in Supabase -> Edge Functions -> Secrets.
+// Emails are sent from a Zoho Mail mailbox over secure SMTP (port 465):
+//   SMTP_USER        the mailbox, e.g.  sumitkumar@dubuddy.in
+//   SMTP_PASS        a Zoho APP password for that mailbox (not the real password)
+//   SMTP_HOST        optional; defaults to smtp.zoho.in (India). Use smtp.zoho.com for zoho.com accounts.
+//   MAIL_FROM        optional; defaults to  Dubuddy Team <SMTP_USER>
+//   APP_URL          optional; defaults to https://tools.dubuddy.in/
+//
 // HOW TO DEPLOY: Supabase dashboard -> Edge Functions -> Deploy a new
 // function -> Via Editor -> name it exactly  manage-people  -> paste this
 // whole file -> Deploy. Leave "Verify JWT" ON.
 // =====================================================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -76,6 +88,7 @@ Deno.serve(async (req) => {
     if (body.action === "reset_password") return reply(200, await resetPassword(caller, admin, me, body));
     if (body.action === "import_users") return reply(200, await importUsers(caller, admin, body));
     if (body.action === "fresh_temp_passwords") return reply(200, await freshTempPasswords(caller, admin));
+    if (body.action === "email_login") return reply(200, await emailLogin(caller, admin, me, body));
     return reply(400, { error: "Unknown action." });
   } catch (e) {
     return reply(400, { error: (e && e.message) || String(e) });
@@ -192,6 +205,13 @@ async function addPerson(caller, admin, b) {
 async function resetPassword(caller, admin, me, b) {
   const team = String(b.team || "");
   const userId = String(b.user_id || "");
+  await checkMayReset(caller, admin, me, team, userId);
+  const pw = await setTempPassword(admin, userId);
+  return { ok: true, tempPassword: pw };
+}
+
+// Owner/Admin of the team, not yourself, and only a super-admin may touch an Owner or a super-admin.
+async function checkMayReset(caller, admin, me, team, userId) {
   if (!(await rpc(caller, "has_role", { team, min_role: "admin" }))) throw new Error("Only Owners and Admins can manage people.");
   if (userId === me.id) throw new Error("Use “Change password” for your own account.");
 
@@ -202,13 +222,15 @@ async function resetPassword(caller, admin, me, b) {
   if (m.role === "owner" && !iAmSuper) throw new Error("Only a super-admin can reset an Owner's password.");
   const { data: target } = await admin.from("profiles").select("is_super").eq("id", userId).maybeSingle();
   if (target && target.is_super && !iAmSuper) throw new Error("Only a super-admin can reset a super-admin's password.");
+}
 
+async function setTempPassword(admin, userId) {
   const pw = tempPassword();
   const { error: upErr } = await admin.auth.admin.updateUserById(userId, { password: pw });
   if (upErr) throw new Error(upErr.message);
   const { error: flagErr } = await admin.from("profiles").update({ must_change_pw: true }).eq("id", userId);
   if (flagErr) throw new Error(flagErr.message);
-  return { ok: true, tempPassword: pw };
+  return pw;
 }
 
 // ---------- import_users (one-time, super-admin) -----------------------
@@ -266,4 +288,59 @@ async function freshTempPasswords(caller, admin) {
     results.push(upErr ? { email: p.email, error: upErr.message } : { email: p.email, tempPassword: pw });
   }
   return { ok: true, results };
+}
+
+// ---------- email_login ----------------------------------------------------
+// body: { action, team, user_id }
+// Makes a new temporary password and emails it, with the sign-in link, to the
+// person themselves. If the email can't be sent, the password is returned to
+// the admin instead (with the reason), so nobody is left locked out.
+async function emailLogin(caller, admin, me, b) {
+  const team = String(b.team || "");
+  const userId = String(b.user_id || "");
+  const smtpUser = Deno.env.get("SMTP_USER");
+  const smtpPass = Deno.env.get("SMTP_PASS");
+  if (!smtpUser || !smtpPass) throw new Error("Email isn't set up yet (SMTP_USER and SMTP_PASS are missing in Supabase Edge Function secrets).");
+  const from = Deno.env.get("MAIL_FROM") || ("Dubuddy Team <" + smtpUser + ">");
+  await checkMayReset(caller, admin, me, team, userId);
+
+  const { data: p, error: pErr } = await admin.from("profiles").select("email,name,profile").eq("id", userId).maybeSingle();
+  if (pErr || !p) throw new Error("Couldn't find that person.");
+  const { data: t } = await admin.from("teams").select("name").eq("slug", team).maybeSingle();
+  const teamName = (t && t.name) || team;
+  const name = (p.profile && p.profile.displayName) || p.name || p.email.split("@")[0];
+  const link = (Deno.env.get("APP_URL") || "https://tools.dubuddy.in/") + "?team=" + encodeURIComponent(team);
+
+  const pw = await setTempPassword(admin, userId);
+  const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const text = "Hi " + name + ",\n\n"
+    + "Here are your sign-in details for the " + teamName + " team app.\n\n"
+    + "Sign in here: " + link + "\n"
+    + "Email: " + p.email + "\n"
+    + "Temporary password: " + pw + "\n\n"
+    + "When you sign in, you'll be asked to choose your own password (at least 8 characters).\n"
+    + "If you didn't expect this email, please tell your team owner.\n";
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#17233A;max-width:520px">'
+    + "<p>Hi " + esc(name) + ",</p>"
+    + "<p>Here are your sign-in details for the <b>" + esc(teamName) + "</b> team app.</p>"
+    + '<table style="border-collapse:collapse;margin:12px 0">'
+    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Sign in</td><td style="padding:4px 0"><a href="' + esc(link) + '">' + esc(link) + "</a></td></tr>"
+    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Email</td><td style="padding:4px 0">' + esc(p.email) + "</td></tr>"
+    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Temporary password</td><td style="padding:4px 0;font-family:monospace;font-size:16px"><b>' + esc(pw) + "</b></td></tr>"
+    + "</table>"
+    + "<p>When you sign in, you'll be asked to choose your own password (at least 8 characters).</p>"
+    + '<p style="color:#5C6A82;font-size:13px">If you didn\'t expect this email, please tell your team owner.</p></div>';
+
+  let sendError = null;
+  try {
+    const mailer = nodemailer.createTransport({
+      host: Deno.env.get("SMTP_HOST") || "smtp.zoho.in",
+      port: 465, secure: true,                    // Supabase allows outgoing mail on 465 only
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await mailer.sendMail({ from, to: p.email, subject: "Your sign-in details for the " + teamName + " team app", text, html });
+  } catch (e) { sendError = (e && e.message) || String(e); }
+
+  if (sendError) return { ok: true, emailed: false, email: p.email, emailError: sendError, tempPassword: pw };
+  return { ok: true, emailed: true, email: p.email };
 }
