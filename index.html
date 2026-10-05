@@ -18506,6 +18506,44 @@ function renderAdminMigrate(wrap){
     });
   }
 
+  // ---- 1b. fresh temporary passwords (switch-over day) ----
+  const h3c = document.createElement("h3"); h3c.textContent = "1b. Fresh temporary passwords"; h3c.style.margin = "28px 0 6px";
+  const p3 = document.createElement("div"); p3.className = "hint"; p3.style.lineHeight = "1.6";
+  p3.textContent = "Gives a NEW temporary password to everyone who hasn't chosen their own password yet. Any temporary password "
+    + "shown earlier stops working. People who already set their own password are not touched. Use this on switch-over day.";
+  const go3 = document.createElement("button"); go3.className = "btn save"; go3.textContent = "Make fresh temporary passwords";
+  const out3 = document.createElement("div"); out3.style.marginTop = "14px";
+  wrap.append(h3c, p3, go3, out3);
+  go3.onclick = async ()=>{
+    if(!confirm("Give everyone who hasn't set their own password a NEW temporary password?\n\nThe old temporary passwords will stop working.")) return;
+    go3.disabled = true; go3.textContent = "Working\u2026";
+    out3.textContent = "";
+    try{
+      const r = await peopleCall({ action: "fresh_temp_passwords" });
+      const rows = r.results || [];
+      const made = rows.filter(x=> x.tempPassword);
+      const sum = document.createElement("div"); sum.style.cssText = "margin:0 0 10px;font-weight:600";
+      sum.textContent = made.length + " new temporary password(s)" + (rows.length - made.length ? " \u00b7 " + (rows.length - made.length) + " problem(s)" : "");
+      out3.appendChild(sum);
+      if(made.length){
+        const warn = document.createElement("div"); warn.className = "hint"; warn.style.margin = "0 0 8px";
+        warn.textContent = "\u26A0\uFE0F Shown only now. Copy the list, then send each person ONLY their own line, privately.";
+        const copy = document.createElement("button"); copy.className = "btn"; copy.textContent = "Copy the whole list";
+        const text = made.map(x=> x.email + "  \u2192  temporary password: " + x.tempPassword).join("\n");
+        copy.onclick = ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+          .then(()=> toast("Copied \u2014 paste it somewhere safe"), ()=> prompt("Copy this list:", text)); };
+        out3.append(warn, copy);
+      }
+      rows.forEach(x=>{
+        const line = document.createElement("div");
+        line.style.cssText = "padding:8px 0;border-bottom:1px solid var(--line, #e5e7eb);font-family:var(--mono, monospace);font-size:13px";
+        line.textContent = x.email + "  \u2014  " + (x.error ? ("problem: " + x.error) : ("temporary password: " + x.tempPassword));
+        out3.appendChild(line);
+      });
+      go3.textContent = "Done";
+    }catch(e){ out3.textContent = "Couldn't do it: " + e.message; go3.disabled = false; go3.textContent = "Try again"; }
+  };
+
   // ---- 2. team data ----
   const h3b = document.createElement("h3"); h3b.textContent = "2. Team data"; h3b.style.margin = "28px 0 6px";
   const p2 = document.createElement("div"); p2.className = "hint"; p2.style.lineHeight = "1.6";

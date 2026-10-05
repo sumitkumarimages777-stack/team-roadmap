@@ -12,6 +12,9 @@
 //                   password (replaces the old fixed "welcome").
 //   import_users    Super-admin only, run once: copies the existing teams and
 //                   people from JSONBin into Supabase.
+//   fresh_temp_passwords  Super-admin only: gives a NEW random temporary
+//                   password to everyone who hasn't set their own password yet
+//                   (so any temporary password seen earlier stops working).
 //
 // Every request must carry the caller's Supabase login. The role checks use
 // the same database functions as everything else (has_role, is_super,
@@ -72,6 +75,7 @@ Deno.serve(async (req) => {
     if (body.action === "add_person") return reply(200, await addPerson(caller, admin, body));
     if (body.action === "reset_password") return reply(200, await resetPassword(caller, admin, me, body));
     if (body.action === "import_users") return reply(200, await importUsers(caller, admin, body));
+    if (body.action === "fresh_temp_passwords") return reply(200, await freshTempPasswords(caller, admin));
     return reply(400, { error: "Unknown action." });
   } catch (e) {
     return reply(400, { error: (e && e.message) || String(e) });
@@ -244,6 +248,22 @@ async function importUsers(caller, admin, b) {
     } catch (e) {
       results.push({ email, error: (e && e.message) || String(e) });
     }
+  }
+  return { ok: true, results };
+}
+
+// ---------- fresh_temp_passwords (super-admin) ---------------------------
+// Everyone still on a temporary password (must_change_pw = true) gets a new one.
+// People who already chose their own password are not touched.
+async function freshTempPasswords(caller, admin) {
+  if (!(await rpc(caller, "is_super"))) throw new Error("Only a super-admin can do this.");
+  const { data, error } = await admin.from("profiles").select("id,email").eq("must_change_pw", true);
+  if (error) throw new Error(error.message);
+  const results = [];
+  for (const p of (data || [])) {
+    const pw = tempPassword();
+    const { error: upErr } = await admin.auth.admin.updateUserById(p.id, { password: pw });
+    results.push(upErr ? { email: p.email, error: upErr.message } : { email: p.email, tempPassword: pw });
   }
   return { ok: true, results };
 }
