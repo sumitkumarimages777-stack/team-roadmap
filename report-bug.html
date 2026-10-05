@@ -129,8 +129,8 @@ textarea{resize:vertical;line-height:1.6}
 
 <script>
 /* ==== CONFIG — must match your team app's index.html ==== */
-const BUGS_BIN_ID = "6a4a445df5f4af5e296225db";
-const ACCESS_KEY  = "$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";
+const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
+const ACCESS_KEY  = "$2a$10$FUZ/lYTx1eezwmitO71Lf.cRqpiNXay.PYkQyX4RPUXL1PiDDX07S";
 const IMGBB_KEY   = "f4830b69da7997f9791cf15f51dcf9de";
 /* ======================================================== */
 
@@ -230,7 +230,9 @@ async function submit(){
     const rd = await fetch(BASE + "/latest", { headers: { "X-Access-Key": ACCESS_KEY, "X-Bin-Meta": "false" } });
     if(!rd.ok) throw new Error("read HTTP " + rd.status);
     const data = await rd.json();
-    const record = (data && Array.isArray(data.tickets)) ? data : { tickets: [] };
+    // keep everything else in the bin (CSM forms, submissions, webhook events) — only add a ticket
+    const record = (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+    if(!Array.isArray(record.tickets)) record.tickets = [];
     record.tickets.push(ticket);
     record.updated = ticket.created;
 
