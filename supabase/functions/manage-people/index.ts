@@ -18,6 +18,9 @@
 //   edit_person     Owner/Admin: change a teammate's name, username, sign-in
 //                   email and/or password. A changed email is also updated
 //                   inside the team content (OKR owners, game progress...).
+//   delete_person   Super-admin only: deletes a person's account for good
+//                   (login, profile and every team membership). Their work in
+//                   the team content (cards, OKRs...) is kept.
 //   fresh_temp_passwords  Super-admin only: gives a NEW random temporary
 //                   password to everyone who hasn't set their own password yet
 //                   (so any temporary password seen earlier stops working).
@@ -93,6 +96,7 @@ Deno.serve(async (req) => {
     if (body.action === "fresh_temp_passwords") return reply(200, await freshTempPasswords(caller, admin));
     if (body.action === "email_login") return reply(200, await emailLogin(caller, admin, me, body));
     if (body.action === "edit_person") return reply(200, await editPerson(caller, admin, me, body));
+    if (body.action === "delete_person") return reply(200, await deletePerson(caller, admin, me, body));
     return reply(400, { error: "Unknown action." });
   } catch (e) {
     return reply(400, { error: (e && e.message) || String(e) });
@@ -423,4 +427,21 @@ async function editPerson(caller, admin, me, b) {
     }
   }
   return { ok: true, changes, sectionsUpdated };
+}
+
+// ---------- delete_person (super-admin) -----------------------------------
+// body: { action, user_id }
+// The account is shared by every team, so only the super-admin may delete it.
+// Deleting the login also removes the profile and memberships (the database
+// links them with "on delete cascade").
+async function deletePerson(caller, admin, me, b) {
+  const userId = String(b.user_id || "");
+  if (!(await rpc(caller, "is_super"))) throw new Error("Only a super-admin can delete a person permanently.");
+  if (!userId) throw new Error("Bad request.");
+  if (userId === me.id) throw new Error("You can't delete your own account.");
+  const { data: p } = await admin.from("profiles").select("email,is_super").eq("id", userId).maybeSingle();
+  if (p && p.is_super) throw new Error("A super-admin can't be deleted from here.");
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) throw new Error(error.message);
+  return { ok: true, email: p ? p.email : null };
 }
