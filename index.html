@@ -3368,6 +3368,7 @@ body{margin:0}
     <div class="kim-trailwrap"><svg id="kim-trail" viewBox="0 0 1060 300"></svg></div>
     <div class="kim-stat"><span id="kim-stattxt">0 of 10 badges</span><span class="kim-bar"><i id="kim-pbar"></i></span></div>
     <div class="kim-shelf" id="kim-shelf"></div>
+    <div id="kim-more"></div>
   </div>
 
   <div class="kim-over" id="kim-over">
@@ -3472,6 +3473,12 @@ body{margin:0}
       <div class="kim-cards" id="kim-cards">
         <div class="kim-card" id="kim-card-mind"><h3><span>🧠</span><span id="kim-h-mind">Locked</span></h3><p id="kim-p-mind" class="kim-lk">Aim at the mind</p></div>
         <div class="kim-card" id="kim-card-heart"><h3><span>🧡</span><span id="kim-h-heart">Locked</span></h3><p id="kim-p-heart" class="kim-lk">Aim at the heart</p></div>
+      </div>
+
+      <div id="kim-hgame" style="display:none">
+        <div id="kim-hload" class="hint" style="padding:30px;text-align:center">Loading the game…</div>
+        <iframe id="kim-frame" title="Game" sandbox="allow-scripts" referrerpolicy="no-referrer"
+          style="width:100%;height:min(600px,70vh);border:0;border-radius:12px;background:#fff;display:none"></iframe>
       </div>
 
       <div class="kim-finale" id="kim-finale">
@@ -4064,6 +4071,7 @@ const PERMS = [
   {key:"request_members",  label:"Request teammates",     hint:"Send new people for approval"},
   {key:"approve_requests", label:"Approve requests",      hint:"Approve or reject requested people"},
   {key:"manage_people",    label:"Manage people",         hint:"Add people directly, change roles, edit, email, remove"},
+  {key:"create_games",     label:"Create games",          hint:"Make games and submit them for Let's Play"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
 const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
@@ -4163,20 +4171,24 @@ function myTeams(user){
 async function loadPeople(){
   const [p, m, rl] = await Promise.all([
     SUPA.from("profiles").select("id,email,name,username,is_super,must_change_pw,profile"),
-    SUPA.from("memberships").select("team_slug,user_id,role"),
+    SUPA.from("memberships").select("team_slug,user_id,role,department"),
     SUPA.from("team_roles").select("team_slug,key,name,position,perms"),
   ]);
   if(p.error) throw new Error(p.error.message);
   if(m.error) throw new Error(m.error.message);
   ROLE_DEFS = {};
   if(!rl.error) (rl.data||[]).forEach(r=>{ (ROLE_DEFS[r.team_slug] = ROLE_DEFS[r.team_slug] || {})[r.key] = { name:r.name, position:r.position, perms:r.perms||[] }; });
-  const teamsOf = {};
-  (m.data||[]).forEach(r=>{ (teamsOf[r.user_id] = teamsOf[r.user_id] || {})[r.team_slug] = r.role; });
+  const teamsOf = {}, deptsOf = {};
+  (m.data||[]).forEach(r=>{
+    (teamsOf[r.user_id] = teamsOf[r.user_id] || {})[r.team_slug] = r.role;
+    if(r.department) (deptsOf[r.user_id] = deptsOf[r.user_id] || {})[r.team_slug] = r.department;
+  });
   USERS = normalizeUsers((p.data||[]).map(x=>({
     id: x.id, email: x.email, name: x.name, username: x.username || "",
     super: x.is_super, mustChangePw: x.must_change_pw, profile: x.profile || {},
     teams: teamsOf[x.id] || {},
   })));
+  USERS.forEach(u=>{ u.depts = deptsOf[u.id] || {}; });
   SESSION = AUTH_UID ? (USERS.find(u=>u.id===AUTH_UID) || null) : null;
 }
 // on page load: is someone already signed in on this browser?
@@ -4307,6 +4319,7 @@ function openEditPerson(user, afterSave){
     + '<div class="field"><label for="ep-name">Name</label><input id="ep-name" class="login-input" type="text" autocomplete="off"></div>'
     + '<div class="field"><label for="ep-email">Sign-in email</label><input id="ep-email" class="login-input" type="email" autocomplete="off"></div>'
     + '<div class="field"><label for="ep-user">Username (optional)</label><input id="ep-user" class="login-input" type="text" autocomplete="off" placeholder="lets them sign in with a short name"></div>'
+    + '<div class="field"><label for="ep-dept">Department</label><select id="ep-dept" class="pa-select" style="width:100%"></select></div>'
     + '<div class="field"><label for="ep-pass">New password</label><input id="ep-pass" class="login-input" type="text" autocomplete="off" placeholder="leave empty to keep their current password"></div>'
     + '<label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0 2px"><input id="ep-must" type="checkbox" checked> Ask them to choose their own password at next sign-in</label>'
     + '<div class="hint" id="ep-note" style="margin-top:10px"></div>'
@@ -4318,6 +4331,11 @@ function openEditPerson(user, afterSave){
   $e("ep-name").value = user.name || "";
   $e("ep-email").value = user.email || "";
   $e("ep-user").value = user.username || "";
+  const curDept = (user.depts || {})[TEAM] || "";
+  const depts = teamDepartments();
+  $e("ep-dept").innerHTML = '<option value="">\u2014 No department \u2014</option>' + depts.map(d=> '<option value="'+mtEsc(d.id)+'">'+mtEsc(d.name)+'</option>').join("");
+  $e("ep-dept").value = depts.some(d=> d.id === curDept) ? curDept : "";
+  if(!depts.length) $e("ep-dept").title = "Add departments in Administration \u2192 Org structure";
   $e("ep-note").textContent = "Changing the email changes what they sign in with. The old email is also replaced everywhere in the team's content (OKR owners, game progress…).";
   const close = ()=> ov.remove();
   $e("ep-cancel").onclick = close;
@@ -4329,12 +4347,19 @@ function openEditPerson(user, afterSave){
     if(em !== (user.email||"")) body.email = em;
     if(un !== (user.username||"")) body.username = un;
     if(pw){ body.password = pw; body.must_change = $e("ep-must").checked; }
-    if(Object.keys(body).length === 3){ close(); return; }
+    const newDept = $e("ep-dept").value, deptChanged = newDept !== ((user.depts || {})[TEAM] || "");
+    if(Object.keys(body).length === 3 && !deptChanged){ close(); return; }
     if(pw && pw.length < 8){ $e("ep-err").textContent = "The password needs at least 8 characters."; return; }
     if(body.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ $e("ep-err").textContent = "Enter a valid email."; return; }
     $e("ep-save").disabled = true; $e("ep-err").textContent = "Saving…";
     try{
-      const r = await peopleCall(body);
+      let r = { changes: [] };
+      if(Object.keys(body).length > 3) r = await peopleCall(body);
+      if(deptChanged){
+        const dr = await SUPA.rpc("set_member_department", { p_team:TEAM, p_user:user.id, p_dept:newDept });
+        if(dr.error) throw new Error(dr.error.message);
+        r.changes = (r.changes || []).concat("department");
+      }
       await loadPeople();
       // the team content may have changed too (a new email inside OKRs etc.): reload it
       if(r.sectionsUpdated && typeof refresh === "function"){ try{ await refresh(false); }catch(_){ } }
@@ -5650,6 +5675,7 @@ async function start(){
   }
   restorePageAfterRender();
   try{ docOpenFromUrl(); }catch(_){ }
+  if(db) loadGames().catch(function(){ });
   // approvers: a gentle nudge when teammate requests are waiting
   if(db && hasPerm("approve_requests")){
     refreshPendingCount().then(n=>{ if(n) toast("\uD83D\uDE4B " + n + " teammate request" + (n>1?"s":"") + " waiting \u2014 Administration \u2192 Requests"); });
@@ -15805,21 +15831,49 @@ let scDlg = null;
 
 /* ===================== KEEP IN MIND ===================== */
 var KIM = { byUser:{} };
-var KIM_GAMES=[
-  {n:1, name:"Jadugar", icon:"\uD83D\uDD2E", title:"We are jadugars.", hook:"Nine more to go.", ready:true},
-  {n:2, name:"1%", icon:"\uD83D\uDD0E", title:"You know less than 1%.", hook:"Eight more to go.", ready:true},
-  {n:3, name:"Game 3", icon:"\uD83C\uDFAF", title:"", hook:"", ready:false},
-  {n:4, name:"Game 4", icon:"\uD83D\uDD0D", title:"", hook:"", ready:false},
-  {n:5, name:"Game 5", icon:"\uD83D\uDEE0", title:"", hook:"", ready:false},
-  {n:6, name:"Game 6", icon:"\uD83E\uDD1D", title:"", hook:"", ready:false},
-  {n:7, name:"Game 7", icon:"\uD83D\uDCE3", title:"", hook:"", ready:false},
-  {n:8, name:"Game 8", icon:"\uD83E\uDDED", title:"", hook:"", ready:false},
-  {n:9, name:"Game 9", icon:"\uD83D\uDD25", title:"", hook:"", ready:false},
-  {n:10,name:"Game 10",icon:"\uD83D\uDC51", title:"", hook:"", ready:false}
-];
+/* The 10 Let's Play slots now come from the games library (Supabase tables
+   games / game_path / game_progress). Built-in games (Jadugar, 1%) keep their
+   hand-made code below; team-made games are HTML files played in a locked box. */
+var KIM_SLOT_ICONS=["\uD83D\uDD2E","\uD83D\uDD0E","\uD83C\uDFAF","\uD83D\uDD0D","\uD83D\uDEE0","\uD83E\uDD1D","\uD83D\uDCE3","\uD83E\uDDED","\uD83D\uDD25","\uD83D\uDC51"];
+var GAMES = {}, GAME_PATH = [], GAME_DONE = new Set(), GAMES_READY = false, KIM_CUR = null;
+var KIM_GAMES = [];
+function gamePlayable(g){ return !!(g && g.live_version && !g.retired); }
+function kimSlotObj(i, g){
+  if(gamePlayable(g)) return { n:i+1, name:g.title, icon:g.emoji || "\uD83C\uDFAE", title:g.tagline || g.title, hook:"", ready:true,
+    gameId:g.id, kind:g.kind, builtin:g.builtin_key, takeaway:g.takeaway || "" };
+  return { n:i+1, name:"Game "+(i+1), icon:KIM_SLOT_ICONS[i], title:"", hook:"", ready:false };
+}
+function kimBuildPath(){ KIM_GAMES = Array.from({ length:10 }, (_, i)=> kimSlotObj(i, GAMES[GAME_PATH[i]])); }
+kimBuildPath();
+async function loadGames(){
+  const [g, p, d] = await Promise.all([
+    SUPA.from("games").select("id,title,emoji,tagline,takeaway,level,team_slug,department_id,kind,builtin_key,status,version,live_version,file_size,retired,creator,review_note,reviewed_at,created_at,updated_at"),
+    SUPA.from("game_path").select("slot,game_id"),
+    SUPA.from("game_progress").select("game_id"),
+  ]);
+  if(g.error) throw new Error(g.error.message);
+  GAMES = {}; (g.data || []).forEach(x=> { GAMES[x.id] = x; });
+  GAME_PATH = Array(10).fill(null); (p.data || []).forEach(r=> { if(r.slot >= 1 && r.slot <= 10) GAME_PATH[r.slot-1] = r.game_id; });
+  GAME_DONE = new Set((d.data || []).map(r=> r.game_id));
+  GAMES_READY = true;
+  kimBuildPath();
+}
+function gamesCall(body){ return SUPA.functions.invoke("manage-games", { body }).then(async ({ data, error })=>{
+  if(error){ let msg = error.message; try{ const j = await error.context.json(); if(j && j.error) msg = j.error; }catch(_){ } throw new Error(msg); }
+  if(data && data.error) throw new Error(data.error);
+  return data;
+}); }
+function gamesWaiting(){ return Object.values(GAMES).filter(g=> g.status === "submitted").length; }
+// a game file, wrapped so it can't reach the internet; the frame itself is sandboxed
+// (no access to this app, its sign-in or its data)
+function gameSrcdoc(html){
+  const csp = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\' \'unsafe-eval\'; style-src \'unsafe-inline\'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src \'none\'; form-action \'none\'">';
+  html = String(html || "");
+  return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m=> m + csp) : csp + html;
+}
 function kimMe(){ return (typeof SESSION!=="undefined" && SESSION && SESSION.email) ? SESSION.email.toLowerCase() : "_guest"; }
 function kimMine(){ KIM=KIM||{byUser:{}}; KIM.byUser=KIM.byUser||{}; if(!KIM.byUser[kimMe()]) KIM.byUser[kimMe()]={}; return KIM.byUser[kimMe()]; }
-function kimDone(n){ return !!kimMine()[n]; }
+function kimDone(n){ var g = KIM_GAMES[n-1]; return !!(g && g.gameId && GAME_DONE.has(g.gameId)); }
 function kimOpenAt(i){ return i===0 || kimDone(KIM_GAMES[i-1].n); }
 
 
@@ -16210,7 +16264,10 @@ function closeDocLib(){ dlClosePlay(); $("dl-page").style.display="none"; }
   });
 })();
 
-function openKim(){ kimDrawTrail(); $("kim-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0); }
+function openKim(){
+  kimDrawTrail(); $("kim-page").style.display="block"; if(typeof window.scrollTo==="function") window.scrollTo(0,0);
+  loadGames().then(kimDrawTrail).catch(function(e){ toast("Couldn't load the games (" + e.message + ")"); });
+}
 function closeKim(){ $("kim-page").style.display="none"; }
 
 function kimNodePos(i){ return { x:70+i*102, y:150+Math.sin(i*0.9)*58 }; }
@@ -16246,6 +16303,22 @@ function kimDrawTrail(){
   var shelf=""; for(var i=0;i<10;i++){ var g=KIM_GAMES[i];
     shelf+='<div class="kim-bi'+(kimDone(g.n)?" on":"")+'" title="'+mtEsc(kimDone(g.n)?g.name:"Locked")+'">'+g.icon+'<span>'+g.n+'</span></div>'; }
   $("kim-shelf").innerHTML=shelf;
+  // team / department / extra games this person can play, beyond the 10-slot path
+  var more = $("kim-more"); if(!more) return;
+  var onPath = {}; GAME_PATH.forEach(function(id){ if(id) onPath[id] = 1; });
+  var me = currentUser() || {};
+  var extra = Object.values(GAMES).filter(function(x){ return gamePlayable(x) && !onPath[x.id] && x.kind === "html"
+    && (x.level !== "team" || x.team_slug === TEAM)
+    && (x.level !== "department" || (x.team_slug === TEAM && (me.super || ((me.depts || {})[TEAM] || "") === x.department_id))); });
+  if(!extra.length){ more.innerHTML = ""; return; }
+  more.innerHTML = '<div class="kim-eyebrow" style="margin:26px 0 10px">More games for you</div><div id="kim-morelist" style="display:flex;flex-wrap:wrap;gap:10px"></div>';
+  extra.forEach(function(x){
+    var b = document.createElement("button"); b.className = "kim-back"; b.style.cssText = "display:flex;gap:8px;align-items:center";
+    var done = GAME_DONE.has(x.id);
+    b.textContent = (x.emoji || "\uD83C\uDFAE") + "  " + x.title + (x.level !== "company" ? "  \u00b7 " + (x.level === "team" ? "Team" : deptName(x.department_id) || "Department") : "") + (done ? "  \u2713" : "");
+    b.onclick = function(){ kimOpenGameObj(kimSlotObj(-1, x)); var o = KIM_CUR; o.n = null; $("kim-gnum").textContent = "Bonus game"; };
+    $("kim-morelist").appendChild(b);
+  });
 }
 
 /* ---- game 1: the jadugar ---- */
@@ -16256,26 +16329,52 @@ var kimAim={x:470,y:250}, kimDrag=false, kimFound={mind:false,heart:false};
 var kimHoldKey=null, kimHoldStart=0, kimT0=0, kimGameDone=false, kimLive=false, kimRaf=null;
 var KIMC=2*Math.PI*30;
 
-function kimOpenGame(i){
-  var g=KIM_GAMES[i];
-  $("kim-gnum").textContent="Game "+g.n+" of 10";
+function kimOpenGame(i){ kimOpenGameObj(KIM_GAMES[i]); }
+function kimLeft(){ var total = KIM_GAMES.filter(function(x){ return x.ready; }).length, done = 0;
+  KIM_GAMES.forEach(function(x){ if(x.gameId && GAME_DONE.has(x.gameId)) done++; }); return Math.max(0, total - done - 1); }
+function kimOpenGameObj(g){
+  KIM_CUR = g;
+  $("kim-gnum").textContent = g.n ? ("Game "+g.n+" of 10") : "Bonus game";
   $("kim-gtitle").textContent=g.title;
-  $("kim-ebi").textContent=g.icon; $("kim-ename").textContent=g.name; $("kim-ehook").textContent=g.hook;
-  $("kim-stage").style.display  = (g.n===1)?"":"none";
+  var left = kimLeft();
+  $("kim-ebi").textContent=g.icon; $("kim-ename").textContent=g.name;
+  $("kim-ehook").textContent = g.takeaway || (g.n ? (left ? left + " more to go." : "That's the whole trail!") : "");
+  $("kim-stage").style.display  = (g.builtin==="jadugar")?"":"none";
   $("kim-stage2").style.display = "none";
   $("kim2-pick").style.display = "none";
-  $("kim-cards").style.display = (g.n===1)?"":"none";
-  if(g.n===1){
+  $("kim-cards").style.display = (g.builtin==="jadugar")?"":"none";
+  $("kim-hgame").style.display = (g.kind==="html")?"":"none";
+  $("kim-earned").classList.remove("show");
+  if(g.kind==="html"){
+    $("kim-finale").classList.remove("on");
+    kimLive=false; $("kim-frame").style.display="none"; $("kim-hload").style.display=""; $("kim-hload").textContent="Loading the game\u2026";
+    gamesCall({ action:"game_file", id:g.gameId }).then(function(r){
+      if(KIM_CUR !== g) return;
+      $("kim-frame").srcdoc = gameSrcdoc(r.html); $("kim-frame").style.display=""; $("kim-hload").style.display="none";
+    }).catch(function(e){ $("kim-hload").textContent = "Couldn't load this game (" + e.message + ")."; });
+  } else if(g.builtin==="jadugar"){
     $("kim-f1").style.display=""; $("kim-f2").style.display="none";
     kimReset(); kimLive=true; kimT0=(typeof performance!=="undefined"?performance.now():Date.now());
     if(!kimRaf) kimRaf=requestAnimationFrame(kimLoop);
-  } else if(g.n===2){
+  } else if(g.builtin==="one-percent"){
     $("kim-f1").style.display="none"; $("kim-f2").style.display="";
     kimLive=false; k2Bind(); k2Reset();
   }
   $("kim-over").classList.add("show");
 }
-function kimCloseGame(){ $("kim-over").classList.remove("show"); kimLive=false; kimDrawTrail(); }
+function kimCloseGame(){
+  $("kim-over").classList.remove("show"); kimLive=false;
+  if($("kim-frame")){ $("kim-frame").srcdoc = ""; $("kim-frame").style.display = "none"; }   // stop a running HTML game
+  KIM_CUR = null; kimDrawTrail();
+}
+// an HTML game says it's finished: parent.postMessage({type:"dubuddy:game-complete"}, "*")
+window.addEventListener("message", function(e){
+  var fr = $("kim-frame");
+  if(!fr || !KIM_CUR || e.source !== fr.contentWindow) return;
+  if(!e.data || e.data.type !== "dubuddy:game-complete") return;
+  kimAward();
+  setTimeout(function(){ $("kim-earned").classList.add("show"); kimDrawTrail(); }, 300);
+});
 function kimReset(){
   kimFound={mind:false,heart:false}; kimGameDone=false; kimHoldKey=null; kimAim={x:470,y:250};
   $("kim-ret").style.opacity=""; $("kim-beam").style.opacity="";
@@ -16344,14 +16443,18 @@ function kimUnlock(k){
     $("kim-ret").style.opacity="0"; $("kim-beam").style.opacity="0";
     setTimeout(function(){
       $("kim-finale").classList.add("on");
-      kimAward(1);
+      kimAward();
       setTimeout(function(){ $("kim-earned").classList.add("show"); kimDrawTrail(); },700);
     },380);
   }
 }
-function kimAward(n){
-  var mine=kimMine();
-  if(!mine[n]){ mine[n]=true; if(typeof pushAll==="function") pushAll(); }
+// the game currently open has been finished: save the badge
+function kimAward(){
+  var g = KIM_CUR; if(!g || !g.gameId || GAME_DONE.has(g.gameId)) return;
+  GAME_DONE.add(g.gameId);
+  SUPA.from("game_progress").insert({ user_id: currentUser().id, game_id: g.gameId }).then(function(r){
+    if(r.error && !/duplicate/i.test(r.error.message)){ GAME_DONE.delete(g.gameId); toast("Couldn't save your badge: " + r.error.message); kimDrawTrail(); }
+  });
 }
 
 /* ---- game 2: from the galaxies to your chair ---- */
@@ -16649,7 +16752,7 @@ function k2Finish(){
     ? "You came all that way. You run the company \u2014 and you still sit in one chair."
     : "You came all that way. And this is the box you live in.";
   $("kim-finale").classList.add("on");
-  kimAward(2);
+  kimAward();
   setTimeout(function(){ $("kim-earned").classList.add("show"); kimDrawTrail(); },700);
 }
 function k2Start(){
@@ -18627,6 +18730,9 @@ function adminSections(){
     { k:"okrlevels",   ico:"🪜", lbl:"OKR levels",           show: people,                         render: renderAdminOkrLevels },
     { k:"myaccess",    ico:"🔎", lbl:"My access",            show: !!me,                           render: renderMyAccess },
     { k:"password",    ico:"🔑", lbl:"Change password",      show: !!me,                           render: renderChangePassword },
+    { k:"mygames",     ico:"\uD83C\uDFAE", lbl:"My games",             show: hasPerm("create_games"),        render: renderMyGames },
+    { k:"reviewgames", ico:"\uD83D\uDD79\uFE0F", lbl:"Review games" + (gamesWaiting() ? " (" + gamesWaiting() + ")" : ""), crumb:"Review games",
+                                                                        show: sup,                            render: renderReviewGames },
     { k:"org",         ico:"🏢", lbl:"Org structure",        show: sup,                            render: renderAdminOrg },
     { k:"danger",      ico:"⚠️", lbl:"Danger zone",          show: sup,                            render: renderAdminDanger },
   ].filter(x=> x.show);
@@ -18664,6 +18770,350 @@ function renderAdminPage(){
   crumb.textContent = "⚙️ Administration › " + (cur.crumb || cur.lbl);
   main.appendChild(crumb);
   cur.render(main);
+}
+// departments = the first tier of Administration -> Org structure
+function teamDepartments(){ try{ return (okrOrgUnits(1) || []).map(d=> ({ id:d.id, name:d.name })); }catch(_){ return []; } }
+function deptName(id){ const d = teamDepartments().find(x=> x.id === id); return d ? d.name : ""; }
+/* ---------- Games library: My games (creators) and Review games (super-admin) ---------- */
+var GAME_RULES = [
+  "One single .html file with everything inside it (styles, code, pictures as data: links). Max 3 MB.",
+  "No internet: outside scripts, fonts, pictures and API calls are blocked. Write everything yourself or paste it in.",
+  "No saving: the game can't use cookies or localStorage, and can't see the app or who is playing.",
+  "When the player finishes, the game must run:  parent.postMessage({ type: \"dubuddy:game-complete\" }, \"*\")  — that gives them the badge.",
+  "It must work on a phone and a laptop (any screen size), and take about 2–5 minutes.",
+  "Teach one idea. Write it as the “takeaway” — people see it when they earn the badge."
+];
+var GAME_AI_PROMPT = "Make a small browser game as ONE self-contained HTML file.\n"
+  + "Topic / lesson: <write the idea the game should teach>\n\n"
+  + "Strict rules:\n"
+  + "- Everything in one .html file: inline <style> and <script>. Images only as inline SVG or data: URLs. Under 3 MB.\n"
+  + "- No external links at all: no CDN scripts, no Google Fonts, no images from the web, no fetch/XHR/WebSocket.\n"
+  + "- Do not use localStorage, sessionStorage, cookies, alert(), prompt() or confirm().\n"
+  + "- Responsive: must fit and be playable on a phone (touch) and a laptop (mouse/keyboard). Use the full width and height of the page.\n"
+  + "- About 2-5 minutes to play, with a short intro screen and a clear finish screen.\n"
+  + "- When the player finishes, run exactly: parent.postMessage({ type: \"dubuddy:game-complete\" }, \"*\");\n"
+  + "Reply with only the complete HTML file.";
+function gameLevelText(g){
+  if(g.level === "team") return "Team: " + ((TEAMS[g.team_slug] && TEAMS[g.team_slug].name) || g.team_slug);
+  if(g.level === "department") return "Department: " + ((g.team_slug === TEAM && deptName(g.department_id)) || g.department_id) + " (" + ((TEAMS[g.team_slug] && TEAMS[g.team_slug].name) || g.team_slug) + ")";
+  return "Company";
+}
+function gameStatusChip(g){
+  const c = document.createElement("span");
+  let m;
+  if(g.retired) m = ["📦 Retired","#5C6A82","#EEF1F5"];
+  else if(g.status === "submitted") m = ["⏳ Waiting for review","#9A6A1B","#FFF4DD"];
+  else if(g.status === "sent_back") m = ["↩️ Changes needed","#B03A34","#FBE7E5"];
+  else if(g.status === "approved") m = ["✅ Approved","#1F7A4D","#E3F2EA"];
+  else if(g.live_version) m = ["✅ Live · new version is a draft","#1F7A4D","#E3F2EA"];
+  else m = ["📝 Draft","#5C6A82","#EEF1F5"];
+  c.textContent = m[0]; c.style.cssText = "font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;color:"+m[1]+";background:"+m[2]+";white-space:nowrap";
+  return c;
+}
+function gameSizeText(n){ return n ? (n >= 1048576 ? (n/1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n/1024)) + " KB") : ""; }
+// test-play a game file in the same locked box Let's Play uses
+function openGamePreview(title, html){
+  closeGamePreview();
+  const ov = document.createElement("div"); ov.id = "gp-over";
+  ov.style.cssText = "position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+  const box = document.createElement("div");
+  box.style.cssText = "background:var(--card,#fff);border-radius:14px;width:min(1000px,100%);height:min(720px,100%);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)";
+  const bar = document.createElement("div"); bar.style.cssText = "display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap";
+  const t = document.createElement("div"); t.style.cssText = "font-weight:700;flex:1;min-width:0"; t.textContent = "▶ Test play: " + title;
+  const sig = document.createElement("span"); sig.id = "gp-signal"; sig.className = "hint"; sig.textContent = "Finished signal: not yet";
+  const x = document.createElement("button"); x.className = "btn"; x.textContent = "Close"; x.onclick = closeGamePreview;
+  bar.append(t, sig, x);
+  const fr = document.createElement("iframe"); fr.id = "gp-frame";
+  fr.setAttribute("sandbox", "allow-scripts"); fr.setAttribute("referrerpolicy", "no-referrer");
+  fr.style.cssText = "flex:1;width:100%;border:0;background:#fff";
+  fr.srcdoc = gameSrcdoc(html);
+  box.append(bar, fr); ov.appendChild(box);
+  ov.addEventListener("click", e=>{ if(e.target === ov) closeGamePreview(); });
+  document.body.appendChild(ov);
+}
+function closeGamePreview(){ const o = document.getElementById("gp-over"); if(o) o.remove(); }
+window.addEventListener("message", function(e){
+  const fr = document.getElementById("gp-frame");
+  if(!fr || e.source !== fr.contentWindow || !e.data || e.data.type !== "dubuddy:game-complete") return;
+  const s = document.getElementById("gp-signal");
+  if(s){ s.textContent = "✅ Finished signal received — the badge will work"; s.style.color = "#1F7A4D"; s.style.fontWeight = "600"; }
+});
+async function previewGameFile(g, version){
+  try{ const r = await gamesCall({ action:"game_file", id:g.id, version }); openGamePreview(g.title + " (v" + r.version + ")", r.html); }
+  catch(e){ alert("Couldn't open the game: " + e.message); }
+}
+function gameCard(){
+  const card = document.createElement("div");
+  card.className = "game-card";
+  card.style.cssText = "border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--card,#fff);display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap";
+  return card;
+}
+function gameCardInfo(g, extra){
+  const who = document.createElement("div"); who.style.cssText = "min-width:0;flex:1";
+  const n = document.createElement("div"); n.style.cssText = "font-weight:700;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+  const nt = document.createElement("span"); nt.textContent = (g.emoji || "🎮") + " " + g.title;
+  n.append(nt, gameStatusChip(g)); who.appendChild(n);
+  const e = document.createElement("div"); e.className = "hint"; e.style.marginTop = "2px";
+  e.textContent = [gameLevelText(g), g.kind === "builtin" ? "Built-in" : ("Version " + g.version + (g.live_version && g.live_version !== g.version ? " (people play v" + g.live_version + ")" : "")), gameSizeText(g.file_size), extra].filter(Boolean).join(" · ");
+  who.appendChild(e);
+  if(g.tagline){ const tl = document.createElement("div"); tl.style.cssText = "font-size:13px;margin-top:4px"; tl.textContent = g.tagline; who.appendChild(tl); }
+  if(g.review_note){ const rn = document.createElement("div"); rn.style.cssText = "font-size:13px;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--bg,#F6F7F9)"; rn.textContent = "Review note: " + g.review_note; who.appendChild(rn); }
+  return who;
+}
+
+// Creators: Administration -> My games
+function renderMyGames(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "My games"; head.appendChild(h2); wrap.appendChild(head);
+  const intro = document.createElement("div"); intro.className = "hint"; intro.style.cssText = "margin:0 0 14px;line-height:1.6";
+  intro.textContent = "Make a game for Let's Play. Save it as a draft, test it, then submit it. The super-admin plays it and approves it or sends it back with a note. Approved games appear for the level you choose.";
+  wrap.appendChild(intro);
+
+  const rules = document.createElement("details"); rules.style.cssText = "border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:16px;max-width:760px";
+  rules.innerHTML = '<summary style="cursor:pointer;font-weight:600">📋 The game rules (and a prompt for AI tools)</summary>'
+    + '<ol style="margin:10px 0 10px 18px;line-height:1.7;font-size:13px">' + GAME_RULES.map(r=> '<li>' + mtEsc(r) + '</li>').join("") + '</ol>'
+    + '<div style="font-size:13px;font-weight:600;margin-bottom:4px">Making it with ChatGPT / Claude? Copy this prompt:</div>'
+    + '<textarea id="mg-prompt" class="login-input" rows="9" readonly style="width:100%;font-family:monospace;font-size:12px"></textarea>'
+    + '<button class="btn" id="mg-copy" style="margin-top:6px">Copy prompt</button>';
+  wrap.appendChild(rules);
+  rules.querySelector("#mg-prompt").value = GAME_AI_PROMPT;
+  rules.querySelector("#mg-copy").onclick = ()=>{
+    const ta = rules.querySelector("#mg-prompt");
+    (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).then(()=> toast("Prompt copied"), ()=>{ ta.select(); document.execCommand("copy"); toast("Prompt copied"); });
+  };
+
+  const formWrap = document.createElement("div"); wrap.appendChild(formWrap);
+  const listH = document.createElement("div"); listH.style.cssText = "font-weight:600;margin:22px 0 8px"; listH.textContent = "Games I've made";
+  const list = document.createElement("div"); list.id = "mg-list"; list.className = "hint"; list.textContent = "Loading…";
+  wrap.append(listH, list);
+
+  function drawForm(g){
+    const live = !!(g && g.live_version);
+    const depts = teamDepartments();
+    formWrap.innerHTML = "";
+    const box = document.createElement("div"); box.style.cssText = "max-width:620px;border:1px solid var(--line);border-radius:12px;padding:14px 16px";
+    box.innerHTML = '<div style="font-weight:700;margin-bottom:10px" id="mg-ftitle"></div>'
+      + (live ? '<div class="hint" style="margin-bottom:10px;line-height:1.6">This game is live, so its name and level are locked. Upload a new version below — it goes through review again, and people keep playing the current version until it’s approved.</div>' : '')
+      + '<div style="display:flex;gap:10px"><div class="field" style="width:90px"><label for="mg-emoji">Emoji</label><input id="mg-emoji" class="login-input" maxlength="8"></div>'
+      + '<div class="field" style="flex:1"><label for="mg-title">Game name</label><input id="mg-title" class="login-input" maxlength="80" placeholder="e.g. Customer Detective"></div></div>'
+      + '<div class="field"><label for="mg-tagline">One-line tagline</label><input id="mg-tagline" class="login-input" maxlength="140" placeholder="e.g. Every customer has a story."></div>'
+      + '<div class="field"><label for="mg-takeaway">Takeaway (the lesson, shown with the badge)</label><textarea id="mg-takeaway" class="login-input" rows="2" maxlength="400"></textarea></div>'
+      + '<div class="field"><label for="mg-level">Who can play it</label><select id="mg-level" class="pa-select" style="width:100%">'
+      + '<option value="company">Company — everyone</option>'
+      + '<option value="team">Team — only ' + mtEsc((TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM) + '</option>'
+      + '<option value="department">Department — only one department of this team</option></select></div>'
+      + '<div class="field" id="mg-deptf" style="display:none"><label for="mg-dept">Department</label><select id="mg-dept" class="pa-select" style="width:100%"></select></div>'
+      + '<div class="field"><label for="mg-file">Game file (.html, max 3 MB)' + (g ? ' — leave empty to keep the current file' : '') + '</label>'
+      + '<input id="mg-file" type="file" accept=".html,.htm,text/html">'
+      + '<div class="hint" style="margin:6px 0 4px">…or paste the HTML code:</div>'
+      + '<textarea id="mg-html" class="login-input" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="<!DOCTYPE html> ..."></textarea></div>'
+      + '<div class="login-err" id="mg-err"></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
+      + '<button class="btn" id="mg-test">▶ Test play</button>'
+      + '<button class="btn" id="mg-save">Save draft</button>'
+      + '<button class="btn save" id="mg-submit">Save &amp; submit for review</button>'
+      + (g ? '<button class="btn" id="mg-cancel">Cancel</button>' : '') + '</div>';
+    formWrap.appendChild(box);
+    const $f = id => box.querySelector("#" + id);
+    $f("mg-ftitle").textContent = g ? "Edit “" + g.title + "”" : "Make a new game";
+    $f("mg-emoji").value = g ? (g.emoji || "") : "🎮";
+    $f("mg-title").value = g ? g.title : "";
+    $f("mg-tagline").value = g ? (g.tagline || "") : "";
+    $f("mg-takeaway").value = g ? (g.takeaway || "") : "";
+    $f("mg-level").value = g ? g.level : "company";
+    const ds = $f("mg-dept");
+    ds.innerHTML = depts.length ? "" : '<option value="">No departments yet — the super-admin adds them in Org structure</option>';
+    depts.forEach(d=>{ const o = document.createElement("option"); o.value = d.id; o.textContent = d.name; ds.appendChild(o); });
+    if(g && g.department_id) ds.value = g.department_id;
+    const showDept = ()=>{ $f("mg-deptf").style.display = $f("mg-level").value === "department" ? "" : "none"; };
+    $f("mg-level").onchange = showDept; showDept();
+    if(live) ["mg-emoji","mg-title","mg-tagline","mg-takeaway","mg-level","mg-dept"].forEach(id=> $f(id).disabled = true);
+    if(g && g.team_slug !== TEAM) $f("mg-level").disabled = $f("mg-dept").disabled = true;
+    if($f("mg-cancel")) $f("mg-cancel").onclick = ()=> drawForm(null);
+
+    let fileHtml = null;
+    $f("mg-file").onchange = ()=>{
+      const file = $f("mg-file").files[0]; fileHtml = null; $f("mg-err").textContent = "";
+      if(!file) return;
+      if(file.size > 3145728){ $f("mg-err").textContent = "That file is " + (file.size/1048576).toFixed(1) + " MB — the limit is 3 MB."; $f("mg-file").value = ""; return; }
+      const rd = new FileReader();
+      rd.onload = ()=>{ fileHtml = String(rd.result || ""); $f("mg-html").value = ""; };
+      rd.readAsText(file);
+    };
+    const currentHtml = ()=> fileHtml !== null ? fileHtml : ($f("mg-html").value.trim() ? $f("mg-html").value : null);
+    $f("mg-test").onclick = ()=>{
+      const h = currentHtml();
+      if(h) openGamePreview($f("mg-title").value.trim() || "New game", h);
+      else if(g) previewGameFile(g, g.version);
+      else $f("mg-err").textContent = "Add the game's HTML file first.";
+    };
+    async function save(andSubmit){
+      const html = currentHtml();
+      const title = $f("mg-title").value.trim(), level = $f("mg-level").value;
+      if(!title){ $f("mg-err").textContent = "Give the game a name."; return; }
+      if(level === "department" && !$f("mg-dept").value){ $f("mg-err").textContent = "Pick the department this game is for."; return; }
+      if(!g && !html){ $f("mg-err").textContent = "Add the game's HTML file."; return; }
+      if(live && !html){ $f("mg-err").textContent = "Upload the new version of the game file."; return; }
+      if(html && new Blob([html]).size > 3145728){ $f("mg-err").textContent = "The game file is over 3 MB."; return; }
+      if(html && !/postMessage[\s\S]{0,80}dubuddy:game-complete|dubuddy:game-complete/.test(html)
+         && !confirm("This file never sends the finished signal (dubuddy:game-complete), so players won't get a badge.\n\nSave it anyway?")) return;
+      $f("mg-save").disabled = $f("mg-submit").disabled = true; $f("mg-err").textContent = "Saving…";
+      try{
+        const body = { action:"save_game", team: g ? g.team_slug : TEAM, title, emoji:$f("mg-emoji").value.trim(), tagline:$f("mg-tagline").value.trim(),
+          takeaway:$f("mg-takeaway").value.trim(), level, department_id: level === "department" ? $f("mg-dept").value : null };
+        if(g) body.id = g.id;
+        if(html !== null) body.html = html;
+        const r = await gamesCall(body);
+        if(andSubmit){ $f("mg-err").textContent = "Submitting…"; await gamesCall({ action:"submit_game", id:r.game.id }); }
+        toast(andSubmit ? "✅ Submitted — you'll get an email when it's reviewed" : "Saved as a draft");
+        await loadGames().catch(()=>{});
+        drawForm(null); drawList();
+      }catch(e){ $f("mg-err").textContent = e.message; $f("mg-save").disabled = $f("mg-submit").disabled = false; }
+    }
+    $f("mg-save").onclick = ()=> save(false);
+    $f("mg-submit").onclick = ()=> save(true);
+  }
+
+  function drawList(){
+    const me = currentUser();
+    const mine = Object.values(GAMES).filter(g=> g.creator === me.id).sort((a,b)=> String(b.updated_at).localeCompare(String(a.updated_at)));
+    list.innerHTML = ""; list.textContent = mine.length ? "" : "None yet — make your first game above.";
+    mine.forEach(g=>{
+      const card = gameCard();
+      const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+      const play = document.createElement("button"); play.className = "btn"; play.textContent = "▶ Play"; play.onclick = ()=> previewGameFile(g, g.version);
+      acts.appendChild(play);
+      if(g.status !== "submitted"){
+        const ed = document.createElement("button"); ed.className = "btn"; ed.textContent = g.live_version ? "Upload new version" : "Edit";
+        ed.onclick = ()=>{ drawForm(g); formWrap.scrollIntoView({ behavior:"smooth" }); };
+        acts.appendChild(ed);
+      }
+      if(g.status === "draft" || g.status === "sent_back"){
+        const sb = document.createElement("button"); sb.className = "btn save"; sb.textContent = "Submit for review";
+        sb.onclick = async ()=>{
+          sb.disabled = true; sb.textContent = "Submitting…";
+          try{ await gamesCall({ action:"submit_game", id:g.id }); toast("✅ Submitted for review"); await loadGames().catch(()=>{}); drawList(); }
+          catch(e){ alert("Couldn't submit: " + e.message); sb.disabled = false; sb.textContent = "Submit for review"; }
+        };
+        acts.appendChild(sb);
+      }
+      card.append(gameCardInfo(g, "updated " + fmtWhen(g.updated_at)), acts);
+      list.appendChild(card);
+    });
+  }
+  drawForm(null);
+  if(GAMES_READY) drawList();
+  loadGames().then(drawList).catch(e=>{ list.textContent = "Couldn't load your games (" + e.message + ")."; });
+}
+
+// Super-admin: Administration -> Review games
+function renderReviewGames(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Review games"; head.appendChild(h2); wrap.appendChild(head);
+  const intro = document.createElement("div"); intro.className = "hint"; intro.style.cssText = "margin:0 0 14px;line-height:1.6";
+  intro.textContent = "Play each submitted game, then approve it or send it back with a note (the creator gets an email). Then choose the 10 games on the Let's Play path. Approved Team and Department games show to their people under “More games for you”.";
+  wrap.appendChild(intro);
+  const body = document.createElement("div"); body.className = "hint"; body.textContent = "Loading…"; wrap.appendChild(body);
+  const byId = id => USERS.find(u=> u.id === id);
+  const sec = t=>{ const h = document.createElement("div"); h.style.cssText = "font-weight:700;font-size:15px;margin:22px 0 8px;color:var(--ink)"; h.textContent = t; return h; };
+
+  function draw(){
+    body.innerHTML = ""; body.className = "";
+    const all = Object.values(GAMES);
+    // 1. waiting for review
+    body.appendChild(sec("⏳ Waiting for review"));
+    const waiting = all.filter(g=> g.status === "submitted").sort((a,b)=> String(a.updated_at).localeCompare(String(b.updated_at)));
+    if(!waiting.length){ const e = document.createElement("div"); e.className = "hint"; e.textContent = "Nothing waiting — all caught up."; body.appendChild(e); }
+    waiting.forEach(g=>{
+      const card = gameCard(); const cr = byId(g.creator);
+      const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+      const play = document.createElement("button"); play.className = "btn"; play.textContent = "▶ Play"; play.onclick = ()=> previewGameFile(g, g.version);
+      const ok = document.createElement("button"); ok.className = "btn save"; ok.textContent = "Approve";
+      const no = document.createElement("button"); no.className = "btn"; no.textContent = "Send back";
+      ok.onclick = async ()=>{
+        const note = prompt("Approve “" + g.title + "” (version " + g.version + ")? Optional note for the creator:", "");
+        if(note === null) return;
+        ok.disabled = no.disabled = true; ok.textContent = "Approving…";
+        try{ const r = await gamesCall({ action:"review_game", id:g.id, decision:"approve", note }); toast("✅ Approved" + (r.emailed ? " — the creator was emailed" : "")); }
+        catch(e){ alert("Couldn't approve: " + e.message); }
+        await loadGames().catch(()=>{}); renderAdminPage();
+      };
+      no.onclick = async ()=>{
+        const note = prompt("Send “" + g.title + "” back? Tell the creator what to change:", "");
+        if(note === null) return;
+        if(!note.trim()){ alert("Write a short note so they know what to change."); return; }
+        ok.disabled = no.disabled = true; no.textContent = "Sending back…";
+        try{ await gamesCall({ action:"review_game", id:g.id, decision:"send_back", note }); toast("Sent back — the creator was emailed"); }
+        catch(e){ alert("Couldn't send back: " + e.message); }
+        await loadGames().catch(()=>{}); renderAdminPage();
+      };
+      acts.append(play, ok, no);
+      card.append(gameCardInfo(g, "by " + (cr ? userDisplayName(cr) : "someone") + " · submitted " + fmtWhen(g.updated_at)), acts);
+      if(g.takeaway){ const tk = document.createElement("div"); tk.style.cssText = "flex-basis:100%;font-size:13px"; tk.textContent = "Takeaway: " + g.takeaway; card.appendChild(tk); }
+      body.appendChild(card);
+    });
+
+    // 2. the Let's Play path
+    body.appendChild(sec("🧭 Let's Play path (10 games)"));
+    const pathHint = document.createElement("div"); pathHint.className = "hint"; pathHint.style.marginBottom = "8px";
+    pathHint.textContent = "Everyone plays these in order. Only approved Company-level games can go here.";
+    body.appendChild(pathHint);
+    const choices = all.filter(g=> g.level === "company" && gamePlayable(g)).sort((a,b)=> a.title.localeCompare(b.title));
+    const grid = document.createElement("div"); grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;max-width:820px";
+    const sels = [];
+    for(let i = 0; i < 10; i++){
+      const row = document.createElement("label"); row.style.cssText = "display:flex;gap:8px;align-items:center;font-size:13px";
+      const num = document.createElement("span"); num.style.cssText = "width:22px;font-weight:700;text-align:right"; num.textContent = (i+1) + ".";
+      const s = document.createElement("select"); s.className = "pa-select gp-slot"; s.style.flex = "1";
+      const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "— empty (coming soon) —"; s.appendChild(o0);
+      choices.forEach(g=>{ const o = document.createElement("option"); o.value = g.id; o.textContent = (g.emoji || "🎮") + " " + g.title; s.appendChild(o); });
+      s.value = (GAME_PATH[i] && choices.some(g=> g.id === GAME_PATH[i])) ? GAME_PATH[i] : "";
+      row.append(num, s); grid.appendChild(row); sels.push(s);
+    }
+    body.appendChild(grid);
+    const pe = document.createElement("div"); pe.className = "login-err";
+    const ps = document.createElement("button"); ps.className = "btn save"; ps.textContent = "Save the path"; ps.style.marginTop = "8px";
+    ps.onclick = async ()=>{
+      const slots = sels.map(s=> s.value || null);
+      const ids = slots.filter(Boolean);
+      if(new Set(ids).size !== ids.length){ pe.textContent = "A game can only be in one slot."; return; }
+      ps.disabled = true; pe.textContent = "Saving…";
+      try{ await gamesCall({ action:"set_path", slots }); pe.textContent = ""; toast("✅ Let's Play path saved"); await loadGames().catch(()=>{}); draw(); }
+      catch(e){ pe.textContent = e.message; ps.disabled = false; }
+    };
+    body.append(pe, ps);
+
+    // 3. the whole library
+    body.appendChild(sec("📚 All games"));
+    const rest = all.filter(g=> g.status !== "submitted").sort((a,b)=> (a.kind === "builtin" ? 0 : 1) - (b.kind === "builtin" ? 0 : 1) || a.title.localeCompare(b.title));
+    if(!rest.length){ const e = document.createElement("div"); e.className = "hint"; e.textContent = "No games yet."; body.appendChild(e); }
+    rest.forEach(g=>{
+      const card = gameCard(); const cr = byId(g.creator);
+      const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+      if(g.kind === "html"){
+        const play = document.createElement("button"); play.className = "btn"; play.textContent = "▶ Play"; play.onclick = ()=> previewGameFile(g, g.live_version || g.version);
+        acts.appendChild(play);
+      }
+      if(g.live_version){
+        const rt = document.createElement("button"); rt.className = "btn"; rt.textContent = g.retired ? "Bring back" : "Retire";
+        rt.onclick = async ()=>{
+          if(!g.retired && !confirm("Retire “" + g.title + "”? Nobody can play it until you bring it back, and it's taken off the Let's Play path. Badges already earned stay.")) return;
+          rt.disabled = true;
+          try{ await gamesCall({ action:"retire_game", id:g.id, retired:!g.retired }); toast(g.retired ? "Brought back" : "Retired"); }
+          catch(e){ alert("Couldn't change it: " + e.message); }
+          await loadGames().catch(()=>{}); draw();
+        };
+        acts.appendChild(rt);
+      }
+      const slot = GAME_PATH.indexOf(g.id);
+      card.append(gameCardInfo(g, [cr ? "by " + userDisplayName(cr) : "", slot >= 0 ? "Let's Play #" + (slot+1) : ""].filter(Boolean).join(" · ")), acts);
+      body.appendChild(card);
+    });
+    const navRev = [...document.querySelectorAll("#admin-nav .admin-navitem")].find(b=> /Review games/.test(b.textContent));
+    if(navRev) navRev.querySelector("span:last-child").textContent = "Review games" + (gamesWaiting() ? " (" + gamesWaiting() + ")" : "");
+  }
+  if(GAMES_READY) draw();
+  loadGames().then(draw).catch(e=>{ body.textContent = "Couldn't load games (" + e.message + ")."; });
 }
 // everyone: change my own password (the forced first-sign-in dialog stays as it is)
 function renderChangePassword(wrap){
@@ -19265,7 +19715,7 @@ function renderAdminUsers(wrap){
       nm.textContent = userDisplayName(u);
       if(u.id===currentUser().id){ const y=document.createElement("span"); y.className="person-you"; y.textContent="YOU"; nm.appendChild(y); }
       if(u.super){ const sp=document.createElement("span"); sp.className="person-you"; sp.textContent="SUPER"; nm.appendChild(sp); }
-      const em = document.createElement("div"); em.className="au-email"; em.textContent = u.email;
+      const em = document.createElement("div"); em.className="au-email"; em.textContent = u.email + (deptName((u.depts||{})[TEAM]) ? " \u00b7 " + deptName((u.depts||{})[TEAM]) : "");
       meta.append(nm, em);
       uc.append(av, meta);
       // role cell
