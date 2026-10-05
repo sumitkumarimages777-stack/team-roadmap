@@ -4570,6 +4570,69 @@ function requireLeader(){
 let activeModule = "all";
 function firstModuleKey(){ return (DATA.modules && DATA.modules[0] && DATA.modules[0].key) || "all"; }
 let _dvBusy = false;
+/* ---- keep my place on refresh ------------------------------------------------
+   Just before the page reloads (or the tab is hidden), note where the person is:
+   top tab, space / module / roadmap / board / cycle, Summary vs Board, and any
+   full page that's open (Administration, My Team, Let's Play). After the reload,
+   start() puts them back there. Anything that no longer exists, or that they can
+   no longer see, falls back to the normal start page. Kept per browser tab.   */
+function placeKey(){ return "cf-place-" + TEAM; }
+function savePlace(){
+  if(!TEAM || !db) return;
+  try{
+    const shown = id => { const el = document.getElementById(id); return !!el && el.style.display === "block"; };
+    const page = shown("admin-page") ? "admin" : shown("kim-page") ? "kim" : shown("team-page") ? "team" : "";
+    sessionStorage.setItem(placeKey(), JSON.stringify({
+      view, lastWs, activeModule, activeCspace, activeSection, activeRmap, devSpace, activeCycle,
+      okrView2, paneTab, contentMode, page, adminView, mtView, y: window.scrollY || 0,
+    }));
+  }catch(_){ }
+}
+window.addEventListener("pagehide", savePlace);
+window.addEventListener("beforeunload", savePlace);
+document.addEventListener("visibilitychange", function(){ if(document.hidden) savePlace(); });
+let _pendingPlace = null;
+// called instead of defaultView() at start-up; returns false if there's nothing (valid) to restore
+function restorePlace(){
+  let p = null;
+  try{ p = JSON.parse(sessionStorage.getItem(placeKey()) || "null"); }catch(_){ p = null; }
+  if(!p || typeof p.view !== "string") return false;
+  const keep = { view, lastWs, activeModule, activeCspace, activeSection, activeRmap, devSpace, activeCycle, okrView2, paneTab, contentMode };
+  try{
+    // things that must still exist
+    if(p.activeCspace && !(CSPACES.list || []).some(x=> x.id === p.activeCspace)) throw 0;
+    if(p.view === "rmap" && !(RMAPS.maps || []).some(m=> m.id === p.activeRmap)) throw 0;
+    const top = String(p.activeModule || "all").split("::")[0];
+    if(top !== "all" && !(DATA.modules || []).some(m=> m.key === top)) p.activeModule = firstModuleKey();
+    if(p.devSpace && !((DEV && DEV.spaces) || []).some(x=> x.id === p.devSpace)) p.devSpace = null;
+    if(p.activeCycle && !((OKRS && OKRS.cycles) || []).some(c=> c.key === p.activeCycle)) p.activeCycle = null;
+    view = p.view; lastWs = p.lastWs || lastWs; activeModule = p.activeModule || "all";
+    activeCspace = p.activeCspace || null; activeSection = p.activeSection || "all";
+    activeRmap = p.activeRmap || null; devSpace = p.devSpace || null; activeCycle = p.activeCycle || activeCycle;
+    if(p.okrView2) okrView2 = p.okrView2; if(p.paneTab) paneTab = p.paneTab; if(p.contentMode) contentMode = p.contentMode;
+    // and that this person may still see
+    if(typeof spaceViewAllowed === "function" && !spaceViewAllowed()) throw 0;
+    _pendingPlace = { page: p.page || "", adminView: p.adminView, mtView: p.mtView, y: p.y || 0 };
+    return true;
+  }catch(_){
+    // put the old values back
+    view = keep.view; lastWs = keep.lastWs; activeModule = keep.activeModule; activeCspace = keep.activeCspace;
+    activeSection = keep.activeSection; activeRmap = keep.activeRmap; devSpace = keep.devSpace; activeCycle = keep.activeCycle;
+    okrView2 = keep.okrView2; paneTab = keep.paneTab; contentMode = keep.contentMode;
+    return false;
+  }
+}
+// after the first render: reopen a full page that was open, and scroll back
+function restorePageAfterRender(){
+  const pp = _pendingPlace; _pendingPlace = null;
+  if(!pp) return;
+  try{
+    if(pp.page === "admin" && canManagePeople()) openAdmin(pp.adminView || "users");
+    else if(pp.page === "team"){ openTeam(); if(pp.mtView && pp.mtView !== mtView){ mtView = pp.mtView; renderTeamPage(); } }
+    else if(pp.page === "kim") openKim();
+    if(pp.y) setTimeout(()=> window.scrollTo(0, pp.y), 50);
+  }catch(_){ }
+}
 function defaultView(){
   if(_dvBusy){ view = "okr"; activeCspace = null; return; }   // already choosing a view: never recurse into ourselves
   _dvBusy = true;
@@ -5563,7 +5626,9 @@ async function start(){
       : "This team's data is being moved to the new system. Please check back shortly.");
   }
   refreshLeaderFromRole();
-  defaultView();
+  let _restored = false;
+  try{ _restored = restorePlace(); }catch(_){ _restored = false; }
+  if(!_restored) defaultView();
   if(currentUser() && currentUser().mustChangePw){ setTimeout(()=> openPassword(true), 400); }
   if(bugsConfigured){
     try{ await refreshBugs(); rerouteOrphanBugs(); syncLinkedBugs(); }catch(_){ }
@@ -5577,7 +5642,14 @@ async function start(){
     _lastRefresh = Date.now();
     refresh(false);
   });
-  renderAll();
+  try{ renderAll(); }
+  catch(e){
+    // a remembered place that can't be drawn any more: go to the normal start page instead
+    if(!_restored) throw e;
+    try{ sessionStorage.removeItem(placeKey()); }catch(_){ }
+    _pendingPlace = null; defaultView(); renderAll();
+  }
+  restorePageAfterRender();
   try{ docOpenFromUrl(); }catch(_){ }
 }
 
