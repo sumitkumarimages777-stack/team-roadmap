@@ -187,8 +187,11 @@ async function addPerson(caller, admin, b) {
   const role = String(b.role || "");
   const email = cleanEmail(b.email);
   const username = cleanUsername(b.username);
-  if (!ROLES.includes(role)) throw new Error("Pick a role.");
-  if (!(await rpc(caller, "has_role", { team, min_role: "admin" }))) throw new Error("Only Owners and Admins can manage people.");
+  if (!role) throw new Error("Pick a role.");
+  if (!(await rpc(caller, "has_role", { team, min_role: "admin" }))) throw new Error("You don't have permission to manage people in this team.");
+  // the team's own roles (Administration -> Roles & permissions)
+  const { data: known } = await admin.from("team_roles").select("key").eq("team_slug", team).eq("key", role).maybeSingle();
+  if (!known) throw new Error("Unknown role: " + role);
   if (role === "owner" && !(await rpc(caller, "is_super"))) throw new Error("Only a super-admin can make someone an Owner.");
   if (await usernameTakenByOther(admin, username, email)) throw new Error("That username is already taken.");
 

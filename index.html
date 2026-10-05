@@ -4045,7 +4045,52 @@ const ROLE_DESC = {
   commenter:"Read and comment only",
   viewer:"Read only",
 };
-function roleRank(r){ const i = ROLES.indexOf(r); return i<0 ? ROLES.length : i; }
+// Each team defines its own roles (Administration -> Roles & permissions), loaded
+// from Supabase into ROLE_DEFS. ROLES above stays as the 5 old level names, which
+// are still used for per-space overrides ("This space: Editor").
+let ROLE_DEFS = {};   // team slug -> role key -> { name, position, perms:[...] }
+const PERMS = [
+  {key:"view",             label:"View",                  hint:"See the team's spaces, boards and roadmap (always on)"},
+  {key:"comment",          label:"Comment",               hint:"Add comments"},
+  {key:"edit",             label:"Create & edit work",    hint:"Add and change cards, roadmap items, docs"},
+  {key:"delete",           label:"Delete work",           hint:"Delete cards and items"},
+  {key:"spaces",           label:"Manage spaces",         hint:"Add and remove spaces"},
+  {key:"okr_structure",    label:"OKR structure",         hint:"Restructure OKRs (each objective's own access still applies)"},
+  {key:"module_vision",    label:"Module vision",         hint:"Edit “What we're building” on modules"},
+  {key:"request_members",  label:"Request teammates",     hint:"Send new people for approval"},
+  {key:"approve_requests", label:"Approve requests",      hint:"Approve or reject requested people"},
+  {key:"manage_people",    label:"Manage people",         hint:"Add people directly, change roles, edit, email, remove"},
+];
+// what the 5 old role names meant, for anyone not yet on a custom role
+const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
+function teamRoles(team){
+  const d = ROLE_DEFS[team || TEAM] || {};
+  return Object.keys(d).map(k=> Object.assign({ key:k }, d[k])).sort((a,b)=> (a.position-b.position) || a.name.localeCompare(b.name));
+}
+function rolePerms(key, team){
+  if(key === "owner") return PERMS.map(p=>p.key);
+  const d = (ROLE_DEFS[team || TEAM] || {})[key];
+  return d ? (d.perms || []) : (LEGACY_PERMS[key] || []);
+}
+function hasPermFor(user, perm, team){
+  if(!user) return false;
+  if(user.super) return true;
+  const r = roleOf(user, team || TEAM);
+  return !!r && rolePerms(r, team).indexOf(perm) >= 0;
+}
+function hasPerm(perm){ return hasPermFor(currentUser(), perm, TEAM); }
+function roleLabel(key, team){
+  if(!key) return "";
+  const d = (ROLE_DEFS[team || TEAM] || {})[key];
+  return d ? d.name : (ROLE_LABEL[key] || key);
+}
+// rank used by older comparisons: a custom role ranks by what it can do
+function roleRank(r){
+  const i = ROLES.indexOf(r); if(i >= 0) return i;
+  const p = rolePerms(r);
+  if(!p.length) return ROLES.length;
+  return p.indexOf("manage_people") >= 0 ? 1 : p.indexOf("edit") >= 0 ? 2 : p.indexOf("comment") >= 0 ? 3 : 4;
+}
 
 // USERS = the people this signed-in person is allowed to see, loaded from Supabase
 // (profiles + memberships), in the same shape the rest of the app always used:
@@ -4112,12 +4157,15 @@ function myTeams(user){
 
 // load the people I'm allowed to see, in the shape the app already uses
 async function loadPeople(){
-  const [p, m] = await Promise.all([
+  const [p, m, rl] = await Promise.all([
     SUPA.from("profiles").select("id,email,name,username,is_super,must_change_pw,profile"),
     SUPA.from("memberships").select("team_slug,user_id,role"),
+    SUPA.from("team_roles").select("team_slug,key,name,position,perms"),
   ]);
   if(p.error) throw new Error(p.error.message);
   if(m.error) throw new Error(m.error.message);
+  ROLE_DEFS = {};
+  if(!rl.error) (rl.data||[]).forEach(r=>{ (ROLE_DEFS[r.team_slug] = ROLE_DEFS[r.team_slug] || {})[r.key] = { name:r.name, position:r.position, perms:r.perms||[] }; });
   const teamsOf = {};
   (m.data||[]).forEach(r=>{ (teamsOf[r.user_id] = teamsOf[r.user_id] || {})[r.team_slug] = r.role; });
   USERS = normalizeUsers((p.data||[]).map(x=>({
@@ -4209,7 +4257,7 @@ async function setMemberRole(user, role){
   try{
     await rpcOrThrow("set_member_role", { p_team:TEAM, p_user:user.id, p_role:role });
     user.teams = user.teams || {}; user.teams[TEAM] = role;
-    toast(userDisplayName(user)+" is now "+ROLE_LABEL[role]);
+    toast(userDisplayName(user)+" is now "+roleLabel(role));
   }catch(e){ toast("Couldn't change the role: "+e.message); }
 }
 async function removeMemberFromTeam(user){
@@ -4496,10 +4544,20 @@ function canInSpace(min, ref){
 // the space currently in view
 function canEditHere(){ return canInSpace("editor", currentSpaceRef()); }
 function canManageSpacePeople(){ return canInSpace("admin", currentSpaceRef()); }
-function refreshLeaderFromRole(){ leaderMode = can("admin"); }
+function refreshLeaderFromRole(){ leaderMode = hasPerm("okr_structure"); }
+function requireSuper(){
+  if(currentUser() && currentUser().super) return true;
+  toast("Only the super-admin can change the company vision");
+  return false;
+}
+function requirePerm(perm, msg){
+  if(hasPerm(perm)) return true;
+  toast(msg || "Your role doesn't allow this");
+  return false;
+}
 function requireLeader(){
-  // leadership content (Vision, Mission, OKRs) is Owner/Admin only now — no passcode.
-  if(can("admin")){ leaderMode = true; return true; }
+  // OKR structure edits: roles with the "OKR structure" permission.
+  if(hasPerm("okr_structure")){ leaderMode = true; return true; }
   toast("Vision & OKRs are limited to Owners and Admins");
   return false;
 }
@@ -6167,6 +6225,12 @@ function postComment(){
 }
 
 function actBtn(icon, label, danger, fn){
+  // roles without "Delete work" (or "Manage spaces" for spaces) don't get delete buttons.
+  // Objectives and key results keep their own per-objective access instead.
+  if(icon === "trash" && currentUser() && !/objective|key result/i.test(label)
+     && (!hasPerm("delete") || (/space/i.test(label) && !hasPerm("spaces")))){
+    const none = document.createElement("span"); none.style.display = "none"; return none;
+  }
   const b = document.createElement("button");
   b.className = "act" + (danger?" danger":"");
   b.title = label; b.setAttribute("aria-label", label);
@@ -6922,7 +6986,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
 const visionExpanded = new Set();   // module keys whose vision is expanded (session only)
 let companyVisionExpanded = false;
 function editCompanyVision(){
-  if(!requireLeader()) return;
+  if(!requireSuper()) return;
   openDialog("What Cyberflow is building", {note:DATA.companyVision}, v=>{
     if(v.note) DATA.companyVision = v.note; else delete DATA.companyVision;
     saveRoadmap();
@@ -6951,7 +7015,7 @@ function renderCompanyVision(){
     const acts = document.createElement("div"); acts.className = "acts";
     acts.appendChild(actBtn("pencil","Edit company vision",false, editCompanyVision));
     acts.appendChild(actBtn("trash","Remove company vision",true, ()=>{
-      if(!requireLeader()) return;
+      if(!requireSuper()) return;
       if(confirm("Remove the company vision statement?")){
         delete DATA.companyVision; saveRoadmap();
       }
@@ -6979,7 +7043,7 @@ function renderCompanyVision(){
   wrap.appendChild(box);
 }
 function editVision(m){
-  if(!requireLeader()) return;
+  if(!requirePerm("module_vision", "Your role can't edit module visions")) return;
   openDialog("What we're building — "+m.name, {note:m.vision}, v=>{
     if(v.note) m.vision = v.note; else delete m.vision;
     saveRoadmap();
@@ -7003,7 +7067,7 @@ function visionBanner(m){
     const acts = document.createElement("div"); acts.className = "acts";
     acts.appendChild(actBtn("pencil","Edit vision",false, ()=> editVision(m)));
     acts.appendChild(actBtn("trash","Remove vision",true, ()=>{
-      if(!requireLeader()) return;
+      if(!requirePerm("module_vision", "Your role can't edit module visions")) return;
       if(confirm("Remove the vision statement from “"+m.name+"”?")){
         delete m.vision; saveRoadmap();
       }
@@ -13224,7 +13288,7 @@ function renderAll(){
         _moreCs.onclick = ()=> openAllList("spaces");
         ws.appendChild(_moreCs);
       }
-      if(editMode){
+      if(editMode && hasPerm("spaces")){
         const addSp = document.createElement("button");
         addSp.className = "ws-item ws-add";
         addSp.textContent = "\uFF0B Add space";
@@ -18453,13 +18517,14 @@ function openPassword(forced){
 }
 
 function roleOptions(sel, current, maxRole){
-  // owners can assign any role; admins can assign up to admin (not owner)
+  // the team's own roles; only the super-admin may hand out "Owner"
   sel.innerHTML = "";
-  ROLES.forEach(r=>{
-    if(maxRole && roleRank(r) < roleRank(maxRole)) return;   // can't grant above your own ceiling
+  const list = teamRoles().filter(r=> r.key !== "owner" || maxRole === "owner");
+  if(current && !list.some(r=> r.key === current)) current = list.length ? list[list.length-1].key : "";   // default: the most basic role
+  list.forEach(r=>{
     const o = document.createElement("option");
-    o.value = r; o.textContent = ROLE_LABEL[r] + " \u2014 " + ROLE_DESC[r];
-    if(r===current) o.selected = true;
+    o.value = r.key; o.textContent = r.name;
+    if(r.key === current) o.selected = true;
     sel.appendChild(o);
   });
 }
@@ -18476,7 +18541,7 @@ function renderAdminPage(){
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
+  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Roles & permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
   _navItems.forEach(([k,ico,lbl])=>{
@@ -18494,7 +18559,7 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Roles & permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
   if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
@@ -18746,45 +18811,98 @@ function renderAdminSidebar(){
   wrap.appendChild(back);
 }
 function renderAdminPermissions(wrap){
+  const canEditRoles = roleOf(currentUser(), TEAM) === "owner";   // team Owners and the super-admin
   const head = document.createElement("div"); head.className = "module-head";
-  const h2 = document.createElement("h2"); h2.textContent = "Permissions";
+  const h2 = document.createElement("h2"); h2.textContent = "Roles & permissions";
   head.appendChild(h2);
+  if(canEditRoles){
+    const add = document.createElement("button"); add.className = "btn save"; add.textContent = "＋ New role";
+    add.onclick = async ()=>{
+      const name = (prompt("Name of the new role (e.g. Manager, Team mate, Intern):") || "").trim();
+      if(!name) return;
+      let key = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40) || "role";
+      const taken = new Set(teamRoles().map(r=> r.key)); let k = key, n = 2;
+      while(taken.has(k)) k = key + "-" + (n++);
+      const pos = Math.max(10, ...teamRoles().map(r=> r.position)) + 10;
+      await saveRole({ key:k, name, position:pos, perms:["view","comment","edit"] });
+    };
+    head.appendChild(add);
+  }
   wrap.appendChild(head);
-  const intro = document.createElement("div");
-  intro.className = "hint"; intro.style.margin = "0 0 18px";
-  intro.textContent = "What each role can do in a team. Roles are assigned per team on the Users page \u2014 the same person can hold different roles in different teams.";
+  const intro = document.createElement("div"); intro.className = "hint"; intro.style.margin = "0 0 16px"; intro.style.lineHeight = "1.6";
+  intro.textContent = (canEditRoles
+    ? "Tick what each role can do in this team. Changes save straight away and apply the next time people load the app. "
+    : "What each role can do in this team. Only an Owner can change these. ")
+    + "Owner is built in and can always do everything. The company Vision, creating or deleting teams, and deleting a person permanently stay with the super-admin.";
   wrap.appendChild(intro);
 
-  // role cards, msg91-style
-  const grid = document.createElement("div");
-  grid.className = "perm-grid";
-  ROLES.forEach(role=>{
-    const card = document.createElement("div");
-    card.className = "perm-card";
-    const ch = document.createElement("div"); ch.className = "perm-card-head";
-    const nm = document.createElement("div"); nm.className = "perm-role"; nm.textContent = ROLE_LABEL[role];
-    const ds = document.createElement("div"); ds.className = "perm-desc"; ds.textContent = ROLE_DESC[role];
-    ch.append(nm, ds);
-    card.appendChild(ch);
-    const caps = document.createElement("div"); caps.className = "perm-caps";
-    PERM_CAPS.forEach(cap=>{
-      const has = cap.roles.includes(role);
-      const chip = document.createElement("div");
-      chip.className = "perm-chip" + (has ? " on" : " off");
-      chip.innerHTML = '<span class="perm-tick"></span><span></span>';
-      chip.querySelector(".perm-tick").textContent = has ? "\u2713" : "\u2014";
-      chip.querySelector("span:last-child").textContent = cap.label;
-      caps.appendChild(chip);
-    });
-    card.appendChild(caps);
-    grid.appendChild(card);
-  });
-  wrap.appendChild(grid);
+  const box = document.createElement("div"); box.style.cssText = "overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card,#fff)";
+  const t = document.createElement("table"); t.style.cssText = "border-collapse:collapse;width:100%;font-size:13px";
+  const hr = document.createElement("tr");
+  const th0 = document.createElement("th"); th0.textContent = "Role"; th0.style.cssText = "text-align:left;padding:10px 14px;position:sticky;left:0;background:var(--paper)";
+  hr.appendChild(th0);
+  PERMS.forEach(p=>{ const th = document.createElement("th"); th.textContent = p.label; th.title = p.hint;
+    th.style.cssText = "padding:10px 8px;font-weight:600;font-size:11.5px;text-align:center;background:var(--paper);min-width:78px"; hr.appendChild(th); });
+  const thp = document.createElement("th"); thp.textContent = "People"; thp.style.cssText = "padding:10px 8px;font-size:11.5px;background:var(--paper)"; hr.appendChild(thp);
+  if(canEditRoles){ const tha = document.createElement("th"); tha.style.background = "var(--paper)"; hr.appendChild(tha); }
+  t.appendChild(hr);
 
-  const note = document.createElement("div");
-  note.className = "hint"; note.style.marginTop = "18px";
-  note.textContent = "This is a reference view of the built-in roles. (For a future release, these can become editable, per-space rules \u2014 see the developer handoff note.)";
+  const members = USERS.filter(u=> u.teams && u.teams[TEAM]);
+  teamRoles().forEach(role=>{
+    const isOwner = role.key === "owner";
+    const tr = document.createElement("tr"); tr.style.borderTop = "1px solid var(--line)";
+    const td0 = document.createElement("td"); td0.style.cssText = "padding:10px 14px;font-weight:600;position:sticky;left:0;background:var(--card,#fff);white-space:nowrap";
+    td0.textContent = role.name + (isOwner ? "  🔒" : "");
+    if(isOwner) td0.title = "Built in: always has every permission";
+    tr.appendChild(td0);
+    PERMS.forEach(p=>{
+      const td = document.createElement("td"); td.style.cssText = "text-align:center;padding:8px";
+      const cb = document.createElement("input"); cb.type = "checkbox";
+      cb.checked = isOwner || (role.perms||[]).indexOf(p.key) >= 0;
+      cb.disabled = !canEditRoles || isOwner || p.key === "view";
+      cb.title = p.hint;
+      cb.onchange = async ()=>{
+        const perms = new Set(role.perms || []); if(cb.checked) perms.add(p.key); else perms.delete(p.key);
+        cb.disabled = true;
+        await saveRole({ key:role.key, name:role.name, position:role.position, perms:[...perms] });
+      };
+      td.appendChild(cb); tr.appendChild(td);
+    });
+    const tdp = document.createElement("td"); tdp.style.cssText = "text-align:center;padding:8px;color:var(--muted)";
+    tdp.textContent = members.filter(u=> roleOf(u,TEAM) === role.key).length;
+    tr.appendChild(tdp);
+    if(canEditRoles){
+      const tda = document.createElement("td"); tda.style.cssText = "padding:8px 10px;white-space:nowrap";
+      if(!isOwner){
+        const ren = document.createElement("button"); ren.className = "person-del"; ren.textContent = "✏️"; ren.title = "Rename";
+        ren.onclick = async ()=>{ const v = (prompt("Rename role:", role.name) || "").trim(); if(v && v !== role.name) await saveRole(Object.assign({}, role, { name:v })); };
+        const del = document.createElement("button"); del.className = "person-del"; del.textContent = "🗑️"; del.title = "Delete role";
+        del.onclick = async ()=>{
+          if(!confirm("Delete the role “" + role.name + "”?")) return;
+          const r = await SUPA.rpc("delete_team_role", { p_team:TEAM, p_key:role.key });
+          if(r.error){ alert(r.error.message); return; }
+          await loadPeople(); renderAdminPage(); toast("Role deleted");
+        };
+        tda.append(ren, del);
+      }
+      tr.appendChild(tda);
+    }
+    t.appendChild(tr);
+  });
+  box.appendChild(t); wrap.appendChild(box);
+
+  const note = document.createElement("div"); note.className = "hint"; note.style.cssText = "margin-top:14px;line-height:1.6";
+  note.textContent = "The database enforces View, editing, people and role changes. “Delete work” and “Manage spaces” hide the delete and add-space buttons in the app. To change someone's role, use the Users page.";
   wrap.appendChild(note);
+
+  async function saveRole(r){
+    const res = await SUPA.rpc("save_team_role", { p_team:TEAM, p_key:r.key, p_name:r.name, p_perms:r.perms, p_position:r.position });
+    if(res.error){ alert(res.error.message); }
+    else toast("Saved");
+    try{ await loadPeople(); }catch(_){ }
+    refreshLeaderFromRole();
+    renderAdminPage();
+  }
 }
 function adminMembers(){
   return USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
@@ -18809,8 +18927,8 @@ function renderAdminUsers(wrap){
   // stat cards
   const stats = document.createElement("div"); stats.className = "admin-stats";
   const owners = members.filter(u=> u.super || roleOf(u,TEAM)==="owner").length;
-  const admins = members.filter(u=> !u.super && roleOf(u,TEAM)==="admin").length;
-  [["Total users", members.length],["Owners", owners],["Admins", admins],["Roles", ROLES.length]].forEach(([lab,val])=>{
+  const managers = members.filter(u=> !u.super && roleOf(u,TEAM)!=="owner" && hasPermFor(u,"manage_people")).length;
+  [["Total users", members.length],["Owners", owners],["Can manage people", managers],["Roles", teamRoles().length]].forEach(([lab,val])=>{
     const c = document.createElement("div"); c.className = "admin-stat";
     c.innerHTML = '<div class="as-lab"></div><div class="as-val"></div>';
     c.querySelector(".as-lab").textContent = lab;
@@ -19025,7 +19143,7 @@ function drawSpacePeople(body){
     // team owners/admins can't be demoted per-space (floor)
     if(u.super || roleRank(teamRole) <= roleRank("admin")){
       const tag = document.createElement("span"); tag.className = "ss-mrole";
-      tag.textContent = (u.super ? "Owner" : ROLE_LABEL[teamRole]) + " (team)";
+      tag.textContent = (u.super ? "Owner" : roleLabel(teamRole)) + " (team)";
       row.appendChild(tag);
     } else {
       const sel = document.createElement("select"); sel.className = "person-role";
@@ -19033,7 +19151,7 @@ function drawSpacePeople(body){
       const isPrivate = spaceAccessOf(ref) === "private";
       const def = document.createElement("option"); def.value = "";
       // in a private space, "not added" means no access; elsewhere it means team default
-      def.textContent = isPrivate ? "\u2014 Not added (no access)" : "Team default (" + ROLE_LABEL[teamRole] + ")";
+      def.textContent = isPrivate ? "\u2014 Not added (no access)" : "Team default (" + roleLabel(teamRole) + ")";
       sel.appendChild(def);
       ROLES.forEach(r=>{ if(r==="owner") return; const o=document.createElement("option"); o.value=r; o.textContent="This space: "+ROLE_LABEL[r]; sel.appendChild(o); });
       // explicit "No access" for OPEN/LIMITED spaces (private already excludes via "not added")
@@ -19100,7 +19218,7 @@ function openInvite(){
     const role = $("iv-role").value;
     const un = $("iv-user") ? ($("iv-user").value||"").toLowerCase().trim() : "";
     if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ $("iv-err").textContent = "Enter a valid email."; return; }
-    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("iv-err").textContent = "Admins can't grant Owner."; return; }
+    if(!currentUser().super && role === "owner"){ $("iv-err").textContent = "Only the super-admin can make someone an Owner."; return; }
     const pw = ($("iv-pass").value||"").trim();
     if(pw && pw.length < 8){ $("iv-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
     $("iv-add").disabled = true; $("iv-err").textContent = "Adding\u2026";
@@ -19109,7 +19227,7 @@ function openInvite(){
       $("iv-err").textContent = "";
       $("invite-overlay").classList.remove("show");
       renderAdminPage();
-      toast(ROLE_LABEL[role] + " added");
+      toast(roleLabel(role) + " added");
     }catch(e){ $("iv-err").textContent = e.message; }
     finally{ $("iv-add").disabled = false; }
   };
@@ -19131,7 +19249,7 @@ function openPeople(){
     const role = $("pa-role").value;
     const un = $("pa-user") ? ($("pa-user").value||"").toLowerCase().trim() : "";
     if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){ $("pa-err").textContent = "Enter a valid email."; return; }
-    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
+    if(!currentUser().super && role === "owner"){ $("pa-err").textContent = "Only the super-admin can make someone an Owner."; return; }
     const pw = $("pa-pass") ? ($("pa-pass").value||"").trim() : "";
     if(pw && pw.length < 8){ $("pa-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
     $("pa-add").disabled = true; $("pa-err").textContent = "Adding\u2026";
@@ -19139,7 +19257,7 @@ function openPeople(){
       await addPersonToTeam({ email, name, username:un, role, password:pw });
       renderPeopleList();
       $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
-      toast(ROLE_LABEL[role] + " added");
+      toast(roleLabel(role) + " added");
     }catch(e){ $("pa-err").textContent = e.message; }
     finally{ $("pa-add").disabled = false; }
   };
