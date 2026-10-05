@@ -3679,7 +3679,6 @@ body{margin:0}
       <button class="acct-item" id="acct-teams">⌂ Switch team</button>
       <button class="acct-item" id="acct-profile">👤 My profile</button>
       <button class="acct-item" id="acct-doclib">📚 Our Wiki</button>
-      <button class="acct-item" id="acct-password">🔑 Change password</button>
       <button class="acct-item" id="acct-admin" style="display:none">⚙️ Administration</button>
       <button class="acct-item danger" id="acct-logout">→] Sign out</button>
     </div>
@@ -18525,7 +18524,6 @@ function openAccount(){
 $("acct-teams") && ($("acct-teams").onclick = ()=>{ $("account-overlay").classList.remove("show"); location.href = location.pathname; });
 $("acct-profile") && ($("acct-profile").onclick = ()=>{ $("account-overlay").classList.remove("show"); openProfile(); });
 $("acct-doclib") && ($("acct-doclib").onclick = ()=>{ $("account-overlay").classList.remove("show"); openDocLib(); });
-$("acct-password") && ($("acct-password").onclick = ()=>{ $("account-overlay").classList.remove("show"); openPassword(false); });
 $("acct-admin") && ($("acct-admin").onclick = ()=>{ $("account-overlay").classList.remove("show"); openAdmin(); });
 $("acct-logout") && ($("acct-logout").onclick = ()=> logout());
 $("account-overlay") && $("account-overlay").addEventListener("click", e=>{ if(e.target===$("account-overlay")) $("account-overlay").classList.remove("show"); });
@@ -18628,6 +18626,7 @@ function adminSections(){
     { k:"permissions", ico:"🔐", lbl:"Roles & permissions",  show: people,                         render: renderAdminPermissions },
     { k:"okrlevels",   ico:"🪜", lbl:"OKR levels",           show: people,                         render: renderAdminOkrLevels },
     { k:"myaccess",    ico:"🔎", lbl:"My access",            show: !!me,                           render: renderMyAccess },
+    { k:"password",    ico:"🔑", lbl:"Change password",      show: !!me,                           render: renderChangePassword },
     { k:"org",         ico:"🏢", lbl:"Org structure",        show: sup,                            render: renderAdminOrg },
     { k:"danger",      ico:"⚠️", lbl:"Danger zone",          show: sup,                            render: renderAdminDanger },
   ].filter(x=> x.show);
@@ -18665,6 +18664,32 @@ function renderAdminPage(){
   crumb.textContent = "⚙️ Administration › " + (cur.crumb || cur.lbl);
   main.appendChild(crumb);
   cur.render(main);
+}
+// everyone: change my own password (the forced first-sign-in dialog stays as it is)
+function renderChangePassword(wrap){
+  const head = document.createElement("div"); head.className = "module-head";
+  const h2 = document.createElement("h2"); h2.textContent = "Change password"; head.appendChild(h2); wrap.appendChild(head);
+  const box = document.createElement("div"); box.style.maxWidth = "420px";
+  box.innerHTML = '<div class="hint" style="margin-bottom:12px">For ' + mtEsc(currentUser().email) + '. Use at least 8 characters.</div>'
+    + '<div class="field"><label for="cp-old">Current password</label><input id="cp-old" class="login-input" type="password" autocomplete="current-password"></div>'
+    + '<div class="field"><label for="cp-new">New password</label><input id="cp-new" class="login-input" type="password" autocomplete="new-password"></div>'
+    + '<div class="field"><label for="cp-new2">New password again</label><input id="cp-new2" class="login-input" type="password" autocomplete="new-password"></div>'
+    + '<div class="login-err" id="cp-err"></div>'
+    + '<button class="btn save" id="cp-save" style="margin-top:6px">Update password</button>';
+  wrap.appendChild(box);
+  const $c = id => box.querySelector("#"+id);
+  $c("cp-save").onclick = async ()=>{
+    const o = $c("cp-old").value, n1 = $c("cp-new").value, n2 = $c("cp-new2").value;
+    if(!o){ $c("cp-err").textContent = "Enter your current password."; return; }
+    if(n1 !== n2){ $c("cp-err").textContent = "The two new passwords don't match."; return; }
+    $c("cp-save").disabled = true; $c("cp-err").textContent = "Saving…";
+    const r = await changeMyPassword(o, n1);
+    $c("cp-save").disabled = false;
+    if(!r.ok){ $c("cp-err").textContent = r.err; return; }
+    $c("cp-err").textContent = "";
+    ["cp-old","cp-new","cp-new2"].forEach(id=> $c(id).value = "");
+    toast("✅ Password updated");
+  };
 }
 // everyone: what my role is and what it lets me do
 function renderMyAccess(wrap){
