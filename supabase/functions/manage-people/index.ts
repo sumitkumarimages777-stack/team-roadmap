@@ -18,6 +18,11 @@
 //   edit_person     Owner/Admin: change a teammate's name, username, sign-in
 //                   email and/or password. A changed email is also updated
 //                   inside the team content (OKR owners, game progress...).
+//   approve_request Roles with "Approve requests": approves a teammate request
+//                   (made by a Manager), creates the login, adds them to the team,
+//                   emails them their sign-in details and tells the requester.
+//   reject_request  Roles with "Approve requests": rejects it with a reason and
+//                   emails the requester.
 //   delete_person   Super-admin only: deletes a person's account for good
 //                   (login, profile and every team membership). Their work in
 //                   the team content (cards, OKRs...) is kept.
@@ -97,6 +102,8 @@ Deno.serve(async (req) => {
     if (body.action === "email_login") return reply(200, await emailLogin(caller, admin, me, body));
     if (body.action === "edit_person") return reply(200, await editPerson(caller, admin, me, body));
     if (body.action === "delete_person") return reply(200, await deletePerson(caller, admin, me, body));
+    if (body.action === "approve_request") return reply(200, await approveRequest(caller, admin, me, body));
+    if (body.action === "reject_request") return reply(200, await rejectRequest(caller, admin, me, body));
     return reply(400, { error: "Unknown action." });
   } catch (e) {
     return reply(400, { error: (e && e.message) || String(e) });
@@ -309,51 +316,163 @@ async function freshTempPasswords(caller, admin) {
 async function emailLogin(caller, admin, me, b) {
   const team = String(b.team || "");
   const userId = String(b.user_id || "");
-  const smtpUser = Deno.env.get("SMTP_USER");
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpUser || !smtpPass) throw new Error("Email isn't set up yet (SMTP_USER and SMTP_PASS are missing in Supabase Edge Function secrets).");
-  const from = Deno.env.get("MAIL_FROM") || ("Dubuddy Team <" + smtpUser + ">");
+  if (!mailReady()) throw new Error("Email isn't set up yet (SMTP_USER and SMTP_PASS are missing in Supabase Edge Function secrets).");
   await checkMayReset(caller, admin, me, team, userId);
 
   const { data: p, error: pErr } = await admin.from("profiles").select("email,name,profile").eq("id", userId).maybeSingle();
   if (pErr || !p) throw new Error("Couldn't find that person.");
-  const { data: t } = await admin.from("teams").select("name").eq("slug", team).maybeSingle();
-  const teamName = (t && t.name) || team;
-  const name = (p.profile && p.profile.displayName) || p.name || p.email.split("@")[0];
-  const link = (Deno.env.get("APP_URL") || "https://tools.dubuddy.in/") + "?team=" + encodeURIComponent(team);
-
+  const teamName = await teamNameOf(admin, team);
   const pw = await setTempPassword(admin, userId);
-  const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const text = "Hi " + name + ",\n\n"
-    + "Here are your sign-in details for the " + teamName + " team app.\n\n"
-    + "Sign in here: " + link + "\n"
-    + "Email: " + p.email + "\n"
-    + "Temporary password: " + pw + "\n\n"
-    + "When you sign in, you'll be asked to choose your own password (at least 8 characters).\n"
-    + "If you didn't expect this email, please tell your team owner.\n";
-  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#17233A;max-width:520px">'
-    + "<p>Hi " + esc(name) + ",</p>"
-    + "<p>Here are your sign-in details for the <b>" + esc(teamName) + "</b> team app.</p>"
-    + '<table style="border-collapse:collapse;margin:12px 0">'
-    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Sign in</td><td style="padding:4px 0"><a href="' + esc(link) + '">' + esc(link) + "</a></td></tr>"
-    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Email</td><td style="padding:4px 0">' + esc(p.email) + "</td></tr>"
-    + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Temporary password</td><td style="padding:4px 0;font-family:monospace;font-size:16px"><b>' + esc(pw) + "</b></td></tr>"
-    + "</table>"
-    + "<p>When you sign in, you'll be asked to choose your own password (at least 8 characters).</p>"
-    + '<p style="color:#5C6A82;font-size:13px">If you didn\'t expect this email, please tell your team owner.</p></div>';
+  const m = loginEmail(displayName(p), teamName, teamLink(team), p.email, pw);
+  const sendError = await sendMail(p.email, m.subject, m.text, m.html);
+  if (sendError) return { ok: true, emailed: false, email: p.email, emailError: sendError, tempPassword: pw };
+  return { ok: true, emailed: true, email: p.email };
+}
 
-  let sendError = null;
+// ---------- email helpers (Zoho Mail over secure SMTP, port 465) ----------
+function mailReady() { return !!(Deno.env.get("SMTP_USER") && Deno.env.get("SMTP_PASS")); }
+function esc(v) { return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function displayName(p) { return (p && p.profile && p.profile.displayName) || (p && p.name) || (p && p.email ? p.email.split("@")[0] : "there"); }
+function teamLink(team) { return (Deno.env.get("APP_URL") || "https://tools.dubuddy.in/") + "?team=" + encodeURIComponent(team); }
+async function teamNameOf(admin, team) {
+  const { data: t } = await admin.from("teams").select("name").eq("slug", team).maybeSingle();
+  return (t && t.name) || team;
+}
+// returns null when sent, or the reason it couldn't be sent
+async function sendMail(to, subject, text, html) {
+  if (!mailReady()) return "email isn't set up (SMTP_USER / SMTP_PASS missing)";
+  const smtpUser = Deno.env.get("SMTP_USER");
   try {
     const mailer = nodemailer.createTransport({
       host: Deno.env.get("SMTP_HOST") || "smtp.zoho.in",
       port: 465, secure: true,                    // Supabase allows outgoing mail on 465 only
-      auth: { user: smtpUser, pass: smtpPass },
+      auth: { user: smtpUser, pass: Deno.env.get("SMTP_PASS") },
     });
-    await mailer.sendMail({ from, to: p.email, subject: "Your sign-in details for the " + teamName + " team app", text, html });
-  } catch (e) { sendError = (e && e.message) || String(e); }
+    await mailer.sendMail({ from: Deno.env.get("MAIL_FROM") || ("Dubuddy Team <" + smtpUser + ">"), to, subject, text, html });
+    return null;
+  } catch (e) { return (e && e.message) || String(e); }
+}
+const MAIL_WRAP = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#17233A;max-width:520px">';
+function loginEmail(name, teamName, link, email, pw) {
+  return {
+    subject: "Your sign-in details for the " + teamName + " team app",
+    text: "Hi " + name + ",\n\n"
+      + "Here are your sign-in details for the " + teamName + " team app.\n\n"
+      + "Sign in here: " + link + "\n"
+      + "Email: " + email + "\n"
+      + "Temporary password: " + pw + "\n\n"
+      + "When you sign in, you'll be asked to choose your own password (at least 8 characters).\n"
+      + "If you didn't expect this email, please tell your team owner.\n",
+    html: MAIL_WRAP
+      + "<p>Hi " + esc(name) + ",</p>"
+      + "<p>Here are your sign-in details for the <b>" + esc(teamName) + "</b> team app.</p>"
+      + '<table style="border-collapse:collapse;margin:12px 0">'
+      + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Sign in</td><td style="padding:4px 0"><a href="' + esc(link) + '">' + esc(link) + "</a></td></tr>"
+      + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Email</td><td style="padding:4px 0">' + esc(email) + "</td></tr>"
+      + '<tr><td style="padding:4px 14px 4px 0;color:#5C6A82">Temporary password</td><td style="padding:4px 0;font-family:monospace;font-size:16px"><b>' + esc(pw) + "</b></td></tr>"
+      + "</table>"
+      + "<p>When you sign in, you'll be asked to choose your own password (at least 8 characters).</p>"
+      + '<p style="color:#5C6A82;font-size:13px">If you didn\'t expect this email, please tell your team owner.</p></div>',
+  };
+}
+// a short notice: a few paragraphs and an optional link button
+function noticeEmail(subject, name, paras, link) {
+  return {
+    subject,
+    text: "Hi " + name + ",\n\n" + paras.join("\n\n") + (link ? "\n\nOpen the team app: " + link : "") + "\n",
+    html: MAIL_WRAP + "<p>Hi " + esc(name) + ",</p>" + paras.map((x) => "<p>" + esc(x) + "</p>").join("")
+      + (link ? '<p><a href="' + esc(link) + '">Open the team app</a></p>' : "") + "</div>",
+  };
+}
 
-  if (sendError) return { ok: true, emailed: false, email: p.email, emailError: sendError, tempPassword: pw };
-  return { ok: true, emailed: true, email: p.email };
+// ---------- approve_request / reject_request -------------------------------
+// A Manager (a role with "Request teammates") asks for someone to be added; a
+// role with "Approve requests" decides. Approving creates the login (if they
+// don't have one), adds them to the team, and sends two emails: the person's
+// sign-in details, and "approved" to the requester.
+async function loadPendingRequest(caller, admin, b) {
+  const id = String(b.request_id || "");
+  const { data: rq, error } = await admin.from("member_requests").select("*").eq("id", id).maybeSingle();
+  if (error || !rq) throw new Error("That request doesn't exist.");
+  if (!(await rpc(caller, "has_perm", { team: rq.team_slug, perm: "approve_requests" }))) throw new Error("You don't have permission to approve requests in this team.");
+  if (rq.status !== "pending") throw new Error("This request was already " + rq.status + ".");
+  return rq;
+}
+async function requesterOf(admin, rq) {
+  if (!rq.requested_by) return null;
+  const { data } = await admin.from("profiles").select("email,name,profile").eq("id", rq.requested_by).maybeSingle();
+  return data || null;
+}
+
+// body: { action, request_id, role? }   (role: the approver may change it)
+async function approveRequest(caller, admin, me, b) {
+  const rq = await loadPendingRequest(caller, admin, b);
+  const team = rq.team_slug;
+  const role = String(b.role || rq.role);
+  if (role === "owner" && !(await rpc(caller, "is_super"))) throw new Error("Only the super-admin can make someone an Owner.");
+  const { data: roleRow } = await admin.from("team_roles").select("key,name").eq("team_slug", team).eq("key", role).maybeSingle();
+  if (!roleRow) throw new Error("Unknown role: " + role);
+
+  // 1. the login (kept as it is if they already have one)
+  const acct = await ensureAccount(admin, { email: rq.email, name: rq.name });
+  // 2. the team membership (never lowers an existing Owner)
+  const { data: cur } = await admin.from("memberships").select("role").eq("team_slug", team).eq("user_id", acct.id).maybeSingle();
+  if (!cur || cur.role !== "owner") {
+    const { error } = await admin.from("memberships").upsert({ team_slug: team, user_id: acct.id, role }, { onConflict: "team_slug,user_id" });
+    if (error) throw new Error(error.message);
+  }
+  // 3. close the request
+  const { error: upErr } = await admin.from("member_requests")
+    .update({ status: "approved", role, decided_by: me.id, decided_at: new Date().toISOString(), user_id: acct.id })
+    .eq("id", rq.id).eq("status", "pending");
+  if (upErr) throw new Error(upErr.message);
+
+  // 4. the two emails
+  const teamName = await teamNameOf(admin, team);
+  const link = teamLink(team);
+  const personName = rq.name || rq.email.split("@")[0];
+  const pm = acct.tempPassword
+    ? loginEmail(personName, teamName, link, rq.email, acct.tempPassword)
+    : noticeEmail("You've been added to the " + teamName + " team app", personName,
+        ["You've been added to the " + teamName + " team as " + roleRow.name + ".", "Sign in with your existing email and password."], link);
+  const personError = await sendMail(rq.email, pm.subject, pm.text, pm.html);
+
+  let requesterError = null;
+  const rqBy = await requesterOf(admin, rq);
+  if (rqBy) {
+    const rm = noticeEmail("Approved: " + personName + " can now join " + teamName, displayName(rqBy),
+      ["Good news — your request to add " + personName + " (" + rq.email + ") to the " + teamName + " team was approved.",
+       "They've been added as " + roleRow.name + " and have received an email with their sign-in details. Your teammate can now sign in to the workspace."], link);
+    requesterError = await sendMail(rqBy.email, rm.subject, rm.text, rm.html);
+  }
+  return {
+    ok: true, email: rq.email, created: acct.created,
+    personEmailed: !personError, requesterEmailed: rqBy ? !requesterError : false,
+    emailError: personError || requesterError || null,
+    // only if their email failed: shown once to the approver so nobody is locked out
+    tempPassword: personError ? acct.tempPassword : null,
+  };
+}
+
+// body: { action, request_id, reason }
+async function rejectRequest(caller, admin, me, b) {
+  const rq = await loadPendingRequest(caller, admin, b);
+  const reason = String(b.reason || "").trim().slice(0, 1000);
+  const { error } = await admin.from("member_requests")
+    .update({ status: "rejected", reason: reason || null, decided_by: me.id, decided_at: new Date().toISOString() })
+    .eq("id", rq.id).eq("status", "pending");
+  if (error) throw new Error(error.message);
+  const teamName = await teamNameOf(admin, rq.team_slug);
+  const personName = rq.name || rq.email.split("@")[0];
+  let requesterError = null;
+  const rqBy = await requesterOf(admin, rq);
+  if (rqBy) {
+    const rm = noticeEmail("Not approved: adding " + personName + " to " + teamName, displayName(rqBy),
+      ["Your request to add " + personName + " (" + rq.email + ") to the " + teamName + " team was not approved.",
+       reason ? ("Reason: " + reason) : "No reason was given. Please check with your team owner."], teamLink(rq.team_slug));
+    requesterError = await sendMail(rqBy.email, rm.subject, rm.text, rm.html);
+  }
+  return { ok: true, requesterEmailed: rqBy ? !requesterError : false, emailError: requesterError };
 }
 
 // ---------- edit_person -------------------------------------------------
