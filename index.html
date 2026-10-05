@@ -3998,10 +3998,12 @@ let view = "roadmap";           // "roadmap" | "okr" | "content"
    ----------------------------------------------------------------
    DEVELOPER HANDOFF — READ THIS BEFORE SHIPPING TO PRODUCTION
    ----------------------------------------------------------------
-   STATUS (Stage 3): sign-in, passwords, people and roles now live in
-   Supabase (Auth + Row Level Security + the manage-people Edge Function;
-   see supabase/ in the repo). Team DATA is still in JSONBin until Stage 4,
-   so the notes below about JSONBin still apply to the data.
+   STATUS (Stages 3 + 4): sign-in, passwords, people, roles AND team data
+   now live in Supabase (Auth + Row Level Security + the manage-people Edge
+   Function + the team_data table; see supabase/ in the repo). The main
+   JSONBin record is only READ, once, by the "Move data to Supabase" page.
+   Still on JSONBin: the bugs bin and the ideas bin (later stage).
+   The notes below are the original prototype handoff, kept as the spec.
 
    This is a WORKING prototype of the login + permission model, but it
    is NOT secure. All checks run in the browser and the data (incl. the
@@ -4953,40 +4955,82 @@ const BIN_HEADERS = { "Content-Type":"application/json", "X-Access-Key": JSONBIN
 let saving = false;
 let lastSnapshot = "";
 
+/* Team data lives in Supabase (table team_data): one row per team per section
+   (roadmap, okrs, content, dev, kim, ...). A save sends only the sections that
+   changed since we last loaded/saved them, so two people editing different parts
+   no longer overwrite each other, and there is no single giant record to outgrow.
+   The database's rules decide who may save which section (see supabase/stage4a). */
+let lastSections = {};   // section -> JSON text as last loaded from / saved to Supabase
+function payloadSections(t){
+  const out = {};
+  Object.keys(t || {}).forEach(k=>{ if(k !== "name") out[k] = (t[k] === undefined ? null : t[k]); });
+  return out;
+}
+function rememberSections(t){
+  lastSections = {};
+  const secs = payloadSections(t);
+  Object.keys(secs).forEach(k=>{ lastSections[k] = JSON.stringify(secs[k]); });
+}
+async function fetchTeamsList(){
+  const { data, error } = await SUPA.from("teams").select("slug,name");
+  if(error) throw new Error(error.message);
+  const out = {};
+  (data || []).forEach(t=>{ out[t.slug] = { name: t.name || t.slug }; });
+  TEAMS = out;
+  return out;
+}
+async function fetchTeamSections(slug){
+  const { data, error } = await SUPA.from("team_data").select("section,data").eq("team_slug", slug);
+  if(error) throw new Error(error.message);
+  const t = {};
+  (data || []).forEach(r=>{ t[r.section] = r.data; });
+  return { team: t, count: (data || []).length };
+}
+async function saveSection(slug, section, value){
+  const { error } = await SUPA.from("team_data")
+    .upsert({ team_slug: slug, section, data: (value === undefined ? null : value) }, { onConflict: "team_slug,section" });
+  if(error) throw new Error(error.message);
+}
+let lastLoadedTeam = null;   // what we loaded, for the "don't save an empty team over real data" check
+
 async function pushNow(){
-  if(!db) { renderAll(); try{ if(typeof showBanner==="function") showBanner("\u26a0\ufe0f NOT CONNECTED to storage \u2014 your changes are NOT being saved. The app can read but not write: check the JSONBin Access Key has BOTH Read and Update permission (and the Bin ID) in index.html."); }catch(_){ } return; }
+  if(!db) { renderAll(); try{ if(typeof showBanner==="function") showBanner("\u26a0\ufe0f NOT CONNECTED to storage \u2014 your changes are NOT being saved. Reload the page; if this stays, tell Claude."); }catch(_){ } return; }
   if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; }
   _pushDirty = false;
   saving = true;
   try{
-    // merge-safe: re-fetch, replace only OUR team's branch, write the whole record back.
-    // Dubuddy's save can never clobber DYNG's data (and vice versa).
-    let rec = lastRecord || { app:"cyberflow-teams", teams:{} };
-    try{ rec = migrateRecord(await fetchAll()); }catch(_){ /* keep lastRecord */ }
-    rec.teams = rec.teams || {};
     const mine = teamPayload();
-    // Safety net: if what we're about to write looks like an EMPTY team but the server
-    // copy has real content, something went wrong on this side — refuse rather than wipe.
+    // Safety net: if what we're about to write looks like an EMPTY team but what we
+    // loaded had real content, something went wrong on this side — refuse rather than wipe.
     try{
-      const srv = rec.teams[TEAM];
       const cnt = t => !t ? 0 : ((t.cspaces&&t.cspaces.list||[]).length + (t.content&&t.content.sections||[]).length
                      + (t.dev&&t.dev.cards||[]).length + (t.okrs&&t.okrs.cycles||[]).length + (t.rmaps&&t.rmaps.maps||[]).length);
-      if(cnt(mine)===0 && cnt(srv)>0){
+      if(cnt(mine)===0 && cnt(lastLoadedTeam)>0){
         showBanner("\u26a0\ufe0f Save blocked: this page has no team data loaded but the database does. Nothing was overwritten \u2014 refresh the page.");
         saving = false; return;
       }
     }catch(_){ }
-    rec.teams[TEAM] = mine;
-    await putRecord(rec);
+    const secs = payloadSections(mine);
+    const failed = [];
+    for(const k of Object.keys(secs)){
+      const j = JSON.stringify(secs[k]);
+      if(lastSections[k] === j) continue;            // unchanged: don't send
+      try{ await saveSection(TEAM, k, secs[k]); lastSections[k] = j; }
+      catch(e){ failed.push(k + " (" + e.message + ")"); }
+    }
     lastSnapshot = JSON.stringify(mine);
-    hideBanner();
-  }catch(e){ var _sz=0; try{ _sz=Math.round(JSON.stringify(lastRecord||{}).length/1024); }catch(_){ } try{ if(typeof showBanner==="function") showBanner("⚠️ Save FAILED ("+e.message+"). Your data record is ≈"+_sz+" KB. If this shows HTTP 413 or 400, the database is over its size limit — tell Claude this number. Nothing was saved; do not refresh yet."); }catch(_){ } try{ if(typeof console!=="undefined") console.error("[SAVE FAILED]", e && e.message, "record~"+_sz+"KB"); }catch(_){ } toast("⚠️ Save failed — see the red banner at top"); }
+    if(failed.length){
+      showBanner("\u26a0\ufe0f Some changes were NOT saved: " + failed.join(", ") + ". Your role may not allow this change. Don't refresh yet \u2014 tell an Owner or Claude.");
+    } else hideBanner();
+  }catch(e){
+    try{ showBanner("\u26a0\ufe0f Save FAILED ("+e.message+"). Nothing was saved; do not refresh yet."); }catch(_){ }
+    try{ console.error("[pushNow] save failed:", e); }catch(_){ }
+  }
   saving = false;
 }
 /* ---- request-saving layer -------------------------------------------------
-   Every write costs 2 API calls (re-fetch + put). Firing one per click burns a
-   free-tier quota fast, so edits are coalesced into a single save a few seconds
-   later, and skipped entirely when nothing actually changed.                */
+   Edits are coalesced into a single save a few seconds later, and skipped
+   entirely when nothing actually changed.                                    */
 let _pushTimer = null, _pushDirty = false;
 const PUSH_DELAY = 6000;
 function pushAll(){
@@ -5237,14 +5281,9 @@ let docSpaceOptsOpen = false;
 let docSpaceFilter = "";
 let docTplEditId = null;
 let pfSave = null;
-async function putRecord(rec){
-  rec.users = rec.users || (lastRecord && lastRecord.users) || [];   // leave the OLD JSONBin user list as it was (people live in Supabase now)
-  var _body; try{ _body=JSON.stringify(rec); }catch(e){ var _s=new WeakSet(); _body=JSON.stringify(rec,function(k,v){ if(v&&typeof v==="object"){ if(_s.has(v)) return undefined; _s.add(v);} return v; }); }
-  const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: _body, keepalive: true });
-  if(!r.ok) throw new Error("HTTP "+r.status);
-  lastRecord = rec;
-  TEAMS = teamsIndex(rec);
-}
+// The main JSONBin record is now a frozen, read-only BACKUP of the old data.
+// The app no longer writes to it; fetchAll() below is used only by the one-time
+// "Move team data to Supabase" page.
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
 const bugsConfigured = BUGS_BIN_ID && JSONBIN_CONFIG.apiKey;
@@ -5296,19 +5335,18 @@ async function fetchAll(){
 async function refresh(showMsg){
   if(!db || saving || $("overlay").classList.contains("show")) return;
   try{
-    const rec = migrateRecord(await fetchAll());
-    lastRecord = rec;
-    TEAMS = teamsIndex(rec);
-    const mine = rec.teams[TEAM];
-    if(mine){
-      const snap = JSON.stringify(mine);
-      if(snap !== lastSnapshot){
-        lastSnapshot = snap;
-        loadTeamData(mine);
-        renderAll();
-        if(showMsg) toast("Refreshed — you're seeing the latest");
-      } else if(showMsg) toast("Already up to date");
-    }
+    if(_pushDirty || _pushTimer){ if(showMsg) toast("Saving your changes first \u2014 try again in a few seconds"); return; }
+    const got = await fetchTeamSections(TEAM);
+    const changed = Object.keys(got.team).some(k=> lastSections[k] !== JSON.stringify(got.team[k]));
+    if(got.count && changed){
+      got.team.name = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
+      lastLoadedTeam = got.team;
+      loadTeamData(got.team);
+      rememberSections(teamPayload());
+      lastSnapshot = JSON.stringify(teamPayload());
+      renderAll();
+      if(showMsg) toast("Refreshed \u2014 you're seeing the latest");
+    } else if(showMsg) toast("Already up to date");
     await refreshBugs();
     syncLinkedBugs();
     renderAll();
@@ -5338,55 +5376,53 @@ async function start(){
   }
   BUGS = normalizeBugs({tickets:[]});
 
-  if(configured){
-    try{
-      const raw = await fetchAll();
-      db = true;
-      hideBanner();
-      const wasOld = !(raw && raw.teams);
-      let rec = migrateRecord(raw);
-      if(wasOld && raw && raw.roadmap){ await putRecord(rec); }   // one-time migration to the team shape
-      lastRecord = rec; TEAMS = teamsIndex(rec);
-      try{ await authBoot(); }catch(e){ SESSION = null; showBanner("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
-      if(!rec.teams[TEAM]){
-        if(TEAM === "dubuddy"){
-          rec.teams.dubuddy = teamPayload();   // first ever run: seed dubuddy
-          await putRecord(rec);
-        } else {
-          return startLanding("The team \u201C"+TEAM+"\u201D doesn't exist. Pick one below, or create it.");
-        }
-      }
-      loadTeamData(rec.teams[TEAM]);
-      lastSnapshot = JSON.stringify(rec.teams[TEAM]);
-      restoreSession();
-      // AUTH GATE: must be signed in AND a member of this team (super-admin bypasses)
-      if(!currentUser()){
-        return startLanding("Sign in to open \u201C"+((TEAMS[TEAM]&&TEAMS[TEAM].name)||TEAM)+"\u201D.");
-      }
-      if(!isMember(currentUser(), TEAM)){
-        return startLanding("You're not a member of \u201C"+((TEAMS[TEAM]&&TEAMS[TEAM].name)||TEAM)+"\u201D. Ask an owner for access.");
-      }
-      refreshLeaderFromRole();
-      defaultView();
-      if(currentUser() && currentUser().mustChangePw){ setTimeout(()=> openPassword(true), 400); }
-      await refreshBugs();
-      rerouteOrphanBugs();
-      syncLinkedBugs();
-      // pick up teammates' changes when you come back to the tab
-      let _lastRefresh = Date.now();
-      document.addEventListener("visibilitychange", ()=>{
-        if(document.hidden) return;
-        // only pull teammates' changes at most once every 2 minutes
-        if(Date.now() - _lastRefresh < 120000) return;
-        _lastRefresh = Date.now();
-        refresh(false);
-      });
-    }catch(e){
-      showBanner("Couldn't reach JSONBin ("+e.message+"). Check the Bin ID and Access Key in index.html. Changes won't be saved.");
-    }
-  } else {
-    showBanner("Live team editing is not connected yet — changes here stay only on your screen. See README.md for the 3-minute JSONBin setup.");
+  // 1. who is signed in? (nothing of a team is loaded before this)
+  try{ await authBoot(); }catch(e){ SESSION = null; showBanner("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
+  if(!currentUser()){
+    return startLanding("Sign in to open \u201C"+TEAM+"\u201D.");
   }
+  // 2. which teams can I see? (the database only returns teams I belong to)
+  try{ await fetchTeamsList(); }catch(e){ return startLanding("Couldn't load your teams ("+e.message+"). Try reloading the page."); }
+  // super-admin can always open a team page, even before its data is moved (to reach "Move data")
+  if(!TEAMS[TEAM] && currentUser().super) TEAMS[TEAM] = { name: TEAM.charAt(0).toUpperCase() + TEAM.slice(1) };
+  if(!TEAMS[TEAM] || !isMember(currentUser(), TEAM)){
+    return startLanding("You're not a member of \u201C"+((TEAMS[TEAM]&&TEAMS[TEAM].name)||TEAM)+"\u201D, or it doesn't exist. Ask an owner for access.");
+  }
+  // 3. this team's data
+  let got = null;
+  try{ got = await fetchTeamSections(TEAM); }
+  catch(e){ showBanner("Couldn't load this team's data ("+e.message+"). Changes won't be saved \u2014 reload the page."); }
+  if(got && got.count){
+    db = true;
+    hideBanner();
+    got.team.name = TEAMS[TEAM].name;
+    lastLoadedTeam = got.team;
+    loadTeamData(got.team);
+    rememberSections(teamPayload());       // baseline = what's on screen, so only real edits get saved
+    lastSnapshot = JSON.stringify(teamPayload());
+  } else if(got){
+    // signed in and a member, but this team's data hasn't been moved to Supabase yet
+    db = false;
+    loadTeamData(emptyTeam(TEAMS[TEAM].name));
+    showBanner(currentUser().super
+      ? "This team's data hasn't been moved to the new database yet. Open \u2699 Administration \u2192 \u201CMove data to Supabase\u201D."
+      : "This team's data is being moved to the new system. Please check back shortly.");
+  }
+  refreshLeaderFromRole();
+  defaultView();
+  if(currentUser() && currentUser().mustChangePw){ setTimeout(()=> openPassword(true), 400); }
+  if(bugsConfigured){
+    try{ await refreshBugs(); rerouteOrphanBugs(); syncLinkedBugs(); }catch(_){ }
+  }
+  // pick up teammates' changes when you come back to the tab
+  let _lastRefresh = Date.now();
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden) return;
+    // only pull teammates' changes at most once every 2 minutes
+    if(Date.now() - _lastRefresh < 120000) return;
+    _lastRefresh = Date.now();
+    refresh(false);
+  });
   renderAll();
   try{ docOpenFromUrl(); }catch(_){ }
 }
@@ -5396,23 +5432,10 @@ async function startLanding(err){
   const L = $("landing");
   L.style.display = "flex";
   document.title = "Cyberflow — Teams";
-  if(configured){
-    try{
-      const raw = await fetchAll();
-      db = true;
-      hideBanner();
-      const wasOld = !(raw && raw.teams);
-      const rec = migrateRecord(raw);
-      if(wasOld && raw && raw.roadmap){ try{ await putRecord(rec); }catch(_){} }
-      lastRecord = rec; TEAMS = teamsIndex(rec);
-      try{ await authBoot(); }catch(e){ SESSION = null; showBanner("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
-      restoreSession();
-    }catch(e){
-      err = err || ("Couldn't reach the database ("+e.message+"). Showing what's known locally.");
-      TEAMS = { dubuddy: {name:"Dubuddy"} };
-    }
-  } else {
-    TEAMS = { dubuddy: {name:"Dubuddy"} };
+  TEAMS = {};
+  try{ await authBoot(); }catch(e){ SESSION = null; err = err || ("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
+  if(currentUser()){
+    try{ await fetchTeamsList(); }catch(e){ err = err || ("Couldn't load your teams ("+e.message+")."); }
   }
   renderLanding(err);
 }
@@ -5480,16 +5503,10 @@ function createTeamFlow(){
   if(TEAMS[slug]){ alert("A team at /"+slug+" already exists \u2014 opening it."); navTeam(slug); return; }
   (async ()=>{
     try{
-      let rec = lastRecord || { app:"cyberflow-teams", teams:{} };
-      if(configured && db){
-        try{ rec = migrateRecord(await fetchAll()); }catch(_){ }
-        rec.teams = rec.teams || {};
-        if(rec.teams[slug]){ navTeam(slug); return; }
-        const made = await SUPA.rpc("create_team", { p_slug: slug, p_name: name.trim() });
-        if(made.error && !/duplicate|already exists/i.test(made.error.message)) throw new Error(made.error.message);
-        rec.teams[slug] = emptyTeam(name.trim());
-        await putRecord(rec);
-      }
+      const made = await SUPA.rpc("create_team", { p_slug: slug, p_name: name.trim() });
+      if(made.error) throw new Error(/duplicate|already exists/i.test(made.error.message) ? "A team at /"+slug+" already exists." : made.error.message);
+      const secs = payloadSections(emptyTeam(name.trim()));
+      for(const k of Object.keys(secs)) await saveSection(slug, k, secs[k]);
       navTeam(slug);   // the new team opens with the full empty structure, same as every team
     }catch(e){ alert("Couldn't create the team: "+e.message); }
   })();
@@ -18192,24 +18209,7 @@ $("backup-btn").onclick = ()=>{
 };
 
 async function compactStorage(){
-  if(!db){ toast("Not connected to storage — can't compact"); return; }
-  if(typeof confirm==="function" && !confirm("Shrink the saved data record?\n\nThis removes copies of the default Scorecard template that were never edited (they're rebuilt from the app automatically). All your real edits are kept. This can get you back under the 100KB storage limit.")) return;
-  try{
-    var rec = migrateRecord(await fetchAll());
-    var def = JSON.stringify(scStripIds(clean(normalizeScorecard(null))));
-    var before = JSON.stringify(rec).length, trimmed=0;
-    Object.keys(rec.teams||{}).forEach(function(slug){
-      var t=rec.teams[slug];
-      if(t && t.scorecard){ try{ if(JSON.stringify(scStripIds(t.scorecard))===def){ t.scorecard=null; trimmed++; } }catch(e){} }
-    });
-    var after = JSON.stringify(rec).length;
-    await putRecord(rec);
-    lastRecord = rec; if(rec.teams && rec.teams[TEAM]) lastSnapshot = JSON.stringify(rec.teams[TEAM]);
-    try{ $("banner").classList.add("hidden"); }catch(_){ }
-    toast("Compacted "+trimmed+" team(s): "+Math.round(before/1024)+"KB \u2192 "+Math.round(after/1024)+"KB. Saving should work now — try editing something.");
-  }catch(e){
-    if(typeof showBanner==="function") showBanner("Compact couldn't save ("+e.message+"). If it still says over 100KB, the remaining data is too big for the free tier — tell Claude and we'll split storage per-team.");
-  }
+  toast("Not needed any more \u2014 team data is now stored in small separate pieces, so there is no size limit to work around.");
 }
 if($("compact-btn")) $("compact-btn").onclick = compactStorage;
 $("import-btn").onclick = ()=>{
@@ -18260,8 +18260,10 @@ async function doLogin(){
   btn.disabled = false;
   if(!r.ok){ $("login-err").textContent = r.err; return; }
   $("login-err").textContent = "";
+  let teamsErr = null;
+  try{ await fetchTeamsList(); }catch(e){ teamsErr = "Couldn't load your teams ("+e.message+"). Try reloading the page."; }
   refreshLeaderFromRole();
-  renderLanding(null);
+  renderLanding(teamsErr);
   if(r.mustChangePw){ setTimeout(()=> openPassword(true), 200); }
 }
 if($("login-btn")){ $("login-btn").onclick = doLogin; }
@@ -18386,7 +18388,7 @@ function renderAdminPage(){
   const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
-  if(currentUser() && currentUser().super) _navItems.push(["migrate","\uD83D\uDE9A","Move people to Supabase"]);
+  if(currentUser() && currentUser().super) _navItems.push(["migrate","\uD83D\uDE9A","Move data to Supabase"]);
   _navItems.forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
     b.className = "admin-navitem" + (adminView===k ? " active" : "");
@@ -18402,7 +18404,7 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : adminView==="migrate" ? "Move people to Supabase" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : adminView==="migrate" ? "Move data to Supabase" : "Users");
   main.appendChild(crumb);
   if((adminView === "danger" || adminView === "org" || adminView === "migrate") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
@@ -18412,28 +18414,51 @@ function renderAdminPage(){
   else if(adminView === "migrate") renderAdminMigrate(main);
   else renderAdminUsers(main);
 }
-/* One-time move of the OLD people list (in JSONBin) into Supabase. Super-admin only.
-   Sends emails, names, usernames, team roles and profile details to the
-   manage-people server function — never the old password hashes. Each new person
-   gets a random temporary password, shown here once. Safe to run twice: people
-   already in Supabase are skipped and their passwords are not touched. */
+/* One-time move of the OLD data (in JSONBin) into Supabase. Super-admin only.
+   1) People: emails, names, usernames, team roles and profile details go to the
+      manage-people server function \u2014 never the old password hashes. Each new
+      person gets a random temporary password, shown once.
+   2) Team data: every section of every team is copied as-is, then read back and
+      compared, so you can see that nothing was lost.
+   Both are safe to run again. Running "team data" again copies the LATEST old
+   data over the Supabase copy \u2014 do that on switch-over day. JSONBin itself is
+   only read, never changed. */
+function canonJSON(v){   // same value \u2192 same text, whatever the key order
+  if(Array.isArray(v)) return "[" + v.map(canonJSON).join(",") + "]";
+  if(v && typeof v === "object") return "{" + Object.keys(v).filter(k=> v[k] !== undefined).sort().map(k=> JSON.stringify(k) + ":" + canonJSON(v[k])).join(",") + "}";
+  return JSON.stringify(v === undefined ? null : v);
+}
 function renderAdminMigrate(wrap){
-  const old = (lastRecord && Array.isArray(lastRecord.users)) ? lastRecord.users.filter(u=> u && u.email) : [];
-  const slugs = Object.keys(TEAMS);
-  const h2 = document.createElement("h2"); h2.textContent = "Move people to Supabase"; h2.style.margin = "0 0 6px";
+  if(!lastRecord){
+    const wait = document.createElement("div"); wait.className = "hint"; wait.textContent = "Reading the old data\u2026";
+    wrap.appendChild(wait);
+    fetchAll().then(raw=>{ lastRecord = migrateRecord(raw); if(adminView === "migrate") renderAdminPage(); })
+      .catch(e=>{ wait.textContent = "Couldn't read the old data: " + e.message; });
+    return;
+  }
+  const oldTeams = lastRecord.teams || {};
+  const slugs = Object.keys(oldTeams);
+  const old = (Array.isArray(lastRecord.users) ? lastRecord.users : []).filter(u=> u && u.email);
+
+  const h2 = document.createElement("h2"); h2.textContent = "Move data to Supabase"; h2.style.margin = "0 0 6px";
+  const p0 = document.createElement("div"); p0.className = "hint"; p0.style.lineHeight = "1.6";
+  p0.textContent = "Copies everything from the old storage (JSONBin) into the new, secure database. The old copy is only read, never changed, so it stays as a backup.";
+  wrap.append(h2, p0);
+
+  // ---- 1. people ----
+  const h3a = document.createElement("h3"); h3a.textContent = "1. People"; h3a.style.margin = "22px 0 6px";
   const p1 = document.createElement("div"); p1.className = "hint"; p1.style.lineHeight = "1.6";
-  p1.textContent = "This copies everyone from the old system into the new, secure sign-in. Old passwords can't be moved, "
-    + "so each person gets a new temporary password, shown below ONCE. Copy the list and send each person theirs privately. "
-    + "They'll be asked to choose their own password when they first sign in. Running this again is harmless.";
-  const stat = document.createElement("div"); stat.className = "hint"; stat.style.margin = "14px 0";
+  p1.textContent = "Old passwords can't be moved, so each new person gets a temporary password, shown ONCE. "
+    + "People already moved are skipped (their passwords are not touched).";
+  const stat = document.createElement("div"); stat.className = "hint"; stat.style.margin = "10px 0";
   stat.innerHTML = "Found in the old system: <b></b> people and <b></b> teams.";
   stat.querySelectorAll("b")[0].textContent = old.length;
   stat.querySelectorAll("b")[1].textContent = slugs.length;
   const go = document.createElement("button"); go.className = "btn save";
   go.textContent = "Move " + old.length + " people now";
   go.disabled = !old.length || !slugs.length;
-  const out = document.createElement("div"); out.style.marginTop = "18px";
-  wrap.append(h2, p1, stat, go, out);
+  const out = document.createElement("div"); out.style.marginTop = "14px";
+  wrap.append(h3a, p1, stat, go, out);
 
   go.onclick = async ()=>{
     if(!confirm("Move " + old.length + " people and " + slugs.length + " teams into Supabase now?")) return;
@@ -18442,19 +18467,18 @@ function renderAdminMigrate(wrap){
     try{
       const r = await peopleCall({
         action: "import_users",
-        teams: slugs.map(slug=> ({ slug, name: (TEAMS[slug] && TEAMS[slug].name) || slug })),
+        teams: slugs.map(slug=> ({ slug, name: (oldTeams[slug] && oldTeams[slug].name) || slug })),
         users: old.map(u=> ({ email:u.email, name:u.name, username:u.username || "", super:!!u.super, teams:u.teams || {}, profile:u.profile || {} })),
       });
       await loadPeople();
-      drawResults(r.results || []);
+      drawPeopleResults(r.results || []);
       go.textContent = "Done";
     }catch(e){
       out.textContent = "Couldn't move people: " + e.message;
       go.disabled = false; go.textContent = "Try again";
     }
   };
-
-  function drawResults(rows){
+  function drawPeopleResults(rows){
     const made = rows.filter(x=> x.tempPassword);
     const kept = rows.filter(x=> !x.error && !x.tempPassword);
     const bad  = rows.filter(x=> x.error);
@@ -18472,17 +18496,68 @@ function renderAdminMigrate(wrap){
       };
       out.append(warn, copy);
     }
-    const table = document.createElement("div"); table.style.marginTop = "12px";
     rows.forEach(x=>{
       const line = document.createElement("div");
       line.style.cssText = "padding:8px 0;border-bottom:1px solid var(--line, #e5e7eb);font-family:var(--mono, monospace);font-size:13px";
       line.textContent = x.email + "  \u2014  " + (x.error ? ("problem: " + x.error)
         : x.tempPassword ? ("NEW \u00b7 temporary password: " + x.tempPassword + " \u00b7 " + x.teams + " team(s)")
         : "already there, left unchanged");
-      table.appendChild(line);
+      out.appendChild(line);
     });
-    out.appendChild(table);
   }
+
+  // ---- 2. team data ----
+  const h3b = document.createElement("h3"); h3b.textContent = "2. Team data"; h3b.style.margin = "28px 0 6px";
+  const p2 = document.createElement("div"); p2.className = "hint"; p2.style.lineHeight = "1.6";
+  p2.textContent = "Copies each team's roadmap, OKRs, content, boards, docs, org chart, games and everything else, "
+    + "then reads it back and checks every piece matches. Running it again replaces the Supabase copy with the latest old data "
+    + "\u2014 do that once more on switch-over day, right before everyone moves.";
+  const go2 = document.createElement("button"); go2.className = "btn save";
+  go2.textContent = "Move data of " + slugs.length + " team(s) now";
+  go2.disabled = !slugs.length;
+  const out2 = document.createElement("div"); out2.style.marginTop = "14px";
+  wrap.append(h3b, p2, go2, out2);
+
+  go2.onclick = async ()=>{
+    if(!confirm("Copy the data of " + slugs.length + " team(s) into Supabase now?\n\nIf a team was already copied, its Supabase copy is replaced with the old data.")) return;
+    go2.disabled = true; go2.textContent = "Moving\u2026";
+    out2.textContent = "";
+    const say = (txt, bad)=>{ const d = document.createElement("div");
+      d.style.cssText = "padding:6px 0;font-family:var(--mono, monospace);font-size:13px" + (bad ? ";color:#B03A34;font-weight:600" : "");
+      d.textContent = txt; out2.appendChild(d); };
+    let problems = 0;
+    try{
+      const raw = migrateRecord(await fetchAll());       // the LATEST old data, not the copy from page load
+      await fetchTeamsList();
+      for(const slug of Object.keys(raw.teams || {})){
+        const t = raw.teams[slug] || {};
+        if(!TEAMS[slug]){
+          const made = await SUPA.rpc("create_team", { p_slug: slug, p_name: t.name || slug });
+          if(made.error){ say(slug + ": couldn't create the team \u2014 " + made.error.message, true); problems++; continue; }
+        }
+        const secs = payloadSections(t);
+        const keys = Object.keys(secs);
+        let kb = 0;
+        for(const k of keys){
+          kb += JSON.stringify(secs[k]).length / 1024;
+          try{ await saveSection(slug, k, secs[k]); }
+          catch(e){ say(slug + " / " + k + ": NOT copied \u2014 " + e.message, true); problems++; }
+        }
+        // read back and compare every section
+        const back = await fetchTeamSections(slug);
+        const wrong = keys.filter(k=> canonJSON(back.team[k]) !== canonJSON(secs[k]));
+        wrong.forEach(k=>{ say(slug + " / " + k + ": copy does NOT match the original", true); problems++; });
+        say(((raw.teams[slug] && raw.teams[slug].name) || slug) + ": " + keys.length + " sections copied (" + Math.round(kb) + " KB), "
+          + (keys.length - wrong.length) + " of " + keys.length + " checked and identical");
+      }
+      await fetchTeamsList();
+      say(problems ? ("\u26A0\uFE0F Finished with " + problems + " problem(s) \u2014 send Claude a screenshot.") : "\u2705 All done. Every section matches the original.", !!problems);
+      go2.textContent = "Done";
+    }catch(e){
+      say("Stopped: " + e.message, true);
+      go2.disabled = false; go2.textContent = "Try again";
+    }
+  };
 }
 function renderAdminDanger(wrap){
   const head = document.createElement("div"); head.className = "module-head";
@@ -18530,17 +18605,9 @@ function deleteTeamFlow(slug){
   if(typed.trim() !== String(name).trim()){ alert("That didn't match — nothing was deleted."); return; }
   (async ()=>{
     try{
-      if(configured && db){
-        const rec = migrateRecord(await fetchAll());
-        rec.teams = rec.teams || {};
-        delete rec.teams[slug];
-        await putRecord(rec);
-        const gone = await SUPA.rpc("delete_team", { p_slug: slug });
-        if(gone.error) console.warn("Supabase delete_team:", gone.error.message);
-        lastRecord = rec; TEAMS = teamsIndex(rec);
-      } else {
-        delete TEAMS[slug];
-      }
+      const gone = await SUPA.rpc("delete_team", { p_slug: slug });   // its data and memberships go with it
+      if(gone.error) throw new Error(gone.error.message);
+      await fetchTeamsList();
       (USERS||[]).forEach(u=>{ if(u.teams) delete u.teams[slug]; });
       alert('"'+name+'" was deleted.');
       if(slug === TEAM){
