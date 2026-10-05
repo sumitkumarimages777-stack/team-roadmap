@@ -6,6 +6,8 @@
 <title>Product Roadmap</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Supabase: logins, people and roles (Stage 3). Loaded from a public CDN. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -46,6 +48,12 @@ const IMGBB_KEY = "f4830b69da7997f9791cf15f51dcf9de";
    2. Copy that bin's ID from the URL and paste it below
    3. Put the same ID into report-bug.html (the student form) too */
 const BUGS_BIN_ID = "6a846405f5f4af5e292489c5";
+
+/* Supabase — logins, people and roles (Stage 3).
+   This is the PUBLIC ("publishable") key. It is safe in a web page: it can only
+   do what the database's security rules allow. The secret key is never in here. */
+const SUPABASE_URL = "https://bzhnzrmnbphkcasvrsnc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_V387AtHUi7hsUhCp8OsNCg_ee9b3koD";
 
 /* Hide top-nav modules from the team while they\u2019re still being built.
    Remove a key from this array to switch that module back on for everyone.
@@ -2600,7 +2608,7 @@ body{margin:0}
       <div class="field"><label for="iv-email">Email</label><input id="iv-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off"></div>
       <div class="field"><label for="iv-user">Username (optional \u2014 lets them sign in without an email)</label><input id="iv-user" class="login-input" type="text" placeholder="e.g. reviewer" autocomplete="off"></div>
       <div class="field"><label for="iv-name">Name (optional)</label><input id="iv-name" class="login-input" type="text" autocomplete="off"></div>
-      <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="defaults to 'welcome'" autocomplete="off"></div>
+      <div class="field"><label for="iv-pass">Starting password (optional)</label><input id="iv-pass" class="login-input" type="text" placeholder="leave empty for a random one (shown to you once)" autocomplete="off"></div>
       <div class="field"><label for="iv-role">Role</label><select id="iv-role" class="pa-select" style="width:100%"></select></div>
       <div id="iv-err" class="login-err"></div>
       <div class="hint">If they don't have an account yet, one is created with the starting password above (default 'welcome'), which they set on first login.</div>
@@ -3717,7 +3725,7 @@ body{margin:0}
         <input id="pa-email" class="login-input" type="email" placeholder="their@email.com" autocomplete="off">
         <input id="pa-user" class="login-input" type="text" placeholder="Username (optional \u2014 sign in without email)" autocomplete="off">
         <input id="pa-name" class="login-input" type="text" placeholder="Name (optional)" autocomplete="off">
-        <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional \u2014 defaults to 'welcome')" autocomplete="off">
+        <input id="pa-pass" class="login-input" type="text" placeholder="Starting password (optional \u2014 leave empty for a random one)" autocomplete="off">
         <div class="pa-row">
           <select id="pa-role" class="pa-select"></select>
           <button id="pa-add" class="btn save">Add / invite</button>
@@ -3990,6 +3998,11 @@ let view = "roadmap";           // "roadmap" | "okr" | "content"
    ----------------------------------------------------------------
    DEVELOPER HANDOFF — READ THIS BEFORE SHIPPING TO PRODUCTION
    ----------------------------------------------------------------
+   STATUS (Stage 3): sign-in, passwords, people and roles now live in
+   Supabase (Auth + Row Level Security + the manage-people Edge Function;
+   see supabase/ in the repo). Team DATA is still in JSONBin until Stage 4,
+   so the notes below about JSONBin still apply to the data.
+
    This is a WORKING prototype of the login + permission model, but it
    is NOT secure. All checks run in the browser and the data (incl. the
    "passwords") lives in the JSONBin record, which anyone can read/write
@@ -4023,24 +4036,20 @@ const ROLE_DESC = {
 };
 function roleRank(r){ const i = ROLES.indexOf(r); return i<0 ? ROLES.length : i; }
 
-// USERS live at the record root: rec.users = [{ id, email, name, pass, teams:{slug:role}, super }]
-// `super` = bootstrap owner (Sumit) who can see/manage every team.
+// USERS = the people this signed-in person is allowed to see, loaded from Supabase
+// (profiles + memberships), in the same shape the rest of the app always used:
+//   { id, email, name, username, teams:{slug:role}, super, mustChangePw, profile }
+// `super` = super-admin (Sumit) who can see/manage every team.
 let USERS = [];
 let SESSION = null;   // the logged-in user object (a reference into USERS)
+let AUTH_UID = null;  // the signed-in login's id, as proven by Supabase Auth
+const SUPA = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// NOT real hashing — flagged for the developer. Deterministic obfuscation only.
-function fakeHash(pw){
-  let h = 0; const salt = "cyberflow-proto";
-  const str = salt + "|" + pw;
-  for(let i=0;i<str.length;i++){ h = ((h<<5)-h + str.charCodeAt(i))|0; }
-  return "fh_" + (h>>>0).toString(36);
-}
 function normalizeUsers(arr){
   const out = (arr||[]).map(u=>({
     id: u.id || "u-"+Math.random().toString(36).slice(2,9),
     email: (u.email||"").toLowerCase().trim(),
     name: u.name || (u.email||"").split("@")[0] || "User",
-    pass: u.pass || "",
     teams: u.teams || {},
     super: !!u.super,
     username: (u.username||"").toLowerCase().trim(),
@@ -4049,7 +4058,6 @@ function normalizeUsers(arr){
   })).filter(u=>u.email);
   return out;
 }
-const TEMP_PW = "welcome";
 // profile fields we surface on the Profile page — every one optional
 const PROFILE_FIELDS = [
   {key:"displayName", label:"Display name", ph:"How your name shows to others"},
@@ -4064,16 +4072,6 @@ const PROFILE_FIELDS = [
 const AVATAR_COLORS = ["#E8622B","#0E7490","#1F7A4D","#9A6A1B","#C2410C","#B03A34","#C2417F","#7048B6","#374151"];
 function userDisplayName(u){ return (u.profile && u.profile.displayName) || u.name || u.email; }
 function userAvatarColor(u){ return (u.profile && u.profile.avatarColor) || AVATAR_COLORS[(u.email||"").length % AVATAR_COLORS.length]; }
-// bootstrap: if no users exist yet, create the super-admin owner (Sumit).
-const BOOTSTRAP_OWNER = { email:"sumit@cyberflow.in", name:"Sumit", pass:"cyberflow", super:true };
-function ensureBootstrapOwner(){
-  if(!USERS.length){
-    USERS = normalizeUsers([{ ...BOOTSTRAP_OWNER, pass: fakeHash(BOOTSTRAP_OWNER.pass), teams:{} }]);
-    return true;   // caller should persist
-  }
-  return false;
-}
-
 function currentUser(){ return SESSION; }
 function findUser(email){ return USERS.find(u=>u.email === (email||"").toLowerCase().trim()); }
 function findUserByLogin(v){ v=(v||"").toLowerCase().trim(); if(!v) return null; return USERS.find(u=> u.email===v || (u.username && u.username===v)) || null; }
@@ -4096,44 +4094,135 @@ function myTeams(user){
   return Object.keys(user.teams || {}).filter(t=>TEAMS[t]);
 }
 
-// session persistence (prototype: sessionStorage holds the email; dev swaps for a real token)
-function restoreSession(){
-  const em = sessionStorage.getItem("cf-user");
-  if(em){ const u = findUser(em); if(u){ SESSION = u; return true; } }
-  SESSION = null; return false;
+/* ---- Supabase-backed sign-in -------------------------------------------
+   Supabase Auth proves who is signed in (a signed token kept by the library),
+   and the database's security rules decide what they may see or change.
+   can()/roleOf() above still hide buttons, but they are no longer the only guard. */
+
+// load the people I'm allowed to see, in the shape the app already uses
+async function loadPeople(){
+  const [p, m] = await Promise.all([
+    SUPA.from("profiles").select("id,email,name,username,is_super,must_change_pw,profile"),
+    SUPA.from("memberships").select("team_slug,user_id,role"),
+  ]);
+  if(p.error) throw new Error(p.error.message);
+  if(m.error) throw new Error(m.error.message);
+  const teamsOf = {};
+  (m.data||[]).forEach(r=>{ (teamsOf[r.user_id] = teamsOf[r.user_id] || {})[r.team_slug] = r.role; });
+  USERS = normalizeUsers((p.data||[]).map(x=>({
+    id: x.id, email: x.email, name: x.name, username: x.username || "",
+    super: x.is_super, mustChangePw: x.must_change_pw, profile: x.profile || {},
+    teams: teamsOf[x.id] || {},
+  })));
+  SESSION = AUTH_UID ? (USERS.find(u=>u.id===AUTH_UID) || null) : null;
 }
-function login(email, pw){
-  const u = findUserByLogin(email);
-  if(!u) return { ok:false, err:"No account for that email or username." };
-  if(u.pass !== fakeHash(pw)) return { ok:false, err:"Wrong password." };
-  SESSION = u;
-  sessionStorage.setItem("cf-user", u.email);
-  return { ok:true, mustChangePw: !!u.mustChangePw || pw === TEMP_PW };
+// on page load: is someone already signed in on this browser?
+async function authBoot(){
+  SESSION = null;
+  const { data } = await SUPA.auth.getSession();
+  AUTH_UID = (data && data.session) ? data.session.user.id : null;
+  if(!AUTH_UID){ USERS = []; return false; }
+  await loadPeople();
+  return !!SESSION;
+}
+function restoreSession(){ return !!SESSION; }   // kept for older callers; authBoot() does the work now
+
+async function login(loginId, pw){
+  loginId = (loginId||"").trim();
+  if(!loginId || !pw) return { ok:false, err:"Enter your email (or username) and your password." };
+  let email = loginId.toLowerCase();
+  if(email.indexOf("@") < 0){          // a username: look up its email
+    const r = await SUPA.rpc("email_for_login", { p_login: email });
+    if(r.error || !r.data) return { ok:false, err:"Wrong email/username or password." };
+    email = r.data;
+  }
+  const { data, error } = await SUPA.auth.signInWithPassword({ email, password: pw });
+  if(error) return { ok:false, err: /invalid/i.test(error.message) ? "Wrong email/username or password." : error.message };
+  AUTH_UID = data.user.id;
+  try{ await loadPeople(); }catch(e){ return { ok:false, err:"Signed in, but couldn't load your account ("+e.message+")." }; }
+  if(!SESSION){ await SUPA.auth.signOut(); AUTH_UID = null; return { ok:false, err:"This login isn't set up in Cyberflow yet. Ask an owner to add you." }; }
+  return { ok:true, mustChangePw: !!SESSION.mustChangePw };
 }
 // a signed-in user changes their OWN password
-function changeMyPassword(oldPw, newPw){
+async function changeMyPassword(oldPw, newPw){
   const u = currentUser();
   if(!u) return { ok:false, err:"Not signed in." };
-  if(u.pass !== fakeHash(oldPw)) return { ok:false, err:"Current password is wrong." };
-  if(!newPw || newPw.length < 4) return { ok:false, err:"New password must be at least 4 characters." };
-  u.pass = fakeHash(newPw);
+  if(!newPw || newPw.length < 8) return { ok:false, err:"New password must be at least 8 characters." };
+  const chk = await SUPA.auth.signInWithPassword({ email: u.email, password: oldPw });
+  if(chk.error) return { ok:false, err:"Current password is wrong." };
+  const up = await SUPA.auth.updateUser({ password: newPw });
+  if(up.error) return { ok:false, err: up.error.message };
+  const fl = await SUPA.from("profiles").update({ must_change_pw:false }).eq("id", u.id);
+  if(fl.error) return { ok:false, err: fl.error.message };
   u.mustChangePw = false;
-  pushUsers();
   return { ok:true };
 }
-// an Owner/Admin resets a member's password to a temp one they must change
-function resetUserPassword(user){
-  user.pass = fakeHash(TEMP_PW);
-  user.mustChangePw = true;
-  pushUsers();
-  return TEMP_PW;
+// save MY OWN name + profile details (others' profiles can't be changed from the browser)
+async function saveMyProfile(){
+  const u = currentUser(); if(!u) return;
+  const { error } = await SUPA.from("profiles").update({ name: u.name, profile: u.profile || {} }).eq("id", u.id);
+  if(error){ showBanner("Couldn't save your profile ("+error.message+")."); return false; }
+  return true;
+}
+
+// ---- people management: goes through the server ("manage-people" function) or
+// the database's own role functions, which check the rules before doing anything.
+async function peopleCall(body){
+  const { data, error } = await SUPA.functions.invoke("manage-people", { body });
+  if(error){
+    let msg = error.message;
+    try{ const j = await error.context.json(); if(j && j.error) msg = j.error; }catch(_){ }
+    throw new Error(msg);
+  }
+  if(data && data.error) throw new Error(data.error);
+  return data;
+}
+async function rpcOrThrow(fn, args){
+  const { data, error } = await SUPA.rpc(fn, args);
+  if(error) throw new Error(error.message);
+  return data;
+}
+// show a new temporary password once, in a box the admin can copy from
+function showTempPassword(name, pw){
+  prompt("Temporary password for "+name+"\n\nCopy it now and send it to them privately (it won't be shown again). "
+    + "They'll be asked to choose their own password when they sign in.", pw);
+}
+// add someone to THIS team (creates their login if they don't have one yet)
+async function addPersonToTeam(f){
+  const r = await peopleCall({ action:"add_person", team:TEAM, email:f.email, name:f.name, username:f.username, role:f.role, password:f.password });
+  await loadPeople();
+  if(r.tempPassword) showTempPassword(f.name || f.email, r.tempPassword);
+  return r;
+}
+async function setMemberRole(user, role){
+  try{
+    await rpcOrThrow("set_member_role", { p_team:TEAM, p_user:user.id, p_role:role });
+    user.teams = user.teams || {}; user.teams[TEAM] = role;
+    toast(userDisplayName(user)+" is now "+ROLE_LABEL[role]);
+  }catch(e){ toast("Couldn't change the role: "+e.message); }
+}
+async function removeMemberFromTeam(user){
+  try{
+    await rpcOrThrow("remove_member", { p_team:TEAM, p_user:user.id });
+    if(user.teams) delete user.teams[TEAM];
+    toast(userDisplayName(user)+" removed from this team");
+  }catch(e){ toast("Couldn't remove them: "+e.message); }
+}
+// an Owner/Admin gives a teammate a new random temporary password
+async function resetUserPassword(user){
+  try{
+    const r = await peopleCall({ action:"reset_password", team:TEAM, user_id:user.id });
+    user.mustChangePw = true;
+    showTempPassword(userDisplayName(user), r.tempPassword);
+  }catch(e){ toast("Couldn't reset the password: "+e.message); }
 }
 function logout(){
-  SESSION = null;
-  sessionStorage.removeItem("cf-user");
-  sessionStorage.removeItem("rm-ok");
-  sessionStorage.removeItem("rm-leader");
-  navHome();
+  SUPA.auth.signOut().catch(()=>{}).then(()=>{
+    SESSION = null; AUTH_UID = null;
+    sessionStorage.removeItem("rm-ok");
+    sessionStorage.removeItem("rm-leader");
+    navHome();
+  });
 }
 
 // EDIT permission now derives from role: Editor and above can edit.
@@ -5149,21 +5238,12 @@ let docSpaceFilter = "";
 let docTplEditId = null;
 let pfSave = null;
 async function putRecord(rec){
-  rec.users = rec.users || USERS;   // never drop the user directory on a team write
+  rec.users = rec.users || (lastRecord && lastRecord.users) || [];   // leave the OLD JSONBin user list as it was (people live in Supabase now)
   var _body; try{ _body=JSON.stringify(rec); }catch(e){ var _s=new WeakSet(); _body=JSON.stringify(rec,function(k,v){ if(v&&typeof v==="object"){ if(_s.has(v)) return undefined; _s.add(v);} return v; }); }
   const r = await fetch(BIN_URL, { method:"PUT", headers: BIN_HEADERS, body: _body, keepalive: true });
   if(!r.ok) throw new Error("HTTP "+r.status);
   lastRecord = rec;
   TEAMS = teamsIndex(rec);
-}
-// persist the user directory merge-safely (refetch, replace only rec.users, write back)
-async function pushUsers(){
-  if(!(configured && db)){ return; }
-  try{
-    let rec = migrateRecord(await fetchAll());
-    rec.users = USERS;
-    await putRecord(rec);
-  }catch(e){ showBanner("Couldn't save the user changes ("+e.message+")."); }
 }
 
 const BUGS_URL = "https://api.jsonbin.io/v3/b/" + BUGS_BIN_ID;
@@ -5267,8 +5347,7 @@ async function start(){
       let rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ await putRecord(rec); }   // one-time migration to the team shape
       lastRecord = rec; TEAMS = teamsIndex(rec);
-      USERS = normalizeUsers(rec.users);
-      if(ensureBootstrapOwner()){ rec.users = USERS; try{ await putRecord(rec); }catch(_){} }
+      try{ await authBoot(); }catch(e){ SESSION = null; showBanner("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
       if(!rec.teams[TEAM]){
         if(TEAM === "dubuddy"){
           rec.teams.dubuddy = teamPayload();   // first ever run: seed dubuddy
@@ -5326,8 +5405,7 @@ async function startLanding(err){
       const rec = migrateRecord(raw);
       if(wasOld && raw && raw.roadmap){ try{ await putRecord(rec); }catch(_){} }
       lastRecord = rec; TEAMS = teamsIndex(rec);
-      USERS = normalizeUsers(rec.users);
-      if(ensureBootstrapOwner()){ rec.users = USERS; try{ await putRecord(rec); }catch(_){} }
+      try{ await authBoot(); }catch(e){ SESSION = null; showBanner("Couldn't reach the sign-in service ("+e.message+"). Try reloading the page."); }
       restoreSession();
     }catch(e){
       err = err || ("Couldn't reach the database ("+e.message+"). Showing what's known locally.");
@@ -5407,10 +5485,9 @@ function createTeamFlow(){
         try{ rec = migrateRecord(await fetchAll()); }catch(_){ }
         rec.teams = rec.teams || {};
         if(rec.teams[slug]){ navTeam(slug); return; }
+        const made = await SUPA.rpc("create_team", { p_slug: slug, p_name: name.trim() });
+        if(made.error && !/duplicate|already exists/i.test(made.error.message)) throw new Error(made.error.message);
         rec.teams[slug] = emptyTeam(name.trim());
-        const me = USERS.find(u=>u.id===currentUser().id);
-        if(me && !me.super){ me.teams = me.teams || {}; me.teams[slug] = "owner"; }
-        rec.users = USERS;
         await putRecord(rec);
       }
       navTeam(slug);   // the new team opens with the full empty structure, same as every team
@@ -18176,9 +18253,11 @@ $("import-file").addEventListener("change", async e=>{
   toast("Backup restored"+(db ? " and synced to the team" : " (local only — JSONBin not connected)"));
 });
 
-function doLogin(){
+async function doLogin(){
   const email = $("login-email").value, pw = $("login-pass").value;
-  const r = login(email, pw);
+  const btn = $("login-btn"); btn.disabled = true; $("login-err").textContent = "Signing in\u2026";
+  const r = await login(email, pw);
+  btn.disabled = false;
   if(!r.ok){ $("login-err").textContent = r.err; return; }
   $("login-err").textContent = "";
   refreshLeaderFromRole();
@@ -18247,7 +18326,7 @@ function openProfile(){
     PROFILE_FIELDS.forEach(f=>{ const v = ($("pf-"+f.key).value||"").trim(); if(v) u.profile[f.key] = v; else delete u.profile[f.key]; });
     u.profile.avatarColor = pfColor;
     if(pfPhoto) u.profile.photo = pfPhoto; else delete u.profile.photo;
-    pushUsers();
+    saveMyProfile();
     $("profile-overlay").classList.remove("show");
     toast("Profile saved");
     renderAll();
@@ -18266,10 +18345,12 @@ function openPassword(forced){
     : "Choose a new password for your account.";
   $("pw-old").value = ""; $("pw-new").value = ""; $("pw-new2").value = ""; $("pw-err").textContent = "";
   $("pw-cancel").style.display = forced ? "none" : "";
-  $("pw-save").onclick = ()=>{
+  $("pw-save").onclick = async ()=>{
     const oldPw = $("pw-old").value, n1 = $("pw-new").value, n2 = $("pw-new2").value;
     if(n1 !== n2){ $("pw-err").textContent = "The two new passwords don't match."; return; }
-    const r = changeMyPassword(oldPw, n1);
+    $("pw-save").disabled = true; $("pw-err").textContent = "Saving\u2026";
+    const r = await changeMyPassword(oldPw, n1);
+    $("pw-save").disabled = false; $("pw-err").textContent = "";
     if(!r.ok){ $("pw-err").textContent = r.err; return; }
     $("pw-overlay").classList.remove("show");
     toast("Password updated");
@@ -18305,6 +18386,7 @@ function renderAdminPage(){
   const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
+  if(currentUser() && currentUser().super) _navItems.push(["migrate","\uD83D\uDE9A","Move people to Supabase"]);
   _navItems.forEach(([k,ico,lbl])=>{
     const b = document.createElement("button");
     b.className = "admin-navitem" + (adminView===k ? " active" : "");
@@ -18320,14 +18402,87 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : adminView==="migrate" ? "Move people to Supabase" : "Users");
   main.appendChild(crumb);
-  if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
+  if((adminView === "danger" || adminView === "org" || adminView === "migrate") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
   else if(adminView === "org") renderAdminOrg(main);
   else if(adminView === "okrlevels") renderAdminOkrLevels(main);
   else if(adminView === "danger") renderAdminDanger(main);
+  else if(adminView === "migrate") renderAdminMigrate(main);
   else renderAdminUsers(main);
+}
+/* One-time move of the OLD people list (in JSONBin) into Supabase. Super-admin only.
+   Sends emails, names, usernames, team roles and profile details to the
+   manage-people server function — never the old password hashes. Each new person
+   gets a random temporary password, shown here once. Safe to run twice: people
+   already in Supabase are skipped and their passwords are not touched. */
+function renderAdminMigrate(wrap){
+  const old = (lastRecord && Array.isArray(lastRecord.users)) ? lastRecord.users.filter(u=> u && u.email) : [];
+  const slugs = Object.keys(TEAMS);
+  const h2 = document.createElement("h2"); h2.textContent = "Move people to Supabase"; h2.style.margin = "0 0 6px";
+  const p1 = document.createElement("div"); p1.className = "hint"; p1.style.lineHeight = "1.6";
+  p1.textContent = "This copies everyone from the old system into the new, secure sign-in. Old passwords can't be moved, "
+    + "so each person gets a new temporary password, shown below ONCE. Copy the list and send each person theirs privately. "
+    + "They'll be asked to choose their own password when they first sign in. Running this again is harmless.";
+  const stat = document.createElement("div"); stat.className = "hint"; stat.style.margin = "14px 0";
+  stat.innerHTML = "Found in the old system: <b></b> people and <b></b> teams.";
+  stat.querySelectorAll("b")[0].textContent = old.length;
+  stat.querySelectorAll("b")[1].textContent = slugs.length;
+  const go = document.createElement("button"); go.className = "btn save";
+  go.textContent = "Move " + old.length + " people now";
+  go.disabled = !old.length || !slugs.length;
+  const out = document.createElement("div"); out.style.marginTop = "18px";
+  wrap.append(h2, p1, stat, go, out);
+
+  go.onclick = async ()=>{
+    if(!confirm("Move " + old.length + " people and " + slugs.length + " teams into Supabase now?")) return;
+    go.disabled = true; go.textContent = "Moving\u2026 (this can take a minute)";
+    out.textContent = "";
+    try{
+      const r = await peopleCall({
+        action: "import_users",
+        teams: slugs.map(slug=> ({ slug, name: (TEAMS[slug] && TEAMS[slug].name) || slug })),
+        users: old.map(u=> ({ email:u.email, name:u.name, username:u.username || "", super:!!u.super, teams:u.teams || {}, profile:u.profile || {} })),
+      });
+      await loadPeople();
+      drawResults(r.results || []);
+      go.textContent = "Done";
+    }catch(e){
+      out.textContent = "Couldn't move people: " + e.message;
+      go.disabled = false; go.textContent = "Try again";
+    }
+  };
+
+  function drawResults(rows){
+    const made = rows.filter(x=> x.tempPassword);
+    const kept = rows.filter(x=> !x.error && !x.tempPassword);
+    const bad  = rows.filter(x=> x.error);
+    const sum = document.createElement("div"); sum.style.margin = "0 0 12px"; sum.style.fontWeight = "600";
+    sum.textContent = made.length + " new \u00b7 " + kept.length + " already there (unchanged) \u00b7 " + bad.length + " problem(s)";
+    out.appendChild(sum);
+    if(made.length){
+      const warn = document.createElement("div"); warn.className = "hint"; warn.style.margin = "0 0 8px";
+      warn.textContent = "\u26A0\uFE0F These passwords are shown only now. Copy them before leaving this page.";
+      const copy = document.createElement("button"); copy.className = "btn"; copy.textContent = "Copy the whole list";
+      const text = made.map(x=> x.email + "  \u2192  temporary password: " + x.tempPassword).join("\n");
+      copy.onclick = ()=>{
+        (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+          .then(()=> toast("Copied \u2014 paste it somewhere safe"), ()=> prompt("Copy this list:", text));
+      };
+      out.append(warn, copy);
+    }
+    const table = document.createElement("div"); table.style.marginTop = "12px";
+    rows.forEach(x=>{
+      const line = document.createElement("div");
+      line.style.cssText = "padding:8px 0;border-bottom:1px solid var(--line, #e5e7eb);font-family:var(--mono, monospace);font-size:13px";
+      line.textContent = x.email + "  \u2014  " + (x.error ? ("problem: " + x.error)
+        : x.tempPassword ? ("NEW \u00b7 temporary password: " + x.tempPassword + " \u00b7 " + x.teams + " team(s)")
+        : "already there, left unchanged");
+      table.appendChild(line);
+    });
+    out.appendChild(table);
+  }
 }
 function renderAdminDanger(wrap){
   const head = document.createElement("div"); head.className = "module-head";
@@ -18379,9 +18534,9 @@ function deleteTeamFlow(slug){
         const rec = migrateRecord(await fetchAll());
         rec.teams = rec.teams || {};
         delete rec.teams[slug];
-        (rec.users||[]).forEach(u=>{ if(u.teams) delete u.teams[slug]; });
-        rec.users = rec.users || USERS;
         await putRecord(rec);
+        const gone = await SUPA.rpc("delete_team", { p_slug: slug });
+        if(gone.error) console.warn("Supabase delete_team:", gone.error.message);
         lastRecord = rec; TEAMS = teamsIndex(rec);
       } else {
         delete TEAMS[slug];
@@ -18704,16 +18859,16 @@ function renderAdminUsers(wrap){
         const sel = document.createElement("select"); sel.className = "person-role";
         roleOptions(sel, roleOf(u,TEAM), iAmSuper ? "owner" : "admin");
         if(targetIsOwner && !iAmSuper) sel.disabled = true;
-        sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); drawTable(); };
+        sel.onchange = async ()=>{ sel.disabled = true; await setMemberRole(u, sel.value); drawTable(); };
         rc.appendChild(sel);
       }
       // actions cell
       const ac = document.createElement("div"); ac.className = "au-cell au-acts";
       if(!u.super && u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
         const rp = document.createElement("button"); rp.className="person-del"; rp.textContent="\u21BA"; rp.title="Reset password";
-        rp.onclick = ()=>{ if(confirm("Reset "+u.name+"'s password to '"+TEMP_PW+"'? They must set a new one.")){ resetUserPassword(u); toast(u.name+"'s password reset to '"+TEMP_PW+"'"); } };
+        rp.onclick = ()=>{ if(confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")){ resetUserPassword(u); } };
         const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
-        del.onclick = ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ delete u.teams[TEAM]; pushUsers(); renderAdminPage(); } };
+        del.onclick = async ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ await removeMemberFromTeam(u); renderAdminPage(); } };
         ac.append(rp, del);
       }
       r.append(uc, rc, ac);
@@ -18921,27 +19076,24 @@ function openInvite(){
   const ceiling = currentUser().super ? "owner" : "admin";
   roleOptions($("iv-role"), "editor", ceiling);
   $("iv-email").value=""; $("iv-name").value=""; $("iv-pass").value=""; $("iv-user") && ($("iv-user").value=""); $("iv-err").textContent="";
-  $("iv-add").onclick = ()=>{
+  $("iv-add").onclick = async ()=>{
     const em = ($("iv-email").value||"").toLowerCase().trim();
     const nm = ($("iv-name").value||"").trim();
     const role = $("iv-role").value;
     const un = $("iv-user") ? ($("iv-user").value||"").toLowerCase().trim() : "";
     if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ $("iv-err").textContent = "Enter a valid email."; return; }
     if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("iv-err").textContent = "Admins can't grant Owner."; return; }
-    if(un){ var _uc=USERS.find(x=> x.email!==em && (x.username===un || x.email===un)); if(_uc){ $("iv-err").textContent = "That username is already taken."; return; } }
-    let u = findUser(em);
-    if(!u){
-      const startPw = ($("iv-pass").value||"").trim() || TEMP_PW;
-      u = normalizeUsers([{ email:em, name: nm||em.split("@")[0], pass: fakeHash(startPw), teams:{}, mustChangePw: startPw===TEMP_PW }])[0];
-      USERS.push(u);
-    } else if(nm){ u.name = nm; }
-    u.teams = u.teams || {};
-    u.teams[TEAM] = role;
-    if(un) u.username = un;
-    pushUsers();
-    $("invite-overlay").classList.remove("show");
-    renderAdminPage();
-    toast(ROLE_LABEL[role] + " added");
+    const pw = ($("iv-pass").value||"").trim();
+    if(pw && pw.length < 8){ $("iv-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
+    $("iv-add").disabled = true; $("iv-err").textContent = "Adding\u2026";
+    try{
+      await addPersonToTeam({ email:em, name:nm, username:un, role, password:pw });
+      $("iv-err").textContent = "";
+      $("invite-overlay").classList.remove("show");
+      renderAdminPage();
+      toast(ROLE_LABEL[role] + " added");
+    }catch(e){ $("iv-err").textContent = e.message; }
+    finally{ $("iv-add").disabled = false; }
   };
   $("invite-overlay").classList.add("show");
   setTimeout(()=> $("iv-email").focus(), 50);
@@ -18955,27 +19107,23 @@ function openPeople(){
   renderPeopleList();
   roleOptions($("pa-role"), "editor", ceiling);
   $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
-  $("pa-add").onclick = ()=>{
+  $("pa-add").onclick = async ()=>{
     const email = ($("pa-email").value||"").toLowerCase().trim();
     const name = ($("pa-name").value||"").trim();
     const role = $("pa-role").value;
     const un = $("pa-user") ? ($("pa-user").value||"").toLowerCase().trim() : "";
     if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){ $("pa-err").textContent = "Enter a valid email."; return; }
     if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
-    if(un){ var _uc=USERS.find(x=> x.email!==email && (x.username===un || x.email===un)); if(_uc){ $("pa-err").textContent = "That username is already taken."; return; } }
-    let u = findUser(email);
-    if(!u){
-      const startPw = ($("pa-pass").value||"").trim() || TEMP_PW;
-      u = normalizeUsers([{ email, name: name||email.split("@")[0], pass: fakeHash(startPw), teams:{}, mustChangePw: startPw===TEMP_PW }])[0];
-      USERS.push(u);
-    } else if(name){ u.name = name; }
-    u.teams = u.teams || {};
-    u.teams[TEAM] = role;
-    if(un) u.username = un;
-    pushUsers();
-    renderPeopleList();
-    $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
-    toast(ROLE_LABEL[role] + " added");
+    const pw = $("pa-pass") ? ($("pa-pass").value||"").trim() : "";
+    if(pw && pw.length < 8){ $("pa-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
+    $("pa-add").disabled = true; $("pa-err").textContent = "Adding\u2026";
+    try{
+      await addPersonToTeam({ email, name, username:un, role, password:pw });
+      renderPeopleList();
+      $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
+      toast(ROLE_LABEL[role] + " added");
+    }catch(e){ $("pa-err").textContent = e.message; }
+    finally{ $("pa-add").disabled = false; }
   };
   $("people-overlay").classList.add("show");
 }
@@ -19007,16 +19155,15 @@ function renderPeopleList(target){
       // an admin can't change an owner's role
       const targetIsOwner = roleOf(u, TEAM)==="owner";
       if(targetIsOwner && !iAmSuper) sel.disabled = true;
-      sel.onchange = ()=>{ u.teams[TEAM] = sel.value; pushUsers(); renderPeopleList(wrap); };
+      sel.onchange = async ()=>{ sel.disabled = true; await setMemberRole(u, sel.value); renderPeopleList(wrap); };
       row.appendChild(sel);
       // reset password (Owner/Admin, not on owners you can't manage)
       if(u.id!==currentUser().id && !(targetIsOwner && !iAmSuper)){
         const rp = document.createElement("button"); rp.className = "person-del"; rp.textContent = "\u21BA";
         rp.title = "Reset this person's password to a temporary one";
         rp.onclick = ()=>{
-          if(!confirm("Reset "+u.name+"'s password? They'll get the temporary password '"+TEMP_PW+"' and must set a new one.")) return;
-          const tp = resetUserPassword(u);
-          toast(u.name+"'s password reset to '"+tp+"'");
+          if(!confirm("Give "+u.name+" a new temporary password? Their current password stops working, and they must set a new one when they sign in.")) return;
+          resetUserPassword(u);
         };
         row.appendChild(rp);
       }
@@ -19027,7 +19174,7 @@ function renderPeopleList(target){
         del.title = "Remove from this team";
         del.onclick = ()=>{
           if(!confirm("Remove "+u.name+" from this team? Their account stays; they just lose access here.")) return;
-          delete u.teams[TEAM]; pushUsers(); renderPeopleList(wrap);
+          removeMemberFromTeam(u).then(()=> renderPeopleList(wrap));
         };
         row.appendChild(del);
       }
