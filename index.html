@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Product Roadmap</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<link rel="apple-touch-icon" href="logo-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Supabase: logins, people and roles (Stage 3). Loaded from a public CDN. -->
@@ -64,8 +64,10 @@ const HIDE_NAV = ["docs","scorecard","service","product"];
 
 /* Per-team logo. Key = the team slug in the URL (?team=...).
    A team with no entry here just shows its coloured letter badge.      */
+/* Words shown next to a team's logo in the sidebar, as sharp text: [dark part, orange part] */
+const TEAM_WORDMARK = { "dubuddy": ["DU", "Buddy"] };
 const TEAM_LOGOS = {
-  "dubuddy": "data:image/png;base64,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"
+  "dubuddy": "logo-mark.png"
 };
 
 /* My Team tabs to hide. Remove a key to bring that tab back.
@@ -1085,7 +1087,9 @@ body{margin:0}
 .rail{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:static;top:auto;align-self:stretch}
 .rail-brand{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-height:57px;box-sizing:border-box}
 .brand-dot{width:28px;height:28px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;flex:none}
-.brand-logo{height:30px;width:auto;max-width:180px;object-fit:contain;display:block}
+.brand-logo{height:34px;width:auto;max-width:180px;object-fit:contain;display:block}
+.brand-word{font-family:Inter,system-ui,sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em;color:#000;white-space:nowrap}
+.brand-word b{color:#FF6B35;font-weight:700;margin-left:4px}
 
 /* ===== Keep in mind ===== */
 .kim-app{max-width:1120px;margin:0 auto;padding:26px 24px 60px}
@@ -2543,14 +2547,14 @@ body{margin:0}
 @media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{max-width:none;width:100%} .dl-row2{grid-template-columns:1fr} }
 /* loading screen: covers the half-built page until sign-in and data are ready */
 #boot-splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#FAF5F0;transition:opacity .25s ease}
-#boot-splash img{width:56px;height:56px;animation:boot-pulse 1.2s ease-in-out infinite}
+#boot-splash img{width:72px;height:72px;animation:boot-pulse 1.2s ease-in-out infinite}
 #boot-splash div{font-family:Inter,system-ui,sans-serif;font-size:14px;color:#5C6A82;letter-spacing:.02em}
 #boot-splash.gone{opacity:0;pointer-events:none}
 @keyframes boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.92);opacity:.75}}
 </style>
 </head>
 <body>
-<div id="boot-splash"><img src="favicon.png" alt=""><div>Loading your workspace…</div></div>
+<div id="boot-splash"><img src="logo-mark.png" alt=""><div>Loading your workspace…</div></div>
 <div id="landing" class="landing" style="display:none">
   <div class="landing-inner">
     <div class="landing-eyebrow">CYBERFLOW · TEAM WORKSPACES</div>
@@ -3533,6 +3537,7 @@ body{margin:0}
     <div class="rail-brand">
       <div class="brand-dot" id="rail-dot">T</div>
       <img id="rail-logo" class="brand-logo" alt="" style="display:none">
+      <div id="rail-word" class="brand-word" style="display:none"></div>
       <div class="brand-txt">
         <div class="brand-eyebrow">Internal · Team Workspace</div>
         <div class="brand-name" id="rail-teamname">Team</div>
@@ -4045,7 +4050,52 @@ const ROLE_DESC = {
   commenter:"Read and comment only",
   viewer:"Read only",
 };
-function roleRank(r){ const i = ROLES.indexOf(r); return i<0 ? ROLES.length : i; }
+// Each team defines its own roles (Administration -> Roles & permissions), loaded
+// from Supabase into ROLE_DEFS. ROLES above stays as the 5 old level names, which
+// are still used for per-space overrides ("This space: Editor").
+let ROLE_DEFS = {};   // team slug -> role key -> { name, position, perms:[...] }
+const PERMS = [
+  {key:"view",             label:"View",                  hint:"See the team's spaces, boards and roadmap (always on)"},
+  {key:"comment",          label:"Comment",               hint:"Add comments"},
+  {key:"edit",             label:"Create & edit work",    hint:"Add and change cards, roadmap items, docs"},
+  {key:"delete",           label:"Delete work",           hint:"Delete cards and items"},
+  {key:"spaces",           label:"Manage spaces",         hint:"Add and remove spaces"},
+  {key:"okr_structure",    label:"OKR structure",         hint:"Restructure OKRs (each objective's own access still applies)"},
+  {key:"module_vision",    label:"Module vision",         hint:"Edit “What we're building” on modules"},
+  {key:"request_members",  label:"Request teammates",     hint:"Send new people for approval"},
+  {key:"approve_requests", label:"Approve requests",      hint:"Approve or reject requested people"},
+  {key:"manage_people",    label:"Manage people",         hint:"Add people directly, change roles, edit, email, remove"},
+];
+// what the 5 old role names meant, for anyone not yet on a custom role
+const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
+function teamRoles(team){
+  const d = ROLE_DEFS[team || TEAM] || {};
+  return Object.keys(d).map(k=> Object.assign({ key:k }, d[k])).sort((a,b)=> (a.position-b.position) || a.name.localeCompare(b.name));
+}
+function rolePerms(key, team){
+  if(key === "owner") return PERMS.map(p=>p.key);
+  const d = (ROLE_DEFS[team || TEAM] || {})[key];
+  return d ? (d.perms || []) : (LEGACY_PERMS[key] || []);
+}
+function hasPermFor(user, perm, team){
+  if(!user) return false;
+  if(user.super) return true;
+  const r = roleOf(user, team || TEAM);
+  return !!r && rolePerms(r, team).indexOf(perm) >= 0;
+}
+function hasPerm(perm){ return hasPermFor(currentUser(), perm, TEAM); }
+function roleLabel(key, team){
+  if(!key) return "";
+  const d = (ROLE_DEFS[team || TEAM] || {})[key];
+  return d ? d.name : (ROLE_LABEL[key] || key);
+}
+// rank used by older comparisons: a custom role ranks by what it can do
+function roleRank(r){
+  const i = ROLES.indexOf(r); if(i >= 0) return i;
+  const p = rolePerms(r);
+  if(!p.length) return ROLES.length;
+  return p.indexOf("manage_people") >= 0 ? 1 : p.indexOf("edit") >= 0 ? 2 : p.indexOf("comment") >= 0 ? 3 : 4;
+}
 
 // USERS = the people this signed-in person is allowed to see, loaded from Supabase
 // (profiles + memberships), in the same shape the rest of the app always used:
@@ -4112,12 +4162,15 @@ function myTeams(user){
 
 // load the people I'm allowed to see, in the shape the app already uses
 async function loadPeople(){
-  const [p, m] = await Promise.all([
+  const [p, m, rl] = await Promise.all([
     SUPA.from("profiles").select("id,email,name,username,is_super,must_change_pw,profile"),
     SUPA.from("memberships").select("team_slug,user_id,role"),
+    SUPA.from("team_roles").select("team_slug,key,name,position,perms"),
   ]);
   if(p.error) throw new Error(p.error.message);
   if(m.error) throw new Error(m.error.message);
+  ROLE_DEFS = {};
+  if(!rl.error) (rl.data||[]).forEach(r=>{ (ROLE_DEFS[r.team_slug] = ROLE_DEFS[r.team_slug] || {})[r.key] = { name:r.name, position:r.position, perms:r.perms||[] }; });
   const teamsOf = {};
   (m.data||[]).forEach(r=>{ (teamsOf[r.user_id] = teamsOf[r.user_id] || {})[r.team_slug] = r.role; });
   USERS = normalizeUsers((p.data||[]).map(x=>({
@@ -4209,7 +4262,7 @@ async function setMemberRole(user, role){
   try{
     await rpcOrThrow("set_member_role", { p_team:TEAM, p_user:user.id, p_role:role });
     user.teams = user.teams || {}; user.teams[TEAM] = role;
-    toast(userDisplayName(user)+" is now "+ROLE_LABEL[role]);
+    toast(userDisplayName(user)+" is now "+roleLabel(role));
   }catch(e){ toast("Couldn't change the role: "+e.message); }
 }
 async function removeMemberFromTeam(user){
@@ -4496,10 +4549,20 @@ function canInSpace(min, ref){
 // the space currently in view
 function canEditHere(){ return canInSpace("editor", currentSpaceRef()); }
 function canManageSpacePeople(){ return canInSpace("admin", currentSpaceRef()); }
-function refreshLeaderFromRole(){ leaderMode = can("admin"); }
+function refreshLeaderFromRole(){ leaderMode = hasPerm("okr_structure"); }
+function requireSuper(){
+  if(currentUser() && currentUser().super) return true;
+  toast("Only the super-admin can change the company vision");
+  return false;
+}
+function requirePerm(perm, msg){
+  if(hasPerm(perm)) return true;
+  toast(msg || "Your role doesn't allow this");
+  return false;
+}
 function requireLeader(){
-  // leadership content (Vision, Mission, OKRs) is Owner/Admin only now — no passcode.
-  if(can("admin")){ leaderMode = true; return true; }
+  // OKR structure edits: roles with the "OKR structure" permission.
+  if(hasPerm("okr_structure")){ leaderMode = true; return true; }
   toast("Vision & OKRs are limited to Owners and Admins");
   return false;
 }
@@ -6167,6 +6230,12 @@ function postComment(){
 }
 
 function actBtn(icon, label, danger, fn){
+  // roles without "Delete work" (or "Manage spaces" for spaces) don't get delete buttons.
+  // Objectives and key results keep their own per-objective access instead.
+  if(icon === "trash" && currentUser() && !/objective|key result/i.test(label)
+     && (!hasPerm("delete") || (/space/i.test(label) && !hasPerm("spaces")))){
+    const none = document.createElement("span"); none.style.display = "none"; return none;
+  }
   const b = document.createElement("button");
   b.className = "act" + (danger?" danger":"");
   b.title = label; b.setAttribute("aria-label", label);
@@ -6438,9 +6507,15 @@ function renderHeader(){
       if(_logo){
         _img.src=_logo; _img.alt=_tn; _img.style.display="";
         if(_d) _d.style.display="none";
-        if(_txt) _txt.style.display="none";          // the wordmark already says the name
+        if(_txt) _txt.style.display="none";          // the logo (and wordmark) already say the name
+        var _w=$("rail-word"), _wm=(typeof TEAM_WORDMARK!=="undefined") ? TEAM_WORDMARK[TEAM] : null;
+        if(_w){
+          if(_wm){ _w.textContent=_wm[0]; var _b=document.createElement("b"); _b.textContent=_wm[1]; _w.appendChild(_b); _w.style.display=""; }
+          else _w.style.display="none";
+        }
       } else {
         _img.style.display="none";
+        if($("rail-word")) $("rail-word").style.display="none";
         if(_d) _d.style.display="";
         if(_txt) _txt.style.display="";
       }
@@ -6922,7 +6997,7 @@ function nodeEl(node, parentArr, idx, numPath, modKey){
 const visionExpanded = new Set();   // module keys whose vision is expanded (session only)
 let companyVisionExpanded = false;
 function editCompanyVision(){
-  if(!requireLeader()) return;
+  if(!requireSuper()) return;
   openDialog("What Cyberflow is building", {note:DATA.companyVision}, v=>{
     if(v.note) DATA.companyVision = v.note; else delete DATA.companyVision;
     saveRoadmap();
@@ -6951,7 +7026,7 @@ function renderCompanyVision(){
     const acts = document.createElement("div"); acts.className = "acts";
     acts.appendChild(actBtn("pencil","Edit company vision",false, editCompanyVision));
     acts.appendChild(actBtn("trash","Remove company vision",true, ()=>{
-      if(!requireLeader()) return;
+      if(!requireSuper()) return;
       if(confirm("Remove the company vision statement?")){
         delete DATA.companyVision; saveRoadmap();
       }
@@ -6979,7 +7054,7 @@ function renderCompanyVision(){
   wrap.appendChild(box);
 }
 function editVision(m){
-  if(!requireLeader()) return;
+  if(!requirePerm("module_vision", "Your role can't edit module visions")) return;
   openDialog("What we're building — "+m.name, {note:m.vision}, v=>{
     if(v.note) m.vision = v.note; else delete m.vision;
     saveRoadmap();
@@ -7003,7 +7078,7 @@ function visionBanner(m){
     const acts = document.createElement("div"); acts.className = "acts";
     acts.appendChild(actBtn("pencil","Edit vision",false, ()=> editVision(m)));
     acts.appendChild(actBtn("trash","Remove vision",true, ()=>{
-      if(!requireLeader()) return;
+      if(!requirePerm("module_vision", "Your role can't edit module visions")) return;
       if(confirm("Remove the vision statement from “"+m.name+"”?")){
         delete m.vision; saveRoadmap();
       }
@@ -13224,7 +13299,7 @@ function renderAll(){
         _moreCs.onclick = ()=> openAllList("spaces");
         ws.appendChild(_moreCs);
       }
-      if(editMode){
+      if(editMode && hasPerm("spaces")){
         const addSp = document.createElement("button");
         addSp.className = "ws-item ws-add";
         addSp.textContent = "\uFF0B Add space";
@@ -18453,13 +18528,14 @@ function openPassword(forced){
 }
 
 function roleOptions(sel, current, maxRole){
-  // owners can assign any role; admins can assign up to admin (not owner)
+  // the team's own roles; only the super-admin may hand out "Owner"
   sel.innerHTML = "";
-  ROLES.forEach(r=>{
-    if(maxRole && roleRank(r) < roleRank(maxRole)) return;   // can't grant above your own ceiling
+  const list = teamRoles().filter(r=> r.key !== "owner" || maxRole === "owner");
+  if(current && !list.some(r=> r.key === current)) current = list.length ? list[list.length-1].key : "";   // default: the most basic role
+  list.forEach(r=>{
     const o = document.createElement("option");
-    o.value = r; o.textContent = ROLE_LABEL[r] + " \u2014 " + ROLE_DESC[r];
-    if(r===current) o.selected = true;
+    o.value = r.key; o.textContent = r.name;
+    if(r.key === current) o.selected = true;
     sel.appendChild(o);
   });
 }
@@ -18476,7 +18552,7 @@ function renderAdminPage(){
   $("admin-side-team").textContent = (TEAMS[TEAM] && TEAMS[TEAM].name) || TEAM;
   const nav = $("admin-nav");
   nav.innerHTML = "";
-  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
+  const _navItems = [["users","\uD83D\uDC65","Users"],["permissions","\uD83D\uDD10","Roles & permissions"],["okrlevels","\uD83E\uDE9C","OKR levels"]];
   if(currentUser() && currentUser().super) _navItems.push(["org","\uD83C\uDFE2","Org structure"]);
   if(currentUser() && currentUser().super) _navItems.push(["danger","\u26A0\uFE0F","Danger zone"]);
   _navItems.forEach(([k,ico,lbl])=>{
@@ -18494,7 +18570,7 @@ function renderAdminPage(){
   main.innerHTML = "";
   const crumb = document.createElement("div");
   crumb.className = "admin-crumb";
-  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
+  crumb.textContent = "\u2699\uFE0F Administration \u203A " + (adminView==="permissions" ? "Roles & permissions" : adminView==="okrlevels" ? "OKR levels" : adminView==="org" ? "Org structure" : adminView==="danger" ? "Danger zone" : "Users");
   main.appendChild(crumb);
   if((adminView === "danger" || adminView === "org") && !(currentUser() && currentUser().super)) adminView = "users";
   if(adminView === "permissions") renderAdminPermissions(main);
@@ -18746,45 +18822,98 @@ function renderAdminSidebar(){
   wrap.appendChild(back);
 }
 function renderAdminPermissions(wrap){
+  const canEditRoles = roleOf(currentUser(), TEAM) === "owner";   // team Owners and the super-admin
   const head = document.createElement("div"); head.className = "module-head";
-  const h2 = document.createElement("h2"); h2.textContent = "Permissions";
+  const h2 = document.createElement("h2"); h2.textContent = "Roles & permissions";
   head.appendChild(h2);
+  if(canEditRoles){
+    const add = document.createElement("button"); add.className = "btn save"; add.textContent = "＋ New role";
+    add.onclick = async ()=>{
+      const name = (prompt("Name of the new role (e.g. Manager, Team mate, Intern):") || "").trim();
+      if(!name) return;
+      let key = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40) || "role";
+      const taken = new Set(teamRoles().map(r=> r.key)); let k = key, n = 2;
+      while(taken.has(k)) k = key + "-" + (n++);
+      const pos = Math.max(10, ...teamRoles().map(r=> r.position)) + 10;
+      await saveRole({ key:k, name, position:pos, perms:["view","comment","edit"] });
+    };
+    head.appendChild(add);
+  }
   wrap.appendChild(head);
-  const intro = document.createElement("div");
-  intro.className = "hint"; intro.style.margin = "0 0 18px";
-  intro.textContent = "What each role can do in a team. Roles are assigned per team on the Users page \u2014 the same person can hold different roles in different teams.";
+  const intro = document.createElement("div"); intro.className = "hint"; intro.style.margin = "0 0 16px"; intro.style.lineHeight = "1.6";
+  intro.textContent = (canEditRoles
+    ? "Tick what each role can do in this team. Changes save straight away and apply the next time people load the app. "
+    : "What each role can do in this team. Only an Owner can change these. ")
+    + "Owner is built in and can always do everything. The company Vision, creating or deleting teams, and deleting a person permanently stay with the super-admin.";
   wrap.appendChild(intro);
 
-  // role cards, msg91-style
-  const grid = document.createElement("div");
-  grid.className = "perm-grid";
-  ROLES.forEach(role=>{
-    const card = document.createElement("div");
-    card.className = "perm-card";
-    const ch = document.createElement("div"); ch.className = "perm-card-head";
-    const nm = document.createElement("div"); nm.className = "perm-role"; nm.textContent = ROLE_LABEL[role];
-    const ds = document.createElement("div"); ds.className = "perm-desc"; ds.textContent = ROLE_DESC[role];
-    ch.append(nm, ds);
-    card.appendChild(ch);
-    const caps = document.createElement("div"); caps.className = "perm-caps";
-    PERM_CAPS.forEach(cap=>{
-      const has = cap.roles.includes(role);
-      const chip = document.createElement("div");
-      chip.className = "perm-chip" + (has ? " on" : " off");
-      chip.innerHTML = '<span class="perm-tick"></span><span></span>';
-      chip.querySelector(".perm-tick").textContent = has ? "\u2713" : "\u2014";
-      chip.querySelector("span:last-child").textContent = cap.label;
-      caps.appendChild(chip);
-    });
-    card.appendChild(caps);
-    grid.appendChild(card);
-  });
-  wrap.appendChild(grid);
+  const box = document.createElement("div"); box.style.cssText = "overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card,#fff)";
+  const t = document.createElement("table"); t.style.cssText = "border-collapse:collapse;width:100%;font-size:13px";
+  const hr = document.createElement("tr");
+  const th0 = document.createElement("th"); th0.textContent = "Role"; th0.style.cssText = "text-align:left;padding:10px 14px;position:sticky;left:0;background:var(--paper)";
+  hr.appendChild(th0);
+  PERMS.forEach(p=>{ const th = document.createElement("th"); th.textContent = p.label; th.title = p.hint;
+    th.style.cssText = "padding:10px 8px;font-weight:600;font-size:11.5px;text-align:center;background:var(--paper);min-width:78px"; hr.appendChild(th); });
+  const thp = document.createElement("th"); thp.textContent = "People"; thp.style.cssText = "padding:10px 8px;font-size:11.5px;background:var(--paper)"; hr.appendChild(thp);
+  if(canEditRoles){ const tha = document.createElement("th"); tha.style.background = "var(--paper)"; hr.appendChild(tha); }
+  t.appendChild(hr);
 
-  const note = document.createElement("div");
-  note.className = "hint"; note.style.marginTop = "18px";
-  note.textContent = "This is a reference view of the built-in roles. (For a future release, these can become editable, per-space rules \u2014 see the developer handoff note.)";
+  const members = USERS.filter(u=> u.teams && u.teams[TEAM]);
+  teamRoles().forEach(role=>{
+    const isOwner = role.key === "owner";
+    const tr = document.createElement("tr"); tr.style.borderTop = "1px solid var(--line)";
+    const td0 = document.createElement("td"); td0.style.cssText = "padding:10px 14px;font-weight:600;position:sticky;left:0;background:var(--card,#fff);white-space:nowrap";
+    td0.textContent = role.name + (isOwner ? "  🔒" : "");
+    if(isOwner) td0.title = "Built in: always has every permission";
+    tr.appendChild(td0);
+    PERMS.forEach(p=>{
+      const td = document.createElement("td"); td.style.cssText = "text-align:center;padding:8px";
+      const cb = document.createElement("input"); cb.type = "checkbox";
+      cb.checked = isOwner || (role.perms||[]).indexOf(p.key) >= 0;
+      cb.disabled = !canEditRoles || isOwner || p.key === "view";
+      cb.title = p.hint;
+      cb.onchange = async ()=>{
+        const perms = new Set(role.perms || []); if(cb.checked) perms.add(p.key); else perms.delete(p.key);
+        cb.disabled = true;
+        await saveRole({ key:role.key, name:role.name, position:role.position, perms:[...perms] });
+      };
+      td.appendChild(cb); tr.appendChild(td);
+    });
+    const tdp = document.createElement("td"); tdp.style.cssText = "text-align:center;padding:8px;color:var(--muted)";
+    tdp.textContent = members.filter(u=> roleOf(u,TEAM) === role.key).length;
+    tr.appendChild(tdp);
+    if(canEditRoles){
+      const tda = document.createElement("td"); tda.style.cssText = "padding:8px 10px;white-space:nowrap";
+      if(!isOwner){
+        const ren = document.createElement("button"); ren.className = "person-del"; ren.textContent = "✏️"; ren.title = "Rename";
+        ren.onclick = async ()=>{ const v = (prompt("Rename role:", role.name) || "").trim(); if(v && v !== role.name) await saveRole(Object.assign({}, role, { name:v })); };
+        const del = document.createElement("button"); del.className = "person-del"; del.textContent = "🗑️"; del.title = "Delete role";
+        del.onclick = async ()=>{
+          if(!confirm("Delete the role “" + role.name + "”?")) return;
+          const r = await SUPA.rpc("delete_team_role", { p_team:TEAM, p_key:role.key });
+          if(r.error){ alert(r.error.message); return; }
+          await loadPeople(); renderAdminPage(); toast("Role deleted");
+        };
+        tda.append(ren, del);
+      }
+      tr.appendChild(tda);
+    }
+    t.appendChild(tr);
+  });
+  box.appendChild(t); wrap.appendChild(box);
+
+  const note = document.createElement("div"); note.className = "hint"; note.style.cssText = "margin-top:14px;line-height:1.6";
+  note.textContent = "The database enforces View, editing, people and role changes. “Delete work” and “Manage spaces” hide the delete and add-space buttons in the app. To change someone's role, use the Users page.";
   wrap.appendChild(note);
+
+  async function saveRole(r){
+    const res = await SUPA.rpc("save_team_role", { p_team:TEAM, p_key:r.key, p_name:r.name, p_perms:r.perms, p_position:r.position });
+    if(res.error){ alert(res.error.message); }
+    else toast("Saved");
+    try{ await loadPeople(); }catch(_){ }
+    refreshLeaderFromRole();
+    renderAdminPage();
+  }
 }
 function adminMembers(){
   return USERS.filter(u=> u.super || (u.teams && u.teams[TEAM]));
@@ -18809,8 +18938,8 @@ function renderAdminUsers(wrap){
   // stat cards
   const stats = document.createElement("div"); stats.className = "admin-stats";
   const owners = members.filter(u=> u.super || roleOf(u,TEAM)==="owner").length;
-  const admins = members.filter(u=> !u.super && roleOf(u,TEAM)==="admin").length;
-  [["Total users", members.length],["Owners", owners],["Admins", admins],["Roles", ROLES.length]].forEach(([lab,val])=>{
+  const managers = members.filter(u=> !u.super && roleOf(u,TEAM)!=="owner" && hasPermFor(u,"manage_people")).length;
+  [["Total users", members.length],["Owners", owners],["Can manage people", managers],["Roles", teamRoles().length]].forEach(([lab,val])=>{
     const c = document.createElement("div"); c.className = "admin-stat";
     c.innerHTML = '<div class="as-lab"></div><div class="as-val"></div>';
     c.querySelector(".as-lab").textContent = lab;
@@ -19025,7 +19154,7 @@ function drawSpacePeople(body){
     // team owners/admins can't be demoted per-space (floor)
     if(u.super || roleRank(teamRole) <= roleRank("admin")){
       const tag = document.createElement("span"); tag.className = "ss-mrole";
-      tag.textContent = (u.super ? "Owner" : ROLE_LABEL[teamRole]) + " (team)";
+      tag.textContent = (u.super ? "Owner" : roleLabel(teamRole)) + " (team)";
       row.appendChild(tag);
     } else {
       const sel = document.createElement("select"); sel.className = "person-role";
@@ -19033,7 +19162,7 @@ function drawSpacePeople(body){
       const isPrivate = spaceAccessOf(ref) === "private";
       const def = document.createElement("option"); def.value = "";
       // in a private space, "not added" means no access; elsewhere it means team default
-      def.textContent = isPrivate ? "\u2014 Not added (no access)" : "Team default (" + ROLE_LABEL[teamRole] + ")";
+      def.textContent = isPrivate ? "\u2014 Not added (no access)" : "Team default (" + roleLabel(teamRole) + ")";
       sel.appendChild(def);
       ROLES.forEach(r=>{ if(r==="owner") return; const o=document.createElement("option"); o.value=r; o.textContent="This space: "+ROLE_LABEL[r]; sel.appendChild(o); });
       // explicit "No access" for OPEN/LIMITED spaces (private already excludes via "not added")
@@ -19100,7 +19229,7 @@ function openInvite(){
     const role = $("iv-role").value;
     const un = $("iv-user") ? ($("iv-user").value||"").toLowerCase().trim() : "";
     if(!em || !/^[^@]+@[^@]+\.[^@]+$/.test(em)){ $("iv-err").textContent = "Enter a valid email."; return; }
-    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("iv-err").textContent = "Admins can't grant Owner."; return; }
+    if(!currentUser().super && role === "owner"){ $("iv-err").textContent = "Only the super-admin can make someone an Owner."; return; }
     const pw = ($("iv-pass").value||"").trim();
     if(pw && pw.length < 8){ $("iv-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
     $("iv-add").disabled = true; $("iv-err").textContent = "Adding\u2026";
@@ -19109,7 +19238,7 @@ function openInvite(){
       $("iv-err").textContent = "";
       $("invite-overlay").classList.remove("show");
       renderAdminPage();
-      toast(ROLE_LABEL[role] + " added");
+      toast(roleLabel(role) + " added");
     }catch(e){ $("iv-err").textContent = e.message; }
     finally{ $("iv-add").disabled = false; }
   };
@@ -19131,7 +19260,7 @@ function openPeople(){
     const role = $("pa-role").value;
     const un = $("pa-user") ? ($("pa-user").value||"").toLowerCase().trim() : "";
     if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){ $("pa-err").textContent = "Enter a valid email."; return; }
-    if(!currentUser().super && roleRank(role) < roleRank("admin")){ $("pa-err").textContent = "Admins can't grant Owner."; return; }
+    if(!currentUser().super && role === "owner"){ $("pa-err").textContent = "Only the super-admin can make someone an Owner."; return; }
     const pw = $("pa-pass") ? ($("pa-pass").value||"").trim() : "";
     if(pw && pw.length < 8){ $("pa-err").textContent = "A starting password needs at least 8 characters (or leave it empty for a random one)."; return; }
     $("pa-add").disabled = true; $("pa-err").textContent = "Adding\u2026";
@@ -19139,7 +19268,7 @@ function openPeople(){
       await addPersonToTeam({ email, name, username:un, role, password:pw });
       renderPeopleList();
       $("pa-email").value = ""; $("pa-name").value = ""; $("pa-pass") && ($("pa-pass").value=""); $("pa-user") && ($("pa-user").value=""); $("pa-err").textContent = "";
-      toast(ROLE_LABEL[role] + " added");
+      toast(roleLabel(role) + " added");
     }catch(e){ $("pa-err").textContent = e.message; }
     finally{ $("pa-add").disabled = false; }
   };
