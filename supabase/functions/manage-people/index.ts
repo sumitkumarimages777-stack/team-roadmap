@@ -23,10 +23,12 @@
 // the same database functions as everything else (has_role, is_super,
 // set_member_role), so the rules live in one place: stage3a SQL.
 //
-// EMAIL SETTINGS (for email_login), in Supabase -> Edge Functions -> Secrets:
-//   RESEND_API_KEY   the API key from resend.com
-//   MAIL_FROM        who the email is from, e.g.  Dubuddy Team <team@dubuddy.in>
-//                    (its domain must be verified in Resend)
+// EMAIL SETTINGS (for email_login), in Supabase -> Edge Functions -> Secrets.
+// Emails are sent from a Zoho Mail mailbox over secure SMTP (port 465):
+//   SMTP_USER        the mailbox, e.g.  sumitkumar@dubuddy.in
+//   SMTP_PASS        a Zoho APP password for that mailbox (not the real password)
+//   SMTP_HOST        optional; defaults to smtp.zoho.in (India). Use smtp.zoho.com for zoho.com accounts.
+//   MAIL_FROM        optional; defaults to  Dubuddy Team <SMTP_USER>
 //   APP_URL          optional; defaults to https://tools.dubuddy.in/
 //
 // HOW TO DEPLOY: Supabase dashboard -> Edge Functions -> Deploy a new
@@ -35,6 +37,7 @@
 // =====================================================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -295,9 +298,10 @@ async function freshTempPasswords(caller, admin) {
 async function emailLogin(caller, admin, me, b) {
   const team = String(b.team || "");
   const userId = String(b.user_id || "");
-  const key = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("MAIL_FROM");
-  if (!key || !from) throw new Error("Email isn't set up yet (RESEND_API_KEY and MAIL_FROM are missing in Supabase Edge Function secrets).");
+  const smtpUser = Deno.env.get("SMTP_USER");
+  const smtpPass = Deno.env.get("SMTP_PASS");
+  if (!smtpUser || !smtpPass) throw new Error("Email isn't set up yet (SMTP_USER and SMTP_PASS are missing in Supabase Edge Function secrets).");
+  const from = Deno.env.get("MAIL_FROM") || ("Dubuddy Team <" + smtpUser + ">");
   await checkMayReset(caller, admin, me, team, userId);
 
   const { data: p, error: pErr } = await admin.from("profiles").select("email,name,profile").eq("id", userId).maybeSingle();
@@ -329,16 +333,12 @@ async function emailLogin(caller, admin, me, b) {
 
   let sendError = null;
   try {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [p.email], subject: "Your sign-in details for the " + teamName + " team app", text, html }),
+    const mailer = nodemailer.createTransport({
+      host: Deno.env.get("SMTP_HOST") || "smtp.zoho.in",
+      port: 465, secure: true,                    // Supabase allows outgoing mail on 465 only
+      auth: { user: smtpUser, pass: smtpPass },
     });
-    if (!r.ok) {
-      let msg = "HTTP " + r.status;
-      try { const j = await r.json(); if (j && j.message) msg = j.message; } catch (_) { /* keep status */ }
-      sendError = msg;
-    }
+    await mailer.sendMail({ from, to: p.email, subject: "Your sign-in details for the " + teamName + " team app", text, html });
   } catch (e) { sendError = (e && e.message) || String(e); }
 
   if (sendError) return { ok: true, emailed: false, email: p.email, emailError: sendError, tempPassword: pw };
