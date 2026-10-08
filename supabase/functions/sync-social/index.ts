@@ -385,6 +385,115 @@ async function attributeFollows(admin, team, posts, dailyFollows, today) {
   return Math.round([...sums.values()].reduce((x, y) => x + y, 0));
 }
 
+// ---------------------------------------------------------------- Audience location
+// YouTube gives viewers by city (no states for India, no subscribers below
+// country); Instagram gives the top cities as "City, State". Cities from
+// YouTube are put in their state with this list (plus anything Instagram
+// taught us in the same sync).
+const STATE_CITIES = {
+  "Delhi": "Delhi|New Delhi|Dwarka|Rohini|Narela|Najafgarh",
+  "Uttar Pradesh": "Lucknow|Kanpur|Agra|Varanasi|Prayagraj|Allahabad|Ghaziabad|Noida|Greater Noida|Meerut|Bareilly|Aligarh|Moradabad|Saharanpur|Gorakhpur|Jhansi|Firozabad|Mathura|Ayodhya|Faizabad|Muzaffarnagar|Shahjahanpur|Rampur|Etawah|Mirzapur|Bulandshahr|Sambhal|Amroha|Hardoi|Fatehpur|Raebareli|Orai|Sitapur|Bahraich|Unnao|Jaunpur|Lakhimpur|Hapur|Banda|Azamgarh|Basti|Ballia|Gonda|Deoria|Sultanpur|Mainpuri|Budaun|Pilibhit|Lalitpur|Bijnor|Kannauj|Etah|Chandauli|Ghazipur|Mau|Shamli|Baghpat|Kushinagar",
+  "Bihar": "Patna|Gaya|Bhagalpur|Muzaffarpur|Purnia|Darbhanga|Bihar Sharif|Arrah|Begusarai|Katihar|Munger|Chhapra|Danapur|Saharsa|Sasaram|Hajipur|Dehri|Siwan|Motihari|Nawada|Bettiah|Kishanganj|Jamalpur|Buxar|Jehanabad|Aurangabad Bihar|Samastipur|Madhubani|Sitamarhi|Gopalganj|Supaul|Araria|Lakhisarai|Sheikhpura|Khagaria|Vaishali",
+  "Maharashtra": "Mumbai|Pune|Nagpur|Thane|Nashik|Navi Mumbai|Aurangabad|Chhatrapati Sambhajinagar|Solapur|Kolhapur|Amravati|Kalyan|Vasai-Virar|Pimpri-Chinchwad|Sangli|Malegaon|Jalgaon|Akola|Latur|Dhule|Ahmednagar|Chandrapur|Parbhani|Ichalkaranji|Jalna|Bhiwandi|Panvel|Satara|Nanded|Wardha|Yavatmal|Ratnagiri|Beed|Osmanabad|Gondia|Bhusawal|Ulhasnagar|Mira-Bhayandar|Baramati",
+  "Karnataka": "Bengaluru|Bangalore|Mysuru|Mysore|Hubli|Hubballi|Dharwad|Mangaluru|Mangalore|Belagavi|Belgaum|Kalaburagi|Gulbarga|Davanagere|Ballari|Bellary|Vijayapura|Shivamogga|Shimoga|Tumakuru|Tumkur|Raichur|Bidar|Udupi|Hassan|Mandya|Chitradurga|Hospet|Kolar|Manipal",
+  "Tamil Nadu": "Chennai|Coimbatore|Madurai|Tiruchirappalli|Trichy|Salem|Tiruppur|Erode|Vellore|Thoothukudi|Tirunelveli|Thanjavur|Dindigul|Hosur|Nagercoil|Kanchipuram|Karur|Kumbakonam|Cuddalore|Tiruvannamalai|Pollachi",
+  "Telangana": "Hyderabad|Secunderabad|Warangal|Nizamabad|Karimnagar|Khammam|Ramagundam|Mahbubnagar|Nalgonda|Adilabad|Siddipet|Suryapet",
+  "West Bengal": "Kolkata|Calcutta|Howrah|Durgapur|Asansol|Siliguri|Bardhaman|Kharagpur|Haldia|Malda|English Bazar|Baharampur|Krishnanagar|Barasat|Habra|Raiganj|Jalpaiguri|Bally|Barrackpore|Bhatpara|Kalyani|Midnapore|Cooch Behar|Bankura|Purulia",
+  "Gujarat": "Ahmedabad|Surat|Vadodara|Baroda|Rajkot|Bhavnagar|Jamnagar|Gandhinagar|Junagadh|Anand|Navsari|Morbi|Nadiad|Bharuch|Vapi|Gandhidham|Mehsana|Bhuj|Porbandar|Valsad|Palanpur|Godhra|Surendranagar",
+  "Rajasthan": "Jaipur|Jodhpur|Kota|Bikaner|Ajmer|Udaipur|Bhilwara|Alwar|Bharatpur|Sikar|Sri Ganganagar|Pali|Tonk|Kishangarh|Beawar|Hanumangarh|Churu|Jhunjhunu|Barmer|Nagaur|Chittorgarh|Dausa|Sawai Madhopur|Bundi|Jaisalmer",
+  "Madhya Pradesh": "Indore|Bhopal|Jabalpur|Gwalior|Ujjain|Sagar|Dewas|Satna|Ratlam|Rewa|Murwara|Katni|Singrauli|Burhanpur|Khandwa|Bhind|Chhindwara|Guna|Shivpuri|Vidisha|Morena|Damoh|Mandsaur|Khargone|Neemuch|Itarsi|Sehore|Betul|Seoni|Hoshangabad|Narmadapuram",
+  "Haryana": "Gurugram|Gurgaon|Faridabad|Panipat|Ambala|Yamunanagar|Rohtak|Hisar|Karnal|Sonipat|Panchkula|Bhiwani|Sirsa|Bahadurgarh|Jind|Thanesar|Kurukshetra|Kaithal|Rewari|Palwal|Jhajjar|Narnaul|Fatehabad",
+  "Punjab": "Ludhiana|Amritsar|Jalandhar|Patiala|Bathinda|Mohali|Sahibzada Ajit Singh Nagar|Hoshiarpur|Pathankot|Moga|Batala|Abohar|Malerkotla|Khanna|Phagwara|Muktsar|Barnala|Rajpura|Firozpur|Kapurthala|Sangrur",
+  "Chandigarh": "Chandigarh",
+  "Jharkhand": "Ranchi|Jamshedpur|Dhanbad|Bokaro|Bokaro Steel City|Deoghar|Hazaribagh|Giridih|Ramgarh|Phusro|Medininagar|Daltonganj|Chas|Dumka|Chaibasa",
+  "Odisha": "Bhubaneswar|Cuttack|Rourkela|Berhampur|Brahmapur|Sambalpur|Puri|Balasore|Baleshwar|Bhadrak|Baripada|Jharsuguda|Jeypore|Angul",
+  "Chhattisgarh": "Raipur|Bhilai|Bilaspur|Korba|Durg|Rajnandgaon|Jagdalpur|Raigarh|Ambikapur|Dhamtari",
+  "Uttarakhand": "Dehradun|Haridwar|Roorkee|Haldwani|Rudrapur|Kashipur|Rishikesh|Nainital|Kotdwar|Pithoragarh",
+  "Himachal Pradesh": "Shimla|Mandi|Solan|Dharamshala|Kangra|Hamirpur|Una|Kullu|Baddi",
+  "Jammu and Kashmir": "Srinagar|Jammu|Anantnag|Baramulla|Kathua|Sopore|Udhampur",
+  "Ladakh": "Leh|Kargil",
+  "Kerala": "Thiruvananthapuram|Trivandrum|Kochi|Cochin|Ernakulam|Kozhikode|Calicut|Thrissur|Kollam|Kannur|Palakkad|Alappuzha|Malappuram|Kottayam|Kasaragod",
+  "Andhra Pradesh": "Visakhapatnam|Vijayawada|Guntur|Nellore|Kurnool|Rajahmundry|Rajamahendravaram|Kakinada|Tirupati|Kadapa|Anantapur|Eluru|Ongole|Vizianagaram|Srikakulam|Machilipatnam|Amaravati",
+  "Assam": "Guwahati|Silchar|Dibrugarh|Jorhat|Nagaon|Tinsukia|Tezpur|Bongaigaon|Dispur",
+  "Goa": "Panaji|Margao|Vasco da Gama|Mapusa|Ponda",
+  "Tripura": "Agartala",
+  "Meghalaya": "Shillong",
+  "Manipur": "Imphal",
+  "Mizoram": "Aizawl",
+  "Nagaland": "Kohima|Dimapur",
+  "Arunachal Pradesh": "Itanagar",
+  "Sikkim": "Gangtok",
+  "Puducherry": "Puducherry|Pondicherry",
+  "Andaman and Nicobar Islands": "Port Blair",
+};
+const CITY_STATE = new Map();
+for (const [st, list] of Object.entries(STATE_CITIES)) for (const c of list.split("|")) CITY_STATE.set(c.toLowerCase(), st);
+// Instagram writes "City, State"
+function splitCity(s) { const i = String(s).lastIndexOf(", "); return i < 0 ? [String(s), ""] : [s.slice(0, i), s.slice(i + 2)]; }
+
+// one demographics breakdown as [[key, value]]
+async function igDemo(igId, metric, breakdown, timeframe) {
+  const r = await fget("/" + igId + "/insights", { metric, period: "lifetime", metric_type: "total_value", breakdown, ...(timeframe ? { timeframe } : {}) });
+  const res = ((((r.data || [])[0] || {}).total_value || {}).breakdowns || [])[0];
+  return ((res && res.results) || []).map((x) => [x.dimension_values[0], num(x.value) || 0]);
+}
+
+async function syncGeo(admin, team) {
+  const notes = [];
+  const rows = [];
+  const now = new Date().toISOString();
+  const add = (platform, kind, level, name, state, value, period) =>
+    rows.push({ team_slug: team, platform, kind, level, name, state: state || "", value, period, updated_at: now });
+  const learned = new Map();
+
+  // --- Instagram
+  if (Deno.env.get("IG_ACCESS_TOKEN")) {
+    try {
+      const igId = await igAccount();
+      for (const [metric, kind, tf, period] of [["follower_demographics", "followers", null, "all followers"], ["reached_audience_demographics", "viewers", "this_month", "reached this month"]]) {
+        try {
+          for (const [k, v] of await igDemo(igId, metric, "city", tf)) {
+            const [city, st] = splitCity(k);
+            if (st) learned.set(city.toLowerCase(), st);
+            add("instagram", kind, "city", k, st, v, period);
+          }
+          for (const [k, v] of await igDemo(igId, metric, "country", tf)) add("instagram", kind, "country", k, "", v, period);
+        } catch (e) { notes.push("Instagram " + kind + " by place: " + e.message); }
+      }
+    } catch (e) { notes.push("Instagram places: " + e.message); }
+  }
+
+  // --- YouTube (last 90 days)
+  try {
+    const token = await googleToken();
+    const end = new Date(Date.now() - 86400000), start = new Date(Date.now() - 90 * 86400000);
+    const range = { startDate: ymd(start), endDate: ymd(end) };
+    const period = "last 90 days";
+    const cities = await report(token, { ...range, dimensions: "city", metrics: "views", filters: "country==IN", sort: "-views", maxResults: "250" });
+    for (const r of cities) {
+      const c = String(r.city || "");
+      if (!c) continue;
+      const st = CITY_STATE.get(c.toLowerCase()) || learned.get(c.toLowerCase()) || "";
+      add("youtube", "viewers", "city", c, st, num(r.views), period);
+    }
+    const countries = await report(token, { ...range, dimensions: "country", metrics: "views,subscribersGained", sort: "-views", maxResults: "50" });
+    for (const r of countries) {
+      add("youtube", "viewers", "country", r.country, "", num(r.views), period);
+      add("youtube", "subscribers", "country", r.country, "", num(r.subscribersGained), period);
+    }
+  } catch (e) { notes.push("YouTube places: " + e.message); }
+
+  // replace each platform's rows only when we got fresh ones for it
+  for (const pl of ["youtube", "instagram"]) {
+    const mine = rows.filter((r) => r.platform === pl);
+    if (!mine.length) continue;
+    await admin.from("social_geo").delete().eq("team_slug", team).eq("platform", pl);
+    const { error } = await admin.from("social_geo").upsert(mine);
+    if (error) notes.push("Saving " + pl + " places failed: " + error.message);
+  }
+  return { rows: rows.length, unmapped_youtube_cities: rows.filter((r) => r.platform === "youtube" && r.level === "city" && !r.state).map((r) => r.name).slice(0, 30), notes };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return reply(405, { error: "POST only" });
@@ -412,7 +521,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const result = { youtube: null, instagram: null };
+  const result = { youtube: null, instagram: null, places: null };
   try {
     result.youtube = await syncYouTube(admin, team, cfg);
   } catch (e) {
@@ -422,6 +531,11 @@ Deno.serve(async (req) => {
     result.instagram = await syncInstagram(admin, team, cfg);
   } catch (e) {
     result.instagram = { error: e.message };
+  }
+  try {
+    result.places = await syncGeo(admin, team);
+  } catch (e) {
+    result.places = { error: e.message };
   }
   const now = new Date().toISOString();
   await admin.from("social_sync_config").update({ last_sync: now, last_result: result }).eq("id", 1);
