@@ -341,7 +341,7 @@ const vtag = v => `<span class="tag" style="background:color-mix(in srgb,${vtype
 function platColor(k){ return k==="yt"?"var(--c1)":k==="ig"?"var(--c3)":(hue(k)%2?"var(--c2)":"var(--c4)"); }
 function platShort(k){ const l=regLabel("platform",k)||k; return k==="yt"?"YT":k==="ig"?"INSTA":l.toUpperCase().slice(0,7); }
 const ptag = k => `<span class="plat" style="background:color-mix(in srgb,${platColor(k)} 15%,transparent);color:${platColor(k)}">${esc(platShort(k))}</span>`;
-function toast(m){ const t=$("#toast"); if(!t) return; t.textContent=m; t.classList.add("on"); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"),2600); }
+function toast(m){ const t=$("#toast"); if(!t) return; t.textContent=m; t.classList.add("on"); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove("on"),m.length>80?6000:2600); }
 
 // every change goes through here: the app re-draws and saves for the team
 function save(){
@@ -952,7 +952,8 @@ function renderProcess(){
           ${c.override?`<span class="badge crit">override</span>`:""}
           ${c.scheduled?`<span class="chip">${dmy(c.scheduled)}</span>`:""}
           ${lp?`<span class="badge good">${kfmt(lp.views)} views</span>`:""}</div>
-        ${gateChips(c)}</div>`; }).join("")||`<div class="dashed" style="margin:0">${ro?"empty":"drop here"}</div>`}
+        ${gateChips(c)}
+        ${s.id==="todo"&&!gatePass(c,"research")?`<div class="hint" style="margin-top:7px;color:var(--crit);font-size:11px">Fill the research block to move it on</div>`:""}</div>`; }).join("")||`<div class="dashed" style="margin:0">${ro?"empty":"drop here"}</div>`}
       </div>`;}).join("");
 
   const blocked=CARDS.filter(c=>c.stage==="todo"&&!gatePass(c,"research")).length;
@@ -981,14 +982,17 @@ function renderProcess(){
   });
   if(ro) return;
   P.querySelectorAll(".col").forEach(col=>{
+    // a blocked column still accepts the drop, so we can say why and open the card
     col.addEventListener("dragover",e=>{ if(!DRAG) return; e.preventDefault();
       const c=CARDS.find(x=>x.id===DRAG); const ok=canMove(c,col.dataset.stage).ok;
-      e.dataTransfer.dropEffect=ok?"move":"none";
+      e.dataTransfer.dropEffect="move";
       col.classList.toggle("over",ok); col.classList.toggle("no",!ok); });
     col.addEventListener("dragleave",()=>col.classList.remove("over","no"));
     col.addEventListener("drop",e=>{ e.preventDefault(); col.classList.remove("over","no");
       const id=DRAG||e.dataTransfer.getData("text/plain"); const c=CARDS.find(x=>x.id===id); if(!c) return;
       const to=col.dataset.stage; if(c.stage===to) return;
+      const v=canMove(c,to);
+      if(!v.ok){ openCard(c.id,true); toast("Can't move yet — "+v.msg.charAt(0).toLowerCase()+v.msg.slice(1)); return; }
       if(moveCard(c,to)) toast(`Moved to ${STAGES.find(s=>s.id===to).label}`); });
   });
 }
@@ -1269,7 +1273,7 @@ function openReject(i){
 }
 
 /* ---- card drawer ---- */
-function openCard(id){
+function openCard(id,showGate){
   const isNew=!id;
   const c=isNew ? blankCard() : CARDS.find(x=>x.id===id);
   if(!c) return;
@@ -1303,7 +1307,7 @@ function openCard(id){
         ${regSelect("vtype","c-vtype",c.vtype,"e.g. Podcast clip, Story, Live",false)}</div></div>
     <div class="fld"><label for="c-sched">Scheduled date</label><input id="c-sched" type="date" value="${c.scheduled||""}"></div>
 
-    <div class="block" style="border-color:${rOk&&cOk?"color-mix(in srgb,var(--good) 40%,var(--line))":"color-mix(in srgb,var(--crit) 35%,var(--line))"}">
+    <div class="block" data-gate="pre" style="border-color:${rOk&&cOk?"color-mix(in srgb,var(--good) 40%,var(--line))":"color-mix(in srgb,var(--crit) 35%,var(--line))"}">
       <div class="block-h"><h4>Pre-production</h4>
         <span class="badge ${rOk?"good":"crit"}">${rOk?"research ✓":"research ×"}</span>
         <span class="badge ${cOk?"good":"crit"}">${cOk?"copy ✓":"copy ×"}</span></div>
@@ -1429,6 +1433,7 @@ function openCard(id){
     lockDrawer();
   };
   draw(c.pre.keywords||[]);
+  if(showGate) setTimeout(()=>{ const b=$("#drawer").querySelector('[data-gate="pre"]'); if(b) b.scrollIntoView({block:"start",behavior:"smooth"}); },80);
 }
 
 function openOverride(c){
