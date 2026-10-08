@@ -8,8 +8,12 @@
 <link rel="apple-touch-icon" href="logo-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Social Media space (social-space.js): the team template's fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
 <!-- Supabase: logins, people and roles (Stage 3). Loaded from a public CDN. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Social Media space: Summary (live YouTube numbers) / Ideation / Content Process / Schedule -->
+<script src="social-space.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -5055,7 +5059,7 @@ function convertModuleToIdeas(mod, disc){
   return leaves.length;
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
-let socialView = "ideation";   // Social Media space: ideation | ideation-roadmap | process | schedule
+let socialView = "summary";    // Social Media space: summary | ideation | process | schedule (social-space.js)
 let pdtView = "ideation";      // Product space: ideation | ideation-roadmap | dev | qa | bugs
 let pdtBoardId = { dev:null, qa:null, bugs:null };
 let pdtNavOpen = { dev:true, qa:false, bugs:false };
@@ -6449,7 +6453,7 @@ function csIsActive(cs){
 function navToSpace(cs){
   if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
   else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
-  else if(cs.type==="social"){ view = "social"; activeCspace = cs.id; socialView = "ideation"; }
+  else if(cs.type==="social"){ view = "social"; activeCspace = cs.id; socialView = "summary"; }
   else if(cs.type==="pdt"){ view = "pdt"; activeCspace = cs.id; pdtView = "ideation"; pdtBoardId = { dev:null, qa:null, bugs:null }; }
   else if(cs.type==="content"){ view = "content"; activeSection = cs.sectionKey; }
   else if(cs.type==="module"){ view = "roadmap"; navTo(cs.moduleKey); return; }
@@ -6537,9 +6541,7 @@ function workTabs(){
   if(view==="pdt") return (pdtView==="ideation"||pdtView==="ideation-roadmap")
       ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
       : [{key:pdtView,label:pdtSectionLabel(pdtView)}];
-  if(view==="social") return (socialView==="ideation"||socialView==="ideation-roadmap")
-      ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
-      : [{key:socialView,label:socSectionLabel(socialView)}];
+  if(view==="social") return SX.tabs.map(([key,label])=>({key, label}));
   const l = view==="rmap" ? "Timeline" : view==="okr" ? "Objectives"
     : view==="dev" ? "Board" : (view==="bugs"||view==="cbugs") ? "Board" : view==="content" ? "Board"
     : view==="ideas" ? "Ideas" : view==="admin" ? "Admin" : "Board";
@@ -6565,7 +6567,7 @@ function renderTabs(){
   if(sig!==_lastNavSig){ _lastNavSig=sig; paneTab="work"; }
   strip.innerHTML="";
   const actKey = workTabActiveKey();
-  [{summary:true,label:"Summary"}].concat(workTabs()).forEach(t=>{
+  (view==="social" ? [] : [{summary:true,label:"Summary"}]).concat(workTabs()).forEach(t=>{
     const b=document.createElement("button");
     const on = t.summary ? (paneTab==="summary") : (paneTab==="work" && t.key===actKey);
     b.className="tab"+(on?" active":"");
@@ -6590,6 +6592,8 @@ function renderHeader(){
     ? "Manage who can access this team and what each role can do."
     : view==="disc"
     ? "Collect ideas, decide what happens Now / Next / Later, and put them on a timeline."
+    : view==="social"
+    ? "Every post has a reason before it is made and a verdict after it ships. Two people, one record."
     : (view==="bugs" || view==="cbugs")
     ? "Reported by the team and by students \u2014 triage, fix, verify, close."
     : view==="ideas"
@@ -12019,7 +12023,7 @@ const SOC_COLS = [
 ];
 const SOC_CHANNELS = ["Instagram","YouTube","LinkedIn","X / Twitter","Facebook","Blog","Newsletter"];
 function currentSocial(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="social") || null; }
-function saveSocial(){ renderAll(); pushAll(); }
+function saveSocial(){ pushAll(); }   // pushAll re-draws too
 function socSectionLabel(k){ return k==="process" ? "Content Process" : k==="schedule" ? "Schedule" : "Ideation"; }
 
 /* ================= PRODUCT suite space (Ideation / Development / QA / Bugs) ================= */
@@ -12465,10 +12469,13 @@ function renderContentSocial(){
   const wrap = $("content"); wrap.innerHTML = "";
   const cs = currentSocial();
   if(!cs){ view = "roadmap"; renderAll(); return; }
-  if(socialView === "process")  return socProcessPane(cs);
-  if(socialView === "schedule") return socSchedulePane(cs);
-  if(socialView === "ideation-roadmap") return discRoadmapPane(cs);
-  return discIdeasPane(cs);
+  // drawn by social-space.js (the team's Social Media template); saves ride in cspaces
+  SX.render(cs, wrap, {
+    tab: socialView, team: TEAM, supa: SUPA,
+    canEdit: canEditHere, isMember: ()=>!!currentUser(),
+    me: ()=>{ const u=currentUser(); return u ? userDisplayName(u) : ""; },
+    save: saveSocial,
+  });
 }
 
 /* ---------- Content Process: kanban ---------- */
@@ -13382,9 +13389,9 @@ function renderAll(){
           });
         }
         if(cs.type==="social" && view==="social" && activeCspace===cs.id){
-          [["ideation","💡 Ideation"],["process","🗂 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
+          [["summary","📊 Summary"],["ideation","💡 Ideation"],["process","🎬 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
             const sub=document.createElement("button");
-            const on = (k==="ideation") ? (socialView==="ideation"||socialView==="ideation-roadmap") : socialView===k;
+            const on = socialView===k;
             sub.className="ws-sub"+(on?" active":"");
             sub.textContent=lbl;
             sub.onclick=()=>{ socialView=k; renderAll(); };
@@ -15374,9 +15381,8 @@ function scBoards(){
   // ---- Content (social) + Product-suite (pdt) spaces ----
   cspaces().forEach(function(x){
     if(x.type==="social"){
-      var sc={}; SOC_COLS.forEach(function(c){sc[c.key]=0;});
-      (x.cards||[]).forEach(function(c){ if(sc[c.col]!==undefined) sc[c.col]++; });
-      out.push({id:"cs:"+x.id, label:x.name+" (Content)", cols:SOC_COLS.map(function(c){return {key:c.key,label:c.label};}), counts:sc, total:(x.cards||[]).length});
+      var sc=SX.stageCounts(x);
+      out.push({id:"cs:"+x.id, label:x.name+" (Content)", cols:sc.stages.map(function(c){return {key:c.id,label:c.label};}), counts:sc.counts, total:sc.total});
     }
     if(x.type==="pdt"){
       (x.boards||[]).forEach(function(b){
@@ -18455,7 +18461,7 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
       } else if(type==="social"){
         cs.ideas = []; cs.cards = []; cs.events = [];
         CSPACES.list.push(cs);
-        view = "social"; activeCspace = cs.id; socialView = "ideation";
+        view = "social"; activeCspace = cs.id; socialView = "summary";
         renderAll(); pushAll();
       } else if(type==="pdt"){
         cs.ideas = []; cs.boards = [{id:"pb-main", name:"Scrum board 1", lane:"dev"},{id:"pq-main", name:"Q/A board 1", lane:"qa"},{id:"pg-main", name:"Bugs board 1", lane:"bugs"}]; cs.items = [];

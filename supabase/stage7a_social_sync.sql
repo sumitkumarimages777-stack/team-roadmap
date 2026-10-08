@@ -45,6 +45,7 @@ create table public.social_posts (
   comments      bigint,
   shares        bigint,
   watch_minutes numeric,
+  avg_view_s    numeric,         -- average view duration, seconds
   avg_view_pct  numeric,
   impressions   bigint,
   ctr_pct       numeric,
@@ -87,3 +88,7 @@ select cron.schedule(
        body    := '{}'::jsonb,
        timeout_milliseconds := 60000) $$
 );
+
+-- which YouTube channel the numbers belong to; if the sign-in changes to
+-- another channel, the Edge Function clears the old channel's rows
+alter table public.social_sync_config add column if not exists youtube_channel_id text;

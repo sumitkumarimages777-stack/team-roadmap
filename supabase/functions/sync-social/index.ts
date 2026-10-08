@@ -76,7 +76,7 @@ async function report(token, params) {
   return (r.rows || []).map((row) => Object.fromEntries(cols.map((c, i) => [c, row[i]])));
 }
 
-async function syncYouTube(admin, team) {
+async function syncYouTube(admin, team, cfg) {
   const token = await googleToken();
   const DATA = "https://www.googleapis.com/youtube/v3";
   const notes = [];
@@ -86,6 +86,14 @@ async function syncYouTube(admin, team) {
   if (!channel) throw new Error("This Google account has no YouTube channel. Sign in to the Playground as the channel owner.");
   const stats = channel.statistics;
   const today = new Date();
+
+  // signed in to a different channel than last time: its old numbers don't belong here
+  if (cfg.youtube_channel_id !== channel.id) {
+    await admin.from("social_posts").delete().eq("team_slug", team).eq("platform", "youtube");
+    await admin.from("social_snapshots").delete().eq("team_slug", team).eq("platform", "youtube");
+    await admin.from("social_sync_config").update({ youtube_channel_id: channel.id }).eq("id", 1);
+    if (cfg.youtube_channel_id) notes.push("YouTube channel changed: cleared the previous channel's numbers.");
+  }
 
   // --- every upload (newest first), then their details in batches of 50
   const ids = [];
@@ -114,40 +122,34 @@ async function syncYouTube(admin, team) {
         published_at: it.snippet.publishedAt, duration_s: dur,
         views: num(it.statistics.viewCount), likes: num(it.statistics.likeCount),
         comments: num(it.statistics.commentCount),
-        shares: null, watch_minutes: null, avg_view_pct: null, impressions: null, ctr_pct: null,
+        shares: null, watch_minutes: null, avg_view_s: null, avg_view_pct: null, impressions: null, ctr_pct: null,
         updated_at: new Date().toISOString(),
       });
     }
   }
 
-  // --- lifetime per-video analytics: shares, watch time, retention
+  // --- lifetime per-video analytics: shares, watch time, retention. Asked for by
+  // video id, 50 at a time — a "top videos" report would skip the newer ones.
   try {
-    const rows = await report(token, {
-      startDate: "2005-04-23", endDate: ymd(today), dimensions: "video", sort: "-views", maxResults: "200",
-      metrics: "views,shares,estimatedMinutesWatched,averageViewPercentage",
-    });
-    for (const r of rows) {
-      const p = posts.get(r.video);
-      if (!p) continue;
-      p.shares = num(r.shares);
-      p.watch_minutes = num(r.estimatedMinutesWatched);
-      p.avg_view_pct = num(r.averageViewPercentage);
+    const all = [...posts.keys()];
+    for (let i = 0; i < all.length; i += 50) {
+      const rows = await report(token, {
+        startDate: "2005-04-23", endDate: ymd(today), dimensions: "video", filters: "video==" + all.slice(i, i + 50).join(","),
+        metrics: "views,shares,estimatedMinutesWatched,averageViewDuration,averageViewPercentage",
+      });
+      for (const r of rows) {
+        const p = posts.get(r.video);
+        if (!p) continue;
+        p.shares = num(r.shares);
+        p.watch_minutes = num(r.estimatedMinutesWatched);
+        p.avg_view_s = num(r.averageViewDuration);
+        p.avg_view_pct = num(r.averageViewPercentage);
+      }
     }
   } catch (e) { notes.push("Shares/watch time not available: " + e.message); }
 
-  // --- thumbnail impressions + click-through rate
-  try {
-    const rows = await report(token, {
-      startDate: "2005-04-23", endDate: ymd(today), dimensions: "video", sort: "-videoThumbnailImpressions", maxResults: "200",
-      metrics: "videoThumbnailImpressions,videoThumbnailImpressionsClickRate",
-    });
-    for (const r of rows) {
-      const p = posts.get(r.video);
-      if (!p) continue;
-      p.impressions = num(r.videoThumbnailImpressions);
-      p.ctr_pct = num(r.videoThumbnailImpressionsClickRate);
-    }
-  } catch (e) { notes.push("Thumbnail CTR not available: " + e.message); }
+  // Thumbnail impressions / CTR: YouTube Analytics does not offer them per
+  // video ("query is not supported"), so ctr_pct stays empty (Studio only).
 
   if (posts.size) {
     const { error } = await admin.from("social_posts").upsert([...posts.values()]);
@@ -213,7 +215,7 @@ Deno.serve(async (req) => {
 
   const result = { youtube: null };
   try {
-    result.youtube = await syncYouTube(admin, team);
+    result.youtube = await syncYouTube(admin, team, cfg);
   } catch (e) {
     result.youtube = { error: e.message };
   }
