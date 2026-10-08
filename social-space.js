@@ -265,9 +265,12 @@ function normalize(space){
   s.igFollowers = Array.isArray(s.igFollowers) ? s.igFollowers.filter(f=>f && f.d && f.v!=null) : [];
   s.targets = Object.assign({ yt:80000, ig:20000 }, s.targets||{});
   s.culture = typeof s.culture==="string" ? s.culture : "";
-  s.ideas.forEach(i=>{ i.comments = Array.isArray(i.comments) ? i.comments : []; i.keywords = Array.isArray(i.keywords) ? i.keywords : [];
+  // any field missing on an older record gets its default, so nothing below can trip on it
+  const fill=(o,d)=>{ Object.keys(d).forEach(k=>{ if(o[k]===undefined || o[k]===null && typeof d[k]==="string") o[k]=d[k]; }); return o; };
+  s.ideas.forEach(i=>{ fill(i, blankIdea({ id:i.id||uid("i"), created:i.created||today() }));
+    i.comments = Array.isArray(i.comments) ? i.comments : []; i.keywords = Array.isArray(i.keywords) ? i.keywords : [];
     if(!STATUS_UI[i.status]) i.status="new"; });
-  s.cards.forEach(c=>{ c.pre = c.pre || {}; c.pre.keywords = Array.isArray(c.pre.keywords) ? c.pre.keywords : [];
+  s.cards.forEach(c=>{ fill(c, blankCard({ id:c.id||uid("c") })); c.pre = c.pre || {}; c.pre.keywords = Array.isArray(c.pre.keywords) ? c.pre.keywords : [];
     c.post = c.post || {reel:null,thumb:null,postUrl:""}; if(!STAGES.some(x=>x.id===c.stage)) c.stage="todo"; });
   space.sx = s;
   return s;
@@ -891,8 +894,15 @@ function renderSchedule(){
 /* ------------------------------------------------------------ DRAWERS */
 function closeDrawer(){ $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); }
 function openDrawer(h){ const d=$("#drawer"); d.innerHTML=h; d.classList.add("on"); $("#scrim").classList.add("on"); d.scrollTop=0; }
-const allNames=()=>[...new Set([meName(),...IDEAS.map(i=>i.by),...IDEAS.flatMap(i=>i.comments.map(c=>c.by))].filter(Boolean))];
-const nameList=id=>`<datalist id="${id}">${allNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
+// the team's members, from the app's user list (profiles + memberships)
+function teamNames(){ let l=[]; try{ l=(OPT.people && OPT.people()) || []; }catch(_){ }
+  return [...new Set(l.filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+// a dropdown of team members; a name saved earlier that is no longer on the team stays selectable
+function peopleSelect(id,val){
+  const names=teamNames(); if(val && !names.includes(val)) names.unshift(val);
+  return `<select id="${id}"><option value="">— choose a team member —</option>
+    ${names.map(n=>`<option value="${esc(n)}" ${n===val?"selected":""}>${esc(n)}</option>`).join("")}</select>`;
+}
 
 function kwEditor(list,prefix){
   const rows=(list.length?list:[{kw:"",vol:null,rank:"primary"}]).map((k,i)=>`
@@ -942,7 +952,7 @@ function openIdea(id,focusComments){
       <input id="i-idea" value="${esc(i.idea)}" placeholder="What is the video, in one line?"></div>
     <div class="grid2">
       <div class="fld"><label for="i-by">Reported by</label>
-        <input id="i-by" value="${esc(i.by)}" placeholder="Your name" list="nameList" autocomplete="off">${nameList("nameList")}</div>
+        ${peopleSelect("i-by",i.by)}</div>
       <div class="fld"><label for="i-created">Reported on</label>
         <input id="i-created" type="date" value="${esc(i.created||today())}"></div>
       <div class="fld"><label for="i-vtype">Video type</label>
@@ -998,8 +1008,8 @@ function openIdea(id,focusComments){
       <div class="block-h"><h4>Comments</h4><span class="hint">${i.comments.length} on this idea</span></div>
       ${i.comments.map(c=>`<div class="cmt">${who(c.by)}<p style="margin-top:3px">${esc(c.text)}</p></div>`).join("")||`<p class="hint" style="margin:0">No comments yet.</p>`}
       <div data-w="1"><div class="grid2" style="margin-top:12px">
-        <div class="fld" style="margin-bottom:0"><label for="i-cmtby">Your name</label>
-          <input id="i-cmtby" value="${esc(meName())}" list="nameList2" autocomplete="off">${nameList("nameList2")}</div></div>
+        <div class="fld" style="margin-bottom:0"><label for="i-cmtby">Comment as</label>
+          ${peopleSelect("i-cmtby",meName())}</div></div>
       <div class="fld" style="margin-top:10px"><label for="i-newcmt">Add a comment</label>
         <textarea id="i-newcmt" placeholder="Write a note…"></textarea></div>
       <button class="btn sm" id="addCmt">Post comment</button></div></div>
@@ -1224,7 +1234,7 @@ function openOverride(c){
       against the card and shows on the board and in the summary. That is the point — a gate nobody can bypass just gets filled
       with "n/a".</p>
     <div class="fld"><label for="o-by">Your name</label>
-      <input id="o-by" value="${esc(meName())}" list="ovNames" autocomplete="off">${nameList("ovNames")}</div>
+      ${peopleSelect("o-by",meName())}</div>
     <div class="fld"><label for="o-reason">Why is this going ahead without research?</label>
       <textarea id="o-reason" placeholder="e.g. trend window closes in 48h"></textarea></div>
     <div class="row"><button class="btn danger" id="doOverride">Override and log it</button>
