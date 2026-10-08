@@ -12474,6 +12474,7 @@ function renderContentSocial(){
     tab: socialView, team: TEAM, supa: SUPA,
     canEdit: canEditHere, isMember: ()=>!!currentUser(),
     me: ()=>{ const u=currentUser(); return u ? userDisplayName(u) : ""; },
+    people: ()=>USERS.filter(u=>isMember(u, TEAM)).map(userDisplayName),
     save: saveSocial,
   });
 }
