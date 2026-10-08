@@ -125,6 +125,10 @@ table.mini th{padding:8px 10px}
 .goal .gt span{color:var(--ink-2)}
 .goal .meter{height:7px}
 .goal .gf{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3);margin-top:4px}
+.platsw{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.platsw button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.platsw button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.platsw .hint{margin-left:8px}
 .fpanel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
 .fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px;color:var(--ink-2)}
 .fhead select,.frow select,.frow input,.fsaved select{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-s);padding:6px 9px;font-size:12.5px}
@@ -541,7 +545,12 @@ function postRows(){
   });
   return rows;
 }
-const inF = r => FILTERS.vtypes.includes(r.vtype) && FILTERS.platforms.includes(r.platform);
+// Summary platform switch: "all" | "yt" | "ig" — scopes the whole Summary
+let PLATVIEW = "all";
+const platOK = x => PLATVIEW==="all" || x.platform===PLATVIEW;
+const TYPE_PLAT = { long:"yt", short:"yt", live:"yt", reel:"ig", carousel:"ig", image:"ig" };
+const typeVisible = k => PLATVIEW==="all" || !TYPE_PLAT[k] || TYPE_PLAT[k]===PLATVIEW;
+const inF = r => FILTERS.vtypes.includes(r.vtype) && FILTERS.platforms.includes(r.platform) && platOK(r);
 function publishedInPeriod(){ const from=periodStart(); return postRows().filter(r=>r.date && r.date>=from && inF(r)).sort((a,b)=>b.date.localeCompare(a.date)); }
 
 /* ------------------------------------------------------------ charts */
@@ -789,7 +798,7 @@ function keywordSection(){
     <div class="seg" style="margin-left:auto"><button data-kwscope="all" class="${KW_SCOPE==="all"?"on":""}">All time</button><button data-kwscope="period" class="${KW_SCOPE==="period"?"on":""}">Selected period</button></div></div>`;
   if(!list.length) return `<div class="sec">${head}<div class="card"><p class="hint" style="margin:0;max-width:80ch">
     No published video is linked to a card with a primary keyword yet. A video shows up here once its card in Content Process has a
-    <b>primary keyword</b> (Research block) and its <b>Final post link</b> is the YouTube link — accepted ideas carry their keyword over automatically.
+    <b>primary keyword</b> (Research block) and its <b>Final post link</b> is the YouTube or Instagram link — accepted ideas carry their keyword over automatically.
     ${unlinked?`<br>${unlinked} published post${unlinked===1?" is":"s are"} not linked to a card yet.`:""}</p></div></div>`;
   const top=[...list].sort((a,b)=>(KW_CHART==="vol"?(b.vol||0)-(a.vol||0):b.views-a.views));
   const pie=top.slice(0,6).map((x,i)=>({label:x.kw,v:KW_CHART==="vol"?(x.vol||0):x.views,color:KW_COLORS[i]}));
@@ -906,7 +915,7 @@ function ruleTest(rule, r){
   return op==="eq"?x===a:op==="neq"?x!==a:op==="lt"?x<a:op==="lte"?x<=a:op==="gt"?x>a:op==="gte"?x>=a:op==="between"?x>=a&&(b==null||isNaN(b)||x<=b):true;
 }
 function filteredPosts(){
-  const base = PF.scope==="all" ? postRows().filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date)) : publishedInPeriod();
+  const base = PF.scope==="all" ? postRows().filter(r=>r.date && platOK(r)).sort((a,b)=>b.date.localeCompare(a.date)) : publishedInPeriod();
   const act=PF.rules.filter(ruleActive);
   let out = act.length ? base.filter(r=> PF.match==="any" ? act.some(x=>ruleTest(x,r)) : act.every(x=>ruleTest(x,r))) : base;
   const k=PF.sort.k, dir=PF.sort.dir, F=FD(k);
@@ -991,7 +1000,7 @@ function postsSection(){
         <td style="min-width:120px">${Object.entries(tagsOf(r)).map(([k,v])=>`<span class="ptag">${esc(k)}: <b>${esc(v)}</b></span>`).join("")||`<span class="hint">—</span>`}</td></tr>`;}).join("")
        :`<tr><td colspan="16" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
     ${rows.length>shown.length?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="pfMore">Show ${Math.min(50,rows.length-shown.length)} more (${rows.length-shown.length} left)</button></div>`:""}
-    <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube link — then the keyword and research columns fill in too.
+    <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube or Instagram link — then the keyword and research columns fill in too.
       New videos show "pending" for a day or two while YouTube finishes counting. Length and average watch time take minutes:seconds, like 1:30.
       ${ed?"Tick posts to tag them in bulk (e.g. Creator = Sivam).":""}</p>
     ${tagCompare(rows)}`;
@@ -1085,19 +1094,20 @@ function liveBar(){
 }
 
 function renderSummary(){
+  const vI=IDEAS.filter(platOK), vC=CARDS.filter(platOK);   // Summary platform switch
   const pub=publishedInPeriod(), from=periodStart();
-  const ideasP=IDEAS.filter(i=>i.created>=from);
-  const accepted=IDEAS.filter(i=>i.status==="accepted");
-  const decided=IDEAS.filter(i=>["accepted","rejected"].includes(i.status));
+  const ideasP=vI.filter(i=>i.created>=from);
+  const accepted=vI.filter(i=>i.status==="accepted");
+  const decided=vI.filter(i=>["accepted","rejected"].includes(i.status));
   const acceptRate=decided.length?Math.round(accepted.length/decided.length*100):0;
-  const allPub=CARDS.filter(c=>c.stage==="published");
-  const conv=IDEAS.length?Math.round(allPub.filter(c=>c.ideaId).length/IDEAS.length*100):0;
+  const allPub=vC.filter(c=>c.stage==="published");
+  const conv=vI.length?Math.round(allPub.filter(c=>c.ideaId).length/vI.length*100):0;
   const cyc=allPub.filter(c=>c.acceptedOn&&c.published).map(c=>days(c.acceptedOn,c.published));
   const cycle=cyc.length?Math.round(cyc.reduce((a,b)=>a+b,0)/cyc.length):0;
   const onTime=allPub.length?Math.round(allPub.filter(c=>c.scheduled===c.published).length/allPub.length*100):0;
   const comp=allPub.length?Math.round(allPub.filter(c=>gResearch(c.pre)).length/allPub.length*100):0;
-  const backlog=CARDS.filter(c=>c.stage==="todo").length;
-  const counts=Object.keys(REG.vtype).map(k=>({label:vtypeLabel(k),short:vtypeLabel(k).split(" ")[0],
+  const backlog=vC.filter(c=>c.stage==="todo").length;
+  const counts=Object.keys(REG.vtype).filter(typeVisible).map(k=>({label:vtypeLabel(k),short:vtypeLabel(k).split(" ")[0],
     v:pub.filter(r=>r.vtype===k).length,color:vtypeColor(k)}));
   const byPerson={}; ideasP.forEach(i=>{ const n=i.by||"unnamed"; byPerson[n]=(byPerson[n]||0)+1; });
   const views=pub.reduce((s,r)=>s+(Number(r.views)||0),0);
@@ -1125,21 +1135,22 @@ function renderSummary(){
         <span class="num">${cur>=tgt?"target reached 🎉":`${fmt(tgt-cur)} to go · needs +${fmt(Math.ceil((tgt-cur)/12))}/wk for 12 weeks`}</span></div>${more(k,col)}</div>`; };
 
   $("#pane-summary").innerHTML=`
+   <div class="platsw">${[["all","Both platforms"],["yt","YouTube only"],["ig","Instagram only"]].map(([k,l])=>
+     `<button data-pview="${k}" class="${PLATVIEW===k?"on":""}">${k==="yt"?`<span class="sdot" style="background:var(--c1)"></span>`:k==="ig"?`<span class="sdot" style="background:var(--c3)"></span>`:""}${l}</button>`).join("")}
+     <span class="hint">${PLATVIEW==="all"?"Everything below covers YouTube and Instagram together":`Everything below — targets, ideas, cards, posts, keywords — is ${PLATVIEW==="yt"?"YouTube":"Instagram"} only`}</span></div>
    ${liveBar()}
 
    <div class="sec"><div class="row" style="margin-bottom:14px">
      <span class="lbl">Period</span>
      ${["week","month","quarter"].map(p=>`<button class="chip ${FILTERS.period===p?"on":""}" data-period="${p}">${p==="week"?"Last 7 days":p==="month"?"Last 30 days":"Last 90 days"}</button>`).join("")}
-     <span style="width:8px"></span><span class="lbl">Platform</span>
-     ${Object.keys(REG.platform).map(k=>`<button class="chip ${FILTERS.platforms.includes(k)?"on":""}" data-plat="${k}">${esc(regLabel("platform",k))}</button>`).join("")}
      <span style="width:8px"></span><span class="lbl">Type</span>
-     ${Object.keys(REG.vtype).map(k=>`<button class="chip ${FILTERS.vtypes.includes(k)?"on":""}" data-vt="${k}">${esc(vtypeLabel(k))}</button>`).join("")}
+     ${Object.keys(REG.vtype).filter(typeVisible).map(k=>`<button class="chip ${FILTERS.vtypes.includes(k)?"on":""}" data-vt="${k}">${esc(vtypeLabel(k))}</button>`).join("")}
    </div></div>
 
    <div class="sec"><div class="sec-h"><h3>OKR progress</h3>
      <span class="hint">Two separate goals, never a combined audience number</span>
      ${igLive()?"":`<button class="btn sm" data-updf="1" style="margin-left:auto">Update Instagram count</button>`}</div>
-     <div class="okrs">${okr("yt","YouTube","var(--c1)",yt,true)}${okr("ig","Instagram","var(--c3)",ig,igLive())}</div></div>
+     <div class="okrs">${PLATVIEW!=="ig"?okr("yt","YouTube","var(--c1)",yt,true):""}${PLATVIEW!=="yt"?okr("ig","Instagram","var(--c3)",ig,igLive()):""}</div></div>
 
    <div class="sec"><div class="sec-h"><h3>Process health</h3><span class="hint">Live from this space and the synced posts</span></div>
      <div class="tiles" id="tiles">
@@ -1159,8 +1170,8 @@ function renderSummary(){
        <p class="chart-sub">Published in the selected period</p>${CHARTMODE==="bar"?barChart(counts):donutChart(counts)}</div>
      <div class="chart-card"><div class="chart-head"><h4>Idea funnel</h4></div>
        <p class="chart-sub">Every idea ever logged, and where it got to</p>
-       ${IDEAS.length?funnelChart([{label:"Logged",v:IDEAS.length,color:"var(--c3)"},
-         {label:"Reviewed",v:decided.length+IDEAS.filter(i=>i.status==="under_review").length,color:"var(--c2)"},
+       ${vI.length?funnelChart([{label:"Logged",v:vI.length,color:"var(--c3)"},
+         {label:"Reviewed",v:decided.length+vI.filter(i=>i.status==="under_review").length,color:"var(--c2)"},
          {label:"Accepted",v:accepted.length,color:"var(--c1)"},
          {label:"Published",v:allPub.filter(c=>c.ideaId).length,color:"var(--good)"}])
          :`<p class="hint">No ideas logged yet — start in Ideation.</p>`}</div></div></div>
@@ -1170,15 +1181,16 @@ function renderSummary(){
    <div class="sec"><div class="sec-h"><h3>Follower growth</h3>
      <span class="hint">Two charts, two scales. A combined follower number would be meaningless.</span></div>
      <div class="charts">
-       <div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(TG.targets.yt)}</span></div>
-         <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(yt,12),"var(--c1)","YouTube")}</div>
-       <div class="chart-card"><div class="chart-head"><h4>Instagram followers ${igLive()?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
-         <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div></div></div>
+       ${PLATVIEW==="ig"?"":`<div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(TG.targets.yt)}</span></div>
+         <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(yt,12),"var(--c1)","YouTube")}</div>`}
+       ${PLATVIEW==="yt"?"":`<div class="chart-card"><div class="chart-head"><h4>Instagram followers ${igLive()?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
+         <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div>`}</div></div>
 
    <div class="sec" id="postsSec">${postsSection()}</div>`;
 
   const P=$("#pane-summary"); activateTips(P);
   P.querySelectorAll("[data-period]").forEach(b=>b.onclick=()=>{FILTERS.period=b.dataset.period;renderSummary();});
+  P.querySelectorAll("[data-pview]").forEach(b=>b.onclick=()=>{ PLATVIEW=b.dataset.pview; OPEN_TILE=null; PF.limit=50; SEL.clear(); renderSummary(); });
   P.querySelectorAll("[data-plat]").forEach(b=>b.onclick=()=>{toggle(FILTERS.platforms,b.dataset.plat);renderSummary();});
   P.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{toggle(FILTERS.vtypes,b.dataset.vt);renderSummary();});
   P.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{CHARTMODE=b.dataset.cm;renderSummary();});
@@ -1241,7 +1253,8 @@ const TYPES=()=>Object.keys(REG.vtype), PLATS=()=>Object.keys(REG.platform);
 const periodName=()=>FILTERS.period==="week"?"last 7 days":FILTERS.period==="month"?"last 30 days":"last 90 days";
 
 function detailHTML(key){
-  const pub=publishedInPeriod(), from=periodStart(), allPub=CARDS.filter(c=>c.stage==="published");
+  const vI=IDEAS.filter(platOK), vC=CARDS.filter(platOK);   // Summary platform switch
+  const pub=publishedInPeriod(), from=periodStart(), allPub=vC.filter(c=>c.stage==="published");
   const head=(t,sub)=>`<div class="dh"><div><h4>${t}</h4><span class="hint">${sub}</span></div><button class="btn sm" data-dclose="1">Close ×</button></div>`;
   const byType=rows=>TYPES().map(k=>({k,label:vtypeLabel(k),rows:rows.filter(r=>r.vtype===k),color:vtypeColor(k)})).filter(g=>g.rows.length);
 
@@ -1282,10 +1295,10 @@ function detailHTML(key){
             <td class="vol">${r.watch||"—"}</td><td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":"—"}</td></tr>`),"No posts in this period.");
   }
 
-  const ideasP=IDEAS.filter(i=>i.created>=from);
+  const ideasP=vI.filter(i=>i.created>=from);
   const stBars=list=>Object.entries(STATUS_UI).map(([k,u])=>({label:u.label,v:list.filter(i=>i.status===k).length,
     color:k==="accepted"?"var(--good)":k==="rejected"?"var(--crit)":k==="under_review"?"var(--warn)":"var(--ink-3)"}));
-  const ideaRow=i=>{ const c=CARDS.find(x=>x.ideaId===i.id);
+  const ideaRow=i=>{ const c=vC.find(x=>x.ideaId===i.id);
     return `<tr ${c?`data-card="${c.id}" style="cursor:pointer"`:""}><td class="td-idea">${esc(i.idea)}</td><td>${who(i.by)}</td><td class="vol">${dmy(i.created)}</td>
       <td>${ptag(i.platform)} ${vtag(i.vtype)}</td><td><span class="badge ${STATUS_UI[i.status].cls||"mute"}">${STATUS_UI[i.status].label}</span></td>
       <td>${c?`<span class="badge mute">${esc(STAGES.find(s=>s.id===c.stage).label)}</span>`:"—"}</td></tr>`; };
@@ -1293,7 +1306,7 @@ function detailHTML(key){
   if(key==="ideas"){
     const people={}; ideasP.forEach(i=>{ const n=i.by||"unnamed"; people[n]=(people[n]||0)+1; });
     return head(`${ideasP.length} idea${ideasP.length===1?"":"s"} logged`,periodName())
-      + dstats([["Logged",ideasP.length,`${IDEAS.length} ever`],...Object.entries(STATUS_UI).map(([k,u])=>[u.label,ideasP.filter(i=>i.status===k).length,""]),
+      + dstats([["Logged",ideasP.length,`${vI.length} ever`],...Object.entries(STATUS_UI).map(([k,u])=>[u.label,ideasP.filter(i=>i.status===k).length,""]),
           ["With research",ideasP.filter(i=>gResearch(i)).length,"source, tool, keyword, volume, why"]])
       + `<div class="dgrid">${hbars("By person",Object.entries(people).sort((a,b)=>b[1]-a[1]).map(([n,c])=>({label:n,v:c,color:"var(--c3)"})))}
          ${hbars("By status",stBars(ideasP))}
@@ -1302,22 +1315,22 @@ function detailHTML(key){
   }
 
   if(key==="conv"){
-    const acc=IDEAS.filter(i=>i.status==="accepted"), pubIdeas=IDEAS.filter(i=>allPub.some(c=>c.ideaId===i.id));
-    const inPipe=acc.filter(i=>{ const c=CARDS.find(x=>x.ideaId===i.id); return c&&c.stage!=="published"; });
-    return head(`${pct(pubIdeas.length,IDEAS.length)}% of ideas became posts`,"every idea ever logged")
-      + dstats([["Logged",IDEAS.length,""],["Accepted",acc.length,`${pct(acc.length,IDEAS.length)}%`],["In the pipeline",inPipe.length,"accepted, not out yet"],
-          ["Published",pubIdeas.length,`${pct(pubIdeas.length,IDEAS.length)}%`],["Published without an idea",allPub.filter(c=>!c.ideaId).length,"cards made directly"]])
-      + `<div class="dgrid">${hbars("Where accepted ideas are now",STAGES.map(st=>({label:st.label,v:CARDS.filter(c=>c.ideaId&&c.stage===st.id).length,color:st.id==="published"?"var(--good)":"var(--c1)"})))}
-         ${hbars("Every idea by status",stBars(IDEAS))}</div>`
+    const acc=vI.filter(i=>i.status==="accepted"), pubIdeas=vI.filter(i=>allPub.some(c=>c.ideaId===i.id));
+    const inPipe=acc.filter(i=>{ const c=vC.find(x=>x.ideaId===i.id); return c&&c.stage!=="published"; });
+    return head(`${pct(pubIdeas.length,vI.length)}% of ideas became posts`,"every idea ever logged")
+      + dstats([["Logged",vI.length,""],["Accepted",acc.length,`${pct(acc.length,vI.length)}%`],["In the pipeline",inPipe.length,"accepted, not out yet"],
+          ["Published",pubIdeas.length,`${pct(pubIdeas.length,vI.length)}%`],["Published without an idea",allPub.filter(c=>!c.ideaId).length,"cards made directly"]])
+      + `<div class="dgrid">${hbars("Where accepted ideas are now",STAGES.map(st=>({label:st.label,v:vC.filter(c=>c.ideaId&&c.stage===st.id).length,color:st.id==="published"?"var(--good)":"var(--c1)"})))}
+         ${hbars("Every idea by status",stBars(vI))}</div>`
       + dtable("Accepted ideas and their cards",["Idea","By","On","Platform","Status","Card"],acc.map(ideaRow),"No accepted ideas yet.");
   }
 
   if(key==="accept"){
-    const dec=IDEAS.filter(i=>["accepted","rejected"].includes(i.status)), rej=IDEAS.filter(i=>i.status==="rejected");
+    const dec=vI.filter(i=>["accepted","rejected"].includes(i.status)), rej=vI.filter(i=>i.status==="rejected");
     const reasons={}; rej.forEach(i=>{ const r=i.rejectReason||"No reason"; reasons[r]=(reasons[r]||0)+1; });
     const people={}; dec.forEach(i=>{ const n=i.by||"unnamed"; people[n]=people[n]||{a:0,d:0}; people[n].d++; if(i.status==="accepted") people[n].a++; });
     return head(`${pct(dec.length-rej.length,dec.length)}% accepted`,"of every idea the head has decided on")
-      + dstats(Object.entries(STATUS_UI).map(([k,u])=>[u.label,IDEAS.filter(i=>i.status===k).length,k==="new"?"waiting for a decision":""]))
+      + dstats(Object.entries(STATUS_UI).map(([k,u])=>[u.label,vI.filter(i=>i.status===k).length,k==="new"?"waiting for a decision":""]))
       + `<div class="dgrid">${hbars("Why ideas were rejected",Object.entries(reasons).sort((a,b)=>b[1]-a[1]).map(([r,c])=>({label:r,v:c,color:"var(--crit)"})))}
          ${hbars("Acceptance by person",Object.entries(people).map(([n,o])=>({label:n,v:pct(o.a,o.d),color:"var(--good)",text:`${pct(o.a,o.d)}% · ${o.a}/${o.d}`})))}</div>`
       + dtable("Rejected ideas",["Idea","By","Reason","Note"],rej.map(i=>`<tr><td class="td-idea">${esc(i.idea)}</td><td>${who(i.by)}</td>
@@ -1355,19 +1368,19 @@ function detailHTML(key){
     skipped.forEach(c=>miss(c).forEach(m=>counts[m]=(counts[m]||0)+1));
     return head(`${pct(allPub.length-skipped.length,allPub.length)}% published with full research`,`${allPub.length} published card${allPub.length===1?"":"s"}`)
       + dstats([["Full research",allPub.length-skipped.length,""],["Skipped",skipped.length,""],["Overridden",allPub.filter(c=>c.override).length,"head let it through with a reason"],
-          ["Cards in progress missing it",CARDS.filter(c=>c.stage!=="published"&&!gResearch(c.pre)).length,"will be blocked at To Do"]])
+          ["Cards in progress missing it",vC.filter(c=>c.stage!=="published"&&!gResearch(c.pre)).length,"will be blocked at To Do"]])
       + `<div class="dgrid">${hbars("What was missing most",Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([m,c])=>({label:m,v:c,color:"var(--crit)"})))}</div>`
       + dtable("Published without full research",["Card","Missing","Override"],skipped.map(c=>`<tr data-card="${c.id}" style="cursor:pointer"><td class="td-idea">${cardTitle(c)}</td>
           <td class="td-txt">${miss(c).join(", ")}</td><td class="td-txt">${c.override?`${esc(c.override.by)}: ${esc(c.override.reason)}`:"—"}</td></tr>`),"Every published card had its research done.");
   }
 
   if(key==="backlog"){
-    const todo=CARDS.filter(c=>c.stage==="todo").map(c=>({c,age:c.acceptedOn?days(c.acceptedOn,today()):null})).sort((a,b)=>(b.age??0)-(a.age??0));
+    const todo=vC.filter(c=>c.stage==="todo").map(c=>({c,age:c.acceptedOn?days(c.acceptedOn,today()):null})).sort((a,b)=>(b.age??0)-(a.age??0));
     return head(`${todo.length} card${todo.length===1?"":"s"} waiting in To Do`,"accepted, not started yet")
       + dstats([["In To Do",todo.length,todo.length<3?"thin — log and accept more ideas":todo.length>20?"hoarding — too many waiting":"healthy"],
           ["Oldest",todo.length&&todo[0].age!=null?todo[0].age+" d":"—","since it was accepted"],
           ["Blocked by research",todo.filter(x=>!gatePass(x.c,"research")).length,"can't leave To Do yet"],
-          ...STAGES.filter(st=>st.id!=="todo"&&st.id!=="published").map(st=>[st.label,CARDS.filter(c=>c.stage===st.id).length,"further along"])])
+          ...STAGES.filter(st=>st.id!=="todo"&&st.id!=="published").map(st=>[st.label,vC.filter(c=>c.stage===st.id).length,"further along"])])
       + `<div class="dgrid">${hbars("Waiting, by video type",TYPES().map(k=>({label:vtypeLabel(k),v:todo.filter(x=>x.c.vtype===k).length,color:vtypeColor(k)})).filter(x=>x.v))}
          ${hbars("Waiting, by platform",PLATS().map(k=>({label:regLabel("platform",k),v:todo.filter(x=>x.c.platform===k).length,color:platColor(k)})).filter(x=>x.v))}</div>`
       + dtable("Cards in To Do",["Card","Type","Waiting","Research gate"],todo.map(x=>`<tr data-card="${x.c.id}" style="cursor:pointer"><td class="td-idea">${cardTitle(x.c)}</td>
