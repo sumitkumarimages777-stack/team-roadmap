@@ -129,7 +129,7 @@ async function syncYouTube(admin, team, cfg) {
         views: num(it.statistics.viewCount), likes: num(it.statistics.likeCount),
         comments: num(it.statistics.commentCount),
         shares: null, watch_minutes: null, avg_view_s: null, avg_view_pct: null, impressions: null, ctr_pct: null,
-        updated_at: new Date().toISOString(),
+        followers_gained: null, updated_at: new Date().toISOString(),
       });
     }
   }
@@ -153,6 +153,18 @@ async function syncYouTube(admin, team, cfg) {
       }
     }
   } catch (e) { notes.push("Shares/watch time not available: " + e.message); }
+
+  // --- subscribers each video brought in (asked separately so a refusal can't cost the numbers above)
+  try {
+    const all = [...posts.keys()];
+    for (let i = 0; i < all.length; i += 50) {
+      const rows = await report(token, {
+        startDate: "2005-04-23", endDate: ymd(today), dimensions: "video", filters: "video==" + all.slice(i, i + 50).join(","),
+        metrics: "subscribersGained",
+      });
+      for (const r of rows) { const p = posts.get(r.video); if (p) p.followers_gained = num(r.subscribersGained); }
+    }
+  } catch (e) { notes.push("Subscribers per video not available: " + e.message); }
 
   // Thumbnail impressions / CTR: YouTube Analytics does not offer them per
   // video ("query is not supported"), so ctr_pct stays empty (Studio only).
@@ -216,8 +228,8 @@ async function igAccount() {
 // one post's insights; metrics a post type doesn't support make the call fail, so try smaller sets
 async function mediaInsights(id, isReel) {
   const sets = isReel
-    ? ["views,reach,shares,saved,ig_reels_avg_watch_time", "views,reach,shares,saved", "reach,shares,saved", "reach"]
-    : ["views,reach,shares,saved", "reach,shares,saved", "reach"];
+    ? ["views,reach,shares,saved,follows,ig_reels_avg_watch_time", "views,reach,shares,saved,ig_reels_avg_watch_time", "views,reach,shares,saved", "reach,shares,saved", "reach"]
+    : ["views,reach,shares,saved,follows", "views,reach,shares,saved", "reach,shares,saved", "reach"];
   for (const m of sets) {
     try {
       const r = await fget("/" + id + "/insights", { metric: m });
@@ -281,6 +293,7 @@ async function syncInstagram(admin, team, cfg) {
       row.views = num(ins.views ?? ins.reach);
       row.shares = num(ins.shares);
       row.impressions = num(ins.reach);
+      row.followers_gained = num(ins.follows);   // people who followed from this post
       row.avg_view_s = ins.ig_reels_avg_watch_time != null ? Math.round(Number(ins.ig_reels_avg_watch_time) / 100) / 10 : null;
       recent.push(row);
     } else older.push(row);
