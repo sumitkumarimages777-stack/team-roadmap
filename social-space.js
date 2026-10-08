@@ -83,6 +83,28 @@ a{color:inherit}
 .tile .v{font-size:27px;font-weight:700;letter-spacing:-.035em;line-height:1.08;font-variant-numeric:tabular-nums}
 .tile .v small{font-size:14px;font-weight:600;color:var(--ink-3);letter-spacing:0}
 .tile .d{font-size:11.5px;color:var(--ink-3);margin-top:5px;line-height:1.4}
+.tile[data-tile]{cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.tile[data-tile]:hover{border-color:var(--ink-3)}
+.tile.open{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tile .more{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink-3);margin-top:8px;text-transform:uppercase}
+.tile.open .more{color:var(--accent)}
+.tdetail{grid-column:1/-1;background:var(--surface);border:1px solid var(--accent);box-shadow:0 0 0 1px var(--accent);border-radius:var(--r);padding:16px 18px}
+.tdetail .dh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.tdetail .dh h4{font-size:15px}
+.dstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:9px;margin-bottom:16px}
+.dstats div{background:var(--surface-4);border:1px solid var(--line);border-radius:var(--r-s);padding:9px 11px;min-width:0}
+.dstats b{display:block;font-size:19px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:2px}
+.dstats small{display:block;font-size:11px;color:var(--ink-3);line-height:1.35}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px;margin-bottom:16px}
+.dblock .lbl{display:block;margin-bottom:7px}
+.hbar{display:grid;grid-template-columns:minmax(70px,120px) 1fr auto;gap:9px;align-items:center;font-size:12px;padding:3px 0}
+.hbar .hl{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar .ht{height:10px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+.hbar .ht i{display:block;height:100%;border-radius:999px;min-width:2px}
+.hbar .hv{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:nowrap}
+table.mini{min-width:640px}
+table.mini td{padding:8px 10px;font-size:12.5px}
+table.mini th{padding:8px 10px}
 
 .okrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:13px}
 .okr{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
@@ -438,7 +460,8 @@ function postRows(){
     const c = plat==="yt" ? cardForVideo(p.external_id) : null;
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
-      watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c });
+      watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
+      watchMin:p.watch_minutes, dur:p.duration_s });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
     if(livePost(c)) return;                          // already listed from YouTube
@@ -588,19 +611,16 @@ function renderSummary(){
      <div class="okrs">${okr("yt","YouTube","var(--c1)",yt,true)}${okr("ig","Instagram","var(--c3)",ig,false)}</div></div>
 
    <div class="sec"><div class="sec-h"><h3>Process health</h3><span class="hint">Live from this space and the synced posts</span></div>
-     <div class="tiles">
-       <div class="tile"><div class="k"><span class="lbl">Published</span></div><div class="v">${pub.length}</div><div class="d">Posts in the selected period and filters</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Views</span></div><div class="v">${kfmt(views)}</div><div class="d">On those posts, all-time so far</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Ideas logged</span></div><div class="v">${ideasP.length}</div>
-         <div class="d">${Object.entries(byPerson).map(([n,c])=>`${c} ${esc(n)}`).join(" · ")||"In the selected period"}</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Idea → published</span></div><div class="v">${conv}<small>%</small></div><div class="d">Of every idea ever logged</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Acceptance rate</span></div><div class="v">${acceptRate}<small>%</small></div><div class="d">${accepted.length} accepted of ${decided.length} decided</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Cycle time</span></div><div class="v">${cycle}<small> days</small></div><div class="d">Accepted → published, average</div></div>
-       <div class="tile"><div class="k"><span class="lbl">On-time publish</span></div><div class="v">${onTime}<small>%</small></div><div class="d">Shipped on the scheduled date</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Research compliance</span>${comp<100&&allPub.length?`<span class="badge warn">${allPub.length-allPub.filter(c=>gResearch(c.pre)).length} skipped</span>`:""}</div>
-         <div class="v">${comp}<small>%</small></div><div class="d">Published cards with a full research block</div></div>
-       <div class="tile"><div class="k"><span class="lbl">Backlog</span>${backlog<3?`<span class="badge crit">thin</span>`:backlog>20?`<span class="badge warn">hoarding</span>`:`<span class="badge good">healthy</span>`}</div>
-         <div class="v">${backlog}</div><div class="d">Accepted ideas waiting in To Do</div></div></div></div>
+     <div class="tiles" id="tiles">
+       ${tile("published","Published","",pub.length,"Posts in the selected period and filters")}
+       ${tile("views","Views","",kfmt(views),"On those posts, all-time so far")}
+       ${tile("ideas","Ideas logged","",ideasP.length,Object.entries(byPerson).map(([n,c])=>`${c} ${esc(n)}`).join(" · ")||"In the selected period")}
+       ${tile("conv","Idea → published","",conv+"<small>%</small>","Of every idea ever logged")}
+       ${tile("accept","Acceptance rate","",acceptRate+"<small>%</small>",`${accepted.length} accepted of ${decided.length} decided`)}
+       ${tile("cycle","Cycle time","",cycle+"<small> days</small>","Accepted → published, average")}
+       ${tile("ontime","On-time publish","",onTime+"<small>%</small>","Shipped on the scheduled date")}
+       ${tile("research","Research compliance",comp<100&&allPub.length?`<span class="badge warn">${allPub.length-allPub.filter(c=>gResearch(c.pre)).length} skipped</span>`:"",comp+"<small>%</small>","Published cards with a full research block")}
+       ${tile("backlog","Backlog",backlog<3?`<span class="badge crit">thin</span>`:backlog>20?`<span class="badge warn">hoarding</span>`:`<span class="badge good">healthy</span>`,backlog,"Accepted ideas waiting in To Do")}</div></div>
 
    <div class="sec"><div class="sec-h"><h3>Output and pipeline</h3></div><div class="charts">
      <div class="chart-card"><div class="chart-head"><h4>Posts by video type</h4>
@@ -650,6 +670,190 @@ function renderSummary(){
   P.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
+  P.querySelectorAll("[data-tile]").forEach(t=>{
+    const go=()=>{ OPEN_TILE = OPEN_TILE===t.dataset.tile ? null : t.dataset.tile; placeDetail(); };
+    t.onclick=go; t.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
+  });
+  placeDetail();
+}
+
+/* ------------------------------------------------------------ TILE DETAILS
+   Clicking a Process health box opens its breakdown right under that box's
+   row, full width; clicking it again (or ×) closes it. */
+let OPEN_TILE=null;
+function tile(key,label,badge,value,desc){
+  return `<div class="tile ${OPEN_TILE===key?"open":""}" data-tile="${key}" role="button" tabindex="0" aria-expanded="${OPEN_TILE===key}">
+    <div class="k"><span class="lbl">${label}</span>${badge}</div><div class="v">${value}</div><div class="d">${desc}</div>
+    <div class="more">${OPEN_TILE===key?"Hide details ▴":"Details ▾"}</div></div>`;
+}
+function placeDetail(){
+  const grid=$("#tiles"); if(!grid) return;
+  grid.querySelectorAll(".tdetail").forEach(e=>e.remove());
+  grid.querySelectorAll("[data-tile]").forEach(t=>{ const on=t.dataset.tile===OPEN_TILE;
+    t.classList.toggle("open",on); t.setAttribute("aria-expanded",on); t.querySelector(".more").textContent=on?"Hide details ▴":"Details ▾"; });
+  if(!OPEN_TILE) return;
+  const tiles=[...grid.querySelectorAll("[data-tile]")], me=tiles.find(t=>t.dataset.tile===OPEN_TILE); if(!me) return;
+  // the last box on the same row as the clicked one
+  const rowEnd=tiles.filter(t=>Math.abs(t.offsetTop-me.offsetTop)<4).pop()||me;
+  const d=document.createElement("div"); d.className="tdetail"; d.innerHTML=detailHTML(OPEN_TILE);
+  rowEnd.after(d);
+  d.querySelector("[data-dclose]").onclick=()=>{ OPEN_TILE=null; placeDetail(); };
+  d.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
+  activateTips(d);
+}
+const sum=(a,f)=>a.reduce((t,x)=>t+(Number(f(x))||0),0);
+const avg=(a,f)=>{ const v=a.map(f).filter(x=>x!=null&&!isNaN(x)).map(Number); return v.length?v.reduce((t,x)=>t+x,0)/v.length:null; };
+const median=a=>{ const v=a.filter(x=>x!=null).map(Number).sort((x,y)=>x-y); if(!v.length) return null; const m=Math.floor(v.length/2); return v.length%2?v[m]:(v[m-1]+v[m])/2; };
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const r1=n=>n==null?"—":(Math.round(n*10)/10).toLocaleString("en-IN");
+function dstats(items){ return `<div class="dstats">${items.map(([k,v,d])=>`<div><span class="lbl">${k}</span><b>${v}</b>${d?`<small>${d}</small>`:""}</div>`).join("")}</div>`; }
+function hbars(title,rows){ const max=Math.max(1,...rows.map(r=>Number(r.v)||0));
+  return `<div class="dblock"><span class="lbl">${title}</span>${rows.length?rows.map(r=>`<div class="hbar" data-tip="${esc(r.label)}\n${esc(String(r.tip??r.text??fmt(r.v)))}">
+    <span class="hl">${esc(r.label)}</span><span class="ht"><i style="width:${(Number(r.v)||0)/max*100}%;background:${r.color||"var(--c2)"}"></i></span>
+    <span class="hv">${r.text??fmt(r.v)}</span></div>`).join(""):`<p class="hint">Nothing here yet.</p>`}</div>`; }
+function dtable(title,head,rows,empty){
+  return `<div class="dblock"><span class="lbl">${title}</span>${rows.length?`<div class="tw"><table class="mini"><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.join("")}</tbody></table></div>`:`<p class="hint">${empty||"Nothing here yet."}</p>`}</div>`; }
+const titleCell=r=>`<td class="td-idea" style="min-width:200px">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" data-ext="1">${esc(r.title)}</a>`:esc(r.title)}</td>`;
+const cardTitle=c=>esc(c.pre.title||c.idea||"Untitled");
+const TYPES=()=>Object.keys(REG.vtype), PLATS=()=>Object.keys(REG.platform);
+const periodName=()=>FILTERS.period==="week"?"last 7 days":FILTERS.period==="month"?"last 30 days":"last 90 days";
+
+function detailHTML(key){
+  const pub=publishedInPeriod(), from=periodStart(), allPub=CARDS.filter(c=>c.stage==="published");
+  const head=(t,sub)=>`<div class="dh"><div><h4>${t}</h4><span class="hint">${sub}</span></div><button class="btn sm" data-dclose="1">Close ×</button></div>`;
+  const byType=rows=>TYPES().map(k=>({k,label:vtypeLabel(k),rows:rows.filter(r=>r.vtype===k),color:vtypeColor(k)})).filter(g=>g.rows.length);
+
+  if(key==="published"){
+    const n=pub.length, spanDays=FILTERS.period==="week"?7:FILTERS.period==="month"?30:90;
+    const g=byType(pub), wd=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const byDay=wd.map((d,i)=>({label:d,v:pub.filter(r=>((new Date(r.date+"T00:00:00").getDay()+6)%7)===i).length,color:"var(--c4)"}));
+    const lenAvg=k=>avg(pub.filter(r=>r.vtype===k&&r.dur),r=>r.dur);
+    return head(`${n} post${n===1?"":"s"} published`,`${periodName()} · ${FILTERS.platforms.map(k=>regLabel("platform",k)).join(" + ")}`)
+      + dstats([["Posts",n,`${r1(n/spanDays*7)} a week`],
+          ...g.map(x=>[x.label,x.rows.length,`${pct(x.rows.length,n)}% of posts${lenAvg(x.k)?` · avg ${mmss(lenAvg(x.k))} long`:""}`]),
+          ...PLATS().map(k=>[regLabel("platform",k),pub.filter(r=>r.platform===k).length,k==="yt"?"synced":"from cards"]),
+          ["Linked to a card",pub.filter(r=>r.card).length,"the rest have no idea/card behind them"]])
+      + `<div class="dgrid">${hbars("By video type",g.map(x=>({label:x.label,v:x.rows.length,color:x.color})))}
+         ${hbars("By day of the week",byDay)}</div>`
+      + dtable("Every post in this period",["Post","Type","Date","Length","Views","Avg viewed"],
+          pub.map(r=>`<tr ${r.card?`data-card="${r.card.id}" style="cursor:pointer"`:""}>${titleCell(r)}<td>${ptag(r.platform)} ${vtag(r.vtype)}</td>
+            <td class="vol">${dmy(r.date)}</td><td class="vol">${r.dur?mmss(r.dur):"—"}</td><td class="vol">${fmt(r.views)}</td>
+            <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":"—"}</td></tr>`),"No posts in this period.");
+  }
+
+  if(key==="views"){
+    const v=sum(pub,r=>r.views), likes=sum(pub,r=>r.likes), com=sum(pub,r=>r.comments), sh=sum(pub,r=>r.shares);
+    const wm=sum(pub,r=>r.watchMin), g=byType(pub), top=[...pub].sort((a,b)=>(b.views||0)-(a.views||0)).slice(0,8);
+    return head(`${fmt(v)} views`,`on the ${pub.length} posts from the ${periodName()} — counted all-time, so older posts have had longer to collect`)
+      + dstats([["Views",fmt(v),`${fmt(Math.round(v/(pub.length||1)))} per post`],["Median post",fmt(median(pub.map(r=>r.views))),"half the posts got more, half less"],
+          ["Likes",fmt(likes),`${r1(likes/(v||1)*100)}% of views`],["Comments",fmt(com),`${r1(com/(v||1)*100)}% of views`],
+          ["Shares",fmt(sh),`${r1(sh/(v||1)*100)}% of views`],["Engagement",r1((likes+com+sh)/(v||1)*100)+"%","likes + comments + shares ÷ views"],
+          ["Watch time",fmt(Math.round(wm/60))+" h",`${fmt(Math.round(wm))} minutes`],
+          ["Avg viewed",avg(pub,r=>r.viewed)!=null?Math.round(avg(pub,r=>r.viewed))+"%":"—","of each video, on average"]])
+      + `<div class="dgrid">${hbars("Views by video type",g.map(x=>({label:x.label,v:sum(x.rows,r=>r.views),color:x.color,
+            text:`${kfmt(sum(x.rows,r=>r.views))} · ${kfmt(Math.round(sum(x.rows,r=>r.views)/x.rows.length))}/post`})))}
+         ${hbars("Average % viewed by type",g.map(x=>({label:x.label,v:avg(x.rows,r=>r.viewed)||0,color:x.color,
+            text:avg(x.rows,r=>r.viewed)!=null?Math.round(avg(x.rows,r=>r.viewed))+"%":"—"})))}</div>`
+      + dtable("Top posts by views",["Post","Type","Views","Likes","Comments","Shares","Avg watch","Avg viewed"],
+          top.map(r=>`<tr ${r.card?`data-card="${r.card.id}" style="cursor:pointer"`:""}>${titleCell(r)}<td>${vtag(r.vtype)}</td><td class="vol">${fmt(r.views)}</td>
+            <td class="vol">${fmt(r.likes)}</td><td class="vol">${fmt(r.comments)}</td><td class="vol">${fmt(r.shares)}</td>
+            <td class="vol">${r.watch||"—"}</td><td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":"—"}</td></tr>`),"No posts in this period.");
+  }
+
+  const ideasP=IDEAS.filter(i=>i.created>=from);
+  const stBars=list=>Object.entries(STATUS_UI).map(([k,u])=>({label:u.label,v:list.filter(i=>i.status===k).length,
+    color:k==="accepted"?"var(--good)":k==="rejected"?"var(--crit)":k==="under_review"?"var(--warn)":"var(--ink-3)"}));
+  const ideaRow=i=>{ const c=CARDS.find(x=>x.ideaId===i.id);
+    return `<tr ${c?`data-card="${c.id}" style="cursor:pointer"`:""}><td class="td-idea">${esc(i.idea)}</td><td>${who(i.by)}</td><td class="vol">${dmy(i.created)}</td>
+      <td>${ptag(i.platform)} ${vtag(i.vtype)}</td><td><span class="badge ${STATUS_UI[i.status].cls||"mute"}">${STATUS_UI[i.status].label}</span></td>
+      <td>${c?`<span class="badge mute">${esc(STAGES.find(s=>s.id===c.stage).label)}</span>`:"—"}</td></tr>`; };
+
+  if(key==="ideas"){
+    const people={}; ideasP.forEach(i=>{ const n=i.by||"unnamed"; people[n]=(people[n]||0)+1; });
+    return head(`${ideasP.length} idea${ideasP.length===1?"":"s"} logged`,periodName())
+      + dstats([["Logged",ideasP.length,`${IDEAS.length} ever`],...Object.entries(STATUS_UI).map(([k,u])=>[u.label,ideasP.filter(i=>i.status===k).length,""]),
+          ["With research",ideasP.filter(i=>gResearch(i)).length,"source, tool, keyword, volume, why"]])
+      + `<div class="dgrid">${hbars("By person",Object.entries(people).sort((a,b)=>b[1]-a[1]).map(([n,c])=>({label:n,v:c,color:"var(--c3)"})))}
+         ${hbars("By status",stBars(ideasP))}
+         ${hbars("By video type",TYPES().map(k=>({label:vtypeLabel(k),v:ideasP.filter(i=>i.vtype===k).length,color:vtypeColor(k)})).filter(x=>x.v))}</div>`
+      + dtable("Ideas in this period",["Idea","By","On","Platform","Status","Card"],[...ideasP].sort((a,b)=>b.created.localeCompare(a.created)).map(ideaRow),"No ideas logged in this period.");
+  }
+
+  if(key==="conv"){
+    const acc=IDEAS.filter(i=>i.status==="accepted"), pubIdeas=IDEAS.filter(i=>allPub.some(c=>c.ideaId===i.id));
+    const inPipe=acc.filter(i=>{ const c=CARDS.find(x=>x.ideaId===i.id); return c&&c.stage!=="published"; });
+    return head(`${pct(pubIdeas.length,IDEAS.length)}% of ideas became posts`,"every idea ever logged")
+      + dstats([["Logged",IDEAS.length,""],["Accepted",acc.length,`${pct(acc.length,IDEAS.length)}%`],["In the pipeline",inPipe.length,"accepted, not out yet"],
+          ["Published",pubIdeas.length,`${pct(pubIdeas.length,IDEAS.length)}%`],["Published without an idea",allPub.filter(c=>!c.ideaId).length,"cards made directly"]])
+      + `<div class="dgrid">${hbars("Where accepted ideas are now",STAGES.map(st=>({label:st.label,v:CARDS.filter(c=>c.ideaId&&c.stage===st.id).length,color:st.id==="published"?"var(--good)":"var(--c1)"})))}
+         ${hbars("Every idea by status",stBars(IDEAS))}</div>`
+      + dtable("Accepted ideas and their cards",["Idea","By","On","Platform","Status","Card"],acc.map(ideaRow),"No accepted ideas yet.");
+  }
+
+  if(key==="accept"){
+    const dec=IDEAS.filter(i=>["accepted","rejected"].includes(i.status)), rej=IDEAS.filter(i=>i.status==="rejected");
+    const reasons={}; rej.forEach(i=>{ const r=i.rejectReason||"No reason"; reasons[r]=(reasons[r]||0)+1; });
+    const people={}; dec.forEach(i=>{ const n=i.by||"unnamed"; people[n]=people[n]||{a:0,d:0}; people[n].d++; if(i.status==="accepted") people[n].a++; });
+    return head(`${pct(dec.length-rej.length,dec.length)}% accepted`,"of every idea the head has decided on")
+      + dstats(Object.entries(STATUS_UI).map(([k,u])=>[u.label,IDEAS.filter(i=>i.status===k).length,k==="new"?"waiting for a decision":""]))
+      + `<div class="dgrid">${hbars("Why ideas were rejected",Object.entries(reasons).sort((a,b)=>b[1]-a[1]).map(([r,c])=>({label:r,v:c,color:"var(--crit)"})))}
+         ${hbars("Acceptance by person",Object.entries(people).map(([n,o])=>({label:n,v:pct(o.a,o.d),color:"var(--good)",text:`${pct(o.a,o.d)}% · ${o.a}/${o.d}`})))}</div>`
+      + dtable("Rejected ideas",["Idea","By","Reason","Note"],rej.map(i=>`<tr><td class="td-idea">${esc(i.idea)}</td><td>${who(i.by)}</td>
+          <td><span class="badge crit">${esc(i.rejectReason||"—")}</span></td><td class="td-txt">${esc(i.rejectNote||"")}</td></tr>`),"Nothing rejected yet.");
+  }
+
+  if(key==="cycle"){
+    const done=allPub.filter(c=>c.acceptedOn&&c.published).map(c=>({c,d:days(c.acceptedOn,c.published)})).sort((a,b)=>b.d-a.d);
+    const g=TYPES().map(k=>({k,label:vtypeLabel(k),list:done.filter(x=>x.c.vtype===k),color:vtypeColor(k)})).filter(x=>x.list.length);
+    return head(`${done.length?Math.round(avg(done,x=>x.d)):0} days from accepted to published`,`average over ${done.length} published card${done.length===1?"":"s"}`)
+      + dstats([["Average",done.length?r1(avg(done,x=>x.d))+" d":"—",""],["Median",done.length?r1(median(done.map(x=>x.d)))+" d":"—",""],
+          ["Fastest",done.length?done[done.length-1].d+" d":"—",done.length?cardTitle(done[done.length-1].c):""],["Slowest",done.length?done[0].d+" d":"—",done.length?cardTitle(done[0].c):""]])
+      + `<div class="dgrid">${hbars("Average days by video type",g.map(x=>({label:x.label,v:avg(x.list,y=>y.d),color:x.color,text:r1(avg(x.list,y=>y.d))+" d"})))}</div>`
+      + dtable("Each published card",["Card","Type","Accepted","Published","Days"],done.map(x=>`<tr data-card="${x.c.id}" style="cursor:pointer"><td class="td-idea">${cardTitle(x.c)}</td>
+          <td>${ptag(x.c.platform)} ${vtag(x.c.vtype)}</td><td class="vol">${dmy(x.c.acceptedOn)}</td><td class="vol">${dmy(x.c.published)}</td><td class="vol">${x.d}</td></tr>`),
+          "No published cards yet. Cards count here once they are moved to Published.");
+  }
+
+  if(key==="ontime"){
+    const rows=allPub.map(c=>({c,diff:c.scheduled&&c.published?days(c.scheduled,c.published):null}));
+    const on=rows.filter(x=>x.diff===0).length, late=rows.filter(x=>x.diff>0).length, early=rows.filter(x=>x.diff<0).length, none=rows.filter(x=>x.diff==null).length;
+    return head(`${pct(on,rows.length)}% shipped on the scheduled date`,`${rows.length} published card${rows.length===1?"":"s"}`)
+      + dstats([["On time",on,""],["Late",late,late?`avg ${r1(avg(rows.filter(x=>x.diff>0),x=>x.diff))} days late`:""],["Early",early,""],["No date set",none,"never scheduled"]])
+      + dtable("Scheduled vs published",["Card","Type","Scheduled","Published","Result"],rows.sort((a,b)=>(b.diff??-99)-(a.diff??-99)).map(x=>`<tr data-card="${x.c.id}" style="cursor:pointer">
+          <td class="td-idea">${cardTitle(x.c)}</td><td>${ptag(x.c.platform)} ${vtag(x.c.vtype)}</td><td class="vol">${dmy(x.c.scheduled)}</td><td class="vol">${dmy(x.c.published)}</td>
+          <td>${x.diff==null?`<span class="badge mute">no date</span>`:x.diff===0?`<span class="badge good">on time</span>`:x.diff>0?`<span class="badge crit">${x.diff} d late</span>`:`<span class="badge warn">${-x.diff} d early</span>`}</td></tr>`),
+          "No published cards yet.");
+  }
+
+  if(key==="research"){
+    const miss=c=>{ const p=c.pre, k=(p.keywords||[]), prim=k.find(x=>x.rank==="primary")||k[0], out=[];
+      if(!p.source) out.push("Idea source"); if(!p.tool) out.push("Research tool"); if(!prim||!prim.kw) out.push("Primary keyword");
+      else if(prim.vol==null) out.push("Keyword volume"); if(!p.why) out.push("Why this idea"); return out; };
+    const skipped=allPub.filter(c=>!gResearch(c.pre)), counts={};
+    skipped.forEach(c=>miss(c).forEach(m=>counts[m]=(counts[m]||0)+1));
+    return head(`${pct(allPub.length-skipped.length,allPub.length)}% published with full research`,`${allPub.length} published card${allPub.length===1?"":"s"}`)
+      + dstats([["Full research",allPub.length-skipped.length,""],["Skipped",skipped.length,""],["Overridden",allPub.filter(c=>c.override).length,"head let it through with a reason"],
+          ["Cards in progress missing it",CARDS.filter(c=>c.stage!=="published"&&!gResearch(c.pre)).length,"will be blocked at To Do"]])
+      + `<div class="dgrid">${hbars("What was missing most",Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([m,c])=>({label:m,v:c,color:"var(--crit)"})))}</div>`
+      + dtable("Published without full research",["Card","Missing","Override"],skipped.map(c=>`<tr data-card="${c.id}" style="cursor:pointer"><td class="td-idea">${cardTitle(c)}</td>
+          <td class="td-txt">${miss(c).join(", ")}</td><td class="td-txt">${c.override?`${esc(c.override.by)}: ${esc(c.override.reason)}`:"—"}</td></tr>`),"Every published card had its research done.");
+  }
+
+  if(key==="backlog"){
+    const todo=CARDS.filter(c=>c.stage==="todo").map(c=>({c,age:c.acceptedOn?days(c.acceptedOn,today()):null})).sort((a,b)=>(b.age??0)-(a.age??0));
+    return head(`${todo.length} card${todo.length===1?"":"s"} waiting in To Do`,"accepted, not started yet")
+      + dstats([["In To Do",todo.length,todo.length<3?"thin — log and accept more ideas":todo.length>20?"hoarding — too many waiting":"healthy"],
+          ["Oldest",todo.length&&todo[0].age!=null?todo[0].age+" d":"—","since it was accepted"],
+          ["Blocked by research",todo.filter(x=>!gatePass(x.c,"research")).length,"can't leave To Do yet"],
+          ...STAGES.filter(st=>st.id!=="todo"&&st.id!=="published").map(st=>[st.label,CARDS.filter(c=>c.stage===st.id).length,"further along"])])
+      + `<div class="dgrid">${hbars("Waiting, by video type",TYPES().map(k=>({label:vtypeLabel(k),v:todo.filter(x=>x.c.vtype===k).length,color:vtypeColor(k)})).filter(x=>x.v))}
+         ${hbars("Waiting, by platform",PLATS().map(k=>({label:regLabel("platform",k),v:todo.filter(x=>x.c.platform===k).length,color:platColor(k)})).filter(x=>x.v))}</div>`
+      + dtable("Cards in To Do",["Card","Type","Waiting","Research gate"],todo.map(x=>`<tr data-card="${x.c.id}" style="cursor:pointer"><td class="td-idea">${cardTitle(x.c)}</td>
+          <td>${ptag(x.c.platform)} ${vtag(x.c.vtype)}</td><td class="vol">${x.age!=null?x.age+" days":"—"}</td>
+          <td>${gatePass(x.c,"research")?`<span class="badge good">ready</span>`:`<span class="badge crit">blocked</span>`}</td></tr>`),"Nothing waiting.");
+  }
+  return head("Details","")+`<p class="hint">No details for this box.</p>`;
 }
 
 /* ------------------------------------------------------------ IDEATION */
