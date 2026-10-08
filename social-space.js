@@ -464,9 +464,16 @@ function ytId(url){
   const m = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/.exec(String(url||""));
   return m ? m[1] : null;
 }
-function livePost(c){ if(!c || c.platform!=="yt") return null; const id=ytId(c.post&&c.post.postUrl);
-  return id ? LIVE.posts.find(p=>p.external_id===id) || null : null; }
+// Instagram links: /p/<code>/, /reel/<code>/, /reels/<code>/, /tv/<code>/
+function igCode(url){ const m=/instagram\.com\/(?:[^/]+\/)?(?:p|reels?|tv)\/([A-Za-z0-9_-]+)/.exec(String(url||"")); return m?m[1]:null; }
+function livePost(c){ if(!c) return null; const u=c.post&&c.post.postUrl;
+  if(c.platform==="yt"){ const id=ytId(u); return id ? LIVE.posts.find(p=>p.platform==="youtube"&&p.external_id===id) || null : null; }
+  if(c.platform==="ig"){ const k=igCode(u); return k ? LIVE.posts.find(p=>p.platform==="instagram"&&igCode(p.url)===k) || null : null; }
+  return null; }
 function cardForVideo(id){ return CARDS.find(c=>c.platform==="yt" && ytId(c.post&&c.post.postUrl)===id) || null; }
+function cardForIg(url){ const k=igCode(url); return k ? CARDS.find(c=>c.platform==="ig" && igCode(c.post&&c.post.postUrl)===k) || null : null; }
+// Instagram counts as connected once the sync has brought anything back
+function igLive(){ return LIVE.snaps.some(r=>r.platform==="instagram") || LIVE.posts.some(p=>p.platform==="instagram"); }
 
 async function loadLive(force){
   const team = OPT.team || "";
@@ -502,7 +509,8 @@ async function syncNow(){
   await loadLive(true);
 }
 function ytSeries(){ return LIVE.snaps.filter(r=>r.platform==="youtube" && r.followers!=null).map(r=>({d:r.day, v:Number(r.followers)})); }
-function igSeries(){ return [...S.igFollowers].sort((a,b)=>a.d.localeCompare(b.d)).map(f=>({d:f.d, v:Number(f.v)})); }
+function igSeries(){ if(igLive()) return LIVE.snaps.filter(r=>r.platform==="instagram" && r.followers!=null).map(r=>({d:r.day, v:Number(r.followers)}));
+  return [...S.igFollowers].sort((a,b)=>a.d.localeCompare(b.d)).map(f=>({d:f.d, v:Number(f.v)})); }
 // value on (or just before) a date
 function valueAt(series, d){ let v=null; for(const p of series){ if(p.d<=d) v=p.v; else break; } return v; }
 function weekly(series, weeks){
@@ -518,14 +526,14 @@ function postRows(){
   LIVE.posts.forEach(p=>{
     const plat = p.platform==="youtube" ? "yt" : p.platform==="instagram" ? "ig" : p.platform;
     const vt = {"Short":"short","Long video":"long","Live":"live","Reel":"reel","Carousel":"carousel","Image":"image"}[p.post_type] || "long";
-    const c = plat==="yt" ? cardForVideo(p.external_id) : null;
+    const c = plat==="yt" ? cardForVideo(p.external_id) : plat==="ig" ? cardForIg(p.url) : null;
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
       watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
       watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
-    if(livePost(c)) return;                          // already listed from YouTube
+    if(livePost(c)) return;                          // already listed from the synced posts
     rows.push({ key:"c:"+c.id, live:false, platform:c.platform, vtype:c.vtype, title:c.pre.title||c.idea, url:c.post.postUrl||"",
       thumb:null, date:c.published, views:c.metrics?.views, likes:c.metrics?.likes, comments:c.metrics?.comments,
       shares:c.metrics?.shares, watch:c.metrics?.watch||null, viewed:null, ctr:c.metrics?.ctr, card:c,
@@ -955,7 +963,7 @@ function postsSection(){
       <button class="x" data-fdel="${i}" title="Remove">×</button></div>`; }).join("")||`<p class="hint" style="margin:0 0 8px">No conditions yet — every post shows.</p>`}
     <div class="row" style="gap:8px"><button class="btn sm" id="pfAdd">+ Add condition</button>${act?`<button class="btn sm" id="pfClear">Clear all</button>`:""}</div>
     <div class="fpresets"><span class="lbl" style="align-self:center">Quick filters</span>${PRESETS.map((p,i)=>`<button class="chip" data-preset="${i}">${esc(p.name)}</button>`).join("")}</div></div>`;
-  return `<div class="sec-h"><h3>Published posts</h3><span class="badge good">YouTube live</span><span class="badge mute">Instagram manual</span>
+  return `<div class="sec-h"><h3>Published posts</h3><span class="badge good">YouTube live</span>${igLive()?`<span class="badge good">Instagram live</span>`:`<span class="badge mute">Instagram manual</span>`}
       <span class="hint">${rows.length} post${rows.length===1?"":"s"} ${act?"match":PF.scope==="all"?"in total":"in this period"} · click a column to sort, a row to open its card</span>
       <span style="flex:1"></span>
       <button class="btn sm" id="pfToggle">${PF.open?"Hide filters":"Filters"} ${act?`<span class="fcount">${act}</span>`:""}</button>
@@ -1071,7 +1079,8 @@ function liveBar(){
   return `<div class="apibar live"><span class="ic">LIVE</span>
     <p><b>YouTube is connected</b> — subscribers and every video's views, likes, comments, shares and watch time fill in by
     themselves every morning at 8:00 AM. Last synced <b>${esc(ago(LIVE.lastAt))}</b>.
-    Instagram isn't connected yet, so its numbers are typed in by hand and marked <span class="badge mute">manual</span>.
+    ${igLive()?`<b>Instagram is connected too</b> — followers and every post's views, reach, likes, comments, shares and saves.`
+      :`Instagram isn't connected yet, so its numbers are typed in by hand and marked <span class="badge mute">manual</span>.`}
     Thumbnail CTR stays in YouTube Studio — Google doesn't share it.</p>${sync?btn:""}</div>`;
 }
 
@@ -1129,8 +1138,8 @@ function renderSummary(){
 
    <div class="sec"><div class="sec-h"><h3>OKR progress</h3>
      <span class="hint">Two separate goals, never a combined audience number</span>
-     <button class="btn sm" data-updf="1" style="margin-left:auto">Update Instagram count</button></div>
-     <div class="okrs">${okr("yt","YouTube","var(--c1)",yt,true)}${okr("ig","Instagram","var(--c3)",ig,false)}</div></div>
+     ${igLive()?"":`<button class="btn sm" data-updf="1" style="margin-left:auto">Update Instagram count</button>`}</div>
+     <div class="okrs">${okr("yt","YouTube","var(--c1)",yt,true)}${okr("ig","Instagram","var(--c3)",ig,igLive())}</div></div>
 
    <div class="sec"><div class="sec-h"><h3>Process health</h3><span class="hint">Live from this space and the synced posts</span></div>
      <div class="tiles" id="tiles">
@@ -1163,7 +1172,7 @@ function renderSummary(){
      <div class="charts">
        <div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(TG.targets.yt)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(yt,12),"var(--c1)","YouTube")}</div>
-       <div class="chart-card"><div class="chart-head"><h4>Instagram followers <span class="badge mute" style="margin-left:4px">manual</span></h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
+       <div class="chart-card"><div class="chart-head"><h4>Instagram followers ${igLive()?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div></div></div>
 
    <div class="sec" id="postsSec">${postsSection()}</div>`;
@@ -1855,10 +1864,12 @@ function openCard(id,showGate){
       <p class="hint" style="margin:0">${c.platform==="yt"
         ? (lp?`<b style="color:var(--good)">Linked to YouTube</b> — “${esc(lp.title)}”. Its numbers fill in below by themselves.`
              :`The post link is the join key. Paste the YouTube link and this card's numbers fill in from the next sync.`)
-        : `The post link is the join key. Instagram isn't connected yet, so its numbers are typed in below once it's published.`}</p></div>
+        : c.platform==="ig" ? (lp?`<b style="color:var(--good)">Linked to Instagram</b> — “${esc(lp.title)}”. Its numbers fill in below by themselves.`
+             :`The post link is the join key. Paste the Instagram link and this card's numbers fill in from the next sync.`)
+        : `The post link is the join key.`}</p></div>
 
     ${lp?`
-    <div class="block"><div class="block-h"><h4>Performance</h4><span class="badge good">live from YouTube</span></div>
+    <div class="block"><div class="block-h"><h4>Performance</h4><span class="badge good">live from ${c.platform==="ig"?"Instagram":"YouTube"}</span></div>
       <div class="livegrid">
         <div><span class="lbl">Views</span><b>${fmt(lp.views)}</b></div>
         <div><span class="lbl">Likes</span><b>${fmt(lp.likes)}</b></div>

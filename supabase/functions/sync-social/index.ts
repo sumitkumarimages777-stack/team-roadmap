@@ -1,8 +1,8 @@
 // =====================================================================
 // STAGE 7b — "sync-social" Edge Function (Cyberflow team app)
 //
-// WHY THIS EXISTS: pulls the Social Media numbers from YouTube (Instagram
-// next) so nobody types them in by hand. Writes into social_snapshots and
+// WHY THIS EXISTS: pulls the Social Media numbers from YouTube and Instagram
+// so nobody types them in by hand. Writes into social_snapshots and
 // social_posts (stage 7a). The browser can only read those tables.
 //
 // WHO CAN RUN IT:
@@ -13,6 +13,11 @@
 // SECRETS (Supabase -> Edge Functions -> Secrets):
 //   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN — from Google Cloud and
 //   the OAuth Playground (read-only YouTube + YouTube Analytics scopes).
+//   IG_ACCESS_TOKEN — a Meta system-user token (never expires) for the
+//   "Dubuddy Socials Sync" app with instagram_basic, instagram_manage_insights,
+//   pages_show_list, pages_read_engagement, business_management.
+//   IG_USER_ID (optional) — the Instagram business account id, if the token
+//   can see more than one.
 //
 // HOW TO DEPLOY: name it exactly  sync-social , "Verify JWT" OFF (this code
 // checks the caller itself, like manage-people).
@@ -187,6 +192,127 @@ async function syncYouTube(admin, team, cfg) {
   return { channel: channel.snippet.title, followers: current, videos: posts.size, history_days: toSave.length - 1, notes };
 }
 
+// ---------------------------------------------------------------- Instagram
+const GRAPH = "https://graph.facebook.com/v23.0";
+const IG_INSIGHT_DAYS = 180;   // newer posts get views/reach/shares/saves; older keep what they had
+
+async function fget(path, params) {
+  const res = await fetch(GRAPH + path + "?" + new URLSearchParams({ ...params, access_token: Deno.env.get("IG_ACCESS_TOKEN") || "" }));
+  const body = await res.json();
+  if (!res.ok || body.error) throw new Error((body.error && body.error.message) || "Instagram error " + res.status);
+  return body;
+}
+
+// which Instagram business account the token reaches
+async function igAccount() {
+  const fixed = Deno.env.get("IG_USER_ID");
+  if (fixed) return fixed;
+  const pages = await fget("/me/accounts", { fields: "name,instagram_business_account", limit: "100" });
+  const hit = (pages.data || []).find((p) => p.instagram_business_account);
+  if (hit) return hit.instagram_business_account.id;
+  throw new Error("The token can't see an Instagram account. In Business settings, give the system user the Facebook Page and the Instagram account, then generate the token again.");
+}
+
+// one post's insights; metrics a post type doesn't support make the call fail, so try smaller sets
+async function mediaInsights(id, isReel) {
+  const sets = isReel
+    ? ["views,reach,shares,saved,ig_reels_avg_watch_time", "views,reach,shares,saved", "reach,shares,saved", "reach"]
+    : ["views,reach,shares,saved", "reach,shares,saved", "reach"];
+  for (const m of sets) {
+    try {
+      const r = await fget("/" + id + "/insights", { metric: m });
+      const out = {};
+      for (const row of r.data || []) out[row.name] = row.values && row.values[0] ? row.values[0].value : (row.total_value || {}).value;
+      return out;
+    } catch (_) { /* try the next, smaller set */ }
+  }
+  return {};
+}
+
+async function syncInstagram(admin, team, cfg) {
+  if (!Deno.env.get("IG_ACCESS_TOKEN")) return { skipped: "IG_ACCESS_TOKEN not set" };
+  const notes = [];
+  const igId = await igAccount();
+  const prof = await fget("/" + igId, { fields: "username,followers_count,media_count" });
+  const today = new Date();
+
+  if (cfg.instagram_user_id !== igId) {
+    await admin.from("social_posts").delete().eq("team_slug", team).eq("platform", "instagram");
+    await admin.from("social_snapshots").delete().eq("team_slug", team).eq("platform", "instagram");
+    await admin.from("social_sync_config").update({ instagram_user_id: igId }).eq("id", 1);
+    if (cfg.instagram_user_id) notes.push("Instagram account changed: cleared the previous account's numbers.");
+  }
+
+  // every post (newest first)
+  const media = [];
+  let after = "";
+  do {
+    const page = await fget("/" + igId + "/media", {
+      fields: "id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url,like_count,comments_count",
+      limit: "50", ...(after ? { after } : {}),
+    });
+    media.push(...(page.data || []));
+    after = page.paging && page.paging.next && page.paging.cursors ? page.paging.cursors.after : "";
+  } while (after && media.length < MAX_VIDEOS);
+
+  const cutoff = Date.now() - IG_INSIGHT_DAYS * 86400000;
+  const recent = [], older = [];
+  // insights for the newer posts, 10 requests at a time (keeps the run short)
+  const want = media.filter((m) => new Date(m.timestamp).getTime() >= cutoff);
+  const insights = new Map();
+  for (let i = 0; i < want.length; i += 10) {
+    const chunk = want.slice(i, i + 10);
+    const got = await Promise.all(chunk.map((m) => mediaInsights(m.id, m.media_product_type === "REELS" || m.media_type === "VIDEO")));
+    chunk.forEach((m, k) => insights.set(m.id, got[k]));
+  }
+  for (const m of media) {
+    const isReel = m.media_product_type === "REELS" || m.media_type === "VIDEO";
+    const type = isReel ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carousel" : "Image";
+    const firstLine = String(m.caption || "").split("\n")[0].trim();
+    const row = {
+      team_slug: team, platform: "instagram", external_id: m.id,
+      title: firstLine ? firstLine.slice(0, 180) : "(no caption)", url: m.permalink || null,
+      thumbnail: m.thumbnail_url || (m.media_type === "IMAGE" ? m.media_url : null) || null,
+      post_type: type, published_at: m.timestamp, duration_s: null,
+      likes: num(m.like_count), comments: num(m.comments_count), updated_at: new Date().toISOString(),
+    };
+    if (new Date(m.timestamp).getTime() >= cutoff) {
+      const ins = insights.get(m.id) || {};
+      row.views = num(ins.views ?? ins.reach);
+      row.shares = num(ins.shares);
+      row.impressions = num(ins.reach);
+      row.avg_view_s = ins.ig_reels_avg_watch_time != null ? Math.round(Number(ins.ig_reels_avg_watch_time) / 100) / 10 : null;
+      recent.push(row);
+    } else older.push(row);
+  }
+  // two writes: older posts keep the views/shares they already had
+  if (recent.length) { const { error } = await admin.from("social_posts").upsert(recent); if (error) throw new Error("Saving Instagram posts failed: " + error.message); }
+  if (older.length) { const { error } = await admin.from("social_posts").upsert(older); if (error) throw new Error("Saving Instagram posts failed: " + error.message); }
+
+  // followers today, and the last 30 days walked back from daily new followers
+  const current = num(prof.followers_count);
+  const snaps = [{ team_slug: team, platform: "instagram", day: ymd(today), followers: current, post_count: num(prof.media_count), updated_at: new Date().toISOString() }];
+  try {
+    const since = Math.floor((Date.now() - 29 * 86400000) / 1000), until = Math.floor(Date.now() / 1000);
+    const r = await fget("/" + igId + "/insights", { metric: "follower_count", period: "day", since: String(since), until: String(until) });
+    const vals = ((r.data || [])[0] || {}).values || [];
+    let count = current;
+    for (const v of [...vals].sort((a, b) => b.end_time.localeCompare(a.end_time))) {
+      const day = ymd(new Date(new Date(v.end_time).getTime() - 86400000));
+      if (day >= ymd(today)) { count -= num(v.value) || 0; continue; }
+      snaps.push({ team_slug: team, platform: "instagram", day, followers: count, updated_at: new Date().toISOString() });
+      count -= num(v.value) || 0;
+    }
+  } catch (e) { notes.push("Follower history not available: " + e.message); }
+  const { data: have } = await admin.from("social_snapshots").select("day").eq("team_slug", team).eq("platform", "instagram").lt("day", ymd(today));
+  const known = new Set((have || []).map((r) => r.day));
+  const toSave = snaps.filter((x) => x.day === ymd(today) || !known.has(x.day));
+  const { error: sErr } = await admin.from("social_snapshots").upsert(toSave);
+  if (sErr) throw new Error("Saving Instagram followers failed: " + sErr.message);
+
+  return { account: prof.username, followers: current, posts: media.length, with_insights: recent.length, history_days: toSave.length - 1, notes };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return reply(405, { error: "POST only" });
@@ -214,13 +340,19 @@ Deno.serve(async (req) => {
     }
   }
 
-  const result = { youtube: null };
+  const result = { youtube: null, instagram: null };
   try {
     result.youtube = await syncYouTube(admin, team, cfg);
   } catch (e) {
     result.youtube = { error: e.message };
   }
+  try {
+    result.instagram = await syncInstagram(admin, team, cfg);
+  } catch (e) {
+    result.instagram = { error: e.message };
+  }
   const now = new Date().toISOString();
   await admin.from("social_sync_config").update({ last_sync: now, last_result: result }).eq("id", 1);
-  return reply(result.youtube && result.youtube.error ? 502 : 200, { last_sync: now, ...result });
+  const bad = !!(result.youtube && result.youtube.error && result.instagram && result.instagram.error);
+  return reply(bad ? 502 : 200, { last_sync: now, ...result });
 });

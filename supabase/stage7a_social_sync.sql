@@ -92,3 +92,6 @@ select cron.schedule(
 -- which YouTube channel the numbers belong to; if the sign-in changes to
 -- another channel, the Edge Function clears the old channel's rows
 alter table public.social_sync_config add column if not exists youtube_channel_id text;
+
+-- which Instagram account the numbers belong to (same idea as youtube_channel_id)
+alter table public.social_sync_config add column if not exists instagram_user_id text;
