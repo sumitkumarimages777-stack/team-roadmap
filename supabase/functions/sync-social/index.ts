@@ -305,10 +305,12 @@ async function syncInstagram(admin, team, cfg) {
   // followers today, and the last 30 days walked back from daily new followers
   const current = num(prof.followers_count);
   const snaps = [{ team_slug: team, platform: "instagram", day: ymd(today), followers: current, post_count: num(prof.media_count), updated_at: new Date().toISOString() }];
+  const dailyFollows = new Map();   // day -> new followers that day
   try {
     const since = Math.floor((Date.now() - 29 * 86400000) / 1000), until = Math.floor(Date.now() / 1000);
     const r = await fget("/" + igId + "/insights", { metric: "follower_count", period: "day", since: String(since), until: String(until) });
     const vals = ((r.data || [])[0] || {}).values || [];
+    for (const v of vals) dailyFollows.set(ymd(new Date(new Date(v.end_time).getTime() - 86400000)), num(v.value) || 0);
     let count = current;
     for (const v of [...vals].sort((a, b) => b.end_time.localeCompare(a.end_time))) {
       const day = ymd(new Date(new Date(v.end_time).getTime() - 86400000));
@@ -323,7 +325,64 @@ async function syncInstagram(admin, team, cfg) {
   const { error: sErr } = await admin.from("social_snapshots").upsert(toSave);
   if (sErr) throw new Error("Saving Instagram followers failed: " + sErr.message);
 
-  return { account: prof.username, followers: current, posts: media.length, with_insights: recent.length, history_days: toSave.length - 1, notes };
+  // --- estimated new followers per post (Meta won't give Reels' "follows")
+  let attributed = 0;
+  try { attributed = await attributeFollows(admin, team, recent, dailyFollows, ymd(today)); }
+  catch (e) { notes.push("Follower estimate skipped: " + e.message); }
+
+  return { account: prof.username, estimated_follows: attributed, followers: current, posts: media.length, with_insights: recent.length, history_days: toSave.length - 1, notes };
+}
+
+// Split each day's new followers across posts by the views each got that day.
+// Views per day come from the lifetime views this sync records daily
+// (social_post_daily); until a post has two days of history, a day's
+// followers go to the posts published in the 3 days before it, by views.
+async function attributeFollows(admin, team, posts, dailyFollows, today) {
+  if (posts.length) {
+    const { error } = await admin.from("social_post_daily").upsert(
+      posts.filter((p) => p.views != null).map((p) => ({ team_slug: team, platform: "instagram", external_id: p.external_id, day: today, views: p.views })));
+    if (error) throw new Error(error.message);
+  }
+  if (dailyFollows.size) {
+    await admin.from("social_snapshots").upsert([...dailyFollows].map(([day, n]) => ({ team_slug: team, platform: "instagram", day, gained: n })));
+  }
+  const since = ymd(new Date(Date.now() - 40 * 86400000));
+  const { data: hist, error: hErr } = await admin.from("social_post_daily").select("external_id,day,views")
+    .eq("team_slug", team).eq("platform", "instagram").gte("day", since).limit(20000);
+  if (hErr) throw new Error(hErr.message);
+  const byDay = new Map();   // day -> Map(id -> views)
+  for (const h of hist || []) { if (h.views == null) continue; if (!byDay.has(h.day)) byDay.set(h.day, new Map()); byDay.get(h.day).set(h.external_id, Number(h.views)); }
+  const pub = new Map(posts.map((p) => [p.external_id, { day: String(p.published_at).slice(0, 10), views: Number(p.views) || 0 }]));
+  const prevDay = (d) => ymd(new Date(new Date(d + "T00:00:00Z").getTime() - 86400000));
+  const rows = [];
+  for (const [day, follows] of dailyFollows) {
+    if (day >= today || !follows) continue;
+    let w = new Map();
+    const a = byDay.get(day), b = byDay.get(prevDay(day));
+    if (a && b) for (const [id, v] of a) { const inc = v - (b.get(id) ?? 0); if (inc > 0) w.set(id, inc); }
+    if (!w.size) {   // no daily views yet for that day: posts from the 3 days before it, by views
+      for (const [id, p] of pub) { const age = (new Date(day) - new Date(p.day)) / 86400000; if (age >= 0 && age <= 3) w.set(id, Math.max(1, p.views)); }
+    }
+    const tot = [...w.values()].reduce((x, y) => x + y, 0); if (!tot) continue;
+    for (const [id, v] of w) rows.push({ team_slug: team, platform: "instagram", external_id: id, day, est_follows: Math.round(follows * v / tot * 100) / 100 });
+  }
+  // replace the estimates for the days we just recalculated
+  const days = [...dailyFollows.keys()].filter((d) => d < today);
+  if (days.length) await admin.from("social_post_daily").update({ est_follows: null }).eq("team_slug", team).eq("platform", "instagram").in("day", days);
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await admin.from("social_post_daily").upsert(rows.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
+  // each post's total = all its credited days
+  const { data: all } = await admin.from("social_post_daily").select("external_id,est_follows").eq("team_slug", team).eq("platform", "instagram").not("est_follows", "is", null).limit(50000);
+  const sums = new Map();
+  for (const r of all || []) sums.set(r.external_id, (sums.get(r.external_id) || 0) + Number(r.est_follows));
+  const upd = [...sums].map(([id, v]) => ({ team_slug: team, platform: "instagram", external_id: id, followers_est: Math.round(v * 10) / 10 }));
+  for (let i = 0; i < upd.length; i += 500) {
+    const { error } = await admin.from("social_posts").upsert(upd.slice(i, i + 500), { onConflict: "team_slug,platform,external_id", ignoreDuplicates: false });
+    if (error) throw new Error(error.message);
+  }
+  return Math.round([...sums.values()].reduce((x, y) => x + y, 0));
 }
 
 Deno.serve(async (req) => {
