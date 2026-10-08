@@ -96,3 +96,26 @@ alter table public.social_sync_config add column if not exists youtube_channel_i
 
 -- which Instagram account the numbers belong to (same idea as youtube_channel_id)
 alter table public.social_sync_config add column if not exists instagram_user_id text;
+
+-- ---------------------------------------------------------------- 7c
+-- Estimated followers per Instagram Reel (Meta's API won't give Reels'
+-- "follows"): every sync stores each post's views for the day and the
+-- account's new followers for the day; the Edge Function splits each day's
+-- new followers across posts by the views they got that day.
+create table if not exists public.social_post_daily (
+  team_slug   text not null references public.teams(slug) on delete cascade on update cascade,
+  platform    text not null check (platform in ('youtube', 'instagram')),
+  external_id text not null,
+  day         date not null,
+  views       bigint,              -- lifetime views as of that day
+  est_follows numeric,             -- that day's new followers credited to this post
+  primary key (team_slug, platform, external_id, day)
+);
+alter table public.social_post_daily enable row level security;
+revoke all on public.social_post_daily from anon, authenticated;
+grant select on public.social_post_daily to authenticated;
+create policy "members read social post daily" on public.social_post_daily
+  for select to authenticated using (public.has_role(team_slug, 'viewer'));
+
+alter table public.social_snapshots add column if not exists gained bigint;        -- new followers that day (gross)
+alter table public.social_posts add column if not exists followers_est numeric;    -- sum of est_follows

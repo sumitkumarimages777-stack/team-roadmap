@@ -608,11 +608,11 @@ function lineChart(series,color,label,w=320,h=168){
      <text x="${padL-7}" y="${Y(t)+3.5}" text-anchor="end" font-size="9.5" font-family="var(--mono)" fill="var(--ink-3)">${kfmt(t)}</text>`).join("");
   const d=series.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(" ");
   const last=series[series.length-1];
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="${esc(label)} follower trend">${grid}
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="${esc(label)} audience trend">${grid}
     <path d="${d} L${X(series.length-1).toFixed(1)} ${padT+ch} L${padL} ${padT+ch} Z" fill="${color}" opacity="0.1"/>
     <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${X(series.length-1).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"/>
-    ${series.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="9" fill="transparent" data-tip="${esc(label)} · ${dmy(p.d)}\n${fmt(p.v)} followers"/>`).join("")}
+    ${series.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="9" fill="transparent" data-tip="${esc(label)} · ${dmy(p.d)}\n${fmt(p.v)} ${label==="YouTube"?"subscribers":"followers"}"/>`).join("")}
     <text x="${padL}" y="${h-8}" font-size="9.5" font-family="var(--mono)" fill="var(--ink-3)">${dmy(series[0].d)}</text>
     <text x="${w-padR}" y="${h-8}" text-anchor="end" font-size="9.5" font-family="var(--mono)" fill="var(--ink-3)">${dmy(last.d)}</text></svg>`;
 }
@@ -757,7 +757,7 @@ function renderTargets(){
   P.querySelectorAll("[data-gdel]").forEach(b=>b.onclick=()=>{ readTargets(); TDRAFT.goals.splice(Number(b.dataset.gdel),1); renderTargets(); });
   $("#tReset").onclick=()=>{ TDRAFT=null; renderTargets(); toast("Changes undone"); };
   $("#tSave").onclick=()=>{ readTargets();
-    if(!(TDRAFT.targets.yt>0)||!(TDRAFT.targets.ig>0)){ toast("Follower targets must be numbers above zero"); return; }
+    if(!(TDRAFT.targets.yt>0)||!(TDRAFT.targets.ig>0)){ toast("Subscriber and follower targets must be numbers above zero"); return; }
     TDRAFT.goals=TDRAFT.goals.filter(g=>g.target>0);
     TG=normTargets(TDRAFT); TDRAFT=null;
     if(OPT.saveTargets){ OPT.saveTargets(SPACE, normTargets(TG)); toast("Targets saved"); } };
@@ -883,8 +883,8 @@ const PFIELDS = {
   watchh:  {label:"Watch hours", type:"num", get:r=>r.watchMin!=null?Math.round(r.watchMin/6)/10:null},
   eng:     {label:"Engagement %", type:"num", get:engOf},
   likerate:{label:"Likes per 1,000 views", type:"num", get:r=>r.views?(Number(r.likes)||0)/r.views*1000:null},
-  gained:  {label:"Followers gained", type:"num", get:r=>r.gained},
-  gainrate:{label:"Followers per 1,000 views", type:"num", get:r=>r.views&&r.gained!=null?r.gained/r.views*1000:null},
+  gained:  {label:"New followers / subscribers", type:"num", get:r=>r.gained},
+  gainrate:{label:"New followers / subscribers per 1,000 views", type:"num", get:r=>r.views&&r.gained!=null?r.gained/r.views*1000:null},
   reach:   {label:"Reach (Instagram)", type:"num", get:r=>r.reach},
   kwvol:   {label:"Keyword search volume", type:"num", get:r=>{ const k=kwOf(r); return k&&k.vol!=null?Number(k.vol):null; }},
 };
@@ -992,7 +992,7 @@ function postsSection(){
     ${bulk}
     <div class="tw"><table style="min-width:1400px">
       <thead><tr>${ed?`<th style="width:34px"><input type="checkbox" class="ck" id="selAll" ${allOn?"checked":""} title="Select all ${rows.length} matching posts"></th>`:""}${th("title","Post")}${th("platform","Platform")}${th("vtype","Type")}${th("keyword","Primary keyword")}${th("date","Date")}${th("length","Length")}
-        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("gained","New followers")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}<th>Tags</th></tr></thead>
+        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("gained","New "+(PLATVIEW==="yt"?"subscribers":PLATVIEW==="ig"?"followers":"followers / subs"))}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}<th>Tags</th></tr></thead>
       <tbody>${shown.length?shown.map(r=>{const c=r.card, p=kwOf(r), e=engOf(r);
        return `<tr class="${SEL.has(r.key)?"picked":""}" ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
         ${ed?`<td><input type="checkbox" class="ck" data-sel="${esc(r.key)}" ${SEL.has(r.key)?"checked":""}></td>`:""}
@@ -1095,6 +1095,11 @@ function wirePosts(box){
     SEL.clear(); if(save()) toast(`Removed "${name}" from ${n} post${n===1?"":"s"}`); });
 }
 
+// YouTube says "subscribers", Instagram says "followers"
+const AUD = pl => pl==="yt" ? "subscribers" : "followers";
+const AUDV = () => PLATVIEW==="yt" ? "subscribers" : PLATVIEW==="ig" ? "followers" : "followers & subscribers";
+const cap = t => t.charAt(0).toUpperCase()+t.slice(1);
+
 /* ------------------------------------------------------------ FOLLOWER DRIVERS
    Which posts brought the new followers: YouTube "subscribers gained" per video,
    Instagram "follows" per post (both lifetime, as the platforms count them). */
@@ -1102,9 +1107,9 @@ function netGain(pl){ const ser=pl==="yt"?ytSeries():igSeries(); if(!ser.length)
   const last=ser[ser.length-1], first=valueAt(ser, periodStart()); return first==null?null:last.v-first; }
 function driversSection(){
   const pub=publishedInPeriod(), withG=pub.filter(r=>r.gained!=null);
-  const head=`<div class="sec-h"><h3>Which posts brought followers</h3>
-    <span class="hint">New followers each post brought in — posts from the ${periodName()}, as YouTube and Instagram count them</span></div>`;
-  if(!withG.length) return `<div class="sec">${head}<div class="card"><p class="hint" style="margin:0">No follower numbers for these posts yet —
+  const head=`<div class="sec-h"><h3>Which posts brought ${AUDV()}</h3>
+    <span class="hint">New ${AUDV()} each post brought in — posts from the ${periodName()}, as ${PLATVIEW==="all"?"YouTube and Instagram count":PLAT_NAME[PLATVIEW]+" counts"} them</span></div>`;
+  if(!withG.length) return `<div class="sec">${head}<div class="card"><p class="hint" style="margin:0">No ${AUDV()} numbers for these posts yet —
     they arrive with the next sync (YouTube a day or two after posting).</p></div></div>`;
   const total=sum(withG,r=>r.gained), top=[...withG].sort((a,b)=>(b.gained||0)-(a.gained||0)).slice(0,10);
   const plats=PLATVIEW==="all"?["yt","ig"]:[PLATVIEW];
@@ -1113,16 +1118,16 @@ function driversSection(){
   return `<div class="sec">${head}
     ${dstats([["From these posts","+"+fmt(total),`${withG.length} post${withG.length===1?"":"s"} · ${r1(total/(withG.length||1))} per post`],
       ...net.map(x=>[PLAT_NAME[x.pl]+" change",x.net==null?"—":(x.net>=0?"+":"−")+fmt(Math.abs(x.net)),
-        x.net==null?"no follower history yet":`whole account, ${periodName()} · ${fmt(x.posts)} credited to these posts`]),
-      ["Best follower driver",esc((top[0].title||"").slice(0,24))+((top[0].title||"").length>24?"…":""),`+${fmt(top[0].gained)} · ${regLabel("platform",top[0].platform)} ${vtypeLabel(top[0].vtype).toLowerCase()}`]])}
+        x.net==null?`no ${AUD(x.pl)} history yet`:`whole account, ${periodName()} · ${fmt(x.posts)} credited to these posts`]),
+      [`Best ${PLATVIEW==="yt"?"subscriber":PLATVIEW==="ig"?"follower":"follower / subscriber"} driver`,esc((top[0].title||"").slice(0,24))+((top[0].title||"").length>24?"…":""),`+${fmt(top[0].gained)} · ${regLabel("platform",top[0].platform)} ${vtypeLabel(top[0].vtype).toLowerCase()}`]])}
     <div class="dgrid">
-      ${hbars("Top posts by new followers",top.map(r=>({label:r.title,v:r.gained,color:platColor(r.platform),
-        text:`+${fmt(r.gained)} · ${total?Math.round(r.gained/total*100):0}%`,tip:`${r.title}\n+${fmt(r.gained)} followers · ${fmt(r.views)} views · ${dmy(r.date)}`})))}
-      ${hbars("Followers per 1,000 views, by type",types.map(x=>({label:(PLATVIEW==="all"?platShort(TYPE_PLAT[x.k]||"")+" ":"")+vtypeLabel(x.k),v:x.v?x.g/x.v*1000:0,color:vtypeColor(x.k),
+      ${hbars("Top posts by new "+AUDV(),top.map(r=>({label:r.title,v:r.gained,color:platColor(r.platform),
+        text:`+${fmt(r.gained)} · ${total?Math.round(r.gained/total*100):0}%`,tip:`${r.title}\n+${fmt(r.gained)} ${AUD(r.platform)} · ${fmt(r.views)} views · ${dmy(r.date)}`})))}
+      ${hbars(cap(AUDV())+" per 1,000 views, by type",types.map(x=>({label:(PLATVIEW==="all"?platShort(TYPE_PLAT[x.k]||"")+" ":"")+vtypeLabel(x.k),v:x.v?x.g/x.v*1000:0,color:vtypeColor(x.k),
         text:`${x.v?r1(x.g/x.v*1000):"—"} · +${fmt(x.g)} from ${x.rs.length}`})))}
     </div>
-    <p class="hint" style="margin:0">"Change" is the whole account's follower count over the period (it includes people who found you any other way, minus unfollows).
-      Per-post numbers are what each platform credits to that post. Sort the Published posts table by <b>New followers</b> for the full list.
+    <p class="hint" style="margin:0">"Change" is the whole account's ${AUDV()} count over the period (it includes people who found you any other way, minus ${PLATVIEW==="yt"?"unsubscribes":"unfollows"}).
+      Per-post numbers are what each platform credits to that post. Sort the Published posts table by <b>New ${PLATVIEW==="yt"?"subscribers":PLATVIEW==="ig"?"followers":"followers / subs"}</b> for the full list.
       ${PLATVIEW!=="yt"?"<br>Meta doesn't share Reels' follows with other apps (only images and carousels), so for Reels type the number from Instagram Insights → <b>Follows</b> in the <b>New followers</b> column of Published posts — typed numbers show ✎.":""}</p></div>`;
 }
 
@@ -1148,7 +1153,7 @@ function openCompare(){
   const A=rows.find(r=>r.key===CMP.ig), B=rows.find(r=>r.key===CMP.yt), pairs=suggestPairs(rows);
   const opt=(list,sel)=>list.map(r=>`<option value="${esc(r.key)}" ${r.key===sel?"selected":""}>${esc(dmy(r.date))} · ${esc(vtypeLabel(r.vtype))} · ${esc((r.title||"").slice(0,60))}</option>`).join("");
   const M=[["Views",r=>r.views,1],["Likes",r=>r.likes,1],["Comments",r=>r.comments,1],["Shares",r=>r.shares,1],
-    ["Engagement %",engOf,1,"pct"],["New followers",r=>r.gained,1],["Followers per 1,000 views",r=>r.views&&r.gained!=null?r.gained/r.views*1000:null,1,"r1"],
+    ["Engagement %",engOf,1,"pct"],["New followers / subscribers",r=>r.gained,1],["New followers / subscribers per 1,000 views",r=>r.views&&r.gained!=null?r.gained/r.views*1000:null,1,"r1"],
     ["Likes per 1,000 views",r=>r.views?(r.likes||0)/r.views*1000:null,1,"r1"],["Average watch time",r=>r.avgS,1,"dur"],["Reach (Instagram only)",r=>r.reach,0],["Average % viewed (YouTube only)",r=>r.viewed,0,"pct"]];
   const show=(v,f)=>v==null?"—":f==="pct"?r1(v)+"%":f==="dur"?mmss(v):f==="r1"?r1(v):fmt(v);
   let wa=0, wb=0;
@@ -1217,7 +1222,7 @@ function renderSummary(){
       ${open?(n?postingTimeHTML(k,col)+gs.map(g=>goalHTML(g,col)).join(""):`<p class="hint" style="margin:8px 0 0">No other targets for ${PLAT_NAME[k]} yet — set them in the <b>Targets</b> tab.</p>`):""}</div>`; };
   const okr=(k,n,col,series,isLive)=>{
     const tgt=TG.targets[k];
-    if(!series.length) return `<div class="okr"><div class="okr-top"><div><div class="lbl" style="margin-bottom:4px">${n} followers</div>
+    if(!series.length) return `<div class="okr"><div class="okr-top"><div><div class="lbl" style="margin-bottom:4px">${n} ${AUD(k)}</div>
         <div class="okr-v" style="color:var(--ink-3)">—</div></div>
         <div style="text-align:right"><div class="okr-t">target ${fmt(tgt)}</div></div></div>
         <div class="meter"><i style="width:0"></i></div>
@@ -1226,7 +1231,7 @@ function renderSummary(){
     const last=series[series.length-1], wk=valueAt(series, addDays(last.d,-7));
     const cur=last.v, pct=Math.min(100,cur/tgt*100), delta=wk!=null?cur-wk:null;
     return `<div class="okr"><div class="okr-top">
-      <div><div class="lbl" style="margin-bottom:4px">${n} followers ${isLive?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</div><div class="okr-v">${fmt(cur)} <small>/ ${fmt(tgt)}</small></div></div>
+      <div><div class="lbl" style="margin-bottom:4px">${n} ${AUD(k)} ${isLive?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</div><div class="okr-v">${fmt(cur)} <small>/ ${fmt(tgt)}</small></div></div>
       <div style="text-align:right">
         ${delta!=null?`<div class="okr-t" style="color:${delta>=0?"var(--good)":"var(--crit)"}">${delta>=0?"+":"−"}${fmt(Math.abs(delta))} this week</div>`:`<div class="okr-t">as of ${dmy(last.d)}</div>`}</div></div>
       <div class="meter"><i style="width:${pct}%;background:${col}"></i></div>
@@ -1280,8 +1285,8 @@ function renderSummary(){
 
    ${keywordSection()}
 
-   <div class="sec"><div class="sec-h"><h3>Follower growth</h3>
-     <span class="hint">Two charts, two scales. A combined follower number would be meaningless.</span></div>
+   <div class="sec"><div class="sec-h"><h3>${PLATVIEW==="yt"?"Subscriber growth":PLATVIEW==="ig"?"Follower growth":"Subscriber & follower growth"}</h3>
+     <span class="hint">${PLATVIEW==="all"?"Two charts, two scales. A combined number would be meaningless.":"Weekly, last 12 weeks"}</span></div>
      <div class="charts">
        ${PLATVIEW==="ig"?"":`<div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(TG.targets.yt)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(yt,12),"var(--c1)","YouTube")}</div>`}
