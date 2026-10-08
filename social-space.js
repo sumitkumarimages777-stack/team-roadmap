@@ -136,6 +136,14 @@ table.mini th{padding:8px 10px}
 .fpresets{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .fsaved{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 th.sortable{cursor:pointer;user-select:none}
+.ck{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+tr.picked td{background:var(--accent-soft)}
+.bulkbar{position:sticky;top:0;z-index:5;display:flex;gap:9px;align-items:center;flex-wrap:wrap;background:var(--ink);color:var(--bg);border-radius:var(--r);padding:10px 14px;margin-bottom:10px;font-size:12.5px}
+.bulkbar input{background:var(--surface);color:var(--ink);border:none;border-radius:var(--r-s);padding:6px 9px;font-size:12.5px;width:150px}
+.bulkbar .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 40%,transparent)}
+.bulkbar .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.ptag{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap;display:inline-block;margin:1px 2px 1px 0}
+.ptag b{font-weight:600;color:var(--ink)}
 th.sortable:hover,th.sorted{color:var(--accent)}
 .fcount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:999px;background:var(--accent);color:#fff;font-size:10.5px;font-family:var(--mono);padding:0 5px}
 .slacard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
@@ -338,6 +346,7 @@ function normalize(space){
   s.goals = Array.isArray(s.goals) ? s.goals.filter(g=>g && GOAL_METRICS[g.metric]) : [];
   s.culture = typeof s.culture==="string" ? s.culture : "";
   s.manual = s.manual && typeof s.manual==="object" ? s.manual : {};   // typed-in counts: "yt:webinars:2026-10-06" -> n
+  s.postTags = s.postTags && typeof s.postTags==="object" ? s.postTags : {};   // post key -> {tag name: value}
   s.views = Array.isArray(s.views) ? s.views.filter(v=>v && Array.isArray(v.rules)) : [];   // saved post filters
   // any field missing on an older record gets its default, so nothing below can trip on it
   const fill=(o,d)=>{ Object.keys(d).forEach(k=>{ if(o[k]===undefined || o[k]===null && typeof d[k]==="string") o[k]=d[k]; }); return o; };
@@ -851,6 +860,15 @@ const PFIELDS = {
   likerate:{label:"Likes per 1,000 views", type:"num", get:r=>r.views?(Number(r.likes)||0)/r.views*1000:null},
   kwvol:   {label:"Keyword search volume", type:"num", get:r=>{ const k=kwOf(r); return k&&k.vol!=null?Number(k.vol):null; }},
 };
+// post tags: S.postTags = { postKey: { "Creator":"Sivam", ... } } — any tag name, any value
+const tagsOf=r=>(S.postTags||{})[r.key]||{};
+function tagNames(){ const n=new Set(); Object.values(S.postTags||{}).forEach(t=>Object.keys(t).forEach(k=>n.add(k))); return [...n].sort((a,b)=>a.localeCompare(b)); }
+function tagValues(name){ const v=new Set(); Object.values(S.postTags||{}).forEach(t=>{ if(t[name]) v.add(t[name]); }); return [...v].sort((a,b)=>a.localeCompare(b)); }
+function FD(k){ if(PFIELDS[k]) return PFIELDS[k];
+  if(typeof k==="string" && k.startsWith("tag:")){ const name=k.slice(4);
+    return { label:"Tag · "+name, type:"enum", tag:true, opts:()=>{ const o={"":"(not tagged)"}; tagValues(name).forEach(v=>o[v]=v); return o; }, get:r=>tagsOf(r)[name]||"" }; }
+  return null; }
+function allFields(){ const o=Object.assign({}, PFIELDS); tagNames().forEach(n=>o["tag:"+n]=FD("tag:"+n)); return o; }
 const POPS = {
   text:[["contains","contains"],["ncontains","doesn't contain"],["is","is"],["isnt","isn't"],["starts","starts with"],["ends","ends with"],["empty","is empty"],["nempty","is not empty"]],
   num: [["eq","="],["neq","≠"],["lt","<"],["lte","≤"],["gt",">"],["gte","≥"],["between","between"],["empty","is empty"],["nempty","is not empty"]],
@@ -859,11 +877,12 @@ const POPS = {
   enum:[["in","is any of"],["nin","is none of"]],
 };
 // a condition only counts once it has something to compare with
-const ruleActive=r=>{ const F=PFIELDS[r.f]; if(!F) return false; if(r.op==="empty"||r.op==="nempty") return true;
+const ruleActive=r=>{ const F=FD(r.f); if(!F) return false; if(r.op==="empty"||r.op==="nempty") return true;
   return Array.isArray(r.v) ? r.v.length>0 : (r.v!=null && String(r.v).trim()!==""); };
+let SEL = new Set(), TAGBY = "";
 let PF = { scope:"period", match:"all", rules:[], sort:{k:"date",dir:-1}, limit:50, open:false, saved:"" };
 function ruleTest(rule, r){
-  const F=PFIELDS[rule.f]; if(!F) return true; const op=rule.op, raw=F.get(r);
+  const F=FD(rule.f); if(!F) return true; const op=rule.op, raw=F.get(r);
   if(op==="empty") return raw==null||raw==="";
   if(op==="nempty") return !(raw==null||raw==="");
   if(F.type==="text"){ const a=String(raw||"").toLowerCase(), b=String(rule.v||"").toLowerCase().trim(); if(!b) return true;
@@ -882,7 +901,7 @@ function filteredPosts(){
   const base = PF.scope==="all" ? postRows().filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date)) : publishedInPeriod();
   const act=PF.rules.filter(ruleActive);
   let out = act.length ? base.filter(r=> PF.match==="any" ? act.some(x=>ruleTest(x,r)) : act.every(x=>ruleTest(x,r))) : base;
-  const k=PF.sort.k, dir=PF.sort.dir, F=PFIELDS[k];
+  const k=PF.sort.k, dir=PF.sort.dir, F=FD(k);
   if(F) out=[...out].sort((a,b)=>{ let x=F.get(a), y=F.get(b);
     if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
     if(typeof x==="string") return dir*x.localeCompare(y); return dir*(x-y); });
@@ -897,7 +916,7 @@ const PRESETS = [
   {name:"No card linked", rules:[{f:"research",op:"in",v:["nocard"]}]},
 ];
 function ruleValueHTML(rule,i){
-  const F=PFIELDS[rule.f]||PFIELDS.title, op=rule.op;
+  const F=FD(rule.f)||PFIELDS.title, op=rule.op;
   if(op==="empty"||op==="nempty") return `<span class="hint">—</span>`;
   if(F.type==="enum"){ const sel=Array.isArray(rule.v)?rule.v:[];
     return `<div class="row" style="gap:5px">${Object.entries(F.opts()).map(([k,l])=>`<button class="chip ${sel.includes(k)?"on":""}" data-fenum="${i}" data-k="${esc(k)}">${esc(l)}</button>`).join("")}</div>`; }
@@ -908,8 +927,18 @@ function ruleValueHTML(rule,i){
 }
 function postsSection(){
   const rows=filteredPosts(), act=PF.rules.filter(ruleActive).length, shown=rows.slice(0,PF.limit);
-  const fieldOpts=sel=>Object.entries(PFIELDS).map(([k,f])=>`<option value="${k}" ${k===sel?"selected":""}>${esc(f.label)}</option>`).join("");
+  const fieldOpts=sel=>Object.entries(allFields()).map(([k,f])=>`<option value="${k}" ${k===sel?"selected":""}>${esc(f.label)}</option>`).join("");
   const th=(k,l)=>`<th class="sortable ${PF.sort.k===k?"sorted":""}" data-psort="${k}">${l}${PF.sort.k===k?(PF.sort.dir<0?" ▾":" ▴"):""}</th>`;
+  const ed=canEdit(); [...SEL].forEach(k=>{ if(!rows.some(r=>r.key===k)) SEL.delete(k); });
+  const allOn=rows.length>0 && rows.every(r=>SEL.has(r.key));
+  const names=tagNames();
+  const bulk = ed && SEL.size ? `<div class="bulkbar"><b>${SEL.size} selected</b>
+      <span style="opacity:.7">Tag</span><input id="tgName" list="tgNames" value="${esc(names[0]||"Creator")}" placeholder="e.g. Creator">
+      <datalist id="tgNames">${["Creator",...names].filter((v,i,a)=>a.indexOf(v)===i).map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+      <span style="opacity:.7">=</span><input id="tgVal" list="tgVals" placeholder="e.g. Sivam">
+      <datalist id="tgVals">${tagValues(names[0]||"Creator").map(v=>`<option value="${esc(v)}">`).join("")}</datalist>
+      <button class="btn sm pri" id="tgApply">Apply tag</button><button class="btn sm" id="tgRemove">Remove this tag</button>
+      <span style="flex:1"></span><button class="btn sm" id="tgClear">Clear selection</button></div>` : "";
   const panel = !PF.open ? "" : `<div class="fpanel">
     <div class="fhead">Show posts that match
       <select id="pfMatch"><option value="all" ${PF.match==="all"?"selected":""}>all</option><option value="any" ${PF.match==="any"?"selected":""}>any</option></select>
@@ -918,7 +947,7 @@ function postsSection(){
       <span style="flex:1"></span>
       <div class="fsaved"><select id="pfSaved"><option value="">Saved filters…</option>${S.views.map(v=>`<option value="${v.id}" ${PF.saved===v.id?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
         ${canEdit()?`<button class="btn sm" id="pfSave">Save as…</button>${PF.saved?`<button class="btn sm danger" id="pfDelSaved">Delete</button>`:""}`:""}</div></div>
-    ${PF.rules.map((r,i)=>{ const F=PFIELDS[r.f]||PFIELDS.title; return `<div class="frow" data-fi="${i}">
+    ${PF.rules.map((r,i)=>{ const F=FD(r.f)||PFIELDS.title; return `<div class="frow" data-fi="${i}">
       <span class="fj">${i===0?"if":PF.match==="any"?"or":"and"}</span>
       <select data-ff="${i}">${fieldOpts(r.f)}</select>
       <select data-fo="${i}">${POPS[F.type].map(([k,l])=>`<option value="${k}" ${r.op===k?"selected":""}>${l}</option>`).join("")}</select>
@@ -932,11 +961,13 @@ function postsSection(){
       <button class="btn sm" id="pfToggle">${PF.open?"Hide filters":"Filters"} ${act?`<span class="fcount">${act}</span>`:""}</button>
       <button class="btn sm" id="pfCsv">Download CSV</button></div>
     ${panel}
-    <div class="tw"><table style="min-width:1300px">
-      <thead><tr>${th("title","Post")}${th("platform","Platform")}${th("vtype","Type")}${th("keyword","Primary keyword")}${th("date","Date")}${th("length","Length")}
-        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}</tr></thead>
+    ${bulk}
+    <div class="tw"><table style="min-width:1400px">
+      <thead><tr>${ed?`<th style="width:34px"><input type="checkbox" class="ck" id="selAll" ${allOn?"checked":""} title="Select all ${rows.length} matching posts"></th>`:""}${th("title","Post")}${th("platform","Platform")}${th("vtype","Type")}${th("keyword","Primary keyword")}${th("date","Date")}${th("length","Length")}
+        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}<th>Tags</th></tr></thead>
       <tbody>${shown.length?shown.map(r=>{const c=r.card, p=kwOf(r), e=engOf(r);
-       return `<tr ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
+       return `<tr class="${SEL.has(r.key)?"picked":""}" ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
+        ${ed?`<td><input type="checkbox" class="ck" data-sel="${esc(r.key)}" ${SEL.has(r.key)?"checked":""}></td>`:""}
         <td class="td-idea"><div class="row" style="gap:9px;flex-wrap:nowrap">${r.thumb?`<img class="thumb" src="${esc(r.thumb)}" alt="" loading="lazy">`:""}
           <span>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" data-ext="1">${esc(r.title)}</a>`:esc(r.title)}</span></div></td>
         <td>${ptag(r.platform)}</td><td>${vtag(r.vtype)}</td>
@@ -948,11 +979,32 @@ function postsSection(){
         <td class="vol">${e!=null?r1(e)+"%":"—"}</td>
         <td class="vol">${r.watch||"—"}</td>
         <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":`<span style="color:var(--ink-3)">${r.live?"pending":"n/a"}</span>`}</td>
-        <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td></tr>`;}).join("")
-       :`<tr><td colspan="14" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
+        <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td>
+        <td style="min-width:120px">${Object.entries(tagsOf(r)).map(([k,v])=>`<span class="ptag">${esc(k)}: <b>${esc(v)}</b></span>`).join("")||`<span class="hint">—</span>`}</td></tr>`;}).join("")
+       :`<tr><td colspan="16" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
     ${rows.length>shown.length?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="pfMore">Show ${Math.min(50,rows.length-shown.length)} more (${rows.length-shown.length} left)</button></div>`:""}
     <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube link — then the keyword and research columns fill in too.
-      New videos show "pending" for a day or two while YouTube finishes counting. Length and average watch time take minutes:seconds, like 1:30.</p>`;
+      New videos show "pending" for a day or two while YouTube finishes counting. Length and average watch time take minutes:seconds, like 1:30.
+      ${ed?"Tick posts to tag them in bulk (e.g. Creator = Sivam).":""}</p>
+    ${tagCompare(rows)}`;
+}
+// how each tag value performs, over the posts currently in the table
+function tagCompare(rows){
+  const names=tagNames(); if(!names.length) return "";
+  if(!names.includes(TAGBY)) TAGBY=names[0];
+  const groups={}; rows.forEach(r=>{ const v=tagsOf(r)[TAGBY]||"(not tagged)"; (groups[v]=groups[v]||[]).push(r); });
+  const list=Object.entries(groups).map(([v,rs])=>({v,rs,views:sum(rs,x=>x.views),avg:Math.round(sum(rs,x=>x.views)/rs.length),
+    eng:(()=>{ const vv=sum(rs,x=>x.views); return vv?(sum(rs,x=>x.likes)+sum(rs,x=>x.comments)+sum(rs,x=>x.shares))/vv*100:null; })(),
+    viewed:avg(rs,x=>x.viewed), watch:avg(rs,x=>x.avgS)})).sort((a,b)=>b.avg-a.avg);
+  return `<div class="card" style="margin-top:14px"><div class="chart-head" style="margin-bottom:10px"><h4>Performance by tag</h4>
+      <div class="row" style="gap:6px"><span class="hint">Compare by</span><select id="tagBy" style="background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-s);padding:5px 8px;font-size:12.5px">
+      ${names.map(n=>`<option ${n===TAGBY?"selected":""}>${esc(n)}</option>`).join("")}</select></div></div>
+    <p class="chart-sub">Over the ${rows.length} post${rows.length===1?"":"s"} in the table above — change the period or filters to compare a different set.</p>
+    <div class="dgrid">${hbars("Views per post",list.map((x,i)=>({label:x.v,v:x.avg,color:x.v==="(not tagged)"?"var(--ink-3)":KW_COLORS[i%6],text:`${kfmt(x.avg)} · ${x.rs.length} post${x.rs.length===1?"":"s"}`})))}
+      ${hbars("Average % viewed",list.map((x,i)=>({label:x.v,v:x.viewed||0,color:x.v==="(not tagged)"?"var(--ink-3)":KW_COLORS[i%6],text:x.viewed!=null?Math.round(x.viewed)+"%":"—"})))}</div>
+    <div class="tw"><table class="mini"><thead><tr><th>${esc(TAGBY)}</th><th>Posts</th><th>Total views</th><th>Views / post</th><th>Engagement</th><th>Avg watch</th><th>Avg viewed</th></tr></thead>
+      <tbody>${list.map(x=>`<tr><td class="td-idea">${esc(x.v)}</td><td class="vol">${x.rs.length}</td><td class="vol">${fmt(x.views)}</td><td class="vol">${fmt(x.avg)}</td>
+        <td class="vol">${x.eng!=null?r1(x.eng)+"%":"—"}</td><td class="vol">${x.watch!=null?mmss(x.watch):"—"}</td><td class="vol">${x.viewed!=null?Math.round(x.viewed)+"%":"—"}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
 function rerenderPosts(){ const box=$("#postsSec"); if(!box) return; box.innerHTML=postsSection(); wirePosts(box); }
 function readRules(box){
@@ -968,13 +1020,14 @@ function wirePosts(box){
   on("pfMore",()=>{ PF.limit+=50; rerenderPosts(); });
   on("pfCsv",()=>{ const rows=filteredPosts(), cols=["title","platform","vtype","keyword","kwvol","date","hour","length","views","likes","comments","shares","eng","avgwatch","viewed","watchh","research"];
     const q=v=>{ const t=v==null?"":String(v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
-    const lines=[cols.map(k=>q(PFIELDS[k].label)).join(","), ...rows.map(r=>cols.map(k=>{ let v=PFIELDS[k].get(r);
+    tagNames().forEach(n=>cols.push("tag:"+n));
+    const lines=[cols.map(k=>q(FD(k).label)).join(","), ...rows.map(r=>cols.map(k=>{ let v=FD(k).get(r);
       if(k==="platform") v=regLabel("platform",v); if(k==="vtype") v=vtypeLabel(v); if((k==="eng"||k==="viewed")&&v!=null) v=Math.round(v*10)/10; return q(v); }).join(","))];
     const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+lines.join("\n")],{type:"text/csv"}));
     a.download="published-posts-"+today()+".csv"; box.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); toast(rows.length+" posts downloaded"); });
   const m=box.querySelector("#pfMatch"); if(m) m.onchange=()=>{ readRules(box); PF.match=m.value; rerenderPosts(); };
   box.querySelectorAll("[data-pscope]").forEach(b=>b.onclick=()=>{ readRules(box); PF.scope=b.dataset.pscope; PF.limit=50; rerenderPosts(); });
-  box.querySelectorAll("[data-ff]").forEach(e=>e.onchange=()=>{ readRules(box); const r=PF.rules[Number(e.dataset.ff)]; r.f=e.value; r.op=POPS[PFIELDS[r.f].type][0][0]; r.v=PFIELDS[r.f].type==="enum"?[]:""; r.v2=""; PF.saved=""; rerenderPosts(); });
+  box.querySelectorAll("[data-ff]").forEach(e=>e.onchange=()=>{ readRules(box); const r=PF.rules[Number(e.dataset.ff)]; r.f=e.value; r.op=POPS[FD(r.f).type][0][0]; r.v=FD(r.f).type==="enum"?[]:""; r.v2=""; PF.saved=""; rerenderPosts(); });
   box.querySelectorAll("[data-fo]").forEach(e=>e.onchange=()=>{ readRules(box); PF.rules[Number(e.dataset.fo)].op=e.value; PF.saved=""; rerenderPosts(); });
   box.querySelectorAll("[data-fv],[data-fv2]").forEach(e=>{ e.onchange=()=>{ readRules(box); PF.saved=""; PF.limit=50; rerenderPosts(); };
     if(e.tagName==="INPUT") e.onkeydown=ev=>{ if(ev.key==="Enter"){ ev.preventDefault(); e.onchange(); } }; });
@@ -982,7 +1035,7 @@ function wirePosts(box){
     const set=Array.isArray(r.v)?r.v:[]; const k=b.dataset.k; r.v=set.includes(k)?set.filter(x=>x!==k):[...set,k]; PF.saved=""; PF.limit=50; rerenderPosts(); });
   box.querySelectorAll("[data-fdel]").forEach(b=>b.onclick=()=>{ readRules(box); PF.rules.splice(Number(b.dataset.fdel),1); PF.saved=""; rerenderPosts(); });
   box.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{ const p=PRESETS[Number(b.dataset.preset)]; PF.rules=JSON.parse(JSON.stringify(p.rules)); PF.match="all"; PF.saved=""; PF.limit=50; rerenderPosts(); });
-  box.querySelectorAll("[data-psort]").forEach(t=>t.onclick=()=>{ const k=t.dataset.psort; PF.sort = PF.sort.k===k ? {k, dir:-PF.sort.dir} : {k, dir:(PFIELDS[k].type==="text"||PFIELDS[k].type==="enum")?1:-1}; rerenderPosts(); });
+  box.querySelectorAll("[data-psort]").forEach(t=>t.onclick=()=>{ const k=t.dataset.psort; PF.sort = PF.sort.k===k ? {k, dir:-PF.sort.dir} : {k, dir:(FD(k).type==="text"||FD(k).type==="enum")?1:-1}; rerenderPosts(); });
   const sv=box.querySelector("#pfSaved"); if(sv) sv.onchange=()=>{ const v=S.views.find(x=>x.id===sv.value); PF.saved=sv.value;
     if(v){ PF.rules=JSON.parse(JSON.stringify(v.rules)); PF.match=v.match||"all"; PF.scope=v.scope||"period"; PF.limit=50; } rerenderPosts(); };
   on("pfSave",()=>{ readRules(box); if(!PF.rules.length){ toast("Add a condition first"); return; }
@@ -991,7 +1044,19 @@ function wirePosts(box){
     S.views.push(v); PF.saved=v.id; if(save()) toast("Filter saved for the team"); });
   on("pfDelSaved",()=>{ const i=S.views.findIndex(x=>x.id===PF.saved); if(i<0) return; if(!confirm("Delete the saved filter \""+S.views[i].name+"\"?")) return;
     S.views.splice(i,1); PF.saved=""; if(save()) toast("Saved filter deleted"); });
-  box.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
+  box.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")||e.target.closest(".ck")) return; openCard(r.dataset.card); });
+  box.querySelectorAll("[data-sel]").forEach(c=>{ c.onclick=e=>e.stopPropagation(); c.onchange=()=>{ c.checked?SEL.add(c.dataset.sel):SEL.delete(c.dataset.sel); rerenderPosts(); }; });
+  const sa=box.querySelector("#selAll"); if(sa) sa.onchange=()=>{ const rows=filteredPosts(); if(sa.checked) rows.forEach(r=>SEL.add(r.key)); else SEL.clear(); rerenderPosts(); };
+  const tb=box.querySelector("#tagBy"); if(tb) tb.onchange=()=>{ TAGBY=tb.value; rerenderPosts(); };
+  const tn=box.querySelector("#tgName"); if(tn) tn.onchange=()=>{ const dl=box.querySelector("#tgVals"); dl.innerHTML=tagValues(tn.value.trim()).map(v=>`<option value="${esc(v)}">`).join(""); };
+  on("tgClear",()=>{ SEL.clear(); rerenderPosts(); });
+  on("tgApply",()=>{ const name=box.querySelector("#tgName").value.trim(), val=box.querySelector("#tgVal").value.trim();
+    if(!name||!val){ toast("Type a tag name and a value, e.g. Creator = Sivam"); return; }
+    SEL.forEach(k=>{ S.postTags[k]=Object.assign({}, S.postTags[k], {[name]:val}); });
+    const n=SEL.size; TAGBY=name; SEL.clear(); if(save()) toast(`Tagged ${n} post${n===1?"":"s"} ${name} = ${val}`); });
+  on("tgRemove",()=>{ const name=box.querySelector("#tgName").value.trim(); if(!name) return; let n=0;
+    SEL.forEach(k=>{ const t=S.postTags[k]; if(t&&t[name]!=null){ delete t[name]; n++; if(!Object.keys(t).length) delete S.postTags[k]; } });
+    SEL.clear(); if(save()) toast(`Removed "${name}" from ${n} post${n===1?"":"s"}`); });
 }
 
 /* ------------------------------------------------------------ SUMMARY */
@@ -1109,8 +1174,8 @@ function renderSummary(){
   P.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{toggle(FILTERS.vtypes,b.dataset.vt);renderSummary();});
   P.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{CHARTMODE=b.dataset.cm;renderSummary();});
   wireKeywords(P);
-  wirePosts($("#postsSec"));
   P.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
+  wirePosts($("#postsSec"));
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
   P.querySelectorAll("[data-okrmore]").forEach(b=>b.onclick=()=>{ OKR_OPEN[b.dataset.okrmore]=!OKR_OPEN[b.dataset.okrmore]; renderSummary(); });
