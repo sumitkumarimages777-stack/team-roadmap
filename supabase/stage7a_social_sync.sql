@@ -46,6 +46,7 @@ create table public.social_posts (
   shares        bigint,
   watch_minutes numeric,
   avg_view_s    numeric,         -- average view duration, seconds
+  followers_gained bigint,       -- subscribers (YouTube) / follows (Instagram) from this post
   avg_view_pct  numeric,
   impressions   bigint,
   ctr_pct       numeric,

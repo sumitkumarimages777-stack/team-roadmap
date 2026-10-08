@@ -125,6 +125,10 @@ table.mini th{padding:8px 10px}
 .goal .gt span{color:var(--ink-2)}
 .goal .meter{height:7px}
 .goal .gf{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3);margin-top:4px}
+.cpair{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;width:100%;text-align:left;font-size:12px;padding:7px 8px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);margin-bottom:6px;align-items:center}
+.cpair:hover{border-color:var(--accent)}
+.cpair span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmpt td.win{color:var(--good);font-weight:700}
 .platsw{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
 .platsw button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
 .platsw button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
@@ -487,7 +491,7 @@ async function loadLive(force){
   try{
     const since = addDays(today(), -130);
     const [p, s] = await Promise.all([
-      OPT.supa.from("social_posts").select("platform,external_id,title,url,thumbnail,post_type,published_at,duration_s,views,likes,comments,shares,watch_minutes,avg_view_s,avg_view_pct,updated_at")
+      OPT.supa.from("social_posts").select("platform,external_id,title,url,thumbnail,post_type,published_at,duration_s,views,likes,comments,shares,watch_minutes,avg_view_s,avg_view_pct,impressions,followers_gained,updated_at")
         .eq("team_slug", team).order("published_at", {ascending:false}).limit(2000),
       OPT.supa.from("social_snapshots").select("platform,day,followers,updated_at")
         .eq("team_slug", team).gte("day", since).order("day", {ascending:true}).limit(2000)
@@ -534,14 +538,14 @@ function postRows(){
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
       watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
-      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s });
+      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s, gained:p.followers_gained, reach:p.impressions });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
     if(livePost(c)) return;                          // already listed from the synced posts
     rows.push({ key:"c:"+c.id, live:false, platform:c.platform, vtype:c.vtype, title:c.pre.title||c.idea, url:c.post.postUrl||"",
       thumb:null, date:c.published, views:c.metrics?.views, likes:c.metrics?.likes, comments:c.metrics?.comments,
       shares:c.metrics?.shares, watch:c.metrics?.watch||null, viewed:null, ctr:c.metrics?.ctr, card:c,
-      avgS:parseDur(c.metrics?.watch), dur:null, at:null, watchMin:null });
+      avgS:parseDur(c.metrics?.watch), dur:null, at:null, watchMin:null, gained:null, reach:null });
   });
   return rows;
 }
@@ -875,6 +879,9 @@ const PFIELDS = {
   watchh:  {label:"Watch hours", type:"num", get:r=>r.watchMin!=null?Math.round(r.watchMin/6)/10:null},
   eng:     {label:"Engagement %", type:"num", get:engOf},
   likerate:{label:"Likes per 1,000 views", type:"num", get:r=>r.views?(Number(r.likes)||0)/r.views*1000:null},
+  gained:  {label:"Followers gained", type:"num", get:r=>r.gained},
+  gainrate:{label:"Followers per 1,000 views", type:"num", get:r=>r.views&&r.gained!=null?r.gained/r.views*1000:null},
+  reach:   {label:"Reach (Instagram)", type:"num", get:r=>r.reach},
   kwvol:   {label:"Keyword search volume", type:"num", get:r=>{ const k=kwOf(r); return k&&k.vol!=null?Number(k.vol):null; }},
 };
 // post tags: S.postTags = { postKey: { "Creator":"Sivam", ... } } — any tag name, any value
@@ -981,7 +988,7 @@ function postsSection(){
     ${bulk}
     <div class="tw"><table style="min-width:1400px">
       <thead><tr>${ed?`<th style="width:34px"><input type="checkbox" class="ck" id="selAll" ${allOn?"checked":""} title="Select all ${rows.length} matching posts"></th>`:""}${th("title","Post")}${th("platform","Platform")}${th("vtype","Type")}${th("keyword","Primary keyword")}${th("date","Date")}${th("length","Length")}
-        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}<th>Tags</th></tr></thead>
+        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("gained","New followers")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}<th>Tags</th></tr></thead>
       <tbody>${shown.length?shown.map(r=>{const c=r.card, p=kwOf(r), e=engOf(r);
        return `<tr class="${SEL.has(r.key)?"picked":""}" ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
         ${ed?`<td><input type="checkbox" class="ck" data-sel="${esc(r.key)}" ${SEL.has(r.key)?"checked":""}></td>`:""}
@@ -994,11 +1001,12 @@ function postsSection(){
         <td class="vol">${fmt(r.views)}</td><td class="vol">${fmt(r.likes)}</td>
         <td class="vol">${fmt(r.comments)}</td><td class="vol">${fmt(r.shares)}</td>
         <td class="vol">${e!=null?r1(e)+"%":"—"}</td>
+        <td class="vol">${r.gained!=null?`<b>+${fmt(r.gained)}</b>`:"—"}</td>
         <td class="vol">${r.watch||"—"}</td>
         <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":`<span style="color:var(--ink-3)">${r.live?"pending":"n/a"}</span>`}</td>
         <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td>
         <td style="min-width:120px">${Object.entries(tagsOf(r)).map(([k,v])=>`<span class="ptag">${esc(k)}: <b>${esc(v)}</b></span>`).join("")||`<span class="hint">—</span>`}</td></tr>`;}).join("")
-       :`<tr><td colspan="16" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
+       :`<tr><td colspan="17" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
     ${rows.length>shown.length?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="pfMore">Show ${Math.min(50,rows.length-shown.length)} more (${rows.length-shown.length} left)</button></div>`:""}
     <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube or Instagram link — then the keyword and research columns fill in too.
       New videos show "pending" for a day or two while YouTube finishes counting. Length and average watch time take minutes:seconds, like 1:30.
@@ -1035,7 +1043,7 @@ function wirePosts(box){
   on("pfAdd",()=>{ readRules(box); PF.rules.push({f:"title",op:"contains",v:""}); PF.saved=""; rerenderPosts(); });
   on("pfClear",()=>{ PF.rules=[]; PF.saved=""; PF.limit=50; rerenderPosts(); });
   on("pfMore",()=>{ PF.limit+=50; rerenderPosts(); });
-  on("pfCsv",()=>{ const rows=filteredPosts(), cols=["title","platform","vtype","keyword","kwvol","date","hour","length","views","likes","comments","shares","eng","avgwatch","viewed","watchh","research"];
+  on("pfCsv",()=>{ const rows=filteredPosts(), cols=["title","platform","vtype","keyword","kwvol","date","hour","length","views","likes","comments","shares","eng","gained","gainrate","reach","avgwatch","viewed","watchh","research"];
     const q=v=>{ const t=v==null?"":String(v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
     tagNames().forEach(n=>cols.push("tag:"+n));
     const lines=[cols.map(k=>q(FD(k).label)).join(","), ...rows.map(r=>cols.map(k=>{ let v=FD(k).get(r);
@@ -1074,6 +1082,86 @@ function wirePosts(box){
   on("tgRemove",()=>{ const name=box.querySelector("#tgName").value.trim(); if(!name) return; let n=0;
     SEL.forEach(k=>{ const t=S.postTags[k]; if(t&&t[name]!=null){ delete t[name]; n++; if(!Object.keys(t).length) delete S.postTags[k]; } });
     SEL.clear(); if(save()) toast(`Removed "${name}" from ${n} post${n===1?"":"s"}`); });
+}
+
+/* ------------------------------------------------------------ FOLLOWER DRIVERS
+   Which posts brought the new followers: YouTube "subscribers gained" per video,
+   Instagram "follows" per post (both lifetime, as the platforms count them). */
+function netGain(pl){ const ser=pl==="yt"?ytSeries():igSeries(); if(!ser.length) return null;
+  const last=ser[ser.length-1], first=valueAt(ser, periodStart()); return first==null?null:last.v-first; }
+function driversSection(){
+  const pub=publishedInPeriod(), withG=pub.filter(r=>r.gained!=null);
+  const head=`<div class="sec-h"><h3>Which posts brought followers</h3>
+    <span class="hint">New followers each post brought in — posts from the ${periodName()}, as YouTube and Instagram count them</span></div>`;
+  if(!withG.length) return `<div class="sec">${head}<div class="card"><p class="hint" style="margin:0">No follower numbers for these posts yet —
+    they arrive with the next sync (YouTube a day or two after posting).</p></div></div>`;
+  const total=sum(withG,r=>r.gained), top=[...withG].sort((a,b)=>(b.gained||0)-(a.gained||0)).slice(0,10);
+  const plats=PLATVIEW==="all"?["yt","ig"]:[PLATVIEW];
+  const net=plats.map(pl=>({pl, net:netGain(pl), posts:sum(withG.filter(r=>r.platform===pl),r=>r.gained)}));
+  const types=Object.keys(REG.vtype).filter(typeVisible).map(k=>{ const rs=withG.filter(r=>r.vtype===k); return {k,rs,g:sum(rs,r=>r.gained),v:sum(rs,r=>r.views)}; }).filter(x=>x.rs.length);
+  return `<div class="sec">${head}
+    ${dstats([["From these posts","+"+fmt(total),`${withG.length} post${withG.length===1?"":"s"} · ${r1(total/(withG.length||1))} per post`],
+      ...net.map(x=>[PLAT_NAME[x.pl]+" change",x.net==null?"—":(x.net>=0?"+":"−")+fmt(Math.abs(x.net)),
+        x.net==null?"no follower history yet":`whole account, ${periodName()} · ${fmt(x.posts)} credited to these posts`]),
+      ["Best follower driver",esc((top[0].title||"").slice(0,24))+((top[0].title||"").length>24?"…":""),`+${fmt(top[0].gained)} · ${regLabel("platform",top[0].platform)} ${vtypeLabel(top[0].vtype).toLowerCase()}`]])}
+    <div class="dgrid">
+      ${hbars("Top posts by new followers",top.map(r=>({label:r.title,v:r.gained,color:platColor(r.platform),
+        text:`+${fmt(r.gained)} · ${total?Math.round(r.gained/total*100):0}%`,tip:`${r.title}\n+${fmt(r.gained)} followers · ${fmt(r.views)} views · ${dmy(r.date)}`})))}
+      ${hbars("Followers per 1,000 views, by type",types.map(x=>({label:(PLATVIEW==="all"?platShort(TYPE_PLAT[x.k]||"")+" ":"")+vtypeLabel(x.k),v:x.v?x.g/x.v*1000:0,color:vtypeColor(x.k),
+        text:`${x.v?r1(x.g/x.v*1000):"—"} · +${fmt(x.g)} from ${x.rs.length}`})))}
+    </div>
+    <p class="hint" style="margin:0">"Change" is the whole account's follower count over the period (it includes people who found you any other way, minus unfollows).
+      Per-post numbers are what each platform credits to that post. Sort the Published posts table by <b>New followers</b> for the full list.
+      ${PLATVIEW!=="yt"?"<br>Instagram only reports followers for images and carousels — not for Reels, so Reels show “—” (use views and shares to judge them).":""}</p></div>`;
+}
+
+/* ------------------------------------------------------------ COMPARE
+   Put an Instagram post next to a YouTube video (same reel posted twice, or any two)
+   and see which did better on each measure. */
+let CMP={ig:"", yt:""};
+const cmpRows=()=>postRows().filter(r=>r.live && r.date).sort((a,b)=>b.date.localeCompare(a.date));
+const words=t=>new Set(String(t||"").toLowerCase().replace(/#\S+/g," ").match(/[a-z0-9ऀ-ॿ]{3,}/g)||[]);
+function suggestPairs(rows){
+  const ig=rows.filter(r=>r.platform==="ig").slice(0,120), yt=rows.filter(r=>r.platform==="yt").slice(0,200), out=[];
+  ig.forEach(a=>{ const wa=words(a.title); let best=null;
+    yt.forEach(b=>{ const dd=Math.abs(days(a.date,b.date)); if(dd>3) return;
+      const wb=words(b.title); let n=0; wa.forEach(w=>{ if(wb.has(w)) n++; });
+      const sc=(wa.size+wb.size?n/Math.min(wa.size||1,wb.size||1):0) - dd*0.05;
+      if(n>=2 && (!best||sc>best.sc)) best={a,b,sc}; });
+    if(best) out.push(best); });
+  return out.sort((x,y)=>y.sc-x.sc).slice(0,8);
+}
+function openCompare(){
+  const rows=cmpRows(), ig=rows.filter(r=>r.platform==="ig"), yt=rows.filter(r=>r.platform==="yt");
+  if(!CMP.ig && ig[0]) CMP.ig=ig[0].key; if(!CMP.yt && yt[0]) CMP.yt=yt[0].key;
+  const A=rows.find(r=>r.key===CMP.ig), B=rows.find(r=>r.key===CMP.yt), pairs=suggestPairs(rows);
+  const opt=(list,sel)=>list.map(r=>`<option value="${esc(r.key)}" ${r.key===sel?"selected":""}>${esc(dmy(r.date))} · ${esc(vtypeLabel(r.vtype))} · ${esc((r.title||"").slice(0,60))}</option>`).join("");
+  const M=[["Views",r=>r.views,1],["Likes",r=>r.likes,1],["Comments",r=>r.comments,1],["Shares",r=>r.shares,1],
+    ["Engagement %",engOf,1,"pct"],["New followers",r=>r.gained,1],["Followers per 1,000 views",r=>r.views&&r.gained!=null?r.gained/r.views*1000:null,1,"r1"],
+    ["Likes per 1,000 views",r=>r.views?(r.likes||0)/r.views*1000:null,1,"r1"],["Average watch time",r=>r.avgS,1,"dur"],["Reach (Instagram only)",r=>r.reach,0],["Average % viewed (YouTube only)",r=>r.viewed,0,"pct"]];
+  const show=(v,f)=>v==null?"—":f==="pct"?r1(v)+"%":f==="dur"?mmss(v):f==="r1"?r1(v):fmt(v);
+  let wa=0, wb=0;
+  const table = A&&B ? M.map(([l,g,cmp,f])=>{ const x=g(A), y=g(B); let ca="", cb="";
+      if(cmp && x!=null && y!=null && x!==y){ if(x>y){ ca="good"; wa++; } else { cb="good"; wb++; } }
+      return `<tr><td>${l}</td><td class="vol ${ca?"win":""}">${show(x,f)}${ca?" ✓":""}</td><td class="vol ${cb?"win":""}">${show(y,f)}${cb?" ✓":""}</td></tr>`; }).join("") : "";
+  openDrawer(`<div class="dr-h"><div><div class="lbl">Compare</div><h3 style="margin-top:4px">Instagram vs YouTube</h3></div><button class="btn sm" id="xClose">Close</button></div>
+    <p class="hint" style="margin:0 0 14px">Pick any Instagram post and any YouTube video — usually the same reel posted on both. Every number is lifetime, as each platform counts it.
+      Instagram doesn't report new followers for Reels, so that row shows “—” for them.</p>
+    ${pairs.length?`<div class="block"><div class="block-h"><h4>Same content on both?</h4><span class="hint">Matched by title words, posted within 3 days</span></div>
+      ${pairs.map((p,i)=>`<button class="cpair" data-pair="${i}"><span>${ptag("ig")} ${esc((p.a.title||"").slice(0,48))}</span><span>${ptag("yt")} ${esc((p.b.title||"").slice(0,48))}</span><span class="hint">${dmy(p.a.date)}</span></button>`).join("")}</div>`:""}
+    <div class="fld"><label>Instagram post</label><select id="cmpIg">${opt(ig,CMP.ig)||`<option>No Instagram posts synced yet</option>`}</select></div>
+    <div class="fld"><label>YouTube video</label><select id="cmpYt">${opt(yt,CMP.yt)||`<option>No YouTube videos synced yet</option>`}</select></div>
+    ${A&&B?`<div class="block" style="padding:0;overflow:hidden"><table class="mini cmpt" style="min-width:0"><thead><tr><th></th>
+        <th>${ptag("ig")} ${vtag(A.vtype)}<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:4px">${dmy(A.date)}${A.url?` · <a href="${esc(A.url)}" target="_blank" rel="noopener">open</a>`:""}</div></th>
+        <th>${ptag("yt")} ${vtag(B.vtype)}<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:4px">${dmy(B.date)}${B.url?` · <a href="${esc(B.url)}" target="_blank" rel="noopener">open</a>`:""}</div></th></tr></thead>
+      <tbody>${table}</tbody></table></div>
+      <div class="note" style="font-size:17px"><div class="lbl">Verdict</div>${wa===wb?`Even — each platform wins ${wa} measure${wa===1?"":"s"}.`
+        :`<b>${wa>wb?"Instagram":"YouTube"}</b> did better on <b>${Math.max(wa,wb)} of ${wa+wb}</b> measures.`}
+        ${A.views&&B.views?`<br>Views: ${A.views>B.views?"Instagram":"YouTube"} got ${r1(Math.max(A.views,B.views)/Math.max(1,Math.min(A.views,B.views)))}× more.`:""}</div>`:""}`);
+  $("#xClose").onclick=closeDrawer;
+  $("#cmpIg") && ($("#cmpIg").onchange=e=>{ CMP.ig=e.target.value; openCompare(); });
+  $("#cmpYt") && ($("#cmpYt").onchange=e=>{ CMP.yt=e.target.value; openCompare(); });
+  $("#drawer").querySelectorAll("[data-pair]").forEach(b=>b.onclick=()=>{ const p=pairs[Number(b.dataset.pair)]; CMP={ig:p.a.key, yt:p.b.key}; openCompare(); });
 }
 
 /* ------------------------------------------------------------ SUMMARY */
@@ -1137,7 +1225,8 @@ function renderSummary(){
   $("#pane-summary").innerHTML=`
    <div class="platsw">${[["all","Both platforms"],["yt","YouTube only"],["ig","Instagram only"]].map(([k,l])=>
      `<button data-pview="${k}" class="${PLATVIEW===k?"on":""}">${k==="yt"?`<span class="sdot" style="background:var(--c1)"></span>`:k==="ig"?`<span class="sdot" style="background:var(--c3)"></span>`:""}${l}</button>`).join("")}
-     <span class="hint">${PLATVIEW==="all"?"Everything below covers YouTube and Instagram together":`Everything below — targets, ideas, cards, posts, keywords — is ${PLATVIEW==="yt"?"YouTube":"Instagram"} only`}</span></div>
+     <span class="hint">${PLATVIEW==="all"?"Everything below covers YouTube and Instagram together":`Everything below — targets, ideas, cards, posts, keywords — is ${PLATVIEW==="yt"?"YouTube":"Instagram"} only`}</span>
+     <button class="btn pri" id="cmpOpen" style="margin-left:auto">⇄ Compare Instagram vs YouTube</button></div>
    ${liveBar()}
 
    <div class="sec"><div class="row" style="margin-bottom:14px">
@@ -1151,6 +1240,8 @@ function renderSummary(){
      <span class="hint">Two separate goals, never a combined audience number</span>
      ${igLive()?"":`<button class="btn sm" data-updf="1" style="margin-left:auto">Update Instagram count</button>`}</div>
      <div class="okrs">${PLATVIEW!=="ig"?okr("yt","YouTube","var(--c1)",yt,true):""}${PLATVIEW!=="yt"?okr("ig","Instagram","var(--c3)",ig,igLive()):""}</div></div>
+
+   ${driversSection()}
 
    <div class="sec"><div class="sec-h"><h3>Process health</h3><span class="hint">Live from this space and the synced posts</span></div>
      <div class="tiles" id="tiles">
@@ -1190,6 +1281,7 @@ function renderSummary(){
 
   const P=$("#pane-summary"); activateTips(P);
   P.querySelectorAll("[data-period]").forEach(b=>b.onclick=()=>{FILTERS.period=b.dataset.period;renderSummary();});
+  const co=$("#cmpOpen"); if(co) co.onclick=openCompare;
   P.querySelectorAll("[data-pview]").forEach(b=>b.onclick=()=>{ PLATVIEW=b.dataset.pview; OPEN_TILE=null; PF.limit=50; SEL.clear(); renderSummary(); });
   P.querySelectorAll("[data-plat]").forEach(b=>b.onclick=()=>{toggle(FILTERS.platforms,b.dataset.plat);renderSummary();});
   P.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{toggle(FILTERS.vtypes,b.dataset.vt);renderSummary();});
