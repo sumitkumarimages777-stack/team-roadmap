@@ -4076,6 +4076,7 @@ const PERMS = [
   {key:"approve_requests", label:"Approve requests",      hint:"Approve or reject requested people"},
   {key:"manage_people",    label:"Manage people",         hint:"Add people directly, change roles, edit, email, remove"},
   {key:"create_games",     label:"Create games",          hint:"Make games and submit them for Let's Play"},
+  {key:"edit_targets",     label:"Edit social targets",   hint:"Change the targets in Social Media spaces (everyone else can only view them)"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
 const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
@@ -4940,6 +4941,7 @@ let devSpace = null;   // active team/board; null => first space
 
 /* ---- custom spaces: extra boards added from templates (Bugs / Scrum) ---- */
 let CSPACES = { list: [] };
+let SOCIAL_TARGETS = {};   // Social Media space targets, by space id (own section: only "Edit social targets" may save it)
 let activeCspace = null;           // id of the custom bugs space being viewed
 const DISC_STAGES = [
   {key:"now",   label:"Now"},
@@ -5438,6 +5440,7 @@ function teamPayload(){
     teamIdeas: clean(TIDEAS), dev: clean(DEV), rmaps: clean(RMAPS), cspaces: clean(CSPACES),
     spaceMembers: clean(BUILTIN_SPACE_MEMBERS), builtinHidden: clean(BUILTIN_HIDDEN),
     spaceBg: clean(SPACE_BG),
+    socialTargets: clean(SOCIAL_TARGETS),
     product: clean(PRODUCT),
     orgChart: (typeof TEAMORG!=="undefined" && TEAMORG) ? clean(TEAMORG) : null,
     squads: (typeof TEAMSQUADS!=="undefined") ? clean(TEAMSQUADS) : [],
@@ -5457,6 +5460,7 @@ function loadTeamData(t){
   DEV = normalizeDev(t.dev || clean(emptyTeam("x").dev));
   RMAPS = normalizeRmaps(t.rmaps);
   CSPACES = normalizeCspaces(t.cspaces);
+  SOCIAL_TARGETS = (t.socialTargets && typeof t.socialTargets==="object") ? t.socialTargets : {};
   BUILTIN_SPACE_MEMBERS = t.spaceMembers || { dev:{}, bugs:{} };
   BUILTIN_SPACE_MEMBERS.dev = BUILTIN_SPACE_MEMBERS.dev || {};
   BUILTIN_SPACE_MEMBERS.bugs = BUILTIN_SPACE_MEMBERS.bugs || {};
@@ -12475,6 +12479,9 @@ function renderContentSocial(){
     canEdit: canEditHere, isMember: ()=>!!currentUser(),
     me: ()=>{ const u=currentUser(); return u ? userDisplayName(u) : ""; },
     people: ()=>USERS.filter(u=>isMember(u, TEAM)).map(userDisplayName),
+    targets: sp=>SOCIAL_TARGETS[sp.id] || null,
+    canEditTargets: ()=>hasPerm("edit_targets"),
+    saveTargets: (sp, obj)=>{ SOCIAL_TARGETS[sp.id] = obj; pushAll(); },
     save: saveSocial,
   });
 }
@@ -13390,7 +13397,7 @@ function renderAll(){
           });
         }
         if(cs.type==="social" && view==="social" && activeCspace===cs.id){
-          [["summary","📊 Summary"],["ideation","💡 Ideation"],["process","🎬 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
+          [["targets","🎯 Targets"],["summary","📊 Summary"],["ideation","💡 Ideation"],["process","🎬 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
             const sub=document.createElement("button");
             const on = socialView===k;
             sub.className="ws-sub"+(on?" active":"");

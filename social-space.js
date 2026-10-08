@@ -125,11 +125,26 @@ table.mini th{padding:8px 10px}
 .goal .gt span{color:var(--ink-2)}
 .goal .meter{height:7px}
 .goal .gf{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3);margin-top:4px}
+.slacard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
+.slah{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--surface-4);border-bottom:1px solid var(--line)}
+.slah h4{font-size:15px}
+.sdot{width:10px;height:10px;border-radius:3px;display:block}
+.slab{padding:18px}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px 16px}
+.tf label{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:6px;font-weight:500}
+.tf .req{color:var(--crit);margin-left:2px}
+.tin{display:flex;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--surface);overflow:hidden}
+.tin:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tin input,.tin select{border:none;background:transparent;padding:9px 11px;font-size:13.5px;min-width:0;outline:none}
+.tin input{flex:1 1 50%;width:50%}
+.tin select{flex:1 1 50%;border-left:1px solid var(--line-2);cursor:pointer}
+.tin .tunit{flex:1 1 50%;border-left:1px solid var(--line-2);padding:9px 11px;font-size:13px;color:var(--ink-3);background:var(--surface-4)}
+.tin input:disabled,.tin select:disabled{color:var(--ink-2);cursor:default}
 .tcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
 .tchips{display:flex;gap:7px;flex-wrap:wrap}
 .tchip{font-size:12px;border:1px solid var(--line);background:var(--surface-4);border-radius:999px;padding:4px 11px;color:var(--ink-2);white-space:nowrap}
 .tchip b{color:var(--ink);font-variant-numeric:tabular-nums}
-.trow{display:grid;grid-template-columns:120px minmax(150px,1.4fr) 130px 140px 30px;gap:8px;align-items:center;margin-bottom:8px}
+.trow{max-width:720px;display:grid;grid-template-columns:minmax(160px,1.4fr) 140px 140px 30px;gap:8px;align-items:center;margin-bottom:8px}
 .trow select,.trow input{width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-s);padding:7px 9px;font-size:12.5px}
 .trow .x{border:1px solid var(--line-2);border-radius:var(--r-s);padding:6px 0;text-align:center;color:var(--ink-3)}
 .trow.head span{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
@@ -273,7 +288,7 @@ tbody tr:hover{background:var(--surface-4)}
 /* ------------------------------------------------------------ fixed lists */
 const DEFAULT_REG = {
   platform: { ig:"Instagram", yt:"YouTube" },
-  vtype:    { reel:"Reel", long:"Long video", short:"Short", carousel:"Carousel" },
+  vtype:    { reel:"Reel", long:"Long video", short:"Short", carousel:"Carousel", live:"Live", image:"Image" },
   source:   { keyword:"Keyword research", comment:"Student comment", trend:"Trend", product:"Product" },
   tool:     { vidiq:"vidIQ", trends:"Google Trends", suggest:"YouTube suggest", ahrefs:"Ahrefs", manual:"Manual / none" }
 };
@@ -355,7 +370,7 @@ function hue(name){ let h=0; for(const ch of String(name)) h=(h*31+ch.charCodeAt
 function avatar(name){ const n=String(name||"?").trim()||"?";
   return `<span class="av" style="background:hsl(${hue(n)} 48% 42%)">${esc(n[0].toUpperCase())}</span>`; }
 const who = n => `<span class="who">${avatar(n)}${esc(n||"—")}</span>`;
-const VBASE = {reel:"var(--c1)",long:"var(--c2)",short:"var(--c3)",carousel:"var(--c4)"};
+const VBASE = {reel:"var(--c1)",long:"var(--c2)",short:"var(--c3)",carousel:"var(--c4)",live:"var(--crit)",image:"var(--good)"};
 function vtypeColor(k){ return VBASE[k] || ["var(--c2)","var(--c4)","var(--c1)","var(--c3)"][hue(k)%4]; }
 const regLabel = (kind,k) => REG[kind][k] || "";
 const vtypeLabel = k => regLabel("vtype",k) || k;
@@ -478,12 +493,12 @@ function postRows(){
   const rows = [];
   LIVE.posts.forEach(p=>{
     const plat = p.platform==="youtube" ? "yt" : p.platform==="instagram" ? "ig" : p.platform;
-    const vt = p.post_type==="Short" ? "short" : p.post_type==="Long video" ? "long" : p.post_type==="Reel" ? "reel" : p.post_type==="Carousel" ? "carousel" : "long";
+    const vt = {"Short":"short","Long video":"long","Live":"live","Reel":"reel","Carousel":"carousel","Image":"image"}[p.post_type] || "long";
     const c = plat==="yt" ? cardForVideo(p.external_id) : null;
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
       watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
-      watchMin:p.watch_minutes, dur:p.duration_s });
+      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
     if(livePost(c)) return;                          // already listed from YouTube
@@ -563,88 +578,144 @@ function funnelChart(steps,w=330,h=180){
 }
 
 /* ------------------------------------------------------------ TARGETS
-   Followers have one total target per platform (S.targets). Everything else is
-   a goal for a calendar period: this week / this month / this quarter. */
+   Laid out like an SLA screen: one card per platform, one field per target
+   (number + "per week/month…"), plus posting time and any extra targets.
+   Stored apart from the rest of the space (team_data "socialTargets"), and the
+   database only lets people whose role has "Edit social targets" save it. */
 const GOAL_METRICS = {
-  posts:    { label:"Posts published", short:"posts", calc:r=>r.length },
-  shorts:   { label:"Shorts published", short:"shorts", only:"yt", calc:r=>r.filter(x=>x.vtype==="short").length },
-  longs:    { label:"Long videos published", short:"long videos", only:"yt", calc:r=>r.filter(x=>x.vtype==="long").length },
-  reels:    { label:"Reels published", short:"reels", only:"ig", calc:r=>r.filter(x=>x.vtype==="reel").length },
-  carousels:{ label:"Carousels published", short:"carousels", only:"ig", calc:r=>r.filter(x=>x.vtype==="carousel").length },
-  views:    { label:"Views", short:"views", calc:r=>sum(r,x=>x.views) },
-  likes:    { label:"Likes", short:"likes", calc:r=>sum(r,x=>x.likes) },
-  comments: { label:"Comments", short:"comments", calc:r=>sum(r,x=>x.comments) },
-  shares:   { label:"Shares", short:"shares", calc:r=>sum(r,x=>x.shares) },
-  watchh:   { label:"Watch hours", short:"watch hours", only:"yt", calc:r=>Math.round(sum(r,x=>x.watchMin)/60) },
-  avgviews: { label:"Average views per post", short:"avg views", calc:r=>r.length?Math.round(sum(r,x=>x.views)/r.length):0 },
-  viewedpct:{ label:"Average % viewed", short:"% viewed", only:"yt", pct:true, calc:r=>{ const a=avg(r,x=>x.viewed); return a==null?0:Math.round(a); } },
-  engage:   { label:"Engagement rate %", short:"engagement", pct:true, calc:r=>{ const v=sum(r,x=>x.views); return v?Math.round((sum(r,x=>x.likes)+sum(r,x=>x.comments)+sum(r,x=>x.shares))/v*1000)/10:0; } },
+  posts:    { label:"Posts published", calc:r=>r.length },
+  longs:    { label:"Long videos", only:"yt", calc:r=>r.filter(x=>x.vtype==="long").length },
+  shorts:   { label:"Shorts", only:"yt", calc:r=>r.filter(x=>x.vtype==="short").length },
+  lives:    { label:"Live sessions", only:"yt", calc:r=>r.filter(x=>x.vtype==="live").length },
+  community:{ label:"Community posts", only:"yt", untracked:true },
+  reels:    { label:"Reels", only:"ig", calc:r=>r.filter(x=>x.vtype==="reel").length },
+  carousels:{ label:"Carousels", only:"ig", calc:r=>r.filter(x=>x.vtype==="carousel").length },
+  images:   { label:"Single-image posts", only:"ig", calc:r=>r.filter(x=>x.vtype==="image").length },
+  stories:  { label:"Stories", only:"ig", untracked:true },
+  iglives:  { label:"Live sessions", only:"ig", untracked:true },
+  views:    { label:"Views", calc:r=>sum(r,x=>x.views) },
+  likes:    { label:"Likes", calc:r=>sum(r,x=>x.likes) },
+  comments: { label:"Comments", calc:r=>sum(r,x=>x.comments) },
+  shares:   { label:"Shares", calc:r=>sum(r,x=>x.shares) },
+  watchh:   { label:"Watch hours", only:"yt", calc:r=>Math.round(sum(r,x=>x.watchMin)/60) },
+  avgviews: { label:"Average views per post", noRate:true, calc:r=>r.length?Math.round(sum(r,x=>x.views)/r.length):0 },
+  viewedpct:{ label:"Average % viewed", only:"yt", pct:true, noRate:true, calc:r=>{ const a=avg(r,x=>x.viewed); return a==null?0:Math.round(a); } },
+  engage:   { label:"Engagement rate", pct:true, noRate:true, calc:r=>{ const v=sum(r,x=>x.views); return v?Math.round((sum(r,x=>x.likes)+sum(r,x=>x.comments)+sum(r,x=>x.shares))/v*1000)/10:0; } },
 };
-const GOAL_PERIODS = { week:"This week", month:"This month", quarter:"This quarter" };
+// the fields every platform card always shows, in order
+const FIXED = { yt:["longs","shorts","lives","community","views"], ig:["reels","carousels","images","stories","iglives","views"] };
+const GOAL_PERIODS = { day:"per day", week:"per week", month:"per month", quarter:"per quarter" };
+const PERIOD_NOW = { day:"today", week:"this week", month:"this month", quarter:"this quarter" };
+const POST_DAYS = { all:"Every day", weekdays:"Weekdays", weekends:"Weekends" };
+const PLAT_NAME = { yt:"YouTube", ig:"Instagram" };
 function calStart(period){ const d=new Date(); d.setHours(0,0,0,0);
   if(period==="week") d.setDate(d.getDate()-((d.getDay()+6)%7));
   else if(period==="month") d.setDate(1);
-  else { d.setDate(1); d.setMonth(Math.floor(d.getMonth()/3)*3); }
+  else if(period==="quarter"){ d.setDate(1); d.setMonth(Math.floor(d.getMonth()/3)*3); }
   return iso(d); }
 function calEnd(period){ const d=new Date(calStart(period)+"T00:00:00");
   if(period==="week") d.setDate(d.getDate()+6); else if(period==="month"){ d.setMonth(d.getMonth()+1); d.setDate(0); }
-  else { d.setMonth(d.getMonth()+3); d.setDate(0); } return iso(d); }
-function goalValue(g){ const from=calStart(g.period);
-  const rows=postRows().filter(r=>r.platform===g.platform && r.date && r.date>=from);
-  return GOAL_METRICS[g.metric].calc(rows); }
+  else if(period==="quarter"){ d.setMonth(d.getMonth()+3); d.setDate(0); } return iso(d); }
+function platRows(pl, from){ return postRows().filter(r=>r.platform===pl && r.date && r.date>=from); }
+
+let TG = { targets:{yt:80000, ig:20000}, goals:[], plan:{yt:{time:"",days:"all"}, ig:{time:"",days:"all"}} };
+function normTargets(o){
+  o = o && typeof o==="object" ? JSON.parse(JSON.stringify(o)) : {};
+  const t = { targets:Object.assign({yt:80000, ig:20000}, o.targets||{}),
+    goals:(Array.isArray(o.goals)?o.goals:[]).filter(g=>g && GOAL_METRICS[g.metric] && GOAL_PERIODS[g.period] && (g.platform==="yt"||g.platform==="ig")),
+    plan:{ yt:Object.assign({time:"",days:"all"}, (o.plan||{}).yt||{}), ig:Object.assign({time:"",days:"all"}, (o.plan||{}).ig||{}) } };
+  t.goals.forEach(g=>{ if(!g.id) g.id=uid("g"); });
+  return t;
+}
+function canEditTargets(){ return !!(OPT.canEditTargets && OPT.canEditTargets()); }
+
+function goalValue(g){ const m=GOAL_METRICS[g.metric]; return m.untracked ? null : m.calc(platRows(g.platform, calStart(g.period))); }
 function goalHTML(g,col){
-  const m=GOAL_METRICS[g.metric], cur=goalValue(g), tgt=Number(g.target)||0, pc=tgt?Math.min(100,cur/tgt*100):0;
-  const left=days(today(),calEnd(g.period))+1, unit=m.pct?"%":"";
-  return `<div class="goal"><div class="gt"><span>${esc(m.label)} · ${GOAL_PERIODS[g.period].toLowerCase()}</span>
-      <b>${fmt(cur)}${unit} / ${fmt(tgt)}${unit}</b></div>
+  const m=GOAL_METRICS[g.metric], cur=goalValue(g), tgt=Number(g.target)||0, unit=m.pct?"%":"";
+  const name=`${esc(m.label)} · ${fmt(tgt)}${unit} ${GOAL_PERIODS[g.period]}`;
+  if(cur==null) return `<div class="goal"><div class="gt"><span>${name}</span><b class="hint">not counted automatically</b></div></div>`;
+  const pc=tgt?Math.min(100,cur/tgt*100):0, left=days(today(),calEnd(g.period))+1;
+  return `<div class="goal"><div class="gt"><span>${name}</span><b>${fmt(cur)}${unit} / ${fmt(tgt)}${unit} ${PERIOD_NOW[g.period]}</b></div>
     <div class="meter"><i style="width:${pc}%;background:${cur>=tgt&&tgt?"var(--good)":col}"></i></div>
-    <div class="gf"><span>${Math.round(pc)}%</span><span>${cur>=tgt&&tgt?"reached 🎉":m.pct||g.metric==="avgviews"?`${left} day${left===1?"":"s"} left`:`${fmt(Math.max(0,tgt-cur))} to go · ${left} day${left===1?"":"s"} left`}</span></div></div>`;
+    <div class="gf"><span>${Math.round(pc)}%</span><span>${cur>=tgt&&tgt?"reached 🎉":m.noRate?`${left} day${left===1?"":"s"} left`:`${fmt(Math.max(0,tgt-cur))} to go · ${left} day${left===1?"":"s"} left`}</span></div></div>`;
 }
-let OKR_OPEN={}, TEDIT=false, TDRAFT=null;
-function targetsCard(){
-  const ro=!canEdit(), all=[{platform:"yt",metric:"followers",period:"total",target:S.targets.yt},{platform:"ig",metric:"followers",period:"total",target:S.targets.ig},...S.goals];
-  if(!TEDIT) return `<div class="sec"><div class="sec-h"><h3>Targets</h3><span class="hint">What the team is aiming for — progress shows on each platform card below</span>
-      ${ro?"":`<button class="btn sm" id="tEdit" style="margin-left:auto">Set targets</button>`}</div>
-    <div class="tcard"><div class="tchips">${all.map(g=>`<span class="tchip">${ptag(g.platform)} ${g.metric==="followers"?"Followers":esc(GOAL_METRICS[g.metric].label)}
-      ${g.period==="total"?"":`· ${GOAL_PERIODS[g.period].toLowerCase()}`} <b>${fmt(g.target)}${g.metric!=="followers"&&GOAL_METRICS[g.metric].pct?"%":""}</b></span>`).join("")}
-      ${S.goals.length?"":`<span class="hint" style="align-self:center">Only follower targets so far.${ro?"":" Press <b>Set targets</b> to add views, videos and more."}</span>`}</div></div></div>`;
+// how many of this week's posts went out within an hour of the planned time
+function postingTimeHTML(pl,col){
+  const pt=TG.plan[pl]; if(!pt||!pt.time) return "";
+  const [hh,mm]=pt.time.split(":").map(Number), want=hh*60+mm;
+  const rows=platRows(pl, calStart("week")).filter(r=>r.at);
+  const ok=rows.filter(r=>{ const d=new Date(r.at), m=d.getHours()*60+d.getMinutes(); return Math.abs(m-want)<=60; }).length;
+  const label=new Date(2000,0,1,hh,mm).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
+  return `<div class="goal"><div class="gt"><span>Posting time · ${esc(label)} · ${POST_DAYS[pt.days]||""}</span>
+      <b>${rows.length?`${ok} of ${rows.length} on time`:"no posts yet this week"}</b></div>
+    ${rows.length?`<div class="meter"><i style="width:${ok/rows.length*100}%;background:${col}"></i></div>
+    <div class="gf"><span>${Math.round(ok/rows.length*100)}%</span><span>within an hour of ${esc(label)}, this week</span></div>`:""}</div>`;
+}
+
+let OKR_OPEN={}, TDRAFT=null, TG_KEY="";
+function renderTargets(){
+  const ro=!canEditTargets();
+  if(!TDRAFT) TDRAFT=normTargets(TG);
   const D=TDRAFT;
-  const metricOpts=(pl,sel)=>Object.entries(GOAL_METRICS).filter(([,m])=>!m.only||m.only===pl).map(([k,m])=>`<option value="${k}" ${k===sel?"selected":""}>${esc(m.label)}</option>`).join("");
-  return `<div class="sec"><div class="sec-h"><h3>Set targets</h3><span class="hint">Counted from posts published in the chosen period — this week starts Monday</span></div>
-    <div class="tcard">
-      <div class="grid2" style="max-width:560px;margin-bottom:14px">
-        <div class="fld" style="margin:0"><label>YouTube subscribers (total)</label><input type="number" min="1" id="t-yt" value="${D.yt}"></div>
-        <div class="fld" style="margin:0"><label>Instagram followers (total)</label><input type="number" min="1" id="t-ig" value="${D.ig}"></div></div>
-      <div class="trow head"><span>Platform</span><span>What</span><span>Period</span><span>Target</span><span></span></div>
-      ${D.goals.map((g,i)=>`<div class="trow" data-gi="${i}">
-        <select data-gk="platform">${PLATS().filter(k=>k==="yt"||k==="ig").map(k=>`<option value="${k}" ${g.platform===k?"selected":""}>${esc(regLabel("platform",k))}</option>`).join("")}</select>
-        <select data-gk="metric">${metricOpts(g.platform,g.metric)}</select>
-        <select data-gk="period">${Object.entries(GOAL_PERIODS).map(([k,l])=>`<option value="${k}" ${g.period===k?"selected":""}>${l}</option>`).join("")}</select>
-        <input data-gk="target" type="number" min="0" step="any" value="${g.target??""}" placeholder="e.g. 50000">
-        <button class="x" data-gdel="${i}" title="Remove">×</button></div>`).join("")||`<p class="hint" style="margin:0 0 10px">No other targets yet.</p>`}
-      <div class="row" style="margin-top:6px">
-        <button class="btn sm" id="tAdd">+ Add a target</button>
-        <span style="flex:1"></span>
-        <button class="btn" id="tCancel">Cancel</button><button class="btn pri" id="tSave">Save targets</button></div></div></div>`;
-}
-function readTargets(){ const P=$("#pane-summary"); if(!TDRAFT) return;
-  const y=Number($("#t-yt").value), g=Number($("#t-ig").value); TDRAFT.yt=y; TDRAFT.ig=g;
-  P.querySelectorAll(".trow[data-gi]").forEach(row=>{ const o=TDRAFT.goals[Number(row.dataset.gi)];
-    row.querySelectorAll("[data-gk]").forEach(e=>{ o[e.dataset.gk]= e.dataset.gk==="target" ? (e.value===""?null:Number(e.value)) : e.value; });
-    if(GOAL_METRICS[o.metric].only && GOAL_METRICS[o.metric].only!==o.platform) o.metric="posts"; }); }
-function wireTargets(){
-  const e=$("#tEdit"); if(e) e.onclick=()=>{ TEDIT=true; TDRAFT={yt:S.targets.yt, ig:S.targets.ig, goals:S.goals.map(g=>({...g}))}; renderSummary(); };
-  if(!TEDIT) return;
-  const P=$("#pane-summary");
-  P.querySelectorAll('.trow [data-gk="platform"]').forEach(sel=>sel.onchange=()=>{ readTargets(); renderSummary(); });
-  P.querySelectorAll("[data-gdel]").forEach(b=>b.onclick=()=>{ readTargets(); TDRAFT.goals.splice(Number(b.dataset.gdel),1); renderSummary(); });
-  $("#tAdd").onclick=()=>{ readTargets(); TDRAFT.goals.push({id:uid("g"),platform:"yt",metric:"views",period:"month",target:null}); renderSummary(); };
-  $("#tCancel").onclick=()=>{ TEDIT=false; TDRAFT=null; renderSummary(); };
+  const unitSel=(attrs,val)=>`<select ${attrs}>${Object.entries(GOAL_PERIODS).map(([k,l])=>`<option value="${k}" ${val===k?"selected":""}>${l.replace("per ","Per ")}</option>`).join("")}</select>`;
+  const field=(pl,metric)=>{ const g=D.goals.find(x=>x.platform===pl&&x.metric===metric)||{}; const m=GOAL_METRICS[metric];
+    return `<div class="tf"><label>${esc(m.label)}${m.untracked?` <span class="hint" title="Not available from the ${PLAT_NAME[pl]} API — shown as a target only">· not auto-counted</span>`:""}</label>
+      <div class="tin"><input type="number" min="0" step="any" data-fx="${pl}:${metric}" value="${g.target??""}" placeholder="—">
+      ${unitSel(`data-fxp="${pl}:${metric}"`, g.period||"week")}</div></div>`; };
+  const card=(pl,col,dot)=>{ const extra=D.goals.map((g,i)=>({g,i})).filter(x=>x.g.platform===pl && !FIXED[pl].includes(x.g.metric));
+    const set=D.goals.filter(g=>g.platform===pl&&g.target>0).length+(D.plan[pl].time?1:0)+1;
+    return `<div class="slacard">
+      <div class="slah"><span class="sdot" style="background:${dot}"></span><h4>${PLAT_NAME[pl]}</h4>
+        <span class="hint" style="margin-left:auto">${set} target${set===1?"":"s"} set</span></div>
+      <div class="slab">
+        <div class="tgrid">
+          <div class="tf"><label>${pl==="yt"?"Subscribers":"Followers"} (total)<span class="req">*</span></label>
+            <div class="tin"><input type="number" min="1" data-fol="${pl}" value="${D.targets[pl]}"><span class="tunit">in total</span></div></div>
+          <div class="tf"><label>Posting time</label>
+            <div class="tin"><input type="time" data-pt="${pl}" value="${esc(D.plan[pl].time)}">
+            <select data-pd="${pl}">${Object.entries(POST_DAYS).map(([k,l])=>`<option value="${k}" ${D.plan[pl].days===k?"selected":""}>${l}</option>`).join("")}</select></div></div>
+          ${FIXED[pl].map(m=>field(pl,m)).join("")}
+        </div>
+        ${extra.length?`<div class="lbl" style="margin:16px 0 8px">More targets</div>`+extra.map(({g,i})=>`<div class="trow" data-gi="${i}">
+          <select data-gk="metric">${Object.entries(GOAL_METRICS).filter(([k,m])=>(!m.only||m.only===pl)&&!FIXED[pl].includes(k)).map(([k,m])=>`<option value="${k}" ${k===g.metric?"selected":""}>${esc(m.label)}</option>`).join("")}</select>
+          <input data-gk="target" type="number" min="0" step="any" value="${g.target??""}" placeholder="target">
+          ${unitSel('data-gk="period"', g.period)}
+          <button class="x" data-gdel="${i}" title="Remove">×</button></div>`).join(""):""}
+        ${ro?"":`<button class="btn sm" data-tadd="${pl}" style="margin-top:12px">+ Add another target</button>`}
+      </div></div>`; };
+
+  $("#pane-targets").innerHTML=`
+    ${ro?`<div class="apibar"><span class="ic">VIEW ONLY</span><p><b>Only people allowed to edit targets can change these.</b>
+      An owner can give a role the <b>Edit social targets</b> permission in Administration → Roles &amp; permissions.</p></div>`
+      :`<div class="apibar live"><span class="ic">TARGETS</span><p><b>Set what the team is aiming for.</b> Progress shows on the Summary,
+      under each platform's card (<b>Other targets ▾</b>). Counts come from posts published in the chosen period — weeks start Monday.
+      Leave a field empty for no target.</p></div>`}
+    <div class="sec">${card("yt","var(--c1)","var(--c1)")}${card("ig","var(--c3)","var(--c3)")}</div>
+    ${ro?"":`<div class="row" style="justify-content:flex-end;gap:8px"><button class="btn" id="tReset">Undo changes</button><button class="btn pri" id="tSave">Save targets</button></div>`}`;
+
+  const P=$("#pane-targets");
+  if(ro){ P.querySelectorAll("input,select").forEach(e=>e.disabled=true); return; }
+  P.querySelectorAll("[data-tadd]").forEach(b=>b.onclick=()=>{ readTargets(); const pl=b.dataset.tadd;
+    const free=Object.entries(GOAL_METRICS).find(([k,m])=>(!m.only||m.only===pl)&&!FIXED[pl].includes(k)&&!TDRAFT.goals.some(g=>g.platform===pl&&g.metric===k));
+    TDRAFT.goals.push({id:uid("g"),platform:pl,metric:free?free[0]:"posts",period:"month",target:null}); renderTargets(); });
+  P.querySelectorAll("[data-gdel]").forEach(b=>b.onclick=()=>{ readTargets(); TDRAFT.goals.splice(Number(b.dataset.gdel),1); renderTargets(); });
+  $("#tReset").onclick=()=>{ TDRAFT=null; renderTargets(); toast("Changes undone"); };
   $("#tSave").onclick=()=>{ readTargets();
-    if(!(TDRAFT.yt>0)||!(TDRAFT.ig>0)){ toast("Follower targets must be numbers above zero"); return; }
-    if(TDRAFT.goals.some(g=>!(g.target>0))){ toast("Every target needs a number above zero — or remove the row"); return; }
-    S.targets={yt:TDRAFT.yt, ig:TDRAFT.ig}; S.goals.splice(0,S.goals.length,...TDRAFT.goals);
-    TEDIT=false; TDRAFT=null; if(save()) toast("Targets saved"); };
+    if(!(TDRAFT.targets.yt>0)||!(TDRAFT.targets.ig>0)){ toast("Follower targets must be numbers above zero"); return; }
+    TDRAFT.goals=TDRAFT.goals.filter(g=>g.target>0);
+    TG=normTargets(TDRAFT); TDRAFT=null;
+    if(OPT.saveTargets){ OPT.saveTargets(SPACE, normTargets(TG)); toast("Targets saved"); } };
+}
+function readTargets(){ const P=$("#pane-targets"); if(!TDRAFT||!P) return;
+  P.querySelectorAll("[data-fol]").forEach(e=>TDRAFT.targets[e.dataset.fol]=Number(e.value));
+  P.querySelectorAll("[data-pt]").forEach(e=>TDRAFT.plan[e.dataset.pt].time=e.value);
+  P.querySelectorAll("[data-pd]").forEach(e=>TDRAFT.plan[e.dataset.pd].days=e.value);
+  P.querySelectorAll("[data-fx]").forEach(e=>{ const [pl,metric]=e.dataset.fx.split(":"), per=P.querySelector(`[data-fxp="${pl}:${metric}"]`).value;
+    let g=TDRAFT.goals.find(x=>x.platform===pl&&x.metric===metric);
+    if(!g){ g={id:uid("g"),platform:pl,metric,period:per,target:null}; TDRAFT.goals.push(g); }
+    g.target=e.value===""?null:Number(e.value); g.period=per; });
+  P.querySelectorAll(".trow[data-gi]").forEach(row=>{ const o=TDRAFT.goals[Number(row.dataset.gi)];
+    row.querySelectorAll("[data-gk]").forEach(e=>{ o[e.dataset.gk]= e.dataset.gk==="target" ? (e.value===""?null:Number(e.value)) : e.value; }); });
 }
 
 /* ------------------------------------------------------------ SUMMARY */
@@ -682,11 +753,11 @@ function renderSummary(){
   const views=pub.reduce((s,r)=>s+(Number(r.views)||0),0);
 
   const yt=ytSeries(), ig=igSeries();
-  const more=(k,col)=>{ const gs=S.goals.filter(g=>g.platform===k), open=!!OKR_OPEN[k];
-    return `<div class="okr-more ${open?"open":""}"><button data-okrmore="${k}">${open?"▴":"▾"} Other targets (${gs.length})</button>
-      ${open?(gs.length?gs.map(g=>goalHTML(g,col)).join(""):`<p class="hint" style="margin:8px 0 0">No other targets for this platform yet.${canEdit()?" Use <b>Set targets</b> above.":""}</p>`):""}</div>`; };
+  const more=(k,col)=>{ const gs=TG.goals.filter(g=>g.platform===k&&g.target>0), n=gs.length+(TG.plan[k].time?1:0), open=!!OKR_OPEN[k];
+    return `<div class="okr-more ${open?"open":""}"><button data-okrmore="${k}">${open?"▴":"▾"} Other targets (${n})</button>
+      ${open?(n?postingTimeHTML(k,col)+gs.map(g=>goalHTML(g,col)).join(""):`<p class="hint" style="margin:8px 0 0">No other targets for ${PLAT_NAME[k]} yet — set them in the <b>Targets</b> tab.</p>`):""}</div>`; };
   const okr=(k,n,col,series,isLive)=>{
-    const tgt=S.targets[k];
+    const tgt=TG.targets[k];
     if(!series.length) return `<div class="okr"><div class="okr-top"><div><div class="lbl" style="margin-bottom:4px">${n} followers</div>
         <div class="okr-v" style="color:var(--ink-3)">—</div></div>
         <div style="text-align:right"><div class="okr-t">target ${fmt(tgt)}</div></div></div>
@@ -714,8 +785,6 @@ function renderSummary(){
      <span style="width:8px"></span><span class="lbl">Type</span>
      ${Object.keys(REG.vtype).map(k=>`<button class="chip ${FILTERS.vtypes.includes(k)?"on":""}" data-vt="${k}">${esc(vtypeLabel(k))}</button>`).join("")}
    </div></div>
-
-   ${targetsCard()}
 
    <div class="sec"><div class="sec-h"><h3>OKR progress</h3>
      <span class="hint">Two separate goals, never a combined audience number</span>
@@ -749,9 +818,9 @@ function renderSummary(){
    <div class="sec"><div class="sec-h"><h3>Follower growth</h3>
      <span class="hint">Two charts, two scales. A combined follower number would be meaningless.</span></div>
      <div class="charts">
-       <div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(S.targets.yt)}</span></div>
+       <div class="chart-card"><div class="chart-head"><h4>YouTube subscribers <span class="badge good" style="margin-left:4px">live</span></h4><span class="chip">target ${fmt(TG.targets.yt)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(yt,12),"var(--c1)","YouTube")}</div>
-       <div class="chart-card"><div class="chart-head"><h4>Instagram followers <span class="badge mute" style="margin-left:4px">manual</span></h4><span class="chip">target ${fmt(S.targets.ig)}</span></div>
+       <div class="chart-card"><div class="chart-head"><h4>Instagram followers <span class="badge mute" style="margin-left:4px">manual</span></h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div></div></div>
 
    <div class="sec"><div class="sec-h"><h3>Published posts</h3><span class="badge good">YouTube live</span><span class="badge mute">Instagram manual</span>
@@ -783,7 +852,6 @@ function renderSummary(){
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
   P.querySelectorAll("[data-okrmore]").forEach(b=>b.onclick=()=>{ OKR_OPEN[b.dataset.okrmore]=!OKR_OPEN[b.dataset.okrmore]; renderSummary(); });
-  wireTargets();
   P.querySelectorAll("[data-tile]").forEach(t=>{
     const go=()=>{ OPEN_TILE = OPEN_TILE===t.dataset.tile ? null : t.dataset.tile; placeDetail(); };
     t.onclick=go; t.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
@@ -1605,11 +1673,11 @@ function openCulture(){
 }
 
 /* ------------------------------------------------------------ mount */
-const PANES=["summary","ideation","process","schedule"];
+const PANES=["targets","summary","ideation","process","schedule"];
 function refresh(){
   if(!R || !S) return;
   PANES.forEach(p=>{ const el=$("#pane-"+p); if(el) el.hidden = p!==TAB; });
-  ({summary:renderSummary,ideation:renderIdeation,process:renderProcess,schedule:renderSchedule})[TAB]();
+  ({targets:renderTargets,summary:renderSummary,ideation:renderIdeation,process:renderProcess,schedule:renderSchedule})[TAB]();
 }
 function mount(){
   if(HOST) return;
@@ -1625,13 +1693,18 @@ function mount(){
 
 window.SX = {
   normalize: normalize,
-  tabs: [["summary","Summary"],["ideation","Ideation"],["process","Content Process"],["schedule","Schedule"]],
-  /* draw the space. opt: {tab, team, supa, canEdit(), isMember(), me(), save()} */
+  tabs: [["targets","Targets"],["summary","Summary"],["ideation","Ideation"],["process","Content Process"],["schedule","Schedule"]],
+  /* draw the space. opt: {tab, team, supa, canEdit(), isMember(), me(), people(), save(),
+       targets(space), canEditTargets(), saveTargets(space, obj)} */
   render: function(space, wrap, opt){
     mount();
     OPT = opt || {};
     if(SPACE!==space){ SPACE=space; if(R) closeDrawer(); }
     S = normalize(space); IDEAS=S.ideas; CARDS=S.cards; REG=S.reg;
+    // targets: their own saved copy, or (before anyone has saved one) what the space held
+    const tRaw = (OPT.targets && OPT.targets(space)) || { targets:S.targets, goals:S.goals };
+    const tKey = JSON.stringify(tRaw);
+    if(tKey!==TG_KEY){ TG_KEY=tKey; TG=normTargets(tRaw); TDRAFT=null; }
     if(!FILTERS.vtypes){ FILTERS.vtypes=Object.keys(REG.vtype); FILTERS.platforms=Object.keys(REG.platform); }
     if(!SCHED.vtypes){ SCHED.vtypes=Object.keys(REG.vtype); SCHED.platforms=Object.keys(REG.platform); SCHED.cursor=today(); }
     Object.keys(REG.vtype).forEach(k=>{ if(!FILTERS.vtypes.includes(k)) FILTERS.vtypes.push(k); if(!SCHED.vtypes.includes(k)) SCHED.vtypes.push(k); });
