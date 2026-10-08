@@ -354,7 +354,9 @@ function normalize(space){
   s.goals = Array.isArray(s.goals) ? s.goals.filter(g=>g && GOAL_METRICS[g.metric]) : [];
   s.culture = typeof s.culture==="string" ? s.culture : "";
   s.manual = s.manual && typeof s.manual==="object" ? s.manual : {};   // typed-in counts: "yt:webinars:2026-10-06" -> n
-  s.postTags = s.postTags && typeof s.postTags==="object" ? s.postTags : {};   // post key -> {tag name: value}
+  s.postTags = s.postTags && typeof s.postTags==="object" ? s.postTags : {};
+  // Reels' new followers, typed in from Instagram Insights (Meta's API won't give them): post key -> n
+  s.typedFollows = s.typedFollows && typeof s.typedFollows==="object" ? s.typedFollows : {};   // post key -> {tag name: value}
   s.views = Array.isArray(s.views) ? s.views.filter(v=>v && Array.isArray(v.rules)) : [];   // saved post filters
   // any field missing on an older record gets its default, so nothing below can trip on it
   const fill=(o,d)=>{ Object.keys(d).forEach(k=>{ if(o[k]===undefined || o[k]===null && typeof d[k]==="string") o[k]=d[k]; }); return o; };
@@ -538,7 +540,9 @@ function postRows(){
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
       watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
-      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s, gained:p.followers_gained, reach:p.impressions });
+      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s, reach:p.impressions,
+      gained: p.followers_gained!=null ? p.followers_gained : ((S.typedFollows||{})["v:"+p.external_id] ?? null),
+      gainedTyped: p.followers_gained==null && (S.typedFollows||{})["v:"+p.external_id]!=null });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
     if(livePost(c)) return;                          // already listed from the synced posts
@@ -1001,7 +1005,9 @@ function postsSection(){
         <td class="vol">${fmt(r.views)}</td><td class="vol">${fmt(r.likes)}</td>
         <td class="vol">${fmt(r.comments)}</td><td class="vol">${fmt(r.shares)}</td>
         <td class="vol">${e!=null?r1(e)+"%":"—"}</td>
-        <td class="vol">${r.gained!=null?`<b>+${fmt(r.gained)}</b>`:"—"}</td>
+        <td class="vol">${(()=>{ const typable = r.live && r.platform==="ig" && r.vtype==="reel" && (r.gainedTyped || r.gained==null);
+          const shown = r.gained!=null ? `<b>+${fmt(r.gained)}</b>${r.gainedTyped?` <span title="Typed in from Instagram Insights">✎</span>`:""}` : "—";
+          return typable && canEdit() ? `<button class="cbtn ${r.gained!=null?"has":""}" data-typefollow="${esc(r.key)}" title="Instagram doesn't share Reels' follows — type the number from Insights → Follows">${r.gained!=null?shown:"+ add"}</button>` : shown; })()}</td>
         <td class="vol">${r.watch||"—"}</td>
         <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":`<span style="color:var(--ink-3)">${r.live?"pending":"n/a"}</span>`}</td>
         <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td>
@@ -1070,6 +1076,11 @@ function wirePosts(box){
   on("pfDelSaved",()=>{ const i=S.views.findIndex(x=>x.id===PF.saved); if(i<0) return; if(!confirm("Delete the saved filter \""+S.views[i].name+"\"?")) return;
     S.views.splice(i,1); PF.saved=""; if(save()) toast("Saved filter deleted"); });
   box.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")||e.target.closest(".ck")) return; openCard(r.dataset.card); });
+  box.querySelectorAll("[data-typefollow]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.typefollow, cur=S.typedFollows[k];
+    const v=prompt("New followers from this Reel\n(open the Reel on Instagram → View insights → Follows)", cur!=null?String(cur):""); if(v===null) return;
+    const t=v.trim(); if(t===""){ delete S.typedFollows[k]; if(save()) toast("Cleared"); return; }
+    const n=Number(t); if(!(n>=0)||!Number.isFinite(n)){ toast("Type a number, e.g. 3"); return; }
+    S.typedFollows[k]=Math.round(n); if(save()) toast("Saved — counts in “Which posts brought followers”"); });
   box.querySelectorAll("[data-sel]").forEach(c=>{ c.onclick=e=>e.stopPropagation(); c.onchange=()=>{ c.checked?SEL.add(c.dataset.sel):SEL.delete(c.dataset.sel); rerenderPosts(); }; });
   const sa=box.querySelector("#selAll"); if(sa) sa.onchange=()=>{ const rows=filteredPosts(); if(sa.checked) rows.forEach(r=>SEL.add(r.key)); else SEL.clear(); rerenderPosts(); };
   const tb=box.querySelector("#tagBy"); if(tb) tb.onchange=()=>{ TAGBY=tb.value; rerenderPosts(); };
@@ -1112,7 +1123,7 @@ function driversSection(){
     </div>
     <p class="hint" style="margin:0">"Change" is the whole account's follower count over the period (it includes people who found you any other way, minus unfollows).
       Per-post numbers are what each platform credits to that post. Sort the Published posts table by <b>New followers</b> for the full list.
-      ${PLATVIEW!=="yt"?"<br>Instagram only reports followers for images and carousels — not for Reels, so Reels show “—” (use views and shares to judge them).":""}</p></div>`;
+      ${PLATVIEW!=="yt"?"<br>Meta doesn't share Reels' follows with other apps (only images and carousels), so for Reels type the number from Instagram Insights → <b>Follows</b> in the <b>New followers</b> column of Published posts — typed numbers show ✎.":""}</p></div>`;
 }
 
 /* ------------------------------------------------------------ COMPARE
@@ -1146,7 +1157,7 @@ function openCompare(){
       return `<tr><td>${l}</td><td class="vol ${ca?"win":""}">${show(x,f)}${ca?" ✓":""}</td><td class="vol ${cb?"win":""}">${show(y,f)}${cb?" ✓":""}</td></tr>`; }).join("") : "";
   openDrawer(`<div class="dr-h"><div><div class="lbl">Compare</div><h3 style="margin-top:4px">Instagram vs YouTube</h3></div><button class="btn sm" id="xClose">Close</button></div>
     <p class="hint" style="margin:0 0 14px">Pick any Instagram post and any YouTube video — usually the same reel posted on both. Every number is lifetime, as each platform counts it.
-      Instagram doesn't report new followers for Reels, so that row shows “—” for them.</p>
+      Meta doesn't share new followers for Reels — type them in the Published posts table (New followers column) and they show here.</p>
     ${pairs.length?`<div class="block"><div class="block-h"><h4>Same content on both?</h4><span class="hint">Matched by title words, posted within 3 days</span></div>
       ${pairs.map((p,i)=>`<button class="cpair" data-pair="${i}"><span>${ptag("ig")} ${esc((p.a.title||"").slice(0,48))}</span><span>${ptag("yt")} ${esc((p.b.title||"").slice(0,48))}</span><span class="hint">${dmy(p.a.date)}</span></button>`).join("")}</div>`:""}
     <div class="fld"><label>Instagram post</label><select id="cmpIg">${opt(ig,CMP.ig)||`<option>No Instagram posts synced yet</option>`}</select></div>
