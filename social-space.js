@@ -129,6 +129,11 @@ table.mini th{padding:8px 10px}
 .cpair:hover{border-color:var(--accent)}
 .cpair span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cmpt td.win{color:var(--good);font-weight:700}
+.geo-bar{cursor:pointer;border-radius:8px;padding:3px 6px;margin:0 -6px}
+.geo-bar:hover{background:var(--surface-2)}
+.geo-bar.on{background:var(--surface-2);outline:1px solid var(--line-2)}
+.geo-bar.on .hl{color:var(--ink);font-weight:600}
+.geo-note{font-size:12px;color:var(--ink-3);margin:10px 0 0;line-height:1.5}
 .platsw{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
 .platsw button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
 .platsw button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
@@ -380,7 +385,7 @@ let SPACE=null, S=null, IDEAS=[], CARDS=[], REG=DEFAULT_REG, HOST=null, R=null, 
 let TAB="summary", CHARTMODE="bar";
 const FILTERS = { period:"month", vtypes:null, platforms:null };
 const SCHED = { view:"month", cursor:null, vtypes:null, platforms:null };
-const LIVE = { team:null, status:"idle", posts:[], snaps:[], lastAt:null, err:"", syncing:false };
+const LIVE = { team:null, status:"idle", posts:[], snaps:[], geo:[], lastAt:null, err:"", syncing:false };
 
 /* ------------------------------------------------------------ helpers */
 const $ = s => R.querySelector(s);
@@ -500,6 +505,9 @@ async function loadLive(force){
     ]);
     if(p.error) throw p.error; if(s.error) throw s.error;
     LIVE.posts = p.data || []; LIVE.snaps = s.data || [];
+    // where the audience is (stage 9a); missing table = no location charts, nothing else breaks
+    const g = await OPT.supa.from("social_geo").select("platform,kind,level,name,state,value,period,updated_at").eq("team_slug", team).limit(3000);
+    LIVE.geo = g.error ? [] : (g.data || []);
     LIVE.lastAt = LIVE.snaps.reduce((m,r)=>!m||r.updated_at>m?r.updated_at:m, null);
     LIVE.status="ok"; LIVE.err="";
   }catch(e){ LIVE.status="error"; LIVE.err=(e && e.message) || "Could not load"; }
@@ -1100,6 +1108,72 @@ const AUD = pl => pl==="yt" ? "subscribers" : "followers";
 const AUDV = () => PLATVIEW==="yt" ? "subscribers" : PLATVIEW==="ig" ? "followers" : "followers & subscribers";
 const cap = t => t.charAt(0).toUpperCase()+t.slice(1);
 
+/* ------------------------------------------------------------ AUDIENCE LOCATION
+   Where viewers and followers/subscribers are, from social_geo (filled by
+   sync-social). Platforms share cities, not districts; YouTube shares
+   subscribers by country only; Instagram shares its top cities only. */
+const GEO = { plat:"yt", kind:"viewers", state:null };
+const METROS = new Set(["delhi","new delhi","mumbai","kolkata","chennai","bengaluru","bangalore","hyderabad","pune","ahmedabad",
+  "gurugram","gurgaon","noida","greater noida","ghaziabad","faridabad","thane","navi mumbai","secunderabad","pimpri-chinchwad","howrah"]);
+const COUNTRY = { IN:"India", US:"United States", AE:"UAE", GB:"United Kingdom", CA:"Canada", AU:"Australia", NP:"Nepal", BD:"Bangladesh",
+  SA:"Saudi Arabia", QA:"Qatar", KW:"Kuwait", OM:"Oman", SG:"Singapore", PK:"Pakistan", DE:"Germany", MY:"Malaysia", BH:"Bahrain", LK:"Sri Lanka", NZ:"New Zealand", FR:"France" };
+const cityOnly = n => { const i=String(n).lastIndexOf(", "); return i<0?String(n):String(n).slice(0,i); };
+function geoSection(){
+  const pl = PLATVIEW==="all" ? GEO.plat : PLATVIEW, plat = pl==="yt"?"youtube":"instagram";
+  const aud = AUD(pl), kinds = [["viewers",pl==="yt"?"Viewers":"Reached accounts"],[pl==="yt"?"subscribers":"followers",cap(aud)]];
+  if(!kinds.some(k=>k[0]===GEO.kind)) GEO.kind="viewers";
+  const rows = (LIVE.geo||[]).filter(r=>r.platform===plat && r.kind===GEO.kind);
+  const period = (rows[0]||{}).period || "";
+  const head = `<div class="sec-h"><h3>Where your audience is</h3>
+    <span class="hint">${PLAT_NAME[pl]} · ${esc(kinds.find(k=>k[0]===GEO.kind)[1].toLowerCase())}${period?" · "+esc(period):""}</span></div>
+    <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap">
+      ${PLATVIEW==="all"?`<div class="seg"><button data-geoplat="yt" class="${pl==="yt"?"on":""}">YouTube</button><button data-geoplat="ig" class="${pl==="ig"?"on":""}">Instagram</button></div>`:""}
+      <div class="seg">${kinds.map(([k,l])=>`<button data-geokind="${k}" class="${GEO.kind===k?"on":""}">${l}</button>`).join("")}</div></div>`;
+  if(!(LIVE.geo||[]).length) return head+`<div class="card"><p class="hint" style="margin:0">No location numbers yet — they arrive with the next sync (every morning at 8:00 AM, or press <b>Sync now</b> above).</p></div>`;
+  const countries = rows.filter(r=>r.level==="country").sort((a,b)=>b.value-a.value);
+  const ctyBars = countries.slice(0,10).map(r=>({label:COUNTRY[r.name]||r.name,v:Number(r.value)||0,color:pl==="yt"?"var(--c1)":"var(--c3)"}));
+  // YouTube subscribers: countries only
+  if(pl==="yt" && GEO.kind==="subscribers") return head+`<div class="charts"><div class="chart-card">
+      ${hbars("New subscribers by country ("+esc(period||"last 90 days")+")",ctyBars)}
+      <p class="geo-note">YouTube doesn't share subscribers by state or city — only by country. For state and city, switch to <b>Viewers</b>: that's where the people watching you are.</p></div></div>`;
+  const cities = rows.filter(r=>r.level==="city").map(r=>({name:cityOnly(r.name),state:r.state||"Not matched to a state",v:Number(r.value)||0})).filter(c=>c.v>0).sort((a,b)=>b.v-a.v);
+  const india = Number((countries.find(r=>r.name==="IN")||{}).value)||0;
+  const stMap = new Map(); cities.forEach(c=>stMap.set(c.state,(stMap.get(c.state)||0)+c.v));
+  const states = [...stMap].map(([k,v])=>({k,v})).sort((a,b)=>(a.k==="Not matched to a state")-(b.k==="Not matched to a state")||b.v-a.v);
+  if(GEO.state && !stMap.has(GEO.state)) GEO.state=null;
+  const max = Math.max(1,...states.map(s=>s.v)), col = pl==="yt"?"var(--c1)":"var(--c3)";
+  const stBars = states.map(s=>`<div class="hbar geo-bar ${GEO.state===s.k?"on":""}" data-geostate="${esc(s.k)}" role="button" tabindex="0" data-tip="${esc(s.k)}\n${fmt(s.v)} · click for its cities">
+    <span class="hl">${esc(s.k)}</span><span class="ht"><i style="width:${s.v/max*100}%;background:${col}"></i></span><span class="hv">${fmt(s.v)}</span></div>`).join("");
+  const inState = GEO.state ? cities.filter(c=>c.state===GEO.state) : cities.slice(0,15);
+  const cityTitle = GEO.state ? `Cities in ${esc(GEO.state)}` : "Top cities (click a state to see its cities)";
+  const metro = sum(cities.filter(c=>METROS.has(c.name.toLowerCase())),c=>c.v), other = sum(cities,c=>c.v)-metro;
+  const rest = india ? Math.max(0, india-metro-other) : 0;
+  const split = [{label:"Metros",v:metro,color:"var(--c1)"},{label:"Other cities",v:other,color:"var(--c2)"},
+    ...(rest?[{label:"Towns & rural",v:rest,color:"var(--c3)"}]:[])];
+  const unit = GEO.kind==="viewers" ? (pl==="yt"?"VIEWS":"REACHED") : "FOLLOWERS";
+  return head+`<div class="charts">
+    <div class="chart-card"><div class="dblock" style="margin:0"><span class="lbl">By state${pl==="ig"?" (top cities only)":""}</span>
+      ${states.length?stBars:`<p class="hint">Nothing here yet.</p>`}</div>
+      <p class="geo-note">${pl==="yt"?"YouTube gives cities, not states — each city is placed in its state here. ":"Instagram shares only your top cities, so smaller places aren't in these totals. "}Neither platform gives districts; cities are the closest.</p></div>
+    <div class="chart-card">${hbars(cityTitle,inState.map(c=>({label:c.name,v:c.v,color:col,tip:fmt(c.v)+(GEO.state?"":" · "+c.state)})))}
+      ${GEO.state?`<button class="btn sm" data-geostate="" style="margin-top:8px">← All states</button>`:""}</div>
+    <div class="chart-card"><div class="chart-head"><h4>Metros vs other cities vs towns &amp; rural</h4></div>
+      ${donutChart(split,330,180,unit,fmt)}
+      <p class="geo-note">Metros = Delhi NCR, Mumbai, Kolkata, Chennai, Bengaluru, Hyderabad, Pune, Ahmedabad.
+      ${rest?`"Towns & rural" (smaller towns and villages) is everything in India outside the top cities the platform lists (${fmt(india)} in India in total) — the platforms don't label urban or rural, so this is the closest honest split.`
+        :`The platform didn't share an India total, so places outside its top cities can't be shown.`}
+      ${india&&countries.length?` India is ${pct(india,sum(countries,r=>r.value))}% of the total.`:""}</p></div>
+  </div>`;
+}
+function wireGeo(){
+  const P=$("#geoSec"); if(!P) return;
+  activateTips(P);
+  P.querySelectorAll("[data-geoplat]").forEach(b=>b.onclick=()=>{ GEO.plat=b.dataset.geoplat; GEO.state=null; P.innerHTML=geoSection(); wireGeo(); });
+  P.querySelectorAll("[data-geokind]").forEach(b=>b.onclick=()=>{ GEO.kind=b.dataset.geokind; GEO.state=null; P.innerHTML=geoSection(); wireGeo(); });
+  P.querySelectorAll("[data-geostate]").forEach(b=>{ const go=()=>{ const k=b.dataset.geostate; GEO.state = !k||GEO.state===k ? null : k; P.innerHTML=geoSection(); wireGeo(); };
+    b.onclick=go; b.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } }; });
+}
+
 /* ------------------------------------------------------------ FOLLOWER DRIVERS
    Which posts brought the new followers: YouTube "subscribers gained" per video,
    Instagram "follows" per post (both lifetime, as the platforms count them). */
@@ -1293,6 +1367,8 @@ function renderSummary(){
        ${PLATVIEW==="yt"?"":`<div class="chart-card"><div class="chart-head"><h4>Instagram followers ${igLive()?`<span class="badge good" style="margin-left:4px">live</span>`:`<span class="badge mute" style="margin-left:4px">manual</span>`}</h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div>`}</div></div>
 
+   <div class="sec" id="geoSec">${geoSection()}</div>
+
    <div class="sec" id="postsSec">${postsSection()}</div>`;
 
   const P=$("#pane-summary"); activateTips(P);
@@ -1305,6 +1381,7 @@ function renderSummary(){
   wireKeywords(P);
   P.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
   wirePosts($("#postsSec"));
+  wireGeo();
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
   P.querySelectorAll("[data-okrmore]").forEach(b=>b.onclick=()=>{ OKR_OPEN[b.dataset.okrmore]=!OKR_OPEN[b.dataset.okrmore]; renderSummary(); });
