@@ -109,16 +109,17 @@ async function syncYouTube(admin, team, cfg) {
 
   const posts = new Map();
   for (let i = 0; i < ids.length; i += 50) {
-    const v = await gget(token, DATA + "/videos", { part: "snippet,statistics,contentDetails,status", id: ids.slice(i, i + 50).join(",") });
+    const v = await gget(token, DATA + "/videos", { part: "snippet,statistics,contentDetails,status,liveStreamingDetails", id: ids.slice(i, i + 50).join(",") });
     for (const it of v.items || []) {
       if (it.status && it.status.privacyStatus !== "public") continue;
       const dur = seconds(it.contentDetails.duration);
       posts.set(it.id, {
         team_slug: team, platform: "youtube", external_id: it.id,
         title: it.snippet.title,
-        url: (dur !== null && dur <= 180 ? "https://www.youtube.com/shorts/" : "https://www.youtube.com/watch?v=") + it.id,
+        url: (!it.liveStreamingDetails && dur !== null && dur <= 180 ? "https://www.youtube.com/shorts/" : "https://www.youtube.com/watch?v=") + it.id,
         thumbnail: (it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default) || {}).url || null,
-        post_type: dur !== null && dur <= 180 ? "Short" : "Long video",
+        // streamed live (liveStreamingDetails present) counts as a live session
+        post_type: it.liveStreamingDetails ? "Live" : dur !== null && dur <= 180 ? "Short" : "Long video",
         published_at: it.snippet.publishedAt, duration_s: dur,
         views: num(it.statistics.viewCount), likes: num(it.statistics.likeCount),
         comments: num(it.statistics.commentCount),

@@ -37,7 +37,7 @@ create table public.social_posts (
   title         text,
   url           text,
   thumbnail     text,
-  post_type     text,            -- 'Short' | 'Long video' | 'Reel' | 'Carousel' | 'Image'
+  post_type     text,            -- 'Short' | 'Long video' | 'Live' | 'Reel' | 'Carousel' | 'Image'
   published_at  timestamptz,
   duration_s    integer,
   views         bigint,
