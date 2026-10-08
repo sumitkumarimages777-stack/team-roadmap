@@ -530,21 +530,21 @@ function barChart(rows,w=330,h=180){
       <text x="${x+bw/2}" y="${h-11}" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--ink-3)">${esc(r.short)}</text></g>`;}).join("");
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Posts by video type">${grid}${bars}</svg>`;
 }
-function donutChart(rows,w=330,h=180){
+function donutChart(rows,w=330,h=180,center="POSTS",vf=String){
   const total=rows.reduce((s,r)=>s+r.v,0); if(!total) return `<p class="hint">No posts match these filters.</p>`;
   const cx=90,cy=h/2,R0=62,r0=38; let a0=-Math.PI/2,paths=""; const live=rows.filter(r=>r.v>0);
   live.forEach(r=>{ let a1=a0+(r.v/total)*Math.PI*2; if(live.length===1) a1-=0.0001; const big=(a1-a0)>Math.PI?1:0;
     const p=(a,rad)=>[cx+Math.cos(a)*rad,cy+Math.sin(a)*rad];
     const [x1,y1]=p(a0,R0),[x2,y2]=p(a1,R0),[x3,y3]=p(a1,r0),[x4,y4]=p(a0,r0);
     paths+=`<path d="M${x1} ${y1} A${R0} ${R0} 0 ${big} 1 ${x2} ${y2} L${x3} ${y3} A${r0} ${r0} 0 ${big} 0 ${x4} ${y4} Z"
-      fill="${r.color}" stroke="var(--surface)" stroke-width="2" data-tip="${esc(r.label)}\n${r.v} of ${total} (${Math.round(r.v/total*100)}%)"/>`; a0=a1; });
+      fill="${r.color}" stroke="var(--surface)" stroke-width="2" data-tip="${esc(r.label)}\n${vf(r.v)} of ${vf(total)} (${Math.round(r.v/total*100)}%)"/>`; a0=a1; });
   const keys=live.map((r,i)=>`<g transform="translate(176 ${cy-((live.length-1)*20)/2-5+i*20})">
     <rect width="9" height="9" rx="3" fill="${r.color}"/>
-    <text x="16" y="9" font-size="11.5" fill="var(--ink-2)" font-family="var(--sans)">${esc(r.label)}</text>
-    <text x="140" y="9" text-anchor="end" font-size="11.5" font-family="var(--mono)" fill="var(--ink-3)">${r.v}</text></g>`).join("");
+    <text x="16" y="9" font-size="11.5" fill="var(--ink-2)" font-family="var(--sans)">${esc(r.label.length>17?r.label.slice(0,16)+"…":r.label)}</text>
+    <text x="140" y="9" text-anchor="end" font-size="11.5" font-family="var(--mono)" fill="var(--ink-3)">${vf(r.v)}</text></g>`).join("");
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Share of posts by video type">${paths}
-    <text x="${cx}" y="${cy+1}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)" font-family="var(--sans)">${total}</text>
-    <text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink-3)">POSTS</text>${keys}</svg>`;
+    <text x="${cx}" y="${cy+1}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)" font-family="var(--sans)">${vf(total)}</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="9.5" font-family="var(--mono)" fill="var(--ink-3)">${center}</text>${keys}</svg>`;
 }
 function lineChart(series,color,label,w=320,h=168){
   if(series.length<2) return `<p class="hint" style="padding:40px 0;text-align:center">${series.length?"One reading so far — the trend appears from the second week.":"No readings yet."}</p>`;
@@ -718,6 +718,87 @@ function readTargets(){ const P=$("#pane-targets"); if(!TDRAFT||!P) return;
     row.querySelectorAll("[data-gk]").forEach(e=>{ o[e.dataset.gk]= e.dataset.gk==="target" ? (e.value===""?null:Number(e.value)) : e.value; }); });
 }
 
+/* ------------------------------------------------------------ KEYWORD PERFORMANCE
+   Every published post that has a card with a primary keyword, grouped by that
+   keyword: how its videos did against how many people search for it. */
+const KW_COLORS=["var(--c1)","var(--c2)","var(--c3)","var(--c4)","var(--good)","var(--crit)","var(--ink-3)"];
+let KW_SCOPE="all", KW_SORT="views", KW_CHART="views";
+function keywordStats(){
+  const from=KW_SCOPE==="period"?periodStart():"";
+  const map={};
+  postRows().filter(r=>r.card && r.date && r.date>=from && inF(r)).forEach(r=>{
+    const ks=r.card.pre.keywords||[], p=ks.find(k=>k.rank==="primary")||ks[0]; if(!p||!p.kw) return;
+    const key=p.kw.trim().toLowerCase();
+    const g=map[key]||(map[key]={kw:p.kw.trim(),vol:null,rows:[],secondary:new Set()});
+    if(p.vol!=null) g.vol=Math.max(g.vol||0,Number(p.vol));
+    ks.filter(k=>k!==p&&k.kw).forEach(k=>g.secondary.add(k.kw));
+    g.rows.push(r);
+  });
+  const list=Object.values(map).map(g=>{ const v=sum(g.rows,x=>x.views), eng=sum(g.rows,x=>x.likes)+sum(g.rows,x=>x.comments)+sum(g.rows,x=>x.shares);
+    return { kw:g.kw, vol:g.vol, posts:g.rows.length, views:v, avgViews:Math.round(v/g.rows.length), eng:v?eng/v*100:null,
+      viewed:avg(g.rows,x=>x.viewed), perK:g.vol?v/g.vol*1000:null, rows:g.rows, secondary:[...g.secondary] }; });
+  const med=median(list.map(x=>x.avgViews))||0;
+  list.forEach(x=>{ x.verdict = list.length<2 ? null : x.avgViews>=med*1.5 ? "strong" : x.avgViews<=med*0.6 ? "weak" : "average"; });
+  return list;
+}
+function keywordSection(){
+  const list=keywordStats();
+  const sorted=[...list].sort((a,b)=>KW_SORT==="vol"?(b.vol||0)-(a.vol||0):KW_SORT==="avg"?b.avgViews-a.avgViews:KW_SORT==="eng"?(b.eng||0)-(a.eng||0):KW_SORT==="perk"?(b.perK||0)-(a.perK||0):b.views-a.views);
+  const unlinked=postRows().filter(r=>!r.card && r.date && r.date>=(KW_SCOPE==="period"?periodStart():"") && inF(r)).length;
+  const head=`<div class="sec-h"><h3>Keyword performance</h3>
+    <span class="hint">Primary keyword of each published video, from its card — which searches bring the views</span>
+    <div class="seg" style="margin-left:auto"><button data-kwscope="all" class="${KW_SCOPE==="all"?"on":""}">All time</button><button data-kwscope="period" class="${KW_SCOPE==="period"?"on":""}">Selected period</button></div></div>`;
+  if(!list.length) return `<div class="sec">${head}<div class="card"><p class="hint" style="margin:0;max-width:80ch">
+    No published video is linked to a card with a primary keyword yet. A video shows up here once its card in Content Process has a
+    <b>primary keyword</b> (Research block) and its <b>Final post link</b> is the YouTube link — accepted ideas carry their keyword over automatically.
+    ${unlinked?`<br>${unlinked} published post${unlinked===1?" is":"s are"} not linked to a card yet.`:""}</p></div></div>`;
+  const top=[...list].sort((a,b)=>(KW_CHART==="vol"?(b.vol||0)-(a.vol||0):b.views-a.views));
+  const pie=top.slice(0,6).map((x,i)=>({label:x.kw,v:KW_CHART==="vol"?(x.vol||0):x.views,color:KW_COLORS[i]}));
+  const rest=top.slice(6).reduce((t,x)=>t+(KW_CHART==="vol"?(x.vol||0):x.views),0); if(rest) pie.push({label:"Other keywords",v:rest,color:KW_COLORS[6]});
+  const best=[...list].sort((a,b)=>b.avgViews-a.avgViews)[0], eff=[...list].filter(x=>x.perK!=null).sort((a,b)=>b.perK-a.perK)[0];
+  const vb=v=>v==="strong"?`<span class="badge good">strong</span>`:v==="weak"?`<span class="badge crit">weak</span>`:v?`<span class="badge mute">average</span>`:"—";
+  const th=(k,l)=>`<th><button data-kwsort="${k}" style="font:inherit;letter-spacing:inherit;text-transform:inherit;color:${KW_SORT===k?"var(--accent)":"inherit"}">${l}${KW_SORT===k?" ▾":""}</button></th>`;
+  return `<div class="sec">${head}
+    ${dstats([["Keywords tracked",list.length,`${sum(list,x=>x.posts)} linked video${sum(list,x=>x.posts)===1?"":"s"}`],
+      ["Best performer",esc(best.kw.length>22?best.kw.slice(0,21)+"…":best.kw),`${fmt(best.avgViews)} views per video`],
+      ["Best return on search",eff?esc(eff.kw.length>22?eff.kw.slice(0,21)+"…":eff.kw):"—",eff?`${fmt(Math.round(eff.perK))} views per 1,000 monthly searches`:"add search volumes"],
+      ["Search volume covered",fmt(sum(list,x=>x.vol||0)),"monthly searches, all keywords"],
+      ["Not linked yet",unlinked,"published posts with no card"]])}
+    <div class="charts" style="margin-bottom:13px">
+      <div class="chart-card"><div class="chart-head"><h4>${KW_CHART==="vol"?"Search volume by keyword":"Views by keyword"}</h4>
+        <div class="seg"><button data-kwchart="views" class="${KW_CHART==="views"?"on":""}">Views</button><button data-kwchart="vol" class="${KW_CHART==="vol"?"on":""}">Search volume</button></div></div>
+        <p class="chart-sub">${KW_CHART==="vol"?"Monthly searches for the keywords we targeted":"Share of views from videos targeting each keyword"}</p>
+        ${donutChart(pie,330,180,KW_CHART==="vol"?"SEARCHES":"VIEWS",kfmt)}</div>
+      <div class="chart-card"><div class="chart-head"><h4>Views per video vs search volume</h4></div>
+        <p class="chart-sub">Bar = average views per video · grey figure = monthly searches</p>
+        ${hbars("",[...list].sort((a,b)=>b.avgViews-a.avgViews).slice(0,8).map((x,i)=>({label:x.kw,v:x.avgViews,color:KW_COLORS[i%6],
+          text:`${kfmt(x.avgViews)} · ${x.vol!=null?kfmt(x.vol)+" srch":"no vol"}`,tip:`${fmt(x.avgViews)} views per video · ${x.vol!=null?fmt(x.vol)+" monthly searches":"no search volume"}`})))}</div></div>
+    <div class="tw"><table class="mini" style="min-width:1000px"><thead><tr><th>Primary keyword</th>${th("vol","Search vol / mo")}<th>Videos</th>${th("views","Total views")}${th("avg","Views / video")}
+      ${th("perk","Views per 1k searches")}${th("eng","Engagement")}<th>Avg viewed</th><th>Verdict</th></tr></thead>
+      <tbody>${sorted.map((x,i)=>`<tr data-kwrow="${i}" style="cursor:pointer"><td class="td-idea">${esc(x.kw)}${x.secondary.length?`<div class="hint" style="font-weight:400;margin-top:3px">also: ${esc(x.secondary.slice(0,3).join(", "))}</div>`:""}</td>
+        <td class="vol">${x.vol!=null?fmt(x.vol):"—"}</td><td class="vol">${x.posts}</td><td class="vol">${fmt(x.views)}</td><td class="vol">${fmt(x.avgViews)}</td>
+        <td class="vol">${x.perK!=null?fmt(Math.round(x.perK)):"—"}</td><td class="vol">${x.eng!=null?r1(x.eng)+"%":"—"}</td>
+        <td class="vol">${x.viewed!=null?Math.round(x.viewed)+"%":"—"}</td><td>${vb(x.verdict)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="hint" style="margin-top:8px">Verdict compares views per video with the middle keyword: <b>strong</b> = 1.5× or more, <b>weak</b> = 0.6× or less.
+      "Views per 1k searches" shows which keywords turn search demand into views best. Click a keyword to see its videos.</p></div>`;
+}
+function wireKeywords(P){
+  P.querySelectorAll("[data-kwscope]").forEach(b=>b.onclick=()=>{ KW_SCOPE=b.dataset.kwscope; renderSummary(); });
+  P.querySelectorAll("[data-kwsort]").forEach(b=>b.onclick=()=>{ KW_SORT=b.dataset.kwsort; renderSummary(); });
+  P.querySelectorAll("[data-kwchart]").forEach(b=>b.onclick=()=>{ KW_CHART=b.dataset.kwchart; renderSummary(); });
+  const list=keywordStats(), sorted=[...list].sort((a,b)=>KW_SORT==="vol"?(b.vol||0)-(a.vol||0):KW_SORT==="avg"?b.avgViews-a.avgViews:KW_SORT==="eng"?(b.eng||0)-(a.eng||0):KW_SORT==="perk"?(b.perK||0)-(a.perK||0):b.views-a.views);
+  P.querySelectorAll("tr[data-kwrow]").forEach(tr=>tr.onclick=()=>{
+    const x=sorted[Number(tr.dataset.kwrow)], open=tr.nextElementSibling&&tr.nextElementSibling.classList.contains("kwvids");
+    P.querySelectorAll("tr.kwvids").forEach(e=>e.remove()); if(open) return;
+    const row=document.createElement("tr"); row.className="kwvids";
+    row.innerHTML=`<td colspan="9" style="background:var(--surface-4)">${x.rows.sort((a,b)=>(b.views||0)-(a.views||0)).map(r=>`<div class="row" style="gap:10px;padding:4px 0;flex-wrap:nowrap">
+      ${vtag(r.vtype)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>`:esc(r.title)}</span>
+      <span class="vol">${dmy(r.date)}</span><span class="vol">${fmt(r.views)} views</span><span class="vol">${r.viewed!=null?Math.round(r.viewed)+"% viewed":""}</span>
+      <button class="btn sm" data-kwcard="${r.card.id}">Card</button></div>`).join("")}</td>`;
+    tr.after(row); row.querySelectorAll("[data-kwcard]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); openCard(b.dataset.kwcard); });
+  });
+}
+
 /* ------------------------------------------------------------ SUMMARY */
 function liveBar(){
   const sync = canEdit() || (OPT.isMember && OPT.isMember());
@@ -815,6 +896,8 @@ function renderSummary(){
          {label:"Published",v:allPub.filter(c=>c.ideaId).length,color:"var(--good)"}])
          :`<p class="hint">No ideas logged yet — start in Ideation.</p>`}</div></div></div>
 
+   ${keywordSection()}
+
    <div class="sec"><div class="sec-h"><h3>Follower growth</h3>
      <span class="hint">Two charts, two scales. A combined follower number would be meaningless.</span></div>
      <div class="charts">
@@ -848,6 +931,7 @@ function renderSummary(){
   P.querySelectorAll("[data-plat]").forEach(b=>b.onclick=()=>{toggle(FILTERS.platforms,b.dataset.plat);renderSummary();});
   P.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{toggle(FILTERS.vtypes,b.dataset.vt);renderSummary();});
   P.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{CHARTMODE=b.dataset.cm;renderSummary();});
+  wireKeywords(P);
   P.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
