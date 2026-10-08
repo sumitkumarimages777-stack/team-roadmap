@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Social Media space: Summary (live YouTube numbers) / Ideation / Content Process / Schedule -->
 <script src="social-space.js"></script>
+<script src="wiki-utm.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -2549,6 +2550,40 @@ body{margin:0}
 .dl-vidbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media (max-width:820px){ .dl-body{grid-template-columns:1fr} .dl-nav{position:static;flex-direction:row;flex-wrap:wrap} .dl-navh{width:100%} .dl-navi{width:auto} .dl-navi.sub{padding-left:10px} }
 @media (max-width:640px){ .dl-top{flex-direction:column} .dl-row{flex-wrap:wrap} .dl-acts{max-width:none;width:100%} .dl-row2{grid-template-columns:1fr} }
+/* UTM builder (wiki-utm.js) */
+.dl-navi.utm{color:#c2410c;font-weight:600}
+.utm-promo{cursor:pointer;border-color:#f5c4a8;background:#fff8f3}
+.utm-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.utm-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.utm-card .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.utm-card .field{margin-bottom:12px}
+.utm-card .field label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
+.utm-card .field .hint{font-weight:400;color:var(--muted);font-size:12px}
+.utm-card input:not([type=checkbox]),.utm-card select,.utm-card textarea,.utm-bar select{width:100%;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;background:var(--card);color:inherit}
+.utm-camp{display:flex;gap:8px}
+.utm-camp select{max-width:170px}
+.utm-out{position:sticky;top:12px}
+.utm-url{font-family:var(--mono);font-size:12.5px;word-break:break-all;background:#f7f3ef;border-radius:8px;padding:10px 12px;line-height:1.5}
+.utm-url.off{color:var(--muted);font-family:inherit}
+.utm-url.sm{font-size:11.5px;padding:6px 9px;margin-top:5px;background:#f7f3ef}
+.utm-parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px}
+.utm-parts span{background:#deebff;color:#0747a6;border-radius:5px;padding:2px 7px}
+.utm-checks{list-style:none;padding:0;margin:12px 0 0;font-size:13px;line-height:1.75}
+.utm-checks .ok{color:#1f845a}
+.utm-checks .no{color:var(--muted)}
+.utm-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.utm-bar select{width:auto;max-width:180px}
+.utm-camp-t{font-family:var(--mono);font-weight:700;font-size:13.5px}
+.utm-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.utm-tbl th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+.utm-tbl td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.utm-tbl input{padding:5px 8px!important;font-size:13px!important}
+.utm-ms{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;font-family:var(--mono)}
+.utm-ms label{display:flex;gap:4px;align-items:center;cursor:pointer}
+.utm-guide{margin:0;padding-left:20px;font-size:14px;line-height:1.6}
+.dl-check{display:flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}
+.dl-add[disabled]{opacity:.45;cursor:not-allowed}
+@media (max-width:900px){ .utm-grid{grid-template-columns:1fr} .utm-out{position:static} .utm-camp{flex-wrap:wrap} .utm-camp select,.utm-camp input{max-width:none!important} }
 /* loading screen: covers the half-built page until sign-in and data are ready */
 #boot-splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#FAF5F0;transition:opacity .25s ease}
 #boot-splash img{width:72px;height:72px;animation:boot-pulse 1.2s ease-in-out infinite}
@@ -4077,6 +4112,7 @@ const PERMS = [
   {key:"manage_people",    label:"Manage people",         hint:"Add people directly, change roles, edit, email, remove"},
   {key:"create_games",     label:"Create games",          hint:"Make games and submit them for Let's Play"},
   {key:"edit_targets",     label:"Edit social targets",   hint:"Change the targets in Social Media spaces (everyone else can only view them)"},
+  {key:"edit_utm",         label:"Edit UTM rules",        hint:"Change the UTM rules in Wiki → Marketing → UTM builder (everyone else can only build links with them)"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
 const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
@@ -5449,7 +5485,9 @@ function teamPayload(){
     docs: (typeof TEAMDOCS!=="undefined") ? clean(TEAMDOCS) : null,
     scorecard: scScorecardForSave(),
     csm: csmPayload(),
-    bugsDefaultBoard: BUGS_DEFAULT_BOARD, kim: KIM, doclib: clean(DOCLIB) };
+    bugsDefaultBoard: BUGS_DEFAULT_BOARD, kim: KIM, doclib: clean(DOCLIB),
+    utmRules: (typeof UTM_RULES!=="undefined" && UTM_RULES) ? clean(UTM_RULES) : null,
+    utmLinks: (typeof UTM_LINKS!=="undefined") ? clean(UTM_LINKS) : null };
 }
 function loadTeamData(t){
   t = t || {};
@@ -5477,6 +5515,7 @@ function loadTeamData(t){
   BUGS_DEFAULT_BOARD = t.bugsDefaultBoard || null;   // cspace id that new student bugs route to (null = built-in main)
   KIM = (t.kim && typeof t.kim==="object") ? t.kim : { byUser:{} };
   DOCLIB = normalizeDoclib(t.doclib);
+  if(typeof normalizeUtmRules==="function"){ UTM_RULES = normalizeUtmRules(t.utmRules); UTM_LINKS = normalizeUtmLinks(t.utmLinks); }
   if(!KIM.byUser || typeof KIM.byUser!=="object") KIM.byUser={};
   SPACE_BG = t.spaceBg || {};
   PRODUCT = normalizeProduct(t.product);
@@ -16064,23 +16103,30 @@ function dlRenderNav(){
     if(sc[0]==="more" && !n) return;
     nav.appendChild(dlNavBtn(sc[1]+"  "+sc[2], n, !searching && dlView.kind==="sec" && dlView.id===sc[0], function(){ dlView={kind:"sec",id:sc[0]}; $("dl-q").value=""; renderDocLib(); }));
   });
-  var units=dlUnits();
+  var units=dlUnits(), utmNavDone=false;
   if(units.length){
     var h=document.createElement("div"); h.className="dl-navh"; h.textContent="Departments & teams"; nav.appendChild(h);
     units.forEach(function(u){
       if(u.tier>2) return;                                   /* departments and sub-departments; teams are reachable by search */
       var n=vis.filter(function(l){ return dlInUnit(l,u.id); }).length;
       nav.appendChild(dlNavBtn(u.name, n, !searching && dlView.kind==="unit" && dlView.id===u.id, function(){ dlView={kind:"unit",id:u.id}; $("dl-q").value=""; renderDocLib(); }, u.tier===2?"sub":""));
+      if(!utmNavDone && typeof utmIsMarketing==="function" && utmIsMarketing(u)){ utmNavDone=true; nav.appendChild(utmNavBtn(searching)); }
     });
   }
+  if(!utmNavDone && typeof utmHead==="function") nav.appendChild(utmNavBtn(searching));
   var stale=vis.filter(dlIsStale).length;
   if(stale && (dlIsAdmin() || vis.some(function(l){ return dlIsStale(l) && l.owner===dlMe(); }))){
     var h2=document.createElement("div"); h2.className="dl-navh"; h2.textContent="Upkeep"; nav.appendChild(h2);
     nav.appendChild(dlNavBtn("⚠️  Needs review", stale, !searching && dlView.kind==="review", function(){ dlView={kind:"review"}; $("dl-q").value=""; renderDocLib(); }, "warn"));
   }
 }
+function utmNavBtn(searching){
+  return dlNavBtn("🔗  UTM builder", (typeof UTM_LINKS!=="undefined" && UTM_LINKS.links.length) || "", !searching && dlView.kind==="utm",
+    function(){ dlView={kind:"utm"}; $("dl-q").value=""; renderDocLib(); }, "sub utm");
+}
 function dlRenderHead(){
   var h=$("dl-vhead"), q=dlQuery(), t="", p="";
+  if(!q && dlView.kind==="utm" && typeof utmHead==="function"){ utmHead(h); return; }
   if(q){ t="Search results"; p="Everything that matches “"+q+"”, across all sections."; }
   else if(dlView.kind==="sec"){ var sc=dlSec(dlView.id); t=sc[1]+"  "+sc[2]; p=sc[3]; }
   else if(dlView.kind==="unit"){ var u=dlUnit(dlView.id); t=u?u.name:"Team"; p=u?("Everything filed under "+u.path+", including its teams."):""; }
@@ -16116,6 +16162,13 @@ function dlRenderHead(){
 function dlRenderList(){
   var list=$("dl-list"); list.innerHTML="";
   var rows=dlVisible(), q=dlQuery();
+  if(!q && dlView.kind==="utm" && typeof utmBody==="function"){ utmBody(list); return; }
+  if(!q && dlView.kind==="unit" && typeof utmIsMarketing==="function" && utmIsMarketing(dlUnit(dlView.id))){
+    var pr=document.createElement("div"); pr.className="dl-row utm-promo";
+    pr.innerHTML='<div class="dl-ico" style="background:#E8622B">UTM</div><div class="dl-main"><b>🔗 UTM builder</b><div class="dl-why">Build every campaign link the same way — pick from the team’s rules, copy, and it’s saved for everyone.</div></div><div class="dl-acts"><button class="dl-btn go">Open →</button></div>';
+    pr.onclick=function(){ dlView={kind:"utm"}; renderDocLib(); };
+    list.appendChild(pr);
+  }
   if(!rows.length){
     var e=document.createElement("div"); e.className="dl-empty";
     e.textContent = q ? "Nothing matches that." : (dlView.kind==="review" ? "Nothing needs review. Everything is up to date." : "Nothing here yet. Click ＋ Add to put the first one in.");
