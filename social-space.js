@@ -125,6 +125,19 @@ table.mini th{padding:8px 10px}
 .goal .gt span{color:var(--ink-2)}
 .goal .meter{height:7px}
 .goal .gf{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3);margin-top:4px}
+.fpanel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px;color:var(--ink-2)}
+.fhead select,.frow select,.frow input,.fsaved select{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-s);padding:6px 9px;font-size:12.5px}
+.frow{display:grid;grid-template-columns:24px minmax(170px,1.2fr) minmax(150px,1fr) minmax(220px,2fr) 30px;gap:8px;align-items:center;margin-bottom:7px;max-width:1100px}
+.frow .fj{font-family:var(--mono);font-size:10px;color:var(--ink-3);text-transform:uppercase;text-align:right}
+.frow .fv{display:flex;gap:6px;align-items:center}
+.frow .fv input,.frow .fv select{flex:1;min-width:0;width:100%}
+.frow .x{border:1px solid var(--line-2);border-radius:var(--r-s);padding:5px 0;text-align:center;color:var(--ink-3)}
+.fpresets{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.fsaved{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover,th.sorted{color:var(--accent)}
+.fcount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:999px;background:var(--accent);color:#fff;font-size:10.5px;font-family:var(--mono);padding:0 5px}
 .slacard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
 .slah{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--surface-4);border-bottom:1px solid var(--line)}
 .slah h4{font-size:15px}
@@ -324,6 +337,8 @@ function normalize(space){
   // other targets: [{id, platform:"yt"|"ig", metric, period:"week"|"month"|"quarter", target}]
   s.goals = Array.isArray(s.goals) ? s.goals.filter(g=>g && GOAL_METRICS[g.metric]) : [];
   s.culture = typeof s.culture==="string" ? s.culture : "";
+  s.manual = s.manual && typeof s.manual==="object" ? s.manual : {};   // typed-in counts: "yt:webinars:2026-10-06" -> n
+  s.views = Array.isArray(s.views) ? s.views.filter(v=>v && Array.isArray(v.rules)) : [];   // saved post filters
   // any field missing on an older record gets its default, so nothing below can trip on it
   const fill=(o,d)=>{ Object.keys(d).forEach(k=>{ if(o[k]===undefined || o[k]===null && typeof d[k]==="string") o[k]=d[k]; }); return o; };
   s.ideas.forEach(i=>{ fill(i, blankIdea({ id:i.id||uid("i"), created:i.created||today() }));
@@ -498,13 +513,14 @@ function postRows(){
     rows.push({ key:"v:"+p.external_id, live:true, platform:plat, vtype:vt, title:p.title, url:p.url, thumb:p.thumbnail,
       date:p.published_at ? iso(new Date(p.published_at)) : null, views:p.views, likes:p.likes, comments:p.comments, shares:p.shares,
       watch:p.avg_view_s!=null ? mmss(p.avg_view_s) : null, viewed:p.avg_view_pct, card:c,
-      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at });
+      watchMin:p.watch_minutes, dur:p.duration_s, at:p.published_at, avgS:p.avg_view_s });
   });
   CARDS.filter(c=>c.stage==="published").forEach(c=>{
     if(livePost(c)) return;                          // already listed from YouTube
     rows.push({ key:"c:"+c.id, live:false, platform:c.platform, vtype:c.vtype, title:c.pre.title||c.idea, url:c.post.postUrl||"",
       thumb:null, date:c.published, views:c.metrics?.views, likes:c.metrics?.likes, comments:c.metrics?.comments,
-      shares:c.metrics?.shares, watch:c.metrics?.watch||null, viewed:null, ctr:c.metrics?.ctr, card:c });
+      shares:c.metrics?.shares, watch:c.metrics?.watch||null, viewed:null, ctr:c.metrics?.ctr, card:c,
+      avgS:parseDur(c.metrics?.watch), dur:null, at:null, watchMin:null });
   });
   return rows;
 }
@@ -587,6 +603,7 @@ const GOAL_METRICS = {
   longs:    { label:"Long videos", only:"yt", calc:r=>r.filter(x=>x.vtype==="long").length },
   shorts:   { label:"Shorts", only:"yt", calc:r=>r.filter(x=>x.vtype==="short").length },
   lives:    { label:"Live sessions", only:"yt", calc:r=>r.filter(x=>x.vtype==="live").length },
+  webinars: { label:"Webinars", only:"yt", untracked:true },
   community:{ label:"Community posts", only:"yt", untracked:true },
   reels:    { label:"Reels", only:"ig", calc:r=>r.filter(x=>x.vtype==="reel").length },
   carousels:{ label:"Carousels", only:"ig", calc:r=>r.filter(x=>x.vtype==="carousel").length },
@@ -603,7 +620,7 @@ const GOAL_METRICS = {
   engage:   { label:"Engagement rate", pct:true, noRate:true, calc:r=>{ const v=sum(r,x=>x.views); return v?Math.round((sum(r,x=>x.likes)+sum(r,x=>x.comments)+sum(r,x=>x.shares))/v*1000)/10:0; } },
 };
 // the fields every platform card always shows, in order
-const FIXED = { yt:["longs","shorts","lives","community","views"], ig:["reels","carousels","images","stories","iglives","views"] };
+const FIXED = { yt:["longs","shorts","lives","webinars","community","views"], ig:["reels","carousels","images","stories","iglives","views"] };
 const GOAL_PERIODS = { day:"per day", week:"per week", month:"per month", quarter:"per quarter" };
 const PERIOD_NOW = { day:"today", week:"this week", month:"this month", quarter:"this quarter" };
 const POST_DAYS = { all:"Every day", weekdays:"Weekdays", weekends:"Weekends" };
@@ -629,14 +646,19 @@ function normTargets(o){
 }
 function canEditTargets(){ return !!(OPT.canEditTargets && OPT.canEditTargets()); }
 
-function goalValue(g){ const m=GOAL_METRICS[g.metric]; return m.untracked ? null : m.calc(platRows(g.platform, calStart(g.period))); }
+const manualKey=g=>`${g.platform}:${g.metric}:${calStart(g.period)}`;
+function goalValue(g){ const m=GOAL_METRICS[g.metric];
+  if(m.untracked){ const v=S.manual[manualKey(g)]; return v==null?0:Number(v); }
+  return m.calc(platRows(g.platform, calStart(g.period))); }
 function goalHTML(g,col){
   const m=GOAL_METRICS[g.metric], cur=goalValue(g), tgt=Number(g.target)||0, unit=m.pct?"%":"";
   const name=`${esc(m.label)} · ${fmt(tgt)}${unit} ${GOAL_PERIODS[g.period]}`;
-  if(cur==null) return `<div class="goal"><div class="gt"><span>${name}</span><b class="hint">not counted automatically</b></div></div>`;
   const pc=tgt?Math.min(100,cur/tgt*100):0, left=days(today(),calEnd(g.period))+1;
   return `<div class="goal"><div class="gt"><span>${name}</span><b>${fmt(cur)}${unit} / ${fmt(tgt)}${unit} ${PERIOD_NOW[g.period]}</b></div>
     <div class="meter"><i style="width:${pc}%;background:${cur>=tgt&&tgt?"var(--good)":col}"></i></div>
+    ${m.untracked?`<div class="gf" style="margin-top:6px"><span>typed in by hand</span>${canEdit()?`<span>Done ${PERIOD_NOW[g.period]}:
+      <input type="number" min="0" data-manual="${esc(manualKey(g))}" value="${cur}" style="width:64px;padding:2px 6px;border:1px solid var(--line-2);border-radius:5px;font:inherit;font-size:11.5px">
+      <button class="btn sm" data-manualsave="${esc(manualKey(g))}" style="padding:2px 8px">Save</button></span>`:""}</div>`:""}
     <div class="gf"><span>${Math.round(pc)}%</span><span>${cur>=tgt&&tgt?"reached 🎉":m.noRate?`${left} day${left===1?"":"s"} left`:`${fmt(Math.max(0,tgt-cur))} to go · ${left} day${left===1?"":"s"} left`}</span></div></div>`;
 }
 // how many of this week's posts went out within an hour of the planned time
@@ -659,7 +681,7 @@ function renderTargets(){
   const D=TDRAFT;
   const unitSel=(attrs,val)=>`<select ${attrs}>${Object.entries(GOAL_PERIODS).map(([k,l])=>`<option value="${k}" ${val===k?"selected":""}>${l.replace("per ","Per ")}</option>`).join("")}</select>`;
   const field=(pl,metric)=>{ const g=D.goals.find(x=>x.platform===pl&&x.metric===metric)||{}; const m=GOAL_METRICS[metric];
-    return `<div class="tf"><label>${esc(m.label)}${m.untracked?` <span class="hint" title="Not available from the ${PLAT_NAME[pl]} API — shown as a target only">· not auto-counted</span>`:""}</label>
+    return `<div class="tf"><label>${esc(m.label)}${m.untracked?` <span class="hint" title="Not available from the ${PLAT_NAME[pl]} API — the team types in how many were done, on the Summary">· filled in by hand</span>`:""}</label>
       <div class="tin"><input type="number" min="0" step="any" data-fx="${pl}:${metric}" value="${g.target??""}" placeholder="—">
       ${unitSel(`data-fxp="${pl}:${metric}"`, g.period||"week")}</div></div>`; };
   const card=(pl,col,dot)=>{ const extra=D.goals.map((g,i)=>({g,i})).filter(x=>x.g.platform===pl && !FIXED[pl].includes(x.g.metric));
@@ -799,6 +821,179 @@ function wireKeywords(P){
   });
 }
 
+/* ------------------------------------------------------------ POST FILTERS
+   Zoho-style: any number of conditions (field · operator · value), matched all
+   or any, sortable columns, saved filters (kept with the space) and CSV export. */
+function parseDur(v){ if(v==null||v==="") return null; if(typeof v==="number") return v;
+  const t=String(v).trim(); if(/^\d+(\.\d+)?$/.test(t)) return Number(t);
+  const p=t.split(":").map(Number); if(p.some(isNaN)) return null; return p.reduce((a,x)=>a*60+x,0); }
+const kwOf=r=>{ const ks=r.card?(r.card.pre.keywords||[]):[]; return ks.find(k=>k.rank==="primary")||ks[0]||null; };
+const engOf=r=>r.views?((Number(r.likes)||0)+(Number(r.comments)||0)+(Number(r.shares)||0))/r.views*100:null;
+const WEEKDAYS={mon:"Monday",tue:"Tuesday",wed:"Wednesday",thu:"Thursday",fri:"Friday",sat:"Saturday",sun:"Sunday"};
+const PFIELDS = {
+  title:   {label:"Title", type:"text", get:r=>r.title||""},
+  keyword: {label:"Primary keyword", type:"text", get:r=>(kwOf(r)||{}).kw||""},
+  platform:{label:"Platform", type:"enum", opts:()=>REG.platform, get:r=>r.platform},
+  vtype:   {label:"Video type", type:"enum", opts:()=>REG.vtype, get:r=>r.vtype},
+  research:{label:"Research", type:"enum", opts:()=>({full:"Full",skipped:"Skipped",nocard:"No card"}), get:r=>r.card?(gResearch(r.card.pre)?"full":"skipped"):"nocard"},
+  date:    {label:"Published date", type:"date", get:r=>r.date},
+  weekday: {label:"Day of the week", type:"enum", opts:()=>WEEKDAYS, get:r=>r.date?Object.keys(WEEKDAYS)[(new Date(r.date+"T00:00:00").getDay()+6)%7]:null},
+  hour:    {label:"Posting hour (0–23)", type:"num", get:r=>r.at?new Date(r.at).getHours():null},
+  length:  {label:"Video length", type:"dur", get:r=>r.dur},
+  views:   {label:"Views", type:"num", get:r=>r.views},
+  likes:   {label:"Likes", type:"num", get:r=>r.likes},
+  comments:{label:"Comments", type:"num", get:r=>r.comments},
+  shares:  {label:"Shares", type:"num", get:r=>r.shares},
+  avgwatch:{label:"Average watch time", type:"dur", get:r=>r.avgS},
+  viewed:  {label:"Average % viewed", type:"num", get:r=>r.viewed},
+  watchh:  {label:"Watch hours", type:"num", get:r=>r.watchMin!=null?Math.round(r.watchMin/6)/10:null},
+  eng:     {label:"Engagement %", type:"num", get:engOf},
+  likerate:{label:"Likes per 1,000 views", type:"num", get:r=>r.views?(Number(r.likes)||0)/r.views*1000:null},
+  kwvol:   {label:"Keyword search volume", type:"num", get:r=>{ const k=kwOf(r); return k&&k.vol!=null?Number(k.vol):null; }},
+};
+const POPS = {
+  text:[["contains","contains"],["ncontains","doesn't contain"],["is","is"],["isnt","isn't"],["starts","starts with"],["ends","ends with"],["empty","is empty"],["nempty","is not empty"]],
+  num: [["eq","="],["neq","≠"],["lt","<"],["lte","≤"],["gt",">"],["gte","≥"],["between","between"],["empty","is empty"],["nempty","is not empty"]],
+  dur: [["lt","shorter than"],["lte","at most"],["gt","longer than"],["gte","at least"],["between","between"],["eq","exactly"],["empty","is empty"],["nempty","is not empty"]],
+  date:[["on","on"],["before","before"],["after","after"],["between","between"],["lastn","in the last … days"],["empty","is empty"]],
+  enum:[["in","is any of"],["nin","is none of"]],
+};
+// a condition only counts once it has something to compare with
+const ruleActive=r=>{ const F=PFIELDS[r.f]; if(!F) return false; if(r.op==="empty"||r.op==="nempty") return true;
+  return Array.isArray(r.v) ? r.v.length>0 : (r.v!=null && String(r.v).trim()!==""); };
+let PF = { scope:"period", match:"all", rules:[], sort:{k:"date",dir:-1}, limit:50, open:false, saved:"" };
+function ruleTest(rule, r){
+  const F=PFIELDS[rule.f]; if(!F) return true; const op=rule.op, raw=F.get(r);
+  if(op==="empty") return raw==null||raw==="";
+  if(op==="nempty") return !(raw==null||raw==="");
+  if(F.type==="text"){ const a=String(raw||"").toLowerCase(), b=String(rule.v||"").toLowerCase().trim(); if(!b) return true;
+    return op==="contains"?a.includes(b):op==="ncontains"?!a.includes(b):op==="is"?a===b:op==="isnt"?a!==b:op==="starts"?a.startsWith(b):op==="ends"?a.endsWith(b):true; }
+  if(F.type==="enum"){ const set=Array.isArray(rule.v)?rule.v:(rule.v?[rule.v]:[]); if(!set.length) return true;
+    return op==="nin"?!set.includes(raw):set.includes(raw); }
+  if(F.type==="date"){ if(!raw) return false; if(op==="lastn"){ const n=Number(rule.v); return !n||raw>=addDays(today(),-n); }
+    const a=rule.v||"", b=rule.v2||""; if(!a) return true;
+    return op==="on"?raw===a:op==="before"?raw<a:op==="after"?raw>a:op==="between"?raw>=a&&(!b||raw<=b):true; }
+  // num / dur
+  const conv=F.type==="dur"?parseDur:(x=>x===""||x==null?null:Number(x));
+  const a=conv(rule.v), b=conv(rule.v2); if(a==null||isNaN(a)) return true; if(raw==null) return false; const x=Number(raw);
+  return op==="eq"?x===a:op==="neq"?x!==a:op==="lt"?x<a:op==="lte"?x<=a:op==="gt"?x>a:op==="gte"?x>=a:op==="between"?x>=a&&(b==null||isNaN(b)||x<=b):true;
+}
+function filteredPosts(){
+  const base = PF.scope==="all" ? postRows().filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date)) : publishedInPeriod();
+  const act=PF.rules.filter(ruleActive);
+  let out = act.length ? base.filter(r=> PF.match==="any" ? act.some(x=>ruleTest(x,r)) : act.every(x=>ruleTest(x,r))) : base;
+  const k=PF.sort.k, dir=PF.sort.dir, F=PFIELDS[k];
+  if(F) out=[...out].sort((a,b)=>{ let x=F.get(a), y=F.get(b);
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    if(typeof x==="string") return dir*x.localeCompare(y); return dir*(x-y); });
+  return out;
+}
+const PRESETS = [
+  {name:"Shorts under 30 sec", rules:[{f:"vtype",op:"in",v:["short"]},{f:"length",op:"lt",v:"0:30"}]},
+  {name:"Long videos over 10k views", rules:[{f:"vtype",op:"in",v:["long"]},{f:"views",op:"gt",v:"10000"}]},
+  {name:"Low retention (< 30% viewed)", rules:[{f:"viewed",op:"lt",v:"30"}]},
+  {name:"High engagement (> 5%)", rules:[{f:"eng",op:"gt",v:"5"}]},
+  {name:"Posted after 6 PM", rules:[{f:"hour",op:"gte",v:"18"}]},
+  {name:"No card linked", rules:[{f:"research",op:"in",v:["nocard"]}]},
+];
+function ruleValueHTML(rule,i){
+  const F=PFIELDS[rule.f]||PFIELDS.title, op=rule.op;
+  if(op==="empty"||op==="nempty") return `<span class="hint">—</span>`;
+  if(F.type==="enum"){ const sel=Array.isArray(rule.v)?rule.v:[];
+    return `<div class="row" style="gap:5px">${Object.entries(F.opts()).map(([k,l])=>`<button class="chip ${sel.includes(k)?"on":""}" data-fenum="${i}" data-k="${esc(k)}">${esc(l)}</button>`).join("")}</div>`; }
+  const t=F.type==="date"?(op==="lastn"?"number":"date"):F.type==="text"?"text":F.type==="dur"?"text":"number";
+  const ph=F.type==="dur"?"m:ss":op==="lastn"?"days":F.type==="text"?"value":"number";
+  return `<input data-fv="${i}" type="${t}" value="${esc(rule.v??"")}" placeholder="${ph}" ${t==="number"?'step="any"':""}>`
+    + (op==="between"?`<span class="hint">and</span><input data-fv2="${i}" type="${t}" value="${esc(rule.v2??"")}" placeholder="${ph}" ${t==="number"?'step="any"':""}>`:"");
+}
+function postsSection(){
+  const rows=filteredPosts(), act=PF.rules.filter(ruleActive).length, shown=rows.slice(0,PF.limit);
+  const fieldOpts=sel=>Object.entries(PFIELDS).map(([k,f])=>`<option value="${k}" ${k===sel?"selected":""}>${esc(f.label)}</option>`).join("");
+  const th=(k,l)=>`<th class="sortable ${PF.sort.k===k?"sorted":""}" data-psort="${k}">${l}${PF.sort.k===k?(PF.sort.dir<0?" ▾":" ▴"):""}</th>`;
+  const panel = !PF.open ? "" : `<div class="fpanel">
+    <div class="fhead">Show posts that match
+      <select id="pfMatch"><option value="all" ${PF.match==="all"?"selected":""}>all</option><option value="any" ${PF.match==="any"?"selected":""}>any</option></select>
+      of these conditions, from
+      <div class="seg"><button data-pscope="period" class="${PF.scope==="period"?"on":""}">the period &amp; chips above</button><button data-pscope="all" class="${PF.scope==="all"?"on":""}">all posts</button></div>
+      <span style="flex:1"></span>
+      <div class="fsaved"><select id="pfSaved"><option value="">Saved filters…</option>${S.views.map(v=>`<option value="${v.id}" ${PF.saved===v.id?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
+        ${canEdit()?`<button class="btn sm" id="pfSave">Save as…</button>${PF.saved?`<button class="btn sm danger" id="pfDelSaved">Delete</button>`:""}`:""}</div></div>
+    ${PF.rules.map((r,i)=>{ const F=PFIELDS[r.f]||PFIELDS.title; return `<div class="frow" data-fi="${i}">
+      <span class="fj">${i===0?"if":PF.match==="any"?"or":"and"}</span>
+      <select data-ff="${i}">${fieldOpts(r.f)}</select>
+      <select data-fo="${i}">${POPS[F.type].map(([k,l])=>`<option value="${k}" ${r.op===k?"selected":""}>${l}</option>`).join("")}</select>
+      <div class="fv">${ruleValueHTML(r,i)}</div>
+      <button class="x" data-fdel="${i}" title="Remove">×</button></div>`; }).join("")||`<p class="hint" style="margin:0 0 8px">No conditions yet — every post shows.</p>`}
+    <div class="row" style="gap:8px"><button class="btn sm" id="pfAdd">+ Add condition</button>${act?`<button class="btn sm" id="pfClear">Clear all</button>`:""}</div>
+    <div class="fpresets"><span class="lbl" style="align-self:center">Quick filters</span>${PRESETS.map((p,i)=>`<button class="chip" data-preset="${i}">${esc(p.name)}</button>`).join("")}</div></div>`;
+  return `<div class="sec-h"><h3>Published posts</h3><span class="badge good">YouTube live</span><span class="badge mute">Instagram manual</span>
+      <span class="hint">${rows.length} post${rows.length===1?"":"s"} ${act?"match":PF.scope==="all"?"in total":"in this period"} · click a column to sort, a row to open its card</span>
+      <span style="flex:1"></span>
+      <button class="btn sm" id="pfToggle">${PF.open?"Hide filters":"Filters"} ${act?`<span class="fcount">${act}</span>`:""}</button>
+      <button class="btn sm" id="pfCsv">Download CSV</button></div>
+    ${panel}
+    <div class="tw"><table style="min-width:1300px">
+      <thead><tr>${th("title","Post")}${th("platform","Platform")}${th("vtype","Type")}${th("keyword","Primary keyword")}${th("date","Date")}${th("length","Length")}
+        ${th("views","Views")}${th("likes","Likes")}${th("comments","Comments")}${th("shares","Shares")}${th("eng","Engagement")}${th("avgwatch","Avg watch")}${th("viewed","Avg viewed")}${th("research","Research")}</tr></thead>
+      <tbody>${shown.length?shown.map(r=>{const c=r.card, p=kwOf(r), e=engOf(r);
+       return `<tr ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
+        <td class="td-idea"><div class="row" style="gap:9px;flex-wrap:nowrap">${r.thumb?`<img class="thumb" src="${esc(r.thumb)}" alt="" loading="lazy">`:""}
+          <span>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" data-ext="1">${esc(r.title)}</a>`:esc(r.title)}</span></div></td>
+        <td>${ptag(r.platform)}</td><td>${vtag(r.vtype)}</td>
+        <td class="vol">${p?esc(p.kw):"—"}${p&&p.vol!=null?`<small>${fmt(p.vol)}/mo</small>`:""}</td>
+        <td class="vol">${dmy(r.date)}${r.at?`<small>${new Date(r.at).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})}</small>`:""}</td>
+        <td class="vol">${r.dur!=null?mmss(r.dur):"—"}</td>
+        <td class="vol">${fmt(r.views)}</td><td class="vol">${fmt(r.likes)}</td>
+        <td class="vol">${fmt(r.comments)}</td><td class="vol">${fmt(r.shares)}</td>
+        <td class="vol">${e!=null?r1(e)+"%":"—"}</td>
+        <td class="vol">${r.watch||"—"}</td>
+        <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":`<span style="color:var(--ink-3)">${r.live?"pending":"n/a"}</span>`}</td>
+        <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td></tr>`;}).join("")
+       :`<tr><td colspan="14" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
+    ${rows.length>shown.length?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="pfMore">Show ${Math.min(50,rows.length-shown.length)} more (${rows.length-shown.length} left)</button></div>`:""}
+    <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube link — then the keyword and research columns fill in too.
+      New videos show "pending" for a day or two while YouTube finishes counting. Length and average watch time take minutes:seconds, like 1:30.</p>`;
+}
+function rerenderPosts(){ const box=$("#postsSec"); if(!box) return; box.innerHTML=postsSection(); wirePosts(box); }
+function readRules(box){
+  box.querySelectorAll("[data-fv]").forEach(e=>{ const r=PF.rules[Number(e.dataset.fv)]; if(!r) return;
+    r.v = e.value; });
+  box.querySelectorAll("[data-fv2]").forEach(e=>{ const r=PF.rules[Number(e.dataset.fv2)]; if(r) r.v2=e.value; });
+}
+function wirePosts(box){
+  const on=(id,f)=>{ const e=box.querySelector("#"+id); if(e) e.onclick=f; };
+  on("pfToggle",()=>{ PF.open=!PF.open; if(PF.open&&!PF.rules.length) PF.rules.push({f:"views",op:"gt",v:""}); rerenderPosts(); });
+  on("pfAdd",()=>{ readRules(box); PF.rules.push({f:"title",op:"contains",v:""}); PF.saved=""; rerenderPosts(); });
+  on("pfClear",()=>{ PF.rules=[]; PF.saved=""; PF.limit=50; rerenderPosts(); });
+  on("pfMore",()=>{ PF.limit+=50; rerenderPosts(); });
+  on("pfCsv",()=>{ const rows=filteredPosts(), cols=["title","platform","vtype","keyword","kwvol","date","hour","length","views","likes","comments","shares","eng","avgwatch","viewed","watchh","research"];
+    const q=v=>{ const t=v==null?"":String(v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const lines=[cols.map(k=>q(PFIELDS[k].label)).join(","), ...rows.map(r=>cols.map(k=>{ let v=PFIELDS[k].get(r);
+      if(k==="platform") v=regLabel("platform",v); if(k==="vtype") v=vtypeLabel(v); if((k==="eng"||k==="viewed")&&v!=null) v=Math.round(v*10)/10; return q(v); }).join(","))];
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+lines.join("\n")],{type:"text/csv"}));
+    a.download="published-posts-"+today()+".csv"; box.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); toast(rows.length+" posts downloaded"); });
+  const m=box.querySelector("#pfMatch"); if(m) m.onchange=()=>{ readRules(box); PF.match=m.value; rerenderPosts(); };
+  box.querySelectorAll("[data-pscope]").forEach(b=>b.onclick=()=>{ readRules(box); PF.scope=b.dataset.pscope; PF.limit=50; rerenderPosts(); });
+  box.querySelectorAll("[data-ff]").forEach(e=>e.onchange=()=>{ readRules(box); const r=PF.rules[Number(e.dataset.ff)]; r.f=e.value; r.op=POPS[PFIELDS[r.f].type][0][0]; r.v=PFIELDS[r.f].type==="enum"?[]:""; r.v2=""; PF.saved=""; rerenderPosts(); });
+  box.querySelectorAll("[data-fo]").forEach(e=>e.onchange=()=>{ readRules(box); PF.rules[Number(e.dataset.fo)].op=e.value; PF.saved=""; rerenderPosts(); });
+  box.querySelectorAll("[data-fv],[data-fv2]").forEach(e=>{ e.onchange=()=>{ readRules(box); PF.saved=""; PF.limit=50; rerenderPosts(); };
+    if(e.tagName==="INPUT") e.onkeydown=ev=>{ if(ev.key==="Enter"){ ev.preventDefault(); e.onchange(); } }; });
+  box.querySelectorAll("[data-fenum]").forEach(b=>b.onclick=()=>{ readRules(box); const r=PF.rules[Number(b.dataset.fenum)];
+    const set=Array.isArray(r.v)?r.v:[]; const k=b.dataset.k; r.v=set.includes(k)?set.filter(x=>x!==k):[...set,k]; PF.saved=""; PF.limit=50; rerenderPosts(); });
+  box.querySelectorAll("[data-fdel]").forEach(b=>b.onclick=()=>{ readRules(box); PF.rules.splice(Number(b.dataset.fdel),1); PF.saved=""; rerenderPosts(); });
+  box.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{ const p=PRESETS[Number(b.dataset.preset)]; PF.rules=JSON.parse(JSON.stringify(p.rules)); PF.match="all"; PF.saved=""; PF.limit=50; rerenderPosts(); });
+  box.querySelectorAll("[data-psort]").forEach(t=>t.onclick=()=>{ const k=t.dataset.psort; PF.sort = PF.sort.k===k ? {k, dir:-PF.sort.dir} : {k, dir:(PFIELDS[k].type==="text"||PFIELDS[k].type==="enum")?1:-1}; rerenderPosts(); });
+  const sv=box.querySelector("#pfSaved"); if(sv) sv.onchange=()=>{ const v=S.views.find(x=>x.id===sv.value); PF.saved=sv.value;
+    if(v){ PF.rules=JSON.parse(JSON.stringify(v.rules)); PF.match=v.match||"all"; PF.scope=v.scope||"period"; PF.limit=50; } rerenderPosts(); };
+  on("pfSave",()=>{ readRules(box); if(!PF.rules.length){ toast("Add a condition first"); return; }
+    const name=(prompt("Name this filter (e.g. \"Shorts that flopped\")")||"").trim(); if(!name) return;
+    const v={id:uid("v"),name,match:PF.match,scope:PF.scope,rules:JSON.parse(JSON.stringify(PF.rules))};
+    S.views.push(v); PF.saved=v.id; if(save()) toast("Filter saved for the team"); });
+  on("pfDelSaved",()=>{ const i=S.views.findIndex(x=>x.id===PF.saved); if(i<0) return; if(!confirm("Delete the saved filter \""+S.views[i].name+"\"?")) return;
+    S.views.splice(i,1); PF.saved=""; if(save()) toast("Saved filter deleted"); });
+  box.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
+}
+
 /* ------------------------------------------------------------ SUMMARY */
 function liveBar(){
   const sync = canEdit() || (OPT.isMember && OPT.isMember());
@@ -906,25 +1101,7 @@ function renderSummary(){
        <div class="chart-card"><div class="chart-head"><h4>Instagram followers <span class="badge mute" style="margin-left:4px">manual</span></h4><span class="chip">target ${fmt(TG.targets.ig)}</span></div>
          <p class="chart-sub">Weekly, last 12 weeks</p>${lineChart(weekly(ig,12),"var(--c3)","Instagram")}</div></div></div>
 
-   <div class="sec"><div class="sec-h"><h3>Published posts</h3><span class="badge good">YouTube live</span><span class="badge mute">Instagram manual</span>
-     <span class="hint">${pub.length} in this period · click a row to open its card, or the title to watch it</span></div>
-     <div class="tw"><table style="min-width:1180px">
-       <thead><tr><th>Post</th><th>Platform</th><th>Type</th><th>Primary keyword</th><th>Date</th><th>Views</th><th>Likes</th>
-         <th>Comments</th><th>Shares</th><th>Avg watch</th><th>Avg viewed</th><th>Research</th></tr></thead>
-       <tbody>${pub.length?pub.slice(0,200).map(r=>{const c=r.card, p=c?(c.pre.keywords||[]).find(k=>k.rank==="primary"):null;
-        return `<tr ${c?`data-card="${c.id}" style="cursor:pointer"`:""}>
-         <td class="td-idea"><div class="row" style="gap:9px;flex-wrap:nowrap">${r.thumb?`<img class="thumb" src="${esc(r.thumb)}" alt="" loading="lazy">`:""}
-           <span>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" data-ext="1">${esc(r.title)}</a>`:esc(r.title)}</span></div></td>
-         <td>${ptag(r.platform)}</td><td>${vtag(r.vtype)}</td>
-         <td class="vol">${p?esc(p.kw):"—"}${p&&p.vol!=null?`<small>${fmt(p.vol)}/mo</small>`:""}</td>
-         <td class="vol">${dmy(r.date)}</td><td class="vol">${fmt(r.views)}</td><td class="vol">${fmt(r.likes)}</td>
-         <td class="vol">${fmt(r.comments)}</td><td class="vol">${fmt(r.shares)}</td>
-         <td class="vol">${r.watch||"—"}</td>
-         <td class="vol">${r.viewed!=null?Math.round(r.viewed)+"%":`<span style="color:var(--ink-3)">${r.live?"pending":"n/a"}</span>`}</td>
-         <td>${c?(gResearch(c.pre)?`<span class="badge good">full</span>`:`<span class="badge crit">skipped</span>`):`<span class="badge mute">no card</span>`}</td></tr>`;}).join("")
-        :`<tr><td colspan="12" style="color:var(--ink-3)">${LIVE.status==="loading"?"Loading…":"No posts match these filters."}</td></tr>`}</tbody></table></div>
-     <p class="hint" style="margin-top:8px">A video joins its card when the card's <b>Final post link</b> is its YouTube link — then the keyword and research columns fill in too.
-       New videos show "pending" for a day or two while YouTube finishes counting.</p></div>`;
+   <div class="sec" id="postsSec">${postsSection()}</div>`;
 
   const P=$("#pane-summary"); activateTips(P);
   P.querySelectorAll("[data-period]").forEach(b=>b.onclick=()=>{FILTERS.period=b.dataset.period;renderSummary();});
@@ -932,10 +1109,14 @@ function renderSummary(){
   P.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{toggle(FILTERS.vtypes,b.dataset.vt);renderSummary();});
   P.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{CHARTMODE=b.dataset.cm;renderSummary();});
   wireKeywords(P);
+  wirePosts($("#postsSec"));
   P.querySelectorAll("tr[data-card]").forEach(r=>r.onclick=e=>{ if(e.target.closest("[data-ext]")) return; openCard(r.dataset.card); });
   P.querySelectorAll("[data-updf]").forEach(b=>b.onclick=openFollowers);
   const sn=$("#syncNow"); if(sn) sn.onclick=syncNow;
   P.querySelectorAll("[data-okrmore]").forEach(b=>b.onclick=()=>{ OKR_OPEN[b.dataset.okrmore]=!OKR_OPEN[b.dataset.okrmore]; renderSummary(); });
+  P.querySelectorAll("[data-manualsave]").forEach(b=>b.onclick=()=>{ const k=b.dataset.manualsave, inp=P.querySelector(`[data-manual="${k}"]`);
+    const v=inp.value===""?null:Math.max(0,Number(inp.value)); if(v==null||isNaN(v)){ toast("Type a number"); return; }
+    S.manual[k]=v; if(save()) toast("Saved"); });
   P.querySelectorAll("[data-tile]").forEach(t=>{
     const go=()=>{ OPEN_TILE = OPEN_TILE===t.dataset.tile ? null : t.dataset.tile; placeDetail(); };
     t.onclick=go; t.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
