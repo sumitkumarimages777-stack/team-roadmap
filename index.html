@@ -21,6 +21,8 @@
 <script src="lms.js"></script>
 <!-- "Pitch a product idea" card under Social Media → Ideation (product-pitch.js) -->
 <script src="product-pitch.js"></script>
+<!-- Student ideas (tools.dubuddy.in/ideas) in the product space, status sync, idea emails, My product ideas (student-ideas.js) -->
+<script src="student-ideas.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -3605,7 +3607,6 @@ body{margin:0}
       <button class="tool" id="nav-home" title="Back to the team picker">⌂ Teams</button>
         <button class="tool" id="nav-research">📊 Product Research</button>
         <button class="tool" id="nav-team-ideas">🧠 Team Ideas</button>
-        <button class="tool" id="nav-ideas">💡 Student Ideas</button>
         <button class="tool" id="backup-btn" title="Download all data (roadmap, OKRs, content, ideas, dev, bugs) as a JSON file on your PC">⬇ Backup</button>
         <button class="tool" id="import-btn" title="Restore everything from a backup file (needs Edit mode)">⬆ Import</button>
         <button class="tool" id="compact-btn" title="Shrink the saved record to get under the storage size limit — removes never-edited default Scorecard copies (rebuilt from the app). Your edits are kept.">🗜 Compact</button>
@@ -4124,6 +4125,7 @@ const PERMS = [
   {key:"delete_roadmaps",  label:"Delete roadmaps",       hint:"See “Delete roadmap” in a roadmap's ⋯ menu"},
   {key:"add_spaces",       label:"Add spaces",            hint:"Create new spaces (Administration → Spaces). Nobody else sees an Add space button"},
   {key:"delete_spaces",    label:"Delete spaces",         hint:"See “Delete…” in a space's ⋯ menu and remove whole spaces"},
+  {key:"review_student_ideas", label:"Review student ideas", hint:"Approve, merge or reject ideas students send from tools.dubuddy.in/ideas (product space → From students)"},
   {key:"manage_learning",  label:"Run LMS",               hint:"Plan learning drops — videos, articles, polls, quizzes — in Administration → LMS, and see everyone's answers"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
@@ -5130,7 +5132,11 @@ const PERM_CAPS = [
   {key:"team",    label:"Create & delete teams",   roles:["owner"]},
 ];
 function currentDisc(){ return CSPACES.list.find(x=>x.id===activeCspace && x.type==="discovery") || null; }
-function saveDisc(){ renderAll(); pushAll(); }
+function saveDisc(){
+  // linked student ideas / team pitches: tell them when an idea moves (student-ideas.js)
+  if(typeof ideaStatusSync === "function"){ try{ ideaStatusSync(); }catch(_){ } }
+  renderAll(); pushAll();
+}
 function boardBugs(cs){ return teamBugs().filter(t=> (t.board || null) === (cs ? cs.id : null)); }
 let devSprint = null;  // sprint currently shown on the board
 const backlogSel = new Set();   // ids of backlog cards selected for bulk actions (session only)
@@ -5737,6 +5743,7 @@ async function start(){
   if(db) loadGames().catch(function(){ });
   if(db) notifBoot();   // 🔔 bell + pop-ups (notifications.js)
   if(db && typeof pitchImport === "function") pitchImport();   // file the team's product pitches into the product space
+  if(db && typeof sidBoot === "function") sidBoot();            // student ideas inbox count + fresh vote counts
   // approvers: a gentle nudge when teammate requests are waiting
   if(db && hasPerm("approve_requests")){
     refreshPendingCount().then(n=>{ if(n) toast("\uD83D\uDE4B " + n + " teammate request" + (n>1?"s":"") + " waiting \u2014 Administration \u2192 Requests"); });
@@ -6594,7 +6601,12 @@ let paneTab = "work";     // "summary" or "work"
 let _lastNavSig = "";
 // the work-area tabs for the current view (Summary is prepended separately)
 function workTabs(){
-  if(view==="disc") return [{key:"ideas",label:"All ideas"},{key:"roadmap",label:"Roadmap"},{key:"timeline",label:"Timeline"}];
+  if(view==="disc"){
+    const _t = [{key:"ideas",label:"All ideas"},{key:"roadmap",label:"Roadmap"},{key:"timeline",label:"Timeline"}];
+    // the product space also gets the students' inbox (student-ideas.js)
+    if(typeof sidIsTarget === "function" && sidIsTarget(currentDisc()) && sidCanSee()) _t.push({key:"students",label:sidTabLabel()});
+    return _t;
+  }
   if(view==="pdt") return (pdtView==="ideation"||pdtView==="ideation-roadmap")
       ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
       : [{key:pdtView,label:pdtSectionLabel(pdtView)}];
@@ -12889,6 +12901,7 @@ function renderContentDisc(){
 
   if(discView === "roadmap") return discRoadmapPane(cs);
   if(discView === "timeline") return discTimelinePane(cs);
+  if(discView === "students" && typeof sidIsTarget === "function" && sidIsTarget(cs) && sidCanSee()) return sidPane(cs);
   return discIdeasPane(cs);
 }
 
@@ -12932,6 +12945,7 @@ function discIdeasPane(cs){
     cSum.appendChild(t);
     if(idea.note){ const n = document.createElement("div"); n.className = "dt-note"; n.textContent = idea.note; cSum.appendChild(n); }
     const _ips = photoStrip(idea.photos); if(_ips) cSum.appendChild(_ips);
+    if(typeof sidBadge === "function"){ const _sb = sidBadge(idea); if(_sb) cSum.appendChild(_sb); }   // 🎓 student ▲ votes / 💡 pitched by
     const cCmt = document.createElement("div");
     cCmt.className = "dt-cell dt-c";
     cCmt.appendChild(commentChip(idea, saveDisc));
@@ -12944,6 +12958,8 @@ function discIdeasPane(cs){
     const cActs = document.createElement("div");
     cActs.className = "dt-cell dt-acts";
     if(editMode) cActs.appendChild(discIdeaActs(cs, idea));
+    // ✉️ write to the student / teammate who suggested it (student-ideas.js)
+    if(typeof sidMailButton === "function" && hasPerm("edit")){ const _mb = sidMailButton(cs, idea); if(_mb) cActs.appendChild(_mb); }
     if(_noState){
       r.classList.add("dt-nostate");
       r.append(cSum, cCmt, cTheme, cStage, cActs);
@@ -13221,7 +13237,6 @@ function renderAll(){
   ];
   if(view!=="okr" && view!=="ideas") lastWs = view;
   $("nav-team-ideas").classList.toggle("primary", view==="ideas");
-  $("nav-ideas").style.display = (TEAM === "dubuddy") ? "" : "none";   // student ideas are Dubuddy-only
   $("nav-research").classList.toggle("primary", view==="roadmap" && researchOpen);
   $("nav-research").style.display = (view==="roadmap" && activeModule!=="all") ? "" : "none";
   if($("nav-account")){
@@ -18798,6 +18813,7 @@ function adminSections(){
                                                                         show: hasPerm("approve_requests"),    render: renderAdminRequests },
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
     { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
+    { k:"myideas",     ico:"💡", lbl:"My product ideas",     show: !!me && !!SUPA && typeof pitchTarget === "function" && !!pitchTarget(), render: renderAdminMyIdeas },
     { k:"roadmaps",    ico:"🗺️", lbl:"Roadmaps",             show: hasPerm("add_roadmaps"),        render: renderAdminRoadmaps },
     { k:"spaces",      ico:"🗂️", lbl:"Spaces",               show: hasPerm("add_spaces"),          render: renderAdminSpaces },
     { k:"lms",         ico:"🎓", lbl:"LMS",                  show: hasPerm("manage_learning") && !!SUPA, render: renderAdminLms },
@@ -20294,120 +20310,7 @@ try{
 
 </div>
 <script>
-(function(){
-  var IDEA_BIN_ID="6a477b27da38895dfe2784a1";
-  var IDEA_KEY="$2a$10$1mgC2VmJE7F0xP/H3DFt.eveNBdxStDmz1Sk1T3CvlLZbokiJGa0.";  // scoped access key (Read+Update) — never put the Master Key in a web page
-  var MARK_PLANNED=true; // adding an idea also marks it "Planned" on the public ideas board
-
-  var css=document.createElement("style");
-  css.textContent=
-    "#duIdeasPanel{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:none;align-items:stretch;justify-content:flex-end;font-family:inherit}"+
-    "#duIdeasPanel.show{display:flex}"+
-    "#duIdeasPanel .dui-side{width:min(540px,100%);background:var(--card,#fff);display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.2)}"+
-    "#duIdeasPanel .dui-top{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line,#e5e7eb)}"+
-    "#duIdeasPanel .dui-top h3{margin:0;font-size:15px}"+
-    "#duIdeasPanel .dui-x{margin-left:auto;border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:8px;padding:7px 12px;font-weight:600;cursor:pointer}"+
-    "#duIdeasPanel .dui-bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line,#e5e7eb)}"+
-    "#duIdeasPanel .dui-chip{border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:16px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}"+
-    "#duIdeasPanel .dui-chip.on{background:#4263eb;color:#fff;border-color:#4263eb}"+
-    "#duIdeasPanel .dui-list{flex:1;overflow:auto;padding:14px 16px 22px}"+
-    "#duIdeasPanel .dui-card{border:1px solid var(--line,#e5e7eb);border-radius:12px;padding:12px 14px;margin-bottom:10px}"+
-    "#duIdeasPanel .dui-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}"+
-    "#duIdeasPanel .dui-v{font-weight:800;color:#4263eb;font-size:13px}"+
-    "#duIdeasPanel .dui-p{font-size:10.5px;font-weight:700;background:rgba(66,99,235,.1);color:#4263eb;border-radius:12px;padding:2px 8px}"+
-    "#duIdeasPanel .dui-s{font-size:10.5px;font-weight:700;border-radius:12px;padding:2px 8px;background:var(--planned-bg,#eef);color:var(--planned,#448)}"+
-    "#duIdeasPanel .dui-t{font-size:13.5px;font-weight:700;margin-top:6px}"+
-    "#duIdeasPanel .dui-d{font-size:12.5px;opacity:.75;margin-top:4px;line-height:1.5;white-space:pre-wrap}"+
-    "#duIdeasPanel .dui-add{margin-top:9px;border:1px solid #4263eb;background:rgba(66,99,235,.08);color:#4263eb;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}"+
-    "#duIdeasPanel .dui-add:disabled{opacity:.5;cursor:default}"+
-    "#duIdeasPanel .dui-empty{padding:40px 16px;text-align:center;opacity:.6;font-size:13.5px}"+
-    "#duiPick{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.5)}"+
-    "#duiPick.show{display:flex}"+
-    "#duiPick .dui-pk{background:var(--card,#fff);border-radius:14px;padding:18px;max-width:380px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)}"+
-    "#duiPick h4{margin:0 0 10px;font-size:14px}"+
-    "#duiPick button.mod{display:block;width:100%;text-align:left;border:1px solid var(--line,#e5e7eb);background:transparent;color:inherit;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:7px}"+
-    "#duiPick button.mod:hover{border-color:#4263eb;color:#4263eb}";
-  document.head.appendChild(css);
-
-  var panel=document.createElement("div");
-  panel.id="duIdeasPanel";
-  panel.innerHTML='<div class="dui-side">'+
-    '<div class="dui-top"><h3>💡 Student Ideas — live board</h3><button class="dui-x">Close</button></div>'+
-    '<div class="dui-bar" id="duiBar"></div>'+
-    '<div class="dui-list" id="duiList"><div class="dui-empty">Loading ideas…</div></div></div>';
-  document.body.appendChild(panel);
-  var pick=document.createElement("div");
-  pick.id="duiPick";
-  pick.innerHTML='<div class="dui-pk"><h4>Add to which module?</h4><div id="duiPickList"></div></div>';
-  document.body.appendChild(pick);
-
-  var IDEAS=[], PROD="all", PENDING=null;
-  var escp=function(x){return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
-  var STATUS={new:"In review",planned:"Planned",progress:"In progress",done:"Completed",later:"Not now"};
-
-  function loadIdeas(){
-    document.getElementById("duiList").innerHTML='<div class="dui-empty">Loading ideas…</div>';
-    fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Access-Key":IDEA_KEY}})
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(j){ var rec=j.record||{};
-        IDEAS=(Array.isArray(rec.ideas)?rec.ideas:[]).map(function(x){ x=x||{}; x.votes=x.votes||0; x.status=x.status||"new"; x.product=x.product||"Preference Builder"; return x; });
-        renderIdeas(); })
-      .catch(function(){ document.getElementById("duiList").innerHTML='<div class="dui-empty">Couldn\'t load the ideas board.</div>'; });
-  }
-  function renderIdeas(){
-    var set={}; IDEAS.forEach(function(i){ set[i.product]=1; });
-    var prods=["all"].concat(Object.keys(set));
-    document.getElementById("duiBar").innerHTML=prods.map(function(p){ return '<button class="dui-chip'+(PROD===p?' on':'')+'" data-prod="'+escp(p)+'">'+(p==="all"?"All products":escp(p))+'</button>'; }).join("");
-    var list=IDEAS.filter(function(i){ return PROD==="all"||i.product===PROD; })
-      .sort(function(a,b){ return (b.votes-a.votes)||String(b.at||"").localeCompare(String(a.at||"")); });
-    var box=document.getElementById("duiList");
-    if(!list.length){ box.innerHTML='<div class="dui-empty">No ideas here yet.</div>'; return; }
-    box.innerHTML=list.map(function(i){
-      var added=(i.status==="planned"||i.status==="progress"||i.status==="done");
-      return '<div class="dui-card"><div class="dui-h"><span class="dui-v">▲ '+i.votes+'</span><span class="dui-p">'+escp(i.product)+'</span><span class="dui-s">'+escp(STATUS[i.status]||i.status)+'</span></div>'+
-        (i.title?'<div class="dui-t">'+escp(i.title)+'</div>':'')+
-        (i.text?'<div class="dui-d">'+escp(i.text)+'</div>':'')+
-        '<button class="dui-add" data-add="'+escp(i.id||"")+'"'+(added?" disabled":"")+'>'+(added?"✓ In pipeline":"➕ Add to pipeline")+'</button></div>';
-    }).join("");
-  }
-  function openPicker(idea){
-    if(!editMode){ toast("Turn on Edit (top right) to add ideas to the pipeline"); return; }
-    if(!DATA.modules.length){ toast("Create a module first"); return; }
-    PENDING=idea;
-    document.getElementById("duiPickList").innerHTML=DATA.modules.map(function(m,ix){ return '<button class="mod" data-mod="'+ix+'">'+escp(m.name)+'</button>'; }).join("");
-    pick.classList.add("show");
-  }
-  function addToModule(ix){
-    var m=DATA.modules[ix], i=PENDING; if(!m||!i) return;
-    var title=(i.title||"").trim()||((i.text||"").slice(0,70)+(((i.text||"").length>70)?"…":""));
-    var n={title:title, status:"planned", note:"💡 Student idea · "+i.product+" · "+i.votes+"▲"+((i.title&&i.text)?(" — "+i.text):"")};
-    m.items=m.items||[]; m.items.push(n);
-    saveRoadmap();
-    toast("Added to “"+m.name+"” pipeline");
-    pick.classList.remove("show"); PENDING=null;
-    if(MARK_PLANNED && i.status==="new"){
-      fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID+"/latest",{headers:{"X-Access-Key":IDEA_KEY}})
-        .then(function(r){ return r.json(); })
-        .then(function(j){ var rec=j.record||{}; rec.ideas=Array.isArray(rec.ideas)?rec.ideas:[];
-          var t=rec.ideas.find(function(x){ return x&&x.id===i.id; });
-          if(t){ t.status="planned";
-            return fetch("https://api.jsonbin.io/v3/b/"+IDEA_BIN_ID,{method:"PUT",headers:{"Content-Type":"application/json","X-Access-Key":IDEA_KEY},body:JSON.stringify(rec)});
-          } })
-        .then(function(){ i.status="planned"; renderIdeas(); }).catch(function(){});
-    } else { i.status=(i.status==="new")?"planned":i.status; renderIdeas(); }
-  }
-
-  document.getElementById("nav-ideas").onclick=function(){ panel.classList.add("show"); loadIdeas(); };
-  panel.addEventListener("click",function(e){
-    if(e.target.classList.contains("dui-x")||e.target===panel){ panel.classList.remove("show"); return; }
-    var p=e.target.closest("[data-prod]"); if(p){ PROD=p.getAttribute("data-prod"); renderIdeas(); return; }
-    var a=e.target.closest("[data-add]"); if(a){ var id=a.getAttribute("data-add"); var idea=IDEAS.find(function(x){return x.id===id;}); if(idea) openPicker(idea); return; }
-  });
-  pick.addEventListener("click",function(e){
-    if(e.target===pick){ pick.classList.remove("show"); PENDING=null; return; }
-    var m=e.target.closest("[data-mod]"); if(m){ addToModule(+m.getAttribute("data-mod")); }
-  });
-})();
+/* (the old JSONBin "Student Ideas" panel was removed — student ideas now come from tools.dubuddy.in/ideas, see student-ideas.js) */
 
 /* ================= OUR CULTURE (ported from the standalone prototype) ================= */
 var openCulture, closeCulture;

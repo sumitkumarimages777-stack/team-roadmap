@@ -9,6 +9,9 @@
        new pitches (claim_product_pitches, each exactly once) and files them
        into the product space's "All ideas" (the first Product roadmap space
        whose name says "product"), credited or marked Anonymous.
+   The sender's browser remembers the pitch id (student-ideas.js →
+   Administration → My product ideas), so even anonymous pitches can be
+   followed by the person who sent them — and nobody else.
    Uses index.html's globals (SUPA, TEAM, db, CSPACES, discoverySpaces,
    saveDisc, hasPerm, currentUser, toast) and notifications.js's pop-up
    styles (.ntf-pop).                                                        */
@@ -81,8 +84,9 @@ function pitchOpen() {
     async function send(isAnon) {
       err.textContent = "";
       anon.disabled = named.disabled = true;
-      var r = await SUPA.rpc("submit_product_pitch", { p_team: TEAM, p_body: ta.value, p_anonymous: isAnon });
+      var r = await SUPA.rpc("pitch_submit", { p_team: TEAM, p_body: ta.value, p_anonymous: isAnon });
       if (r.error) { err.textContent = "Couldn't send: " + r.error.message; upd(); return; }
+      if (r.data && typeof sidRememberPitch === "function") sidRememberPitch(r.data);   /* so "My product ideas" can show it, even anonymous */
       done(isAnon);
       if (typeof hasPerm === "function" && hasPerm("edit")) pitchImport();   /* file it straight away if we can */
     }
@@ -126,9 +130,11 @@ async function pitchImport() {
       var who = p.by_name ? "🙋 Pitched by " + p.by_name : "🤫 Pitched anonymously";
       var idea = { id: "idea-" + Math.random().toString(36).slice(2, 9), title: "💡 " + title,
                    note: who + " · from Social Media → Ideation\n\n" + text,
-                   stage: "later", state: "Pending", pitch: { anonymous: !p.by_name, by: p.by_name || null, at: p.created_at } };
+                   stage: "later", state: "Pending", syncedStatus: "review",
+                   pitch: { id: p.id, anonymous: !p.by_name, by: p.by_name || null, at: p.created_at } };
       if (typeof discStatusOf === "function") idea.status = discStatusOf(idea.state);
       target.ideas.push(idea);
+      SUPA.rpc("link_pitch", { p_id: p.id, p_space: target.id, p_ref: idea.id }).then(function () { });   /* lets the pitcher follow it */
     });
     saveDisc();
     toast("💡 " + rows.length + " new product idea" + (rows.length > 1 ? "s" : "") + " pitched by the team → " + target.name);
