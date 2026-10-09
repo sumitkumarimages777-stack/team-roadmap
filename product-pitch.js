@@ -87,6 +87,7 @@ function pitchOpen() {
       var r = await SUPA.rpc("pitch_submit", { p_team: TEAM, p_body: ta.value, p_anonymous: isAnon });
       if (r.error) { err.textContent = "Couldn't send: " + r.error.message; upd(); return; }
       if (r.data && typeof sidRememberPitch === "function") sidRememberPitch(r.data);   /* so "My product ideas" can show it, even anonymous */
+      if (r.data && !isAnon) { try { SUPA.functions.invoke("idea-mail", { body: { action: "thanks", kind: "pitch", id: r.data, team: TEAM } }); } catch (_) { } }   /* thank-you email */
       done(isAnon);
       if (typeof hasPerm === "function" && hasPerm("edit")) pitchImport();   /* file it straight away if we can */
     }
@@ -100,7 +101,7 @@ function pitchOpen() {
     box.innerHTML = "";
     var d = ppEl("div", "pp-done");
     d.append(ppEl("div", "pd-big", "🚀"), ppEl("div", "pd-t", "Sent to the product team!"),
-             ppEl("div", "pd-s", isAnon ? "No name attached. Thanks for thinking about students 💛" : "With your name on it. Fingers crossed it ships 🤞"));
+             ppEl("div", "pd-s", isAnon ? "No name attached. Thanks for thinking about students 💛" : "With your name on it — a thank-you is on its way to your inbox. Follow it in Administration → 💡 My product ideas 🤞"));
     box.appendChild(d);
     var acts = ppEl("div", "np-a"), more = ppEl("button", "ntf-btn", "I've got another"), ok = ppEl("button", "ntf-btn primary", "Done");
     more.type = ok.type = "button"; more.onclick = form; ok.onclick = close;

@@ -18813,6 +18813,7 @@ function adminSections(){
                                                                         show: hasPerm("approve_requests"),    render: renderAdminRequests },
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
     { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
+    { k:"ideaemails",  ico:"✉️", lbl:"Idea emails",          show: hasPerm("review_student_ideas") && !!SUPA, render: renderAdminIdeaEmails },
     { k:"myideas",     ico:"💡", lbl:"My product ideas",     show: !!me && !!SUPA && typeof pitchTarget === "function" && !!pitchTarget(), render: renderAdminMyIdeas },
     { k:"roadmaps",    ico:"🗺️", lbl:"Roadmaps",             show: hasPerm("add_roadmaps"),        render: renderAdminRoadmaps },
     { k:"spaces",      ico:"🗂️", lbl:"Spaces",               show: hasPerm("add_spaces"),          render: renderAdminSpaces },

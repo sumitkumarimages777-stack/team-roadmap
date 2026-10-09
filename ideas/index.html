@@ -16,7 +16,8 @@
   space → "🎓 From students" (index.html, student-ideas.js); moving an idea on
   the product roadmap changes its status here.
   Talks to Supabase only through public functions (supabase/stage15a_student_ideas.sql):
-  ideas_board, ideas_submit, ideas_vote, ideas_my_votes, ideas_mine.
+  ideas_board, ideas_submit, ideas_vote, ideas_my_votes, ideas_mine — and the
+  idea-mail function's "thanks" (a thank-you email if they left an address).
   This browser remembers a random id (for one vote per idea) and the ideas it
   sent (to show "Your ideas"). Nothing else is stored.
 -->
@@ -332,10 +333,11 @@ header .brand span{color:var(--brand)}
       send.disabled = false; send.textContent = "Send idea 🚀";
       if(r.error){ err.textContent = r.error.message.replace(/^.*?:\s*/, "") || "Couldn't send. Please try again."; return; }
       var ids = mineIds(); ids.unshift(r.data); store("dub-ideas-mine", JSON.stringify(ids.slice(0, 50)));
+      if(em && SB.functions){ try{ SB.functions.invoke("idea-mail", { body: { action: "thanks", kind: "student", id: r.data } }); }catch(_){ } }   /* a thank-you email */
       m.innerHTML = "";
       var d = el("div", "done-box");
       d.append(el("div", "big", "🙌"), el("h2", "", "Thank you!"),
-               el("div", "sub", "Our team reads every idea. Once it's approved it shows on the board" + (em ? " — and we'll email you when it moves." : ".")));
+               el("div", "sub", "Our team reads every idea. Once it's approved it shows on the board" + (em ? ". We've sent you a thank-you email, and we'll write again when it moves." : ".")));
       m.appendChild(d);
       var a2 = el("div", "acts"), ok = el("button", "btn pri", "Back to ideas"); ok.type = "button"; ok.onclick = close; a2.appendChild(ok); m.appendChild(a2);
       drawMine();
