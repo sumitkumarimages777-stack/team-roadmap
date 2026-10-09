@@ -12527,6 +12527,8 @@ function renderContentSocial(){
     saveTargets: (sp, obj)=>{ SOCIAL_TARGETS[sp.id] = obj; pushAll(); },
     save: saveSocial,
   });
+  // banners pinned on this tab (Administration → Notifications → "Pin it as a banner")
+  if(typeof ntfBannerSlot === "function") ntfBannerSlot(wrap, "social:" + cs.id + ":" + socialView);
 }
 
 /* ---------- Content Process: kanban ---------- */
