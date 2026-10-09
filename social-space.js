@@ -38,6 +38,8 @@ const CSS = `
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+.kcard.hot{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.hotbar{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;background:var(--accent-soft);color:var(--accent-ink);border-radius:4px;padding:3px 7px;margin-bottom:8px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sxroot{color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;text-align:left}
 h1,h2,h3,h4,h5,h6{margin:0;text-wrap:balance;font-weight:700;letter-spacing:-.018em}
 p{margin:0}
@@ -1666,7 +1668,8 @@ function renderProcess(){
   const cols=STAGES.map(s=>{ const items=CARDS.filter(c=>c.stage===s.id);
     return `<div class="col" data-stage="${s.id}">
       <div class="col-h"><h4>${s.label}</h4><span class="count">${items.length}</span></div>
-      ${items.map(c=>{ const lp=livePost(c); return `<div class="kcard ${ro?"ro":""}" draggable="${ro?"false":"true"}" data-card="${c.id}">
+      ${items.map(c=>{ const lp=livePost(c); return `<div class="kcard ${ro?"ro":""} ${c.priority==="high"?"hot":""}" draggable="${ro?"false":"true"}" data-card="${c.id}">
+        ${c.priority==="high"?`<div class="hotbar">🔔 High priority${c.fromCampaign?` · from ${esc(c.fromCampaign)}`:""}</div>`:""}
         <h5>${esc(c.pre.title||c.idea)}</h5>
         <div class="meta">${ptag(c.platform)}${vtag(c.vtype)}
           ${c.override?`<span class="badge crit">override</span>`:""}

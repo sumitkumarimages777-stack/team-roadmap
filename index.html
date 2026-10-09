@@ -23,6 +23,8 @@
 <script src="product-pitch.js"></script>
 <!-- Student ideas (tools.dubuddy.in/ideas) in the product space, status sync, idea emails, My product ideas (student-ideas.js) -->
 <script src="student-ideas.js"></script>
+<!-- Marketing mega space: campaigns (Details · Assignment · Calendar · Dashboard) — campaign-space.js -->
+<script src="campaign-space.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -304,7 +306,7 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 .ws-item.active{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft);box-shadow:0 0 0 1px var(--indigo)}
 .ws-item .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
 .ws-item .ws-n{flex:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
-@media(max-width:860px){#ws-switch,#edu-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}}
+@media(max-width:860px){#ws-switch,#edu-switch{flex-direction:row;overflow-x:auto}.ws-item{min-width:180px}.ws-label{display:none}#ws-switch{align-items:flex-start}#ws-switch .ws-kids{display:contents}}
 @media(max-width:760px){.corner-nav-wrap{position:static;margin-bottom:14px}}
 
 /* content roadmap rows */
@@ -663,6 +665,17 @@ tr.in-mvp .an-rowhead{border-left:3px solid var(--indigo)}
 .mod-card.mc-add{display:flex;align-items:center;justify-content:center;border-style:dashed;border-width:1.5px;color:var(--muted);font-family:var(--mono);font-size:13px;background:transparent;min-height:90px}
 .mod-card.mc-add:hover{color:var(--indigo);border-color:var(--indigo)}
 .ws-item.ws-add{color:var(--muted);font-family:var(--mono);font-size:12px;border:1.5px dashed var(--line-strong);justify-content:center}
+/* Marketing mega space: a parent with its spaces nested under it */
+.ws-item.ws-parent{border-color:var(--indigo);color:var(--indigo);box-shadow:0 0 0 1px var(--indigo) inset}
+.ws-chev{font-size:10px;color:var(--muted);width:10px;flex:none;transition:transform .14s;transform:rotate(-90deg)}
+.ws-chev.open{transform:none}
+.ws-kids{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px 10px;padding-left:9px;border-left:1.5px dashed var(--line-strong)}
+.ws-item.ws-nested{padding:7px 10px;font-size:13px;border-color:transparent;background:transparent}
+.ws-item.ws-nested:hover{background:var(--paper);border-color:var(--line)}
+.ws-item.ws-nested.active{background:var(--indigo-soft);border-color:var(--indigo);color:var(--indigo)}
+.ws-item.ws-add.ws-nested{border:1.5px dashed var(--line-strong);padding:6px;font-size:11.5px}
+.ws-kid-ico{font-size:13px;flex:none}
+.ws-sub-nested{padding-left:22px!important;font-size:12.5px!important}
 .ws-item.ws-add:hover{color:var(--indigo);border-color:var(--indigo)}
 /* landing page */
 .landing{position:fixed;inset:0;z-index:400;background:var(--paper);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:9vh 20px 40px}
@@ -3812,6 +3825,12 @@ body{margin:0}
     <div class="dlg-body">
       <div class="hint" style="margin-bottom:12px">Pick a template — the space appears in the sidebar for the whole team. More templates coming; starting with these two.</div>
       <div class="tpl-grid">
+        <button class="tpl-card" data-tpl="marketing">
+          <span class="tpl-emoji">📣</span>
+          <span class="tpl-name">Marketing</span>
+          <span class="tpl-desc">One mega space for marketing — your Social Media space moves inside, and campaigns, influencer work and more live under it.</span>
+          <span class="tpl-by">Social Media · Campaigns · more</span>
+        </button>
         <button class="tpl-card" data-tpl="bugs">
           <span class="tpl-emoji">🐞</span>
           <span class="tpl-name">Bugs</span>
@@ -4477,6 +4496,7 @@ function currentSpaceRef(){
   if(view==="bugs") return {key:"bugs:main", obj:_bugsMainSpace(), name:"Bugs"};
   if(view==="cbugs"){ const cs=(CSPACES.list||[]).find(x=>x.id===activeCspace); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="disc"){ const cs=currentDisc(); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
+  if(view==="campaign"){ const cs=currentCampaign(); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="csnode"){ const cs=(CSPACES.list||[]).find(x=>x.id===activeCspace); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="content"){ const cs=(CSPACES.list||[]).find(x=>x.type==="content" && x.sectionKey===activeSection); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
   if(view==="roadmap"){ const topKey=String(activeModule).split("::")[0]; const cs=(CSPACES.list||[]).find(x=>x.type==="module" && x.moduleKey===topKey); return cs?{key:"cs:"+cs.id,obj:cs,name:cs.name}:null; }
@@ -5010,7 +5030,8 @@ function normalizeCspaces(c){
   c.list = c.list || [];
   c.list.forEach(x=>{
     if(!x.id) x.id = "cs-" + Math.random().toString(36).slice(2,8);
-    x.type = ["scrum","discovery","content","module","research","competitor","social","pdt"].includes(x.type) ? x.type : "bugs";
+    x.type = ["scrum","discovery","content","module","research","competitor","social","pdt","marketing","campaign"].includes(x.type) ? x.type : "bugs";
+    if(x.type === "campaign" && window.CX) CX.normalize(x);   // campaign-space.js
     x.members = x.members || {};   // per-space role assignments {email: role}
     if(x.type === "research" || x.type === "competitor"){
       // these spaces host their research/analysis on their own node (like a module node, but not in the module list)
@@ -5112,6 +5133,62 @@ function convertModuleToIdeas(mod, disc){
 }
 let discView = "ideas";   // sub-view inside a discovery space: ideas | roadmap | timeline
 let socialView = "summary";    // Social Media space: summary | ideation | process | schedule (social-space.js)
+let campView = "details";      // Campaign space: details | assign | calendar | dash (campaign-space.js)
+const MKT_OPEN = {};           // Marketing spaces open in the sidebar (this visit)
+// the Marketing space a space lives inside (or null)
+function mktParentOf(cs){ return (cs && cs.parent) ? ((CSPACES.list||[]).find(x=>x.id===cs.parent && x.type==="marketing") || null) : null; }
+function mktOpen(cs){ return MKT_OPEN[cs.id] !== false; }
+// "＋ Add space" inside a Marketing space: the marketing templates
+function openMarketingTemplates(parent){
+  const T = [
+    { id:"campaign",   emo:"📣", name:"Create campaign",     meta:"Details · Contents · Calendar", desc:"One sale, one place. Fill in the offer once, list everything that goes out, then arrange it day by day." },
+    { id:"social",     emo:"🎯", name:"Social media",        meta:"Ideation · Process · Schedule", desc:"Every post has a reason before it is made and a verdict after it ships — research, hook, CTA, then a board and a calendar." },
+    { id:"content",    emo:"📚", name:"Educational content", meta:"Tasks · Budget · Kanban",       desc:"A content section with tasks, deadlines, budgets and the List / Board views — like your exam sections." },
+    { id:"competitor", emo:"⚔️", name:"Competitor analysis", meta:"Product-level · Feature-level", desc:"Compare against competitors — product-level feature grids and feature-level deep dives, side by side." },
+    { id:"discovery",  emo:"🚀", name:"Product roadmap",     meta:"All ideas · Roadmap · Timeline", desc:"Collect ideas, sort them into Now / Next / Later, and see them on a timeline." },
+    { id:null, emo:"🔔", name:"Push automations",    meta:"Coming soon", desc:"Rules that fire on their own — someone signs up, the right notification goes out, and every attempt is written down." },
+    { id:null, emo:"🤝", name:"Influencer pipeline", meta:"Coming soon", desc:"Track creators from first message to published video, with rates, deliverables and whether payment went out." }
+  ];
+  const back = document.createElement("div"); back.className = "overlay show";
+  const dlg = document.createElement("div"); dlg.className = "dialog"; dlg.setAttribute("role","dialog"); dlg.setAttribute("aria-modal","true"); dlg.style.maxWidth = "620px";
+  const h = document.createElement("h3"); h.textContent = "Add to " + parent.name;
+  const body = document.createElement("div"); body.className = "dlg-body";
+  const hint = document.createElement("div"); hint.className = "hint"; hint.style.marginBottom = "12px";
+  hint.textContent = "Pick a template — the space appears inside " + parent.name + " for the whole team.";
+  const grid = document.createElement("div"); grid.className = "tpl-grid";
+  function close(){ back.remove(); }
+  T.forEach(t=>{
+    const c = document.createElement("button"); c.className = "tpl-card"; c.type = "button";
+    if(!t.id){ c.disabled = true; c.style.opacity = ".55"; c.style.cursor = "default"; }
+    [["tpl-emoji",t.emo],["tpl-name",t.name],["tpl-desc",t.desc],["tpl-by",t.meta]].forEach(([k,v])=>{ const sp=document.createElement("span"); sp.className=k; sp.textContent=v; c.appendChild(sp); });
+    c.onclick = ()=>{
+      if(!t.id) return;
+      close();
+      if(t.id==="campaign"){
+        openDialog("Name your campaign", {}, v=>{
+          const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type:"campaign", parent:parent.id, access:"open", members:{},
+                       details:{ name:v.title, tagline:"", code:"", duration:"", days:"", messaging:"", other:"" }, extra:[], contentsLabel:"List of contents", items:[] };
+          CSPACES.list.push(cs); MKT_OPEN[parent.id] = true;
+          view = "campaign"; activeCspace = cs.id; campView = "details";
+          renderAll(); pushAll();
+          toast("\u201C"+v.title+"\u201D created under "+parent.name);
+        }, {hideExtras:true, titleLabel:"Campaign name (e.g. CUET Crash Course — Early Bird)"});
+        return;
+      }
+      window._pendingParent = parent.id;   // picked up when the space is created
+      const card = document.querySelector('#tpl-overlay .tpl-card[data-tpl="'+t.id+'"]');
+      if(card) card.click(); else window._pendingParent = null;
+    };
+    grid.appendChild(c);
+  });
+  body.append(hint, grid);
+  const btns = document.createElement("div"); btns.className = "btns";
+  const cancel = document.createElement("button"); cancel.className = "btn"; cancel.textContent = "Cancel"; cancel.onclick = close;
+  btns.appendChild(cancel);
+  dlg.append(h, body, btns); back.appendChild(dlg);
+  back.onclick = e=>{ if(e.target===back) close(); };
+  document.body.appendChild(back);
+}
 let pdtView = "ideation";      // Product space: ideation | ideation-roadmap | dev | qa | bugs
 let pdtBoardId = { dev:null, qa:null, bugs:null };
 let pdtNavOpen = { dev:true, qa:false, bugs:false };
@@ -6505,6 +6582,8 @@ function devBoardIsEmpty(){
   return sp===0 && spr===0 && cd===0;
 }
 function csIsActive(cs){
+  if(cs.type==="marketing") return (CSPACES.list||[]).some(x=>x.parent===cs.id && csIsActive(x));
+  if(cs.type==="campaign") return view==="campaign" && activeCspace===cs.id;
   return cs.type==="bugs" ? (view==="cbugs" && activeCspace===cs.id)
     : cs.type==="discovery" ? (view==="disc" && activeCspace===cs.id)
     : cs.type==="social" ? (view==="social" && activeCspace===cs.id)
@@ -6515,6 +6594,14 @@ function csIsActive(cs){
     : (view==="dev" && devSpace===cs.devId);
 }
 function navToSpace(cs){
+  if(cs.type==="marketing"){   // the parent opens / closes; opening it goes to the first space inside
+    const open = !mktOpen(cs) || !csIsActive(cs);
+    MKT_OPEN[cs.id] = open;
+    const first = open && !csIsActive(cs) ? (CSPACES.list||[]).find(x=>x.parent===cs.id && canViewSpace(csRef(x))) : null;
+    if(first) return navToSpace(first);
+    renderAll(); return;
+  }
+  if(cs.type==="campaign"){ view = "campaign"; activeCspace = cs.id; campView = "details"; renderAll(); return; }
   if(cs.type==="bugs"){ view = "cbugs"; activeCspace = cs.id; }
   else if(cs.type==="discovery"){ view = "disc"; activeCspace = cs.id; discView = "ideas"; }
   else if(cs.type==="social"){ view = "social"; activeCspace = cs.id; socialView = "summary"; }
@@ -6611,13 +6698,14 @@ function workTabs(){
       ? [{key:"ideation",label:"All ideas"},{key:"ideation-roadmap",label:"Roadmap"}]
       : [{key:pdtView,label:pdtSectionLabel(pdtView)}];
   if(view==="social") return SX.tabs.map(([key,label])=>({key, label}));
+  if(view==="campaign" && window.CX) return CX.tabs.map(([key,label])=>({key, label}));
   const l = view==="rmap" ? "Timeline" : view==="okr" ? "Objectives"
     : view==="dev" ? "Board" : (view==="bugs"||view==="cbugs") ? "Board" : view==="content" ? "Board"
     : view==="ideas" ? "Ideas" : view==="admin" ? "Admin" : "Board";
   return [{key:"work",label:l}];
 }
 // which work tab is highlighted while the work pane is showing
-function workTabActiveKey(){ return view==="disc" ? discView : view==="social" ? socialView : view==="pdt" ? pdtView : "work"; }
+function workTabActiveKey(){ return view==="disc" ? discView : view==="social" ? socialView : view==="campaign" ? campView : view==="pdt" ? pdtView : "work"; }
 function applyPaneTab(){
   const su=$("pane-summary"), wk=$("pane-work");
   if(su) su.classList.toggle("show", paneTab==="summary");
@@ -6627,6 +6715,7 @@ function selectWorkTab(key){
   paneTab="work";
   if(view==="disc" && discView!==key){ discView=key; renderAll(); return; }  // re-render the sub-view
   if(view==="social" && socialView!==key){ socialView=key; renderAll(); return; }
+  if(view==="campaign" && campView!==key){ campView=key; renderAll(); return; }
   if(view==="pdt" && pdtView!==key){ pdtView=key; renderAll(); return; }
   applyPaneTab(); renderTabs();
 }
@@ -6636,7 +6725,7 @@ function renderTabs(){
   if(sig!==_lastNavSig){ _lastNavSig=sig; paneTab="work"; }
   strip.innerHTML="";
   const actKey = workTabActiveKey();
-  (view==="social" ? [] : [{summary:true,label:"Summary"}]).concat(workTabs()).forEach(t=>{
+  ((view==="social" || view==="campaign") ? [] : [{summary:true,label:"Summary"}]).concat(workTabs()).forEach(t=>{
     const b=document.createElement("button");
     const on = t.summary ? (paneTab==="summary") : (paneTab==="work" && t.key===actKey);
     b.className="tab"+(on?" active":"");
@@ -6650,7 +6739,7 @@ function renderTabs(){
 }
 function renderHeader(){
   const _rm = view==="rmap" ? RMAPS.maps.find(m=>m.id===activeRmap) : null;
-  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="social" ? (((currentSocial()||{}).name) || "Social Media") : view==="pdt" ? (((currentPdt()||{}).name) || "Product All in One") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
+  $("rm-title").textContent = view==="admin" ? "Administration" : view==="okr" ? "Team OKRs" : view==="content" ? "Educational Content Roadmap" : view==="ideas" ? "Team Ideas" : view==="dev" ? "Development Board" : view==="bugs" ? "Bugs & Issues" : view==="cbugs" ? ((CSPACES.list.find(x=>x.id===activeCspace)||{}).name || "Bugs board") : view==="disc" ? (((currentDisc()||{}).name) || "Product roadmap") : view==="social" ? (((currentSocial()||{}).name) || "Social Media") : view==="campaign" ? (((currentCampaign()||{}).name) || "Campaign") : view==="pdt" ? (((currentPdt()||{}).name) || "Product All in One") : view==="rmap" ? ((_rm && _rm.name) || "Roadmap") : (DATA.title || "Product Roadmap");
   $("rm-subtitle").textContent = view==="okr"
     ? "Objectives for this cycle and the measurable key results that tell us if we're getting there."
     : view==="content"
@@ -6663,6 +6752,8 @@ function renderHeader(){
     ? "Collect ideas, decide what happens Now / Next / Later, and put them on a timeline."
     : view==="social"
     ? "Every post has a reason before it is made and a verdict after it ships. Two people, one record."
+    : view==="campaign"
+    ? (((currentCampaign()||{}).details||{}).tagline || "Fill in the offer once. Everything that goes out gets listed below, then arranged by date.")
     : (view==="bugs" || view==="cbugs")
     ? "Reported by the team and by students \u2014 triage, fix, verify, close."
     : view==="ideas"
@@ -12534,6 +12625,69 @@ function pdtQaPane(cs){
 }
 function pdtBugsPane(cs){ pdtLanePane(cs, "bugs", "Bugs",        PDT_BUG_COLS, null); }
 
+/* ---------- Campaign space (campaign-space.js), inside a Marketing space ---------- */
+function currentCampaign(){ return (CSPACES.list||[]).find(x=>x.id===activeCspace && x.type==="campaign") || null; }
+// save without redrawing the page (used while typing in a campaign)
+function saveQuiet(){
+  if(!db) return;
+  _pushDirty = true;
+  if(_pushTimer) clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(()=>{ _pushTimer=null; pushNow(); }, PUSH_DELAY);
+}
+// the Social Media space a campaign hands videos to: the one in the same Marketing space, else any
+function campaignSocial(cs){
+  const L = CSPACES.list || [];
+  return L.find(x=>x.type==="social" && cs.parent && x.parent===cs.parent) || L.find(x=>x.type==="social") || null;
+}
+function renderContentCampaign(){
+  const wrap = $("content"); wrap.innerHTML = "";
+  const cs = currentCampaign();
+  if(!cs){ view = "roadmap"; renderAll(); return; }
+  CX.render(cs, wrap, {
+    tab: campView,
+    canEdit: canEditHere,
+    canDelete: ()=> hasPerm("delete_spaces"),
+    people: ()=> USERS.filter(u=>isMember(u, TEAM)).map(u=>({ id:u.id, name:userDisplayName(u), role:(u.profile&&u.profile.title)||roleLabel(roleOf(u,TEAM)) })),
+    save: ()=> pushAll(),
+    saveQuiet: ()=> saveQuiet(),
+    onHeader: c=>{
+      if($("rm-title")) $("rm-title").textContent = c.details.name || c.name;
+      if($("rm-subtitle")) $("rm-subtitle").textContent = c.details.tagline || "Fill in the offer once. Everything that goes out gets listed below, then arranged by date.";
+    },
+    setTab: t=>{ campView = t; renderAll(); },
+    remove: c=>{
+      const i = CSPACES.list.indexOf(c); if(i>=0) CSPACES.list.splice(i,1);
+      view = "roadmap"; activeCspace = null; defaultView(); renderAll(); pushAll(); toast("\u201C"+c.name+"\u201D deleted");
+    },
+    // the accountable teammate gets an email + a 🔔 (idea-mail function, action "assign")
+    notify: async (c, it)=>{
+      try{
+        const r = await SUPA.functions.invoke("idea-mail", { body: { action:"assign", team:TEAM, user_id:it.ownerId,
+          campaign: c.details.name || c.name, item: { name:it.name, kind:(CX.kinds[it.kind]||{}).label || it.kind, kindOther:it.kindOther||"",
+          date:it.date||"", platform:it.platform||"", details:it.details||"" } } });
+        return r.data || { sent:false, reason:(r.error && r.error.message) || "unknown" };
+      }catch(e){ return { sent:false, reason:e.message }; }
+    },
+    socialName: c=> (campaignSocial(c)||{}).name,
+    sendToProcess: (c, it)=>{
+      const soc = campaignSocial(c);
+      if(!soc) return { error:"There's no Social Media space to send it to — add one inside Marketing first." };
+      if(window.SX && SX.normalize) SX.normalize(soc);
+      soc.sx = soc.sx || {}; soc.sx.cards = soc.sx.cards || [];
+      const today = new Date().toISOString().slice(0,10);
+      const card = { id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), ideaId:null, idea:it.name,
+        platform: it.platform==="YouTube" ? "yt" : "ig",
+        vtype: it.kind==="longvideo" ? "long" : "reel",
+        stage:"todo", pre:{ source:"", tool:"", keywords:[], why:it.details||"", title:it.name, desc:"", hashtags:"" },
+        post:{ reel:null, thumb:null, postUrl:"" }, scheduled:it.date||null, published:null, acceptedOn:today, metrics:null, override:null,
+        priority:"high", fromCampaign: c.details.name || c.name, owner: it.owner || "" };
+      soc.sx.cards.push(card);
+      return { cardId: card.id };
+    },
+    cardExists: (c, id)=>{ const soc = campaignSocial(c); return !!(soc && soc.sx && (soc.sx.cards||[]).some(x=>x.id===id)); },
+    goProcess: c=>{ const soc = campaignSocial(c); if(!soc) return; view = "social"; activeCspace = soc.id; socialView = "process"; renderAll(); },
+  });
+}
 function renderContentSocial(){
   const wrap = $("content"); wrap.innerHTML = "";
   const cs = currentSocial();
@@ -13339,16 +13493,24 @@ function renderAll(){
         ws.appendChild(b);
       });
       /* custom spaces created from templates */
-      const _allCs = CSPACES.list.filter(cs=>canViewSpace(csRef(cs)));
+      // spaces inside a Marketing space are drawn under it, not at the top level
+      const _allCs = CSPACES.list.filter(cs=>canViewSpace(csRef(cs)) && !mktParentOf(cs));
       const _shownCs = stableSidebar(_allCs, cs=>csIsActive(cs), SIDEBAR_CAP);
-      _shownCs.forEach(cs=>{
+      const _drawCs = (cs, _host, _nested)=>{
         if(!canViewSpace(csRef(cs))) return;   // private spaces hidden from non-members
         const active = csIsActive(cs);
         const b = document.createElement("button");
-        b.className = "ws-item"+(active?" active":"");
+        b.className = "ws-item"+(active && cs.type!=="marketing"?" active":"")+(_nested?" ws-nested":"")+(cs.type==="marketing"?" ws-parent":"");
         b.innerHTML = '<span class="dot cs"></span><span></span>';
         b.querySelector("span:nth-child(2)").textContent = cs.name;
         b.onclick = ()=> navToSpace(cs);
+        if(cs.type==="marketing"){
+          const chev = document.createElement("span"); chev.className = "ws-chev"+(mktOpen(cs)?" open":""); chev.textContent = "\u25BE";
+          b.insertBefore(chev, b.firstChild);
+          b.querySelector(".dot").outerHTML = '<span class="ws-kid-ico">📢</span>';
+        } else if(_nested){
+          b.querySelector(".dot").outerHTML = '<span class="ws-kid-ico">'+(cs.type==="social" ? "\uD83C\uDFAF" : cs.type==="campaign" ? "\uD83D\uDCE3" : "\u2022")+'</span>';
+        }
         if(editMode){
           const doDelete = ()=>{
             const msg = cs.type==="bugs"
@@ -13361,6 +13523,10 @@ function renderAll(){
               ? "Delete \u201C"+cs.name+"\u201D? The module, its submodules and "+moduleLeaves(DATA.modules.find(x=>x.key===cs.moduleKey)||{items:[]}).length+" task(s) are deleted with it."
               : (cs.type==="research" || cs.type==="competitor")
               ? "Delete \u201C"+cs.name+"\u201D? Its "+((cs.node&&cs.node.analyses)||[]).length+" analysis/analyses are deleted with it."
+              : cs.type==="marketing"
+              ? "Delete the \u201C"+cs.name+"\u201D space? The spaces inside it are NOT deleted \u2014 they go back to the sidebar."
+              : cs.type==="campaign"
+              ? "Delete the campaign \u201C"+cs.name+"\u201D and its "+((cs.items||[]).length)+" item(s)? This can't be undone."
               : "Remove \u201C"+cs.name+"\u201D from the sidebar? Its board and cards stay under Development.";
             if(!confirm(msg)) return;
             if(cs.type==="bugs"){
@@ -13380,6 +13546,8 @@ function renderAll(){
               if(mi >= 0) DATA.modules.splice(mi, 1);
               if(view==="roadmap" && String(activeModule).indexOf(cs.moduleKey)===0) activeModule = "all";
             }
+            if(cs.type==="marketing") CSPACES.list.forEach(x=>{ if(x.parent===cs.id) delete x.parent; });
+            if(cs.type==="campaign" && view==="campaign" && activeCspace===cs.id) view = "roadmap";
             CSPACES.list.splice(CSPACES.list.indexOf(cs),1);
             renderAll(); pushAll(); toast("Space removed");
           };
@@ -13391,6 +13559,13 @@ function renderAll(){
           ];
           if(cs.type==="pdt") _items.push({label:"Board mapping", onClick:()=>{ view="pdt"; activeCspace=cs.id; pdtView="mapping"; renderAll(); }});
           _items.push({label: cs.okr ? "Change linked OKR\u2026" : "Link to an OKR\u2026", onClick:()=> csOkrOpen(cs)});
+          if(hasPerm("add_spaces")){   // put a space inside a Marketing space, or take it out
+            const _par = mktParentOf(cs);
+            if(_par) _items.push({label:"Move out of \u201C"+_par.name+"\u201D", onClick:()=>{ delete cs.parent; pushAll(); toast("\u201C"+cs.name+"\u201D moved back to the sidebar"); }});
+            else if(cs.type!=="marketing") CSPACES.list.filter(x=>x.type==="marketing" && x.id!==cs.id).forEach(m=>{
+              _items.push({label:"Move into \u201C"+m.name+"\u201D", onClick:()=>{ cs.parent = m.id; MKT_OPEN[m.id] = true; pushAll(); toast("\u201C"+cs.name+"\u201D is now inside \u201C"+m.name+"\u201D"); }});
+            });
+          }
           if(hasPerm("delete_spaces")) _items.push({label:"Delete\u2026", danger:true, onClick: doDelete});   // only roles given "Delete spaces"
           openRowMenu(menu, _items); };
           b.appendChild(menu);
@@ -13419,9 +13594,9 @@ function renderAll(){
             reorderCspace(wsDragId, cs.id, after);
           });
         }
-        ws.appendChild(b);
+        _host.appendChild(b);
         /* what this space is for: the linked objective sits above its sections */
-        if(csIsActive(cs) && cs.okr){ const _ok = csOkrChip(cs); if(_ok) ws.appendChild(_ok); }
+        if(csIsActive(cs) && cs.okr){ const _ok = csOkrChip(cs); if(_ok) _host.appendChild(_ok); }
         /* Social Media space: three sub-sections in the sidebar */
         if(cs.type==="pdt" && view==="pdt" && activeCspace===cs.id){
           [["ideation","💡 Ideation & Roadmap"],["timeline","🗓 Timeline"],["dev","🏃 Development"],["qa","🧪 Q/A Testing"],["bugs","🐞 Bugs"]].forEach(([k,lbl])=>{
@@ -13438,7 +13613,7 @@ function renderAll(){
             }
             const txt=document.createElement("span"); txt.textContent=lbl; sub.appendChild(txt);
             sub.onclick=()=>{ pdtView=k; if(hasBoards) pdtNavOpen[k]=true; renderAll(); };
-            row.appendChild(sub); ws.appendChild(row);
+            row.appendChild(sub); _host.appendChild(row);
             if(hasBoards && pdtNavOpen[k]){
               pdtBoards(cs, k).forEach(bd=>{
                 const bb=document.createElement("button");
@@ -13446,7 +13621,7 @@ function renderAll(){
                 bb.className="ws-sub2"+(bon?" active":"");
                 bb.textContent=bd.name;
                 bb.onclick=()=>{ pdtView=k; pdtBoardId[k]=bd.id; renderAll(); };
-                ws.appendChild(bb);
+                _host.appendChild(bb);
               });
               if(editMode){
                 const ab=document.createElement("button"); ab.className="ws-sub2 ws-sub2add";
@@ -13455,10 +13630,31 @@ function renderAll(){
                   const nb={id:"pb-"+Date.now().toString(36), name:v.title, lane:k};
                   cs.boards.push(nb); pdtBoardId[k]=nb.id; pdtView=k; savePdt();
                 }, {hideExtras:true}); };
-                ws.appendChild(ab);
+                _host.appendChild(ab);
               }
             }
           });
+        }
+        if(cs.type==="campaign" && view==="campaign" && activeCspace===cs.id && window.CX){
+          [["details","\uD83D\uDCDD Fill in Details"],["assign","\uD83D\uDC65 Assignment"],["calendar","\uD83D\uDDD3 Calendar"],["dash","\uD83D\uDCCA Dashboard"]].forEach(([k,lbl])=>{
+            const sub=document.createElement("button");
+            sub.className="ws-sub"+(_nested?" ws-sub-nested":"")+(campView===k?" active":"");
+            sub.textContent=lbl;
+            sub.onclick=()=>{ campView=k; renderAll(); };
+            _host.appendChild(sub);
+          });
+        }
+        if(cs.type==="marketing" && mktOpen(cs)){
+          const _kids = document.createElement("div"); _kids.className = "ws-kids";
+          _host.appendChild(_kids);
+          const _list = CSPACES.list.filter(x=>x.parent===cs.id);
+          _list.forEach(k=> _drawCs(k, _kids, true));
+          if(!_list.length){ const e=document.createElement("div"); e.className="ws-empty"; e.textContent="Nothing inside yet."; _kids.appendChild(e); }
+          if(hasPerm("add_spaces")){
+            const add=document.createElement("button"); add.className="ws-item ws-add ws-nested"; add.textContent="\uFF0B Add space";
+            add.onclick=()=> openMarketingTemplates(cs);
+            _kids.appendChild(add);
+          }
         }
         if(cs.type==="social" && view==="social" && activeCspace===cs.id){
           [["targets","🤝 Our agreement"],["summary","📊 Summary"],["ideation","💡 Ideation"],["process","🎬 Content Process"],["schedule","🗓 Schedule"]].forEach(([k,lbl])=>{
@@ -13467,11 +13663,12 @@ function renderAll(){
             sub.className="ws-sub"+(on?" active":"");
             sub.textContent=lbl;
             sub.onclick=()=>{ socialView=k; renderAll(); };
-            ws.appendChild(sub);
+            _host.appendChild(sub);
           });
         }
         /* discovery sub-views (All ideas / Roadmap / Timeline) now render as content tabs */
-      });
+      };
+      _shownCs.forEach(cs=> _drawCs(cs, ws, false));
       if(_allCs.length > _shownCs.length){
         const _moreCs = document.createElement("button");
         _moreCs.className = "ws-item ws-more";
@@ -13518,6 +13715,12 @@ function renderAll(){
     $("mods").innerHTML = "";
     if(!spaceViewAllowed()) { activeCspace = null; view = "roadmap"; defaultView(); if(view==="social"){ view = "okr"; } renderAll(); return; }
     renderContentSocial();
+  }
+  else if(view==="campaign"){
+    $("side-title").style.display = "none";
+    $("mods").innerHTML = "";
+    if(!spaceViewAllowed() || !currentCampaign() || !window.CX) { activeCspace = null; view = "roadmap"; defaultView(); if(view==="campaign"){ view = "okr"; } renderAll(); return; }
+    renderContentCampaign();
   }
   else if(view==="pdt"){
     $("side-title").style.display = "none";
@@ -18523,9 +18726,22 @@ document.querySelectorAll("#tpl-overlay .tpl-card").forEach(card=>{
   card.onclick = ()=>{
     const type = card.getAttribute("data-tpl");
     $("tpl-overlay").classList.remove("show");
-    openDialog(type==="pdt" ? "New Product All in One space" : type==="social" ? "New Social Media space" : type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
+    openDialog(type==="marketing" ? "New Marketing space" : type==="pdt" ? "New Product All in One space" : type==="social" ? "New Social Media space" : type==="scrum" ? "New Scrum space" : type==="discovery" ? "New Product roadmap space" : type==="content" ? "New Educational content space" : type==="research" ? "New Product Research space" : type==="competitor" ? "New Competitor Analysis space" : "New Bugs space", {}, v=>{
      chooseAccess(v.title, (access, members)=>{
       const cs = { id:"cs-"+Date.now().toString(36), name:v.title, type, access, members: members||{} };
+      // made from a Marketing space's "＋ Add space": it lives inside that space
+      if(window._pendingParent && type!=="marketing"){ cs.parent = window._pendingParent; MKT_OPEN[cs.parent] = true; }
+      window._pendingParent = null;
+      if(type==="marketing"){
+        CSPACES.list.push(cs);
+        MKT_OPEN[cs.id] = true;
+        const _moved = CSPACES.list.filter(x=>x.type==="social" && !x.parent);   // Social Media becomes part of Marketing
+        _moved.forEach(x=>{ x.parent = cs.id; });
+        if(_moved[0]){ view = "social"; activeCspace = _moved[0].id; socialView = "summary"; }
+        renderAll(); pushAll();
+        toast(_moved.length ? "\u201C"+v.title+"\u201D created — "+_moved.map(x=>x.name).join(", ")+" moved inside" : "\u201C"+v.title+"\u201D created");
+        return;
+      }
       if(type==="scrum"){
         const sp = { id:"space-"+Date.now().toString(36), name:v.title };
         DEV.spaces.push(sp);
@@ -18873,7 +19089,7 @@ function renderAdminSpaces(wrap){
   sub.textContent = "Only people whose role has “Add spaces” can create one, so the sidebar stays tidy. Give it (and “Delete spaces”) in Roles & permissions.";
   left.append(h2, sub);
   const add = document.createElement("button"); add.className = "btn save admin-invite-btn"; add.textContent = "\uFF0B Add space";
-  add.onclick = ()=>{ closeAdmin(); $("tpl-overlay").classList.add("show"); };
+  add.onclick = ()=>{ closeAdmin(); window._pendingParent = null; $("tpl-overlay").classList.add("show"); };
   head.append(left, add);
   wrap.appendChild(head);
   const list = document.createElement("div"); list.className = "admin-table";
