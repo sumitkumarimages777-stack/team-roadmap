@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ideas for DU Buddy</title>
+<meta name="description" content="Suggest features for DU Buddy and vote on the ideas you want most.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!--
+  STUDENT IDEAS BOARD — tools.dubuddy.in/ideas (also opened inside the DU Buddy app)
+  Students (no login) suggest features and vote. New ideas wait for the team's
+  approval before anyone else sees them. The team handles them in the product
+  space → "🎓 From students" (index.html, student-ideas.js); moving an idea on
+  the product roadmap changes its status here.
+  Talks to Supabase only through public functions (supabase/stage15a_student_ideas.sql):
+  ideas_board, ideas_submit, ideas_vote, ideas_my_votes, ideas_mine.
+  This browser remembers a random id (for one vote per idea) and the ideas it
+  sent (to show "Your ideas"). Nothing else is stored.
+-->
+<style>
+:root{
+  --bg:#FBF6F1; --card:#FFFFFF; --ink:#1A1614; --muted:#6B6058; --line:#EDE4DC; --line-2:#DCCEC2;
+  --brand:#E8622B; --brand-2:#C9501F; --brand-soft:#FDEDE4;
+  --review:#5C6A82; --review-bg:#EEF1F5; --planned:#7048B6; --planned-bg:#F1EAFB;
+  --progress:#9A6A12; --progress-bg:#FBF1DC; --done:#1F7A4D; --done-bg:#E3F2EA; --declined:#B03A34; --declined-bg:#FBE7E5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16120F; --card:#211B17; --ink:#F4EEE9; --muted:#B5A79C; --line:#352C26; --line-2:#4A3E36;
+    --brand-soft:#3A2418; --review-bg:#2A2F38; --planned-bg:#2E2440; --progress-bg:#382C14; --done-bg:#16301F; --declined-bg:#3A1B19;
+    --review:#AEB8CB; --planned:#C3A6F0; --progress:#E3B661; --done:#6FCB97; --declined:#F09089;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16120F; --card:#211B17; --ink:#F4EEE9; --muted:#B5A79C; --line:#352C26; --line-2:#4A3E36;
+  --brand-soft:#3A2418; --review-bg:#2A2F38; --planned-bg:#2E2440; --progress-bg:#382C14; --done-bg:#16301F; --declined-bg:#3A1B19;
+  --review:#AEB8CB; --planned:#C3A6F0; --progress:#E3B661; --done:#6FCB97; --declined:#F09089;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px 60px}
+header{padding:22px 0 8px;display:flex;align-items:center;gap:12px}
+header img{width:36px;height:36px}
+header .brand{font-weight:800;font-size:19px;letter-spacing:-.01em}
+header .brand span{color:var(--brand)}
+.hero{display:flex;gap:20px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin:18px 0 20px}
+.hero h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;font-weight:800}
+.hero p{color:var(--muted);margin-top:8px;max-width:560px;font-size:15.5px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 18px;font-weight:700;font-size:15px}
+.btn.pri{background:var(--brand);color:#fff;box-shadow:0 4px 14px rgba(232,98,43,.28)}
+.btn.pri:hover{background:var(--brand-2)}
+.btn.ghost{border:1px solid var(--line-2);background:var(--card)}
+.btn:disabled{opacity:.55;cursor:default}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;align-items:start}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:99px;font-weight:600;font-size:14px;border:1px solid var(--line-2);background:var(--card)}
+.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.bar input{flex:1;min-width:180px;border:1px solid var(--line-2);border-radius:12px;padding:10px 14px;background:var(--card)}
+.bar select{border:1px solid var(--line-2);border-radius:12px;padding:10px 12px;background:var(--card)}
+.list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.idea{display:flex;gap:14px;padding:16px 18px;border-top:1px solid var(--line)}
+.idea:first-child{border-top:none}
+.idea .body{flex:1;min-width:0}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:2px 10px;border-radius:99px}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.review{color:var(--review);background:var(--review-bg)} .st.planned{color:var(--planned);background:var(--planned-bg)}
+.st.progress{color:var(--progress);background:var(--progress-bg)} .st.done{color:var(--done);background:var(--done-bg)}
+.st.declined{color:var(--declined);background:var(--declined-bg)} .st.pending{color:var(--muted);background:var(--bg)}
+.idea h3{font-size:16.5px;font-weight:700;margin:6px 0 4px;line-height:1.35;word-wrap:break-word}
+.idea .d{color:var(--muted);font-size:14.5px;white-space:pre-wrap;word-wrap:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.idea.open .d{-webkit-line-clamp:unset;display:block}
+.idea .more{font-size:13px;font-weight:600;color:var(--brand);margin-top:2px}
+.idea .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)}
+.cat{font-size:12px;font-weight:600;padding:2px 9px;border-radius:7px;border:1px solid var(--line-2)}
+.reply{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--brand-soft);font-size:14px;white-space:pre-wrap}
+.reply b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--brand);margin-bottom:2px}
+.vote{flex:none;width:58px;height:62px;border:1.5px solid var(--line-2);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--card);font-weight:700}
+.vote .ar{font-size:14px;line-height:1}
+.vote .n{font-size:16px}
+.vote:hover{border-color:var(--brand)}
+.vote.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.side .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.side h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.side .cat-btn{display:flex;justify-content:space-between;width:100%;text-align:left;padding:8px 10px;border-radius:10px;font-size:14.5px}
+.side .cat-btn:hover{background:var(--bg)}
+.side .cat-btn.on{background:var(--brand-soft);color:var(--brand);font-weight:700}
+.side .cat-btn span:last-child{color:var(--muted);font-weight:500}
+.mine .m{padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.mine .m:first-of-type{border-top:none}
+.mine .m .t{font-weight:600;margin-bottom:4px;word-wrap:break-word}
+.how{font-size:14px;color:var(--muted)}
+.how li{margin:0 0 6px 18px}
+.empty{padding:40px 18px;text-align:center;color:var(--muted)}
+.bg{position:fixed;inset:0;background:rgba(20,15,12,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
+.modal{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:22px 18px 18px;max-height:92vh;overflow:auto}
+@media (min-width:640px){.bg{align-items:center;padding:16px}.modal{border-radius:20px;padding:24px}}
+.modal h2{font-size:21px;font-weight:800;letter-spacing:-.01em}
+.modal .sub{color:var(--muted);font-size:14.5px;margin-top:4px}
+.modal label{display:block;font-size:13px;font-weight:700;margin:14px 0 6px}
+.modal label span{font-weight:500;color:var(--muted)}
+.modal input,.modal textarea,.modal select{width:100%;border:1px solid var(--line-2);border-radius:12px;padding:11px 13px;background:var(--bg);font-size:15px}
+.modal textarea{min-height:110px;resize:vertical}
+.similar{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--brand-soft);font-size:13.5px}
+.similar b{display:block;margin-bottom:4px}
+.similar button{display:block;text-align:left;width:100%;padding:5px 0;color:var(--ink);font-weight:600}
+.similar button span{color:var(--brand);font-weight:700}
+.err{color:var(--declined);font-size:13.5px;min-height:20px;margin-top:10px}
+.acts{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+.done-box{text-align:center;padding:12px 0}
+.done-box .big{font-size:46px}
+.done-box h2{margin-top:6px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;z-index:60}
+.toast.show{opacity:1}
+@media (max-width:820px){.layout{grid-template-columns:1fr}.side{order:-1}.side .cats,.side .howbox{display:none}.hero h1{font-size:25px}}
+@media (max-width:480px){.idea{padding:14px}.vote{width:50px;height:56px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="/logo-mark.png" alt=""><div class="brand">DU <span>Buddy</span></div></header>
+  <section class="hero">
+    <div>
+      <h1>💡 What should we build next?</h1>
+      <p>Tell us what would make your prep easier. Vote for the ideas you love — the most-wanted ones get built, and you'll see them move here.</p>
+    </div>
+    <button class="btn pri" id="suggest">✨ Suggest an idea</button>
+  </section>
+  <div class="layout">
+    <main>
+      <div class="tabs" id="tabs"></div>
+      <div class="bar">
+        <input id="q" type="search" placeholder="Search ideas…" aria-label="Search ideas">
+        <select id="cat" aria-label="Area"></select>
+        <select id="sort" aria-label="Sort">
+          <option value="top">🔥 Most votes</option>
+          <option value="new">🆕 Newest</option>
+        </select>
+      </div>
+      <div class="list" id="list"><div class="empty">Loading ideas…</div></div>
+    </main>
+    <aside class="side">
+      <div class="box mine" id="mine" hidden></div>
+      <div class="box cats" id="cats"></div>
+      <div class="box howbox">
+        <h4>How it works</h4>
+        <ol class="how">
+          <li>Suggest an idea, or vote for one you like.</li>
+          <li>Our team reads every idea and approves it for the board.</li>
+          <li>Watch it move: In review → Planned → In progress → Completed 🎉</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+  "use strict";
+  var TEAM = "dubuddy";
+  var SB = window.supabase && window.supabase.createClient
+    ? window.supabase.createClient("https://bzhnzrmnbphkcasvrsnc.supabase.co", "sb_publishable_V387AtHUi7hsUhCp8OsNCg_ee9b3koD", { auth: { persistSession: false } })
+    : null;
+  var CATS = [["mock-tests","📝 Mock tests"],["college-predictor","🎓 College predictor"],["admissions","🏛️ Admissions help"],
+              ["app","📱 App"],["website","🌐 Website"],["other","✨ Other"]];
+  var STATUS = { review:"In review", planned:"Planned", progress:"In progress", done:"Completed", declined:"Not planned", pending:"Waiting for approval" };
+  var S = { ideas: [], votes: {}, tab: "all", cat: "", q: "", sort: "top", open: {} };
+
+  function el(t, c, x){ var e = document.createElement(t); if(c) e.className = c; if(x != null) e.textContent = x; return e; }
+  function store(k, v){ try{ if(v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(_){ return null; } }
+  var device = store("dub-ideas-device");
+  if(!device || device.length < 8){ device = "d" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2, 10); store("dub-ideas-device", device); }
+  function mineIds(){ try{ return JSON.parse(store("dub-ideas-mine") || "[]"); }catch(_){ return []; } }
+  function toast(m){ var t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("show"); }, 2600); }
+  function catLabel(k){ var f = CATS.find(function(c){ return c[0] === k; }); return f ? f[1] : "✨ Other"; }
+  function ago(ts){
+    var s = (Date.now() - new Date(ts).getTime()) / 1000;
+    if(s < 3600) return Math.max(1, Math.floor(s / 60)) + " min ago";
+    if(s < 86400) return Math.floor(s / 3600) + " h ago";
+    if(s < 86400 * 30) return Math.floor(s / 86400) + " days ago";
+    return new Date(ts).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" });
+  }
+
+  async function load(){
+    if(!SB){ document.getElementById("list").innerHTML = '<div class="empty">Couldn\'t connect. Please check your internet and reload.</div>'; return; }
+    var r = await Promise.all([ SB.rpc("ideas_board", { p_team: TEAM }), SB.rpc("ideas_my_votes", { p_team: TEAM, p_device: device }) ]);
+    if(r[0].error){ document.getElementById("list").innerHTML = '<div class="empty">Couldn\'t load ideas right now. Please try again in a bit.</div>'; return; }
+    S.ideas = r[0].data || [];
+    S.votes = {}; (r[1].data || []).forEach(function(id){ S.votes[id] = 1; });
+    draw(); drawMine();
+  }
+
+  function drawTabs(){
+    var t = document.getElementById("tabs"); t.innerHTML = "";
+    var shipped = S.ideas.filter(function(i){ return i.status === "done"; }).length;
+    [["all","All ideas"],["planned","🗓 Planned & in progress"],["done","✅ Shipped" + (shipped ? " (" + shipped + ")" : "")]].forEach(function(x){
+      var b = el("button", "tab" + (S.tab === x[0] ? " on" : ""), x[1]); b.type = "button";
+      b.onclick = function(){ S.tab = x[0]; draw(); };
+      t.appendChild(b);
+    });
+  }
+  function drawCats(){
+    var box = document.getElementById("cats"); box.innerHTML = "";
+    box.appendChild(el("h4", "", "Areas"));
+    var sel = document.getElementById("cat"); sel.innerHTML = "";
+    [["", "All areas"]].concat(CATS).forEach(function(c){
+      var n = S.ideas.filter(function(i){ return !c[0] || i.category === c[0]; }).length;
+      var b = el("button", "cat-btn" + (S.cat === c[0] ? " on" : "")); b.type = "button";
+      b.append(el("span", "", c[1]), el("span", "", n)); b.onclick = function(){ S.cat = c[0]; draw(); };
+      box.appendChild(b);
+      var o = el("option", "", c[1]); o.value = c[0]; sel.appendChild(o);
+    });
+    sel.value = S.cat;
+  }
+  function draw(){
+    drawTabs(); drawCats();
+    var q = S.q.trim().toLowerCase();
+    var list = S.ideas.filter(function(i){
+      if(S.tab === "planned" && !(i.status === "planned" || i.status === "progress")) return false;
+      if(S.tab === "done" && i.status !== "done") return false;
+      if(S.cat && i.category !== S.cat) return false;
+      if(q && (i.title + " " + i.details).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function(a, b){ return S.sort === "new" ? new Date(b.created_at) - new Date(a.created_at) : (b.votes - a.votes) || (new Date(b.created_at) - new Date(a.created_at)); });
+    var box = document.getElementById("list"); box.innerHTML = "";
+    if(!list.length){
+      var e = el("div", "empty", S.ideas.length ? "Nothing matches. Got an idea nobody has suggested yet?" : "No ideas yet — be the first! 🚀");
+      box.appendChild(e); return;
+    }
+    list.forEach(function(i){
+      var row = el("article", "idea" + (S.open[i.id] ? " open" : ""));
+      var body = el("div", "body");
+      body.appendChild(el("span", "st " + i.status, STATUS[i.status] || i.status));
+      body.appendChild(el("h3", "", i.title));
+      if(i.details){
+        var d = el("div", "d", i.details); body.appendChild(d);
+        if(i.details.length > 180 || i.details.split("\n").length > 3){
+          var more = el("button", "more", S.open[i.id] ? "Show less" : "Read more"); more.type = "button";
+          more.onclick = function(){ S.open[i.id] = !S.open[i.id]; draw(); };
+          body.appendChild(more);
+        }
+      }
+      if(i.reply){ var rp = el("div", "reply"); rp.append(el("b", "", "💬 DU Buddy team"), document.createTextNode(i.reply)); body.appendChild(rp); }
+      var meta = el("div", "meta");
+      meta.append(el("span", "cat", catLabel(i.category)), el("span", "", (i.name ? "by " + i.name + " · " : "") + ago(i.created_at)));
+      body.appendChild(meta);
+      var v = el("button", "vote" + (S.votes[i.id] ? " on" : "")); v.type = "button";
+      v.setAttribute("aria-pressed", S.votes[i.id] ? "true" : "false");
+      v.setAttribute("aria-label", (S.votes[i.id] ? "Remove your vote. " : "Vote for this. ") + i.votes + " votes");
+      v.append(el("span", "ar", "▲"), el("span", "n", i.votes));
+      v.onclick = function(){ vote(i, v); };
+      row.append(v, body);
+      box.appendChild(row);
+    });
+  }
+  async function vote(i, btn){
+    if(i.status === "done" || i.status === "declined"){ toast(i.status === "done" ? "Already shipped 🎉" : "This one isn't planned right now"); return; }
+    btn.disabled = true;
+    var r = await SB.rpc("ideas_vote", { p_id: i.id, p_device: device });
+    btn.disabled = false;
+    if(r.error){ toast(r.error.message); return; }
+    i.votes = r.data.votes; if(r.data.voted) S.votes[i.id] = 1; else delete S.votes[i.id];
+    if(r.data.voted) toast("Voted! 🙌");
+    draw();
+  }
+  async function drawMine(){
+    var ids = mineIds(), box = document.getElementById("mine");
+    if(!ids.length || !SB){ box.hidden = true; return; }
+    var r = await SB.rpc("ideas_mine", { p_ids: ids });
+    var rows = (r.data || []).sort(function(a, b){ return new Date(b.created_at) - new Date(a.created_at); });
+    if(!rows.length){ box.hidden = true; return; }
+    box.hidden = false; box.innerHTML = "";
+    box.appendChild(el("h4", "", "Your ideas"));
+    rows.forEach(function(m){
+      var d = el("div", "m"); d.append(el("div", "t", m.title), el("span", "st " + m.status, STATUS[m.status] || m.status));
+      if(m.reply){ var rp = el("div", "reply"); rp.append(el("b", "", "💬 DU Buddy team"), document.createTextNode(m.reply)); d.appendChild(rp); }
+      box.appendChild(d);
+    });
+  }
+
+  /* ---------- suggest ---------- */
+  function words(s){ return (s || "").toLowerCase().replace(/[^a-z0-9ऀ-ॿ ]/g, " ").split(/\s+/).filter(function(w){ return w.length > 3; }); }
+  function similar(title){
+    var w = words(title); if(w.length < 1) return [];
+    return S.ideas.map(function(i){
+      var iw = words(i.title + " " + i.details), hit = w.filter(function(x){ return iw.indexOf(x) >= 0; }).length;
+      return { i: i, s: hit / w.length };
+    }).filter(function(x){ return x.s >= 0.5; }).sort(function(a, b){ return b.s - a.s; }).slice(0, 3).map(function(x){ return x.i; });
+  }
+  function openSuggest(){
+    var bg = el("div", "bg"), m = el("div", "modal"); m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
+    bg.appendChild(m); document.body.appendChild(bg);
+    function close(){ bg.remove(); }
+    bg.onclick = function(e){ if(e.target === bg) close(); };
+    document.addEventListener("keydown", function esc(e){ if(e.key === "Escape"){ close(); document.removeEventListener("keydown", esc); } });
+    m.appendChild(el("h2", "", "✨ Suggest an idea"));
+    m.appendChild(el("div", "sub", "Don't worry about making it perfect — just tell us the problem or what you wish DU Buddy did."));
+    function field(lbl, hint, node){ var l = el("label", "", lbl); if(hint){ l.append(" ", el("span", "", hint)); } m.append(l, node); return node; }
+    var title = field("Your idea", "", Object.assign(document.createElement("input"), { maxLength: 140, placeholder: "e.g. Show which colleges I can get after a mock test" }));
+    var sim = el("div", "similar"); sim.hidden = true; m.appendChild(sim);
+    title.oninput = function(){
+      var s = similar(title.value); sim.innerHTML = ""; sim.hidden = !s.length; if(!s.length) return;
+      sim.appendChild(el("b", "", "Already suggested? Vote for it instead 👇"));
+      s.forEach(function(i){
+        var b = el("button", ""); b.type = "button"; b.append(el("span", "", "▲ " + i.votes + "  "), document.createTextNode(i.title));
+        b.onclick = function(){ close(); S.q = i.title; document.getElementById("q").value = i.title; S.tab = "all"; draw(); };
+        sim.appendChild(b);
+      });
+    };
+    var details = field("Tell us more", "(optional)", Object.assign(document.createElement("textarea"), { maxLength: 3000, placeholder: "What problem does it solve? When would you use it?" }));
+    var cat = field("Area", "", document.createElement("select"));
+    CATS.forEach(function(c){ var o = el("option", "", c[1]); o.value = c[0]; cat.appendChild(o); });
+    cat.value = S.cat || "other";
+    var name = field("Your name", "(optional — shown as first name only)", Object.assign(document.createElement("input"), { maxLength: 60, placeholder: "e.g. Riya" }));
+    var email = field("Your email", "(optional — we'll email you when your idea moves)", Object.assign(document.createElement("input"), { type: "email", maxLength: 200, placeholder: "you@example.com", autocomplete: "email" }));
+    var err = el("div", "err"); m.appendChild(err);
+    var acts = el("div", "acts"), cancel = el("button", "btn ghost", "Cancel"), send = el("button", "btn pri", "Send idea 🚀");
+    cancel.type = send.type = "button"; cancel.onclick = close; acts.append(cancel, send); m.appendChild(acts);
+    send.onclick = async function(){
+      err.textContent = "";
+      if(title.value.trim().length < 3){ err.textContent = "Write your idea in a few words first."; title.focus(); return; }
+      var em = email.value.trim();
+      if(em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ err.textContent = "That email doesn't look right (or leave it empty)."; email.focus(); return; }
+      send.disabled = true; send.textContent = "Sending…";
+      var r = await SB.rpc("ideas_submit", { p_team: TEAM, p_title: title.value, p_details: details.value, p_category: cat.value, p_name: name.value, p_email: em, p_device: device });
+      send.disabled = false; send.textContent = "Send idea 🚀";
+      if(r.error){ err.textContent = r.error.message.replace(/^.*?:\s*/, "") || "Couldn't send. Please try again."; return; }
+      var ids = mineIds(); ids.unshift(r.data); store("dub-ideas-mine", JSON.stringify(ids.slice(0, 50)));
+      m.innerHTML = "";
+      var d = el("div", "done-box");
+      d.append(el("div", "big", "🙌"), el("h2", "", "Thank you!"),
+               el("div", "sub", "Our team reads every idea. Once it's approved it shows on the board" + (em ? " — and we'll email you when it moves." : ".")));
+      m.appendChild(d);
+      var a2 = el("div", "acts"), ok = el("button", "btn pri", "Back to ideas"); ok.type = "button"; ok.onclick = close; a2.appendChild(ok); m.appendChild(a2);
+      drawMine();
+    };
+    setTimeout(function(){ title.focus(); }, 40);
+  }
+
+  document.getElementById("suggest").onclick = openSuggest;
+  document.getElementById("q").oninput = function(e){ S.q = e.target.value; draw(); };
+  document.getElementById("cat").onchange = function(e){ S.cat = e.target.value; draw(); };
+  document.getElementById("sort").onchange = function(e){ S.sort = e.target.value; draw(); };
+  load();
+})();
+</script>
+</body>
+</html>
