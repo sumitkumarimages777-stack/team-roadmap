@@ -1879,7 +1879,7 @@ function openIdea(id,focusComments){
     <div class="fld"><label for="i-idea">Idea</label>
       <input id="i-idea" value="${esc(i.idea)}" placeholder="What is the video, in one line?"></div>
     <div class="fld"><label for="i-studentwhy">Why should students watch this video?</label>
-      <textarea id="i-studentwhy" placeholder="What does a student get from it? e.g. They'll know exactly which CUET subjects to pick">${esc(i.studentWhy||"")}</textarea></div>
+      <textarea id="i-studentwhy" placeholder="Would you suggest this video to your little brother or cousin? Why?">${esc(i.studentWhy||"")}</textarea></div>
     <div class="grid2">
       <div class="fld"><label for="i-by">Reported by</label>
         ${peopleSelect("i-by",i.by)}</div>
