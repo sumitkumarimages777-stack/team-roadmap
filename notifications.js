@@ -9,6 +9,11 @@
          until_ack   — keep popping up until they press "Got it"
        A message can carry a YouTube video (video_id): it plays inside the
        pop-up, and from the bell.
+     * It can also be PINNED as a banner at the top of one page (place, e.g.
+       "social:<space id>:ideation" = Social Media → Ideation, above "All
+       ideas") until place_until — it disappears by itself. Each person can
+       hide it for themselves. index.html calls ntfBannerSlot(wrap, key)
+       where a page can carry banners. bell=false keeps it out of the bell.
        at most once per app visit, or once per day, and optionally only
        until a date.
    The database decides who sees what (supabase/stage11a_notifications.sql);
@@ -17,7 +22,7 @@
    Loaded before index.html's main script; uses its globals at call time
    (SUPA, TEAM, currentUser, hasPerm, adminMembers, userDisplayName,
    userAvatarColor, findUser, toast, openAdmin, renderAdminPage).            */
-var NTF = { list: [], receipts: {}, loaded: false, timer: null, popped: {}, queue: [], showing: false, open: false };
+var NTF = { list: [], receipts: {}, loaded: false, timer: null, popped: {}, queue: [], showing: false, open: false, hiddenLocal: {}, bannerSeen: {} };
 var NTF_UI = { to: [], audience: "team" };   /* composer state, kept between redraws */
 
 function ntfEl(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -61,7 +66,7 @@ function ntfThumb(id) {
   t.append(img, ntfEl("span", "ntf-play", "▶"));
   return t;
 }
-function ntfMine() { return NTF.list.filter(ntfForMe); }
+function ntfMine() { return NTF.list.filter(function (n) { return ntfForMe(n) && n.bell !== false; }); }   /* the bell's list */
 function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receipts[n.id]; return !(r && r.read_at); }).length; }
 
 /* ---------- styles ---------- */
@@ -130,6 +135,27 @@ function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receip
   + ".ntf-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;text-shadow:0 1px 6px rgba(0,0,0,.6);background:rgba(0,0,0,.18)}"
   + ".ntf-vprev{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);min-height:20px;margin-top:6px}"
   + ".ntf-vprev .ntf-thumb{width:120px;margin:0}"
+  + ".ntf-spot{position:relative;display:flex;gap:18px;align-items:center;margin:0 0 22px;padding:16px 46px 16px 16px;border-radius:16px;border:1px solid #F3C3A6;background:linear-gradient(120deg,#FFF6EF 0%,#FDE6D6 55%,#FBD9C4 100%);box-shadow:0 6px 22px rgba(232,98,43,.14);overflow:hidden;font-family:var(--sans)}"
+  + ".ntf-spot::after{content:'';position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;background:rgba(232,98,43,.08);pointer-events:none}"
+  + ".ntf-spot .sp-media{flex:none;width:300px;max-width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000;position:relative;z-index:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18)}"
+  + ".ntf-spot.playing .sp-media{width:min(560px,55%);cursor:default}"
+  + ".ntf-spot .sp-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}"
+  + ".ntf-spot .sp-media:hover img{transform:scale(1.04)}"
+  + ".ntf-spot .sp-media iframe{position:absolute;inset:0;width:100%;height:100%;border:0}"
+  + ".ntf-spot .sp-play{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:var(--indigo);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;padding-left:4px;box-shadow:0 0 0 0 rgba(232,98,43,.6);animation:ntfPulse 1.8s infinite}"
+  + ".ntf-spot .sp-dur{position:absolute;left:10px;bottom:8px;font-size:11.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 8px;border-radius:99px}"
+  + "@keyframes ntfPulse{0%{box-shadow:0 0 0 0 rgba(232,98,43,.6)}70%{box-shadow:0 0 0 18px rgba(232,98,43,0)}100%{box-shadow:0 0 0 0 rgba(232,98,43,0)}}"
+  + "@media (prefers-reduced-motion:reduce){.ntf-spot .sp-play{animation:none}}"
+  + ".ntf-spot .sp-txt{min-width:0;flex:1;position:relative;z-index:1}"
+  + ".ntf-spot .sp-k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#B8461A;font-weight:600}"
+  + ".ntf-spot .sp-t{font-size:21px;font-weight:700;line-height:1.25;margin:5px 0 6px;color:var(--ink);letter-spacing:-.01em}"
+  + ".ntf-spot .sp-b{font-size:14.5px;line-height:1.5;color:#3F3833;white-space:pre-wrap;word-wrap:break-word}"
+  + ".ntf-spot .sp-m{font-size:12.5px;color:#7A6A5E;margin-top:8px}"
+  + ".ntf-spot .sp-cta{margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--indigo);color:#fff;font-weight:600;font-size:13.5px;border-radius:99px;padding:7px 14px}"
+  + ".ntf-spot .sp-x{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;font-size:18px;color:#7A6A5E;background:rgba(255,255,255,.85);z-index:3;display:flex;align-items:center;justify-content:center}"
+  + ".ntf-spot .sp-x:hover{background:#fff;color:var(--ink)}"
+  + ".ntf-spot .sp-own{display:inline-block;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);border:1px solid #F3C3A6;border-radius:99px;padding:1px 8px;margin-left:8px;color:#7A6A5E;letter-spacing:0;text-transform:none;font-family:var(--sans)}"
+  + "@media (max-width:760px){.ntf-spot{flex-direction:column;align-items:stretch;padding:14px}.ntf-spot .sp-media,.ntf-spot.playing .sp-media{width:100%}.ntf-spot .sp-txt{padding-right:24px}.ntf-spot .sp-t{font-size:18px}}"
   + "@media (max-width:640px){.ntf-sent .ns-top{flex-direction:column}}";
   var st = document.createElement("style"); st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
@@ -172,7 +198,7 @@ function ntfShouldPop(n) {
   return true;
 }
 function ntfCheckPopups() {
-  ntfMine().slice().reverse().forEach(function (n) {           /* oldest first */
+  NTF.list.filter(ntfForMe).reverse().forEach(function (n) {    /* oldest first */
     if (ntfShouldPop(n) && NTF.queue.indexOf(n) < 0) NTF.queue.push(n);
   });
   ntfNextPopup();
@@ -212,6 +238,88 @@ function ntfShowBox(n, asPopup) {
   if (!(asPopup && ack)) bg.onclick = function (e) { if (e.target === bg) ok.onclick(); };
   document.body.appendChild(bg);
   setTimeout(function () { ok.focus(); }, 30);
+}
+
+/* ---------- banners pinned on a page ---------- */
+/* the pages a banner can go on: [key, label] — each Social Media space's tabs */
+function ntfPlaces() {
+  var out = [];
+  try {
+    (CSPACES.list || []).filter(function (x) { return x.type === "social"; }).forEach(function (cs) {
+      (window.SX && SX.tabs || []).forEach(function (t) { out.push(["social:" + cs.id + ":" + t[0], (cs.name || "Social Media") + " › " + t[1]]); });
+    });
+  } catch (_) { }
+  return out;
+}
+function ntfPlaceLabel(key) {
+  var f = ntfPlaces().find(function (x) { return x[0] === key; });
+  return f ? f[1] : "a page that no longer exists";
+}
+function ntfBannerLive(n) {
+  return !!n.place && !n.stopped && !!n.place_until && new Date(n.place_until).getTime() > Date.now();
+}
+function ntfBannersFor(key) {
+  var me = currentUser(); if (!me) return [];
+  return NTF.list.filter(function (n) {
+    if (n.place !== key || !ntfBannerLive(n) || NTF.hiddenLocal[n.id]) return false;
+    if (n.created_by === me.id) return true;                  /* the sender sees it too, to check it */
+    return ntfForMe(n) && !(NTF.receipts[n.id] || {}).hidden_at;
+  });
+}
+function ntfUntilText(ts) {
+  return new Date(ts).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+/* put the banners for page `key` at the top of `wrap` (called by index.html on each draw) */
+function ntfBannerSlot(wrap, key) {
+  if (!wrap) return;
+  var slot = ntfEl("div", "ntf-spot-slot"); slot.dataset.key = key;
+  wrap.insertBefore(slot, wrap.firstChild);
+  ntfFillSlot(slot);
+}
+function ntfFillSlot(slot) {
+  slot.innerHTML = "";
+  ntfBannersFor(slot.dataset.key).forEach(function (n) {
+    var own = n.created_by === (currentUser() || {}).id;
+    var b = ntfEl("div", "ntf-spot");
+    b.setAttribute("role", "region"); b.setAttribute("aria-label", "Pinned message: " + n.title);
+    if (n.video_id) {
+      var m = ntfEl("div", "sp-media"), img = document.createElement("img");
+      img.src = "https://i.ytimg.com/vi/" + encodeURIComponent(n.video_id) + "/hqdefault.jpg"; img.alt = "";
+      var play = ntfEl("span", "sp-play", "▶");
+      m.append(img, play, ntfEl("span", "sp-dur", "▶ Watch"));
+      m.tabIndex = 0; m.setAttribute("role", "button"); m.setAttribute("aria-label", "Play the video");
+      function start() {
+        if (b.classList.contains("playing")) return;
+        b.classList.add("playing");
+        var v = ntfVideo(n.video_id), f = v.querySelector("iframe");
+        f.src += "&autoplay=1"; f.setAttribute("allow", f.getAttribute("allow") + "; autoplay");
+        m.innerHTML = ""; m.appendChild(f);
+        if (cta) cta.remove();
+        if (!own) ntfMark(n, "read");
+      }
+      m.onclick = start;
+      m.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); start(); } };
+      b.appendChild(m);
+    }
+    var t = ntfEl("div", "sp-txt"), k = ntfEl("div", "sp-k", "📌 " + (n.audience === "team" ? "For the team" : "For you") + " · till " + ntfUntilText(n.place_until));
+    if (own) k.appendChild(ntfEl("span", "sp-own", n.audience === "team" ? "you sent this · the team sees it" : "you sent this"));
+    t.appendChild(k);
+    t.appendChild(ntfEl("div", "sp-t", n.title));
+    if (n.body) t.appendChild(ntfEl("div", "sp-b", n.body));
+    t.appendChild(ntfEl("div", "sp-m", "From " + ntfSender(n) + " · " + ntfWhen(n.created_at)));
+    var cta = null;
+    if (n.video_id) { cta = ntfEl("button", "sp-cta", "▶ Play video"); cta.type = "button"; cta.onclick = function () { b.querySelector(".sp-media").click(); }; t.appendChild(cta); }
+    b.appendChild(t);
+    var x = ntfEl("button", "sp-x", "×"); x.type = "button"; x.title = own ? "Hide it here for now (the team still sees it)" : "Hide this for me";
+    x.setAttribute("aria-label", x.title);
+    x.onclick = function () { NTF.hiddenLocal[n.id] = 1; if (!own) ntfMark(n, "hide"); b.remove(); };
+    b.appendChild(x);
+    slot.appendChild(b);
+    if (!own && !(NTF.receipts[n.id] || {}).read_at && !NTF.bannerSeen[n.id]) { NTF.bannerSeen[n.id] = 1; ntfMark(n, "read").then(ntfRenderBell); }
+  });
+}
+function ntfRefreshSlots() {
+  document.querySelectorAll(".ntf-spot-slot").forEach(function (sl) { if (!sl.querySelector(".ntf-spot.playing")) ntfFillSlot(sl); });
 }
 
 /* ---------- the bell ---------- */
@@ -300,6 +408,7 @@ function ntfDrawPanel() {
 async function ntfRefresh() {
   try { await ntfLoad(); } catch (_) { return; }
   ntfRenderBell();
+  ntfRefreshSlots();
   ntfCheckPopups();
 }
 function notifBoot() {
@@ -323,7 +432,7 @@ function ntfOpenComposer(user) {
   openAdmin("notifications");
 }
 function ntfRuleText(n) {
-  if (!n.popup) return "🔔 Bell only";
+  if (!n.popup) return "🔔 Bell only";   /* (older messages: bell is always on) */
   var t = n.popup_rule === "once" ? "Pop-up once" : n.popup_rule === "times" ? "Pop-up " + n.popup_times + " times" : "Pop-up until “Got it”";
   t += n.popup_gap === "day" ? " · once a day" : " · once per visit";
   if (n.show_until) t += " · until " + new Date(n.show_until).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -332,7 +441,7 @@ function ntfRuleText(n) {
 function renderAdminNotifications(wrap) {
   var head = ntfEl("div", "admin-userhead"), left = ntfEl("div");
   var h2 = ntfEl("h2", "", "Notifications"); h2.style.margin = "0";
-  var sub = ntfEl("div", "hint", "Send a message to the whole team or to chosen people. It shows in their 🔔 bell, and can also pop up on their screen.");
+  var sub = ntfEl("div", "hint", "Send a message to the whole team or to chosen people. It can wait in their 🔔 bell, pop up on their screen, or be pinned as a banner on a page — with a YouTube video if you like.");
   sub.style.marginTop = "4px";
   left.append(h2, sub); head.appendChild(left); wrap.appendChild(head);
 
@@ -393,9 +502,17 @@ function renderAdminNotifications(wrap) {
     l.append(r, document.createTextNode(label));
     return { l: l, r: r };
   }
-  var mBell = radio("ntf-mode", "bell", "🔔 Bell only — it waits in their bell at the top", true);
-  var mPop = radio("ntf-mode", "popup", "💬 Bell + pop-up on their screen");
-  card.append(mBell.l, mPop.l);
+  function check(label, on) {
+    var l = ntfEl("label", "ntf-opt"), c = document.createElement("input");
+    c.type = "checkbox"; c.checked = !!on;
+    l.append(c, document.createTextNode(label));
+    return { l: l, r: c };
+  }
+  var mBell = check("🔔 Put it in their bell (it waits there at the top)", true);
+  var mPop = check("💬 Pop it up on their screen");
+  var mPin = check("📌 Pin it as a banner on a page (great with a video)");
+  card.appendChild(mBell.l);
+  card.appendChild(mPop.l);
   var popBox = ntfEl("div", "ntf-sub");
   var rOnce = radio("ntf-rule", "once", "Show the pop-up once", true);
   var rTimes = radio("ntf-rule", "times", "Show it ");
@@ -412,8 +529,22 @@ function renderAdminNotifications(wrap) {
   untilChk.onchange = function () { until.disabled = !untilChk.checked; if (untilChk.checked && !until.value) { var d = new Date(Date.now() + 7 * 86400000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); until.value = d.toISOString().slice(0, 16); } };
   popBox.append(rOnce.l, rTimes.l, rAck.l, gapRow, untilRow);
   card.appendChild(popBox);
-  function drawMode() { popBox.style.display = mPop.r.checked ? "" : "none"; }
-  mBell.r.onchange = mPop.r.onchange = drawMode; drawMode();
+  card.appendChild(mPin.l);
+  var pinBox = ntfEl("div", "ntf-sub");
+  var places = ntfPlaces();
+  var place = document.createElement("select");
+  places.forEach(function (pl) { var op = document.createElement("option"); op.value = pl[0]; op.textContent = pl[1]; place.appendChild(op); });
+  var ideation = places.find(function (pl) { return /:ideation$/.test(pl[0]); });
+  if (ideation) place.value = ideation[0];
+  var placeRow = ntfEl("label", "ntf-opt"); placeRow.append(document.createTextNode("Page: "), place);
+  var daysRow = ntfEl("label", "ntf-opt"), days = document.createElement("input");
+  days.type = "number"; days.min = 1; days.max = 60; days.value = 7; days.style.width = "70px";
+  daysRow.append(document.createTextNode("Show it for "), days, document.createTextNode(" days, then it disappears by itself"));
+  pinBox.append(placeRow, daysRow, ntfEl("div", "hint", "It sits at the top of that page, above everything else. Each person can hide it for themselves."));
+  if (!places.length) { mPin.r.disabled = true; mPin.l.title = "No page can carry a banner yet (add a Social Media space first)"; }
+  card.appendChild(pinBox);
+  function drawMode() { popBox.style.display = mPop.r.checked ? "" : "none"; pinBox.style.display = mPin.r.checked ? "" : "none"; }
+  mBell.r.onchange = mPop.r.onchange = mPin.r.onchange = drawMode; drawMode();
 
   var err = ntfEl("div", "ntf-err"); card.appendChild(err);
   var send = ntfEl("button", "ntf-btn primary", "Send notification"); send.type = "button";
@@ -426,13 +557,18 @@ function renderAdminNotifications(wrap) {
     if (NTF_UI.audience === "people" && !NTF_UI.to.length) { err.textContent = "Choose at least one person."; return; }
     var videoId = ntfYouTubeId(vid.value);
     if (vid.value.trim() && !videoId) { err.textContent = "The video link isn't a YouTube link. Fix it or clear it."; vid.focus(); return; }
+    if (!mBell.r.checked && !mPop.r.checked && !mPin.r.checked) { err.textContent = "Pick at least one: bell, pop-up or banner."; return; }
     var rule = rTimes.r.checked ? "times" : rAck.r.checked ? "until_ack" : "once";
+    var nDays = Math.max(1, Math.min(60, parseInt(days.value, 10) || 7));
     var n = Math.max(1, Math.min(20, parseInt(times.value, 10) || 1));
     var row = {
       team_slug: TEAM, title: t, body: body.value.trim(), video_id: videoId || null,
       audience: NTF_UI.audience, recipients: NTF_UI.audience === "people" ? NTF_UI.to.slice() : [],
       popup: mPop.r.checked, popup_rule: rule, popup_times: rule === "times" ? n : 1, popup_gap: gap.value,
       show_until: (mPop.r.checked && untilChk.checked && until.value) ? new Date(until.value).toISOString() : null,
+      bell: mBell.r.checked,
+      place: mPin.r.checked ? place.value : null,
+      place_until: mPin.r.checked ? new Date(Date.now() + nDays * 86400000).toISOString() : null,
       created_by: currentUser().id
     };
     if (row.show_until && new Date(row.show_until).getTime() <= Date.now()) { err.textContent = "The “stop after” time is already past."; return; }
@@ -474,7 +610,8 @@ async function ntfDrawSent(holder) {
     var rs = rec[n.id] || {};
     var read = targets.filter(function (u) { return rs[u.id] && rs[u.id].read_at; }).length;
     var acked = targets.filter(function (u) { return rs[u.id] && rs[u.id].acked_at; }).length;
-    var live = n.popup && !n.stopped && !(n.show_until && new Date(n.show_until).getTime() < Date.now());
+    var popLive = n.popup && !n.stopped && !(n.show_until && new Date(n.show_until).getTime() < Date.now());
+    var banLive = ntfBannerLive(n), live = popLive || banLive;
 
     var box = ntfEl("div", "ntf-sent"), top = ntfEl("div", "ns-top"), info = ntfEl("div");
     info.appendChild(ntfEl("div", "ntf-t", n.title));
@@ -483,7 +620,14 @@ async function ntfDrawSent(holder) {
     info.appendChild(ntfEl("div", "ntf-m", "By " + ntfSender(n) + " · " + ntfWhen(n.created_at) + " · to " +
       (n.audience === "team" ? "the whole team" : targets.map(function (u) { return userDisplayName(u); }).join(", "))));
     var tags = ntfEl("div");
-    tags.appendChild(ntfEl("span", "ntf-tag" + (n.popup ? (live ? " live" : " off") : ""), ntfRuleText(n) + (n.popup && !live ? (n.stopped ? " · stopped" : " · ended") : "")));
+    if (n.bell !== false) tags.appendChild(ntfEl("span", "ntf-tag", "🔔 Bell"));
+    if (n.popup) tags.appendChild(ntfEl("span", "ntf-tag" + (popLive ? " live" : " off"), ntfRuleText(n) + (!popLive ? (n.stopped ? " · stopped" : " · ended") : "")));
+    if (n.place) {
+      var bt = ntfEl("span", "ntf-tag" + (banLive ? " live" : " off"), "📌 Banner on " + ntfPlaceLabel(n.place) + (banLive ? " · till " + ntfUntilText(n.place_until) : n.stopped ? " · removed" : " · ended"));
+      tags.appendChild(bt);
+      var hid = targets.filter(function (u) { return rs[u.id] && rs[u.id].hidden_at; }).length;
+      if (hid) tags.appendChild(ntfEl("span", "ntf-tag", "🙈 Hidden by " + hid));
+    }
     tags.appendChild(ntfEl("span", "ntf-tag", "👀 Read " + read + "/" + targets.length));
     if (n.popup && n.popup_rule === "until_ack") tags.appendChild(ntfEl("span", "ntf-tag", "✓ Got it " + acked + "/" + targets.length));
     info.appendChild(tags);
@@ -491,12 +635,12 @@ async function ntfDrawSent(holder) {
     var whoBtn = ntfEl("button", "", "Who saw it"); whoBtn.type = "button";
     acts.appendChild(whoBtn);
     if (live) {
-      var stop = ntfEl("button", "", "Stop pop-up"); stop.type = "button"; stop.title = "Stop it popping up (it stays in the bell)";
+      var stop = ntfEl("button", "", banLive && popLive ? "Stop pop-up & banner" : banLive ? "Remove banner" : "Stop pop-up"); stop.type = "button"; stop.title = "Stop it for everyone now (it stays in the bell)";
       stop.onclick = async function () {
         stop.disabled = true;
         var r = await SUPA.from("team_notifications").update({ stopped: true }).eq("id", n.id);
         if (r.error) { toast("Couldn't stop: " + r.error.message); stop.disabled = false; return; }
-        toast("Pop-up stopped"); ntfDrawSent(holder);
+        toast(banLive ? "Removed" : "Pop-up stopped"); await ntfRefresh(); ntfDrawSent(holder);
       };
       acts.appendChild(stop);
     }
@@ -513,7 +657,7 @@ async function ntfDrawSent(holder) {
     var who = ntfEl("div", "ntf-who"), tb = document.createElement("table");
     targets.forEach(function (u) {
       var r = rs[u.id] || {}, tr = document.createElement("tr");
-      var st = r.acked_at ? "✓ Got it " + ntfWhen(r.acked_at) : r.read_at ? "👀 Read " + ntfWhen(r.read_at) : r.shown_count ? "Popped up, not read yet" : "Not seen yet";
+      var st = r.hidden_at ? "🙈 Hid the banner " + ntfWhen(r.hidden_at) : r.acked_at ? "✓ Got it " + ntfWhen(r.acked_at) : r.read_at ? "👀 Read " + ntfWhen(r.read_at) : r.shown_count ? "Popped up, not read yet" : "Not seen yet";
       [userDisplayName(u), st, n.popup ? "Popped up " + (r.shown_count || 0) + "×" : ""].forEach(function (x) { tr.appendChild(ntfEl("td", "", x)); });
       tb.appendChild(tr);
     });
