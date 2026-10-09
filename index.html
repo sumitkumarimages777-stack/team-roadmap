@@ -4118,6 +4118,8 @@ const PERMS = [
   {key:"edit_targets",     label:"Edit social targets",   hint:"Change the targets in Social Media spaces (everyone else can only view them)"},
   {key:"edit_utm",         label:"Edit UTM rules",        hint:"Change the UTM rules in Wiki → Marketing → UTM builder (everyone else can only build links with them)"},
   {key:"send_notifications",label:"Send notifications",   hint:"Send 🔔 bell messages and pop-ups to the whole team or chosen people (Administration → Notifications)"},
+  {key:"add_roadmaps",     label:"Create roadmaps",       hint:"Make new roadmaps (Administration → Roadmaps) and choose who can see each one"},
+  {key:"delete_roadmaps",  label:"Delete roadmaps",       hint:"See “Delete roadmap” in a roadmap's ⋯ menu"},
   {key:"add_spaces",       label:"Add spaces",            hint:"Create new spaces (Administration → Spaces). Nobody else sees an Add space button"},
   {key:"delete_spaces",    label:"Delete spaces",         hint:"See “Delete…” in a space's ⋯ menu and remove whole spaces"},
   {key:"manage_learning",  label:"Run LMS",               hint:"Plan learning drops — videos, articles, polls, quizzes — in Administration → LMS, and see everyone's answers"},
@@ -13252,10 +13254,13 @@ function renderAll(){
     const _strat = docStrategyChip();
     if(_strat) ws.appendChild(_strat);
     /* ---- top-level ROADMAPS first (timelines across every space) ---- */
-    const rl = document.createElement("div");
-    rl.className = "ws-label"; rl.textContent = "Roadmaps";
-    ws.appendChild(rl);
     const _allRm = RMAPS.maps.filter(m=>canViewSpace(rmapRef(m)));
+    // the ROADMAPS heading only shows when there's a roadmap to see (new ones are made in Administration → Roadmaps)
+    if(_allRm.length){
+      const rl = document.createElement("div");
+      rl.className = "ws-label"; rl.textContent = "Roadmaps";
+      ws.appendChild(rl);
+    }
     const _shownRm = stableSidebar(_allRm, m=>(view==="rmap" && activeRmap===m.id), SIDEBAR_CAP);
     const _rmList = _allRm;
     _shownRm.forEach(m=>{
@@ -13272,8 +13277,8 @@ function renderAll(){
         menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
           {label:"Settings", onClick:()=> openSpaceSettings(rmapRef(m))},
           {label:"Set background", onClick:()=> openBgPicker(rmapRef(m))},
-          {label:"Delete roadmap", danger:true, onClick:()=> deleteRoadmap(m)},
-        ]); };
+          hasPerm("delete_roadmaps") && {label:"Delete roadmap", danger:true, onClick:()=> deleteRoadmap(m)},
+        ].filter(Boolean)); };
         b.appendChild(menu);
       }
       ws.appendChild(b);
@@ -13285,18 +13290,7 @@ function renderAll(){
       _more.onclick = ()=> openAllList("roadmaps");
       ws.appendChild(_more);
     }
-    if(editMode){
-      const add = document.createElement("button");
-      add.className = "ws-item ws-add";
-      add.textContent = "\uFF0B New roadmap";
-      add.onclick = ()=> openRmapSettings(null);
-      ws.appendChild(add);
-    } else if(!RMAPS.maps.length){
-      const e = document.createElement("div");
-      e.className = "ws-empty";
-      e.textContent = "None yet \u2014 turn on Edit to create one.";
-      ws.appendChild(e);
-    }
+    // "＋ New roadmap" lives in Administration → Roadmaps now, for roles given "Create roadmaps"
 
     WORKSPACE_GROUPS.forEach(g=>{
       const lbl = document.createElement("div");
@@ -18799,6 +18793,7 @@ function adminSections(){
                                                                         show: hasPerm("approve_requests"),    render: renderAdminRequests },
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
     { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
+    { k:"roadmaps",    ico:"🗺️", lbl:"Roadmaps",             show: hasPerm("add_roadmaps"),        render: renderAdminRoadmaps },
     { k:"spaces",      ico:"🗂️", lbl:"Spaces",               show: hasPerm("add_spaces"),          render: renderAdminSpaces },
     { k:"lms",         ico:"🎓", lbl:"LMS",                  show: hasPerm("manage_learning") && !!SUPA, render: renderAdminLms },
     { k:"permissions", ico:"🔐", lbl:"Roles & permissions",  show: people,                         render: renderAdminPermissions },
@@ -18811,6 +18806,41 @@ function adminSections(){
     { k:"org",         ico:"🏢", lbl:"Org structure",        show: sup,                            render: renderAdminOrg },
     { k:"danger",      ico:"⚠️", lbl:"Danger zone",          show: sup,                            render: renderAdminDanger },
   ].filter(x=> x.show);
+}
+// Administration → Roadmaps: the only place to make a roadmap (roles with "Create roadmaps").
+// The maker picks who can see it (open / limited / private) when creating it.
+function renderAdminRoadmaps(wrap){
+  const head = document.createElement("div"); head.className = "admin-userhead";
+  const left = document.createElement("div");
+  const h2 = document.createElement("h2"); h2.textContent = "Roadmaps"; h2.style.margin = "0";
+  const sub = document.createElement("div"); sub.className = "hint"; sub.style.marginTop = "4px";
+  sub.textContent = "Only people whose role has “Create roadmaps” can make one, and they choose who can see it. New roadmaps show at the top of the sidebar; with none, that part of the sidebar stays hidden.";
+  left.append(h2, sub);
+  const add = document.createElement("button"); add.className = "btn save admin-invite-btn"; add.textContent = "\uFF0B New roadmap";
+  add.onclick = ()=>{ closeAdmin(); openRmapSettings(null); };
+  head.append(left, add);
+  wrap.appendChild(head);
+  const maps = RMAPS.maps.filter(m=>canViewSpace(rmapRef(m)));
+  const list = document.createElement("div"); list.className = "admin-table";
+  const hr = document.createElement("div"); hr.className = "au-row au-head";
+  ["Roadmap","Who can see it",""].forEach(t=>{ const c = document.createElement("div"); c.className = "au-cell"; c.textContent = t; hr.appendChild(c); });
+  list.appendChild(hr);
+  maps.forEach(m=>{
+    const r = document.createElement("div"); r.className = "au-row";
+    const n = document.createElement("div"); n.className = "au-cell au-name"; n.textContent = m.name;
+    const t = document.createElement("div"); t.className = "au-cell hint";
+    t.textContent = m.access === "private" ? "Only chosen people" : m.access === "limited" ? "Team can view · chosen people edit" : "Whole team";
+    const a = document.createElement("div"); a.className = "au-cell au-acts";
+    const open = document.createElement("button"); open.className = "person-del"; open.textContent = "Open \u2192";
+    open.onclick = ()=>{ closeAdmin(); view = "rmap"; activeRmap = m.id; renderAll(); };
+    a.appendChild(open);
+    r.append(n, t, a); list.appendChild(r);
+  });
+  if(!maps.length){ const e = document.createElement("div"); e.className = "empty"; e.style.padding = "24px"; e.textContent = "No roadmaps yet. Press ＋ New roadmap to make the first one."; list.appendChild(e); }
+  wrap.appendChild(list);
+  const tip = document.createElement("div"); tip.className = "hint"; tip.style.marginTop = "12px";
+  tip.textContent = "To change who can see a roadmap: turn on Edit, then ⋯ → Settings next to it in the sidebar." + (hasPerm("delete_roadmaps") ? " Deleting is in the same ⋯ menu." : "");
+  wrap.appendChild(tip);
 }
 // Administration → Spaces: the only place to add a space (roles with "Add spaces")
 function renderAdminSpaces(wrap){
