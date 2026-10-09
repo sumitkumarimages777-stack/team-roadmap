@@ -153,9 +153,16 @@ function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receip
   + ".ntf-spot .sp-m{font-size:12.5px;color:#7A6A5E;margin-top:8px}"
   + ".ntf-spot .sp-cta{margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--indigo);color:#fff;font-weight:600;font-size:13.5px;border-radius:99px;padding:7px 14px}"
   + ".ntf-spot .sp-x{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;font-size:18px;color:#7A6A5E;background:rgba(255,255,255,.85);z-index:3;display:flex;align-items:center;justify-content:center}"
-  + ".ntf-spot .sp-x:hover{background:#fff;color:var(--ink)}"
+  + ".ntf-spot .sp-x:hover,.ntf-spot .sp-mn:hover{background:#fff;color:var(--ink)}"
+  + ".ntf-spot .sp-mn{position:absolute;top:10px;right:46px;width:30px;height:30px;border-radius:50%;font-size:15px;font-weight:700;color:#7A6A5E;background:rgba(255,255,255,.85);z-index:3;display:flex;align-items:center;justify-content:center}"
+  + ".ntf-spot.min{padding:8px 88px 8px 10px;gap:12px;cursor:pointer;margin-bottom:16px;box-shadow:0 2px 8px rgba(232,98,43,.10)}"
+  + ".ntf-spot.min .sp-media{width:72px;border-radius:7px;box-shadow:none;pointer-events:none}"
+  + ".ntf-spot.min .sp-play{width:26px;height:26px;margin:-13px 0 0 -13px;font-size:11px;padding-left:2px;animation:none}"
+  + ".ntf-spot.min .sp-dur,.ntf-spot.min .sp-b,.ntf-spot.min .sp-cta,.ntf-spot.min .sp-own,.ntf-spot.min::after{display:none}"
+  + ".ntf-spot.min .sp-t{font-size:15px;margin:0}"
+  + ".ntf-spot.min .sp-x,.ntf-spot.min .sp-mn{top:50%;margin-top:-15px}"
   + ".ntf-spot .sp-own{display:inline-block;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);border:1px solid #F3C3A6;border-radius:99px;padding:1px 8px;color:#7A6A5E}"
-  + "@media (max-width:760px){.ntf-spot{flex-direction:column;align-items:stretch;padding:14px}.ntf-spot .sp-media,.ntf-spot.playing .sp-media{width:100%}.ntf-spot .sp-txt{padding-right:24px}.ntf-spot .sp-t{font-size:18px}}"
+  + "@media (max-width:760px){.ntf-spot:not(.min){flex-direction:column;align-items:stretch;padding:14px}.ntf-spot .sp-media,.ntf-spot.playing .sp-media{width:100%}.ntf-spot .sp-txt{padding-right:24px}.ntf-spot .sp-t{font-size:18px}}"
   + "@media (max-width:640px){.ntf-sent .ns-top{flex-direction:column}}";
   var st = document.createElement("style"); st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
@@ -280,7 +287,8 @@ function ntfFillSlot(slot) {
   slot.innerHTML = "";
   ntfBannersFor(slot.dataset.key).forEach(function (n) {
     var own = n.created_by === (currentUser() || {}).id;
-    var b = ntfEl("div", "ntf-spot");
+    var mini = ntfMinGet(n.id);                              /* this person shrank it to a strip */
+    var b = ntfEl("div", "ntf-spot" + (mini ? " min" : ""));
     b.setAttribute("role", "region"); b.setAttribute("aria-label", "Pinned message: " + n.title);
     if (n.video_id) {
       var m = ntfEl("div", "sp-media"), img = document.createElement("img");
@@ -308,6 +316,11 @@ function ntfFillSlot(slot) {
     var cta = null;
     if (n.video_id) { cta = ntfEl("button", "sp-cta", "▶ Play video"); cta.type = "button"; cta.onclick = function () { b.querySelector(".sp-media").click(); }; t.appendChild(cta); }
     b.appendChild(t);
+    var mn = ntfEl("button", "sp-mn", mini ? "▾" : "—"); mn.type = "button";
+    mn.title = mini ? "Show it again" : "Minimize"; mn.setAttribute("aria-label", mn.title);
+    mn.onclick = function (e) { e.stopPropagation(); ntfMinSet(n.id, !mini); ntfFillSlot(slot); };   /* redraw also stops a playing video */
+    b.appendChild(mn);
+    if (mini) { b.title = "Show it again"; b.onclick = function (e) { if (e.target === x || e.target === mn) return; ntfMinSet(n.id, false); ntfFillSlot(slot); }; }
     var x = ntfEl("button", "sp-x", "×"); x.type = "button"; x.title = own ? "Hide it here for now (the team still sees it)" : "Hide this for me";
     x.setAttribute("aria-label", x.title);
     x.onclick = function () { NTF.hiddenLocal[n.id] = 1; if (!own) ntfMark(n, "hide"); b.remove(); };
@@ -316,6 +329,9 @@ function ntfFillSlot(slot) {
     if (!own && !(NTF.receipts[n.id] || {}).read_at && !NTF.bannerSeen[n.id]) { NTF.bannerSeen[n.id] = 1; ntfMark(n, "read").then(ntfRenderBell); }
   });
 }
+/* minimized banners: remembered on this device only (a viewer's own convenience) */
+function ntfMinGet(id) { try { return localStorage.getItem("ntf-min-" + id) === "1"; } catch (_) { return false; } }
+function ntfMinSet(id, on) { try { if (on) localStorage.setItem("ntf-min-" + id, "1"); else localStorage.removeItem("ntf-min-" + id); } catch (_) { } }
 function ntfRefreshSlots() {
   document.querySelectorAll(".ntf-spot-slot").forEach(function (sl) { if (!sl.querySelector(".ntf-spot.playing")) ntfFillSlot(sl); });
 }
