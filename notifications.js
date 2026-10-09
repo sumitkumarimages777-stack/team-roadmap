@@ -41,6 +41,7 @@ function ntfSender(n) {
 }
 function ntfForMe(n) {
   var me = currentUser(); if (!me || n.created_by === me.id) return false;   /* never your own */
+  if (!ntfStarted(n)) return false;                         /* scheduled for later (LMS drops) */
   return n.audience === "team" || (n.recipients || []).indexOf(me.id) >= 0;
 }
 /* a YouTube link (watch, youtu.be, shorts, live, embed) or a bare id -> the 11-character id, or "" */
@@ -66,6 +67,9 @@ function ntfThumb(id) {
   t.append(img, ntfEl("span", "ntf-play", "▶"));
   return t;
 }
+function ntfStarted(n) { return !n.starts_at || new Date(n.starts_at).getTime() <= Date.now(); }
+/* an LMS drop delivered by this message, once lms.js has loaded it (else null) */
+function ntfDrop(n) { return (n.drop_id && window.LMS && LMS.drops[n.drop_id]) || null; }
 function ntfMine() { return NTF.list.filter(function (n) { return ntfForMe(n) && n.bell !== false; }); }   /* the bell's list */
 function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receipts[n.id]; return !(r && r.read_at); }).length; }
 
@@ -221,13 +225,17 @@ function ntfNextPopup() {
 /* the message in a box: as a pop-up (asPopup, follows its rule) or opened from the bell */
 function ntfShowBox(n, asPopup) {
   NTF.showing = true;
-  var bg = ntfEl("div", "ntf-pop-bg"), box = ntfEl("div", "ntf-pop" + (n.video_id ? " has-vid" : ""));
+  var drop = ntfDrop(n);
+  var bg = ntfEl("div", "ntf-pop-bg"), box = ntfEl("div", "ntf-pop" + (n.video_id || drop ? " has-vid" : ""));
   box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
-  box.appendChild(ntfEl("div", "np-k", n.audience === "team" ? "📣 Message for the team" : "📩 Message for you"));
-  box.appendChild(ntfEl("h3", "", n.title));
-  if (n.body) box.appendChild(ntfEl("div", "np-b", n.body));
-  if (n.video_id) box.appendChild(ntfVideo(n.video_id));
-  box.appendChild(ntfEl("div", "np-m", (ntfSender(n) ? "From " + ntfSender(n) + " · " : "") + ntfWhen(n.created_at)));
+  if (drop) lmsRenderDrop(box, drop, { preview: !ntfForMe(n), n: n });   /* LMS drop: content + questions (lms.js) */
+  else {
+    box.appendChild(ntfEl("div", "np-k", n.audience === "team" ? "📣 Message for the team" : "📩 Message for you"));
+    box.appendChild(ntfEl("h3", "", n.title));
+    if (n.body) box.appendChild(ntfEl("div", "np-b", n.body));
+    if (n.video_id) box.appendChild(ntfVideo(n.video_id));
+    box.appendChild(ntfEl("div", "np-m", (ntfSender(n) ? "From " + ntfSender(n) + " · " : "") + ntfWhen(n.created_at)));
+  }
   var acts = ntfEl("div", "np-a");
   function close() { bg.remove(); NTF.showing = false; setTimeout(ntfNextPopup, 250); }   /* removing the box stops the video */
   var mine = ntfForMe(n);                                  /* false: the sender previewing it */
@@ -237,7 +245,7 @@ function ntfShowBox(n, asPopup) {
     later.onclick = function () { ntfMark(n, "read"); close(); };
     acts.appendChild(later);
   }
-  var ok = ntfEl("button", "ntf-btn primary", ack ? "Got it ✓" : asPopup ? "OK" : "Close");
+  var ok = ntfEl("button", "ntf-btn" + (drop ? "" : " primary"), ack ? "Got it ✓" : drop ? "Close" : asPopup ? "OK" : "Close");
   ok.onclick = function () { if (mine) ntfMark(n, ack ? "ack" : "read").then(ntfRenderBell); close(); };
   acts.appendChild(ok);
   box.appendChild(acts);
@@ -263,7 +271,7 @@ function ntfPlaceLabel(key) {
   return f ? f[1] : "a page that no longer exists";
 }
 function ntfBannerLive(n) {
-  return !!n.place && !n.stopped && !!n.place_until && new Date(n.place_until).getTime() > Date.now();
+  return !!n.place && !n.stopped && ntfStarted(n) && !!n.place_until && new Date(n.place_until).getTime() > Date.now();
 }
 function ntfBannersFor(key) {
   var me = currentUser(); if (!me) return [];
@@ -314,7 +322,12 @@ function ntfFillSlot(slot) {
     t.appendChild(ntfEl("div", "sp-t", n.title));
     if (n.body) t.appendChild(ntfEl("div", "sp-b", n.body));
     var cta = null;
-    if (n.video_id) { cta = ntfEl("button", "sp-cta", "▶ Play video"); cta.type = "button"; cta.onclick = function () { b.querySelector(".sp-media").click(); }; t.appendChild(cta); }
+    var drop = ntfDrop(n);
+    if (drop) {                                               /* LMS drop: open it to watch / read / answer */
+      var nq = (drop.questions || []).length, done = window.LMS && LMS.mine[drop.id];
+      cta = ntfEl("button", "sp-cta", done ? "✅ Answered · see what the team said" : nq ? "✨ Open · " + nq + " quick question" + (nq > 1 ? "s" : "") : drop.url ? "📰 Read it" : "▶ Watch");
+      cta.type = "button"; cta.onclick = function (e) { e.stopPropagation(); ntfShowBox(n, false); }; t.appendChild(cta);
+    } else if (n.video_id) { cta = ntfEl("button", "sp-cta", "▶ Play video"); cta.type = "button"; cta.onclick = function () { b.querySelector(".sp-media").click(); }; t.appendChild(cta); }
     b.appendChild(t);
     var mn = ntfEl("button", "sp-mn", mini ? "▾" : "—"); mn.type = "button";
     mn.title = mini ? "Show it again" : "Minimize"; mn.setAttribute("aria-label", mn.title);
@@ -400,7 +413,7 @@ function ntfDrawPanel() {
     if (n.video_id) it.appendChild(ntfThumb(n.video_id));
     it.appendChild(ntfEl("div", "ntf-m", (ntfSender(n) ? ntfSender(n) + " · " : "") + ntfWhen(n.created_at) + (n.audience === "team" ? " · whole team" : " · just you")));
     it.onclick = function () {
-      if (n.video_id) { ntfClosePanel(); ntfShowBox(n, false); return; }   /* open it big, to watch */
+      if (n.video_id || ntfDrop(n)) { ntfClosePanel(); ntfShowBox(n, false); return; }   /* open it big, to watch / answer */
       it.classList.toggle("expanded");
       if (!unread) return;
       unread = false; it.classList.remove("unread");
@@ -421,6 +434,7 @@ function ntfDrawPanel() {
 /* ---------- start-up and refresh ---------- */
 async function ntfRefresh() {
   try { await ntfLoad(); } catch (_) { return; }
+  if (window.lmsAfterLoad) { try { await lmsAfterLoad(); } catch (_) { } }   /* the drops these messages carry */
   ntfRenderBell();
   ntfRefreshSlots();
   ntfCheckPopups();
@@ -657,9 +671,10 @@ async function ntfDrawSent(holder) {
     (res.data || []).forEach(function (r) { (rec[r.notification_id] = rec[r.notification_id] || {})[r.user_id] = r; });
   }
   holder.className = ""; holder.innerHTML = "";
-  if (!NTF.list.length) { holder.className = "hint"; holder.textContent = "Nothing sent yet."; return; }
+  var sent = NTF.list.filter(function (n) { return !n.drop_id; });   /* LMS drops are managed in Administration → LMS */
+  if (!sent.length) { holder.className = "hint"; holder.textContent = "Nothing sent yet."; return; }
   var team = adminMembers();
-  NTF.list.forEach(function (n) {
+  sent.forEach(function (n) {
     var targets = n.audience === "team" ? team.filter(function (u) { return u.id !== n.created_by; })
       : n.recipients.map(function (id) { return team.find(function (u) { return u.id === id; }) || { id: id, email: "(left the team)", name: "(left the team)" }; });
     var rs = rec[n.id] || {};
