@@ -22,6 +22,9 @@
 //   action "defaults"  returns DEFAULTS (the admin page shows them)
 //   action "test"      sends a template to the caller's own email (needs
 //                      "Review student ideas")
+//   action "assign"    Marketing → a campaign item was given an accountable
+//                      teammate: they get an email + a 🔔. The caller must be
+//                      able to edit in the team; the person must be in it.
 //
 // Who may send: checked by database functions with the caller's own login —
 // idea_thanks_target / idea_mail_target (stage15a/b SQL) return the address
@@ -139,6 +142,47 @@ Deno.serve(async (req) => {
     const r = render(tpl, v, aud === "student" ? "See it on the ideas board" : "Open the team app");
     const err = await sendMail(to, "[Test] " + r.subject, r.text, r.html);
     return json(err ? { sent: false, reason: err } : { sent: true, to });
+  }
+
+  // ---- a campaign item has a new accountable person ----
+  if (action === "assign") {
+    if (!token) return json({ error: "Sign in first." }, 401);
+    const team = String(body.team || ""), uid = String(body.user_id || "");
+    const { data: ok } = await caller.rpc("has_perm", { team, perm: "edit" });
+    if (!ok) return json({ sent: false, reason: "not allowed" });
+    const { data: who } = await admin.auth.getUser(token);
+    const { data: prof } = await admin.from("profiles").select("email, name, profile, is_super").eq("id", uid).maybeSingle();
+    const { data: mem } = await admin.from("memberships").select("user_id").eq("team_slug", team).eq("user_id", uid).maybeSingle();
+    if (!prof || (!mem && !prof.is_super)) return json({ sent: false, reason: "that person isn't in this team" });
+    const it = body.item || {};
+    const camp = String(body.campaign || "the campaign").slice(0, 140);
+    const name = String((prof.profile && prof.profile.displayName) || prof.name || "there").split(" ")[0];
+    const item = String(it.name || "an item").slice(0, 140);
+    const kindL = String(it.kind === "Other" && it.kindOther ? it.kindOther : (it.kind || "")).slice(0, 60);
+    const when = it.date ? new Date(it.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "no date yet";
+    const link = APP_URL + "?team=" + encodeURIComponent(team);
+    const lines = [["What", kindL], ["Where", String(it.platform || "")], ["When", when], ["Campaign", camp]].filter((x) => x[1]);
+    const details = String(it.details || "").slice(0, 2000);
+    const subject = "📣 You're on “" + item + "” — " + camp;
+    const text = "Hi " + name + ",\n\nYou're accountable for “" + item + "” in " + camp + ".\n\n"
+      + lines.map((x) => x[0] + ": " + x[1]).join("\n") + (details ? "\n\nDetails:\n" + details : "") + "\n\n" + link + "\n\n— The DU Buddy team";
+    const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1A1614;max-width:540px">'
+      + '<div style="font-weight:800;font-size:18px;margin-bottom:14px">DU <span style="color:#E8622B">Buddy</span></div>'
+      + "<p>Hi " + esc(name) + ",</p><p>You're accountable for <b>“" + esc(item) + "”</b> in <b>" + esc(camp) + "</b>.</p>"
+      + '<table style="border-collapse:collapse;margin:10px 0">' + lines.map((x) => '<tr><td style="color:#8C7F75;padding:3px 14px 3px 0">' + esc(x[0]) + "</td><td><b>" + esc(x[1]) + "</b></td></tr>").join("") + "</table>"
+      + (details ? '<p style="white-space:pre-wrap;background:#FBF6F1;border-radius:8px;padding:10px 12px">' + esc(details) + "</p>" : "")
+      + '<p style="margin:20px 0"><a href="' + esc(link) + '" style="background:#E8622B;color:#fff;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:10px;display:inline-block">Open the team app</a></p>'
+      + "<p>— The DU Buddy team</p></div>";
+    const err = prof.email ? await sendMail(prof.email, subject, text, html) : "no email";
+    let belled = false;
+    if (who?.user && who.user.id !== uid) {
+      const ins = await admin.from("team_notifications").insert({
+        team_slug: team, title: "📣 You're on “" + item + "”", body: camp + " · " + [kindL, it.platform, when].filter(Boolean).join(" · ") + (details ? "\n\n" + details.slice(0, 600) : ""),
+        audience: "people", recipients: [uid], bell: true, popup: false, created_by: who.user.id,
+      });
+      belled = !ins.error;
+    }
+    return json(err ? { sent: false, reason: err, belled } : { sent: true, belled });
   }
 
   if (!["approved", "status", "message", "thanks"].includes(action) || !["student", "pitch"].includes(kind) || typeof id !== "string") {

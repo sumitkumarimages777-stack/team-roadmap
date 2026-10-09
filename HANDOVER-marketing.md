@@ -1,0 +1,36 @@
+# Marketing space: handover notes
+
+## What it is
+
+**Marketing** is a parent space in the sidebar. Other spaces sit inside it:
+
+- **Social Media**: the existing space, unchanged, with Our agreement, Summary, Ideation, Content Process and Schedule.
+- **Campaigns**: one space per sale or launch.
+- Any other template added with **＋ Add space**.
+
+## Setting it up
+
+1. Go to Administration → Spaces → **＋ Add space** → **Marketing**, and give it a name, for example "Dubuddy Marketing".
+2. Every Social Media space that isn't already inside a Marketing space moves into it automatically.
+3. To add more inside it, use **＋ Add space** under the Marketing space in the sidebar. You can choose Create campaign, Social media, Educational content, Competitor analysis or Product roadmap. Push automations and Influencer pipeline show as "coming soon".
+4. To move an existing space in or out of Marketing, use its **⋯** menu → Move into / out of Marketing.
+
+Adding or moving spaces needs the **Add spaces** permission. Deleting a Marketing space doesn't delete the spaces inside it; they go back to the sidebar.
+
+## A campaign
+
+| Tab | What |
+|---|---|
+| Fill in Details | Name, tagline, offer code, duration, days, messaging and your own fields, plus the **list of contents**: every reel, banner, push notification and WhatsApp message, each with a date, platform and one accountable person. |
+| Assignment & distribution of work | The items grouped by platform. **Assign** or **Reassign** emails the person and puts a 🔔 in their bell. Reels, long videos, stories and influencer videos go to **Content Process → To Do** in the Social Media space, marked 🔔 High priority. Banners and alerts open Strapi, WhatsApp opens MSG91, and notifications open Firebase. |
+| Calendar | A grid or list of every month the campaign covers. You can filter by type, platform or person, and make a flowchart. |
+| Dashboard | Counts from what you entered. The **Campaign success** sales block shows example numbers ("NOT LIVE") until it is connected to the orders database. |
+
+## Where things live
+
+| Part | Where |
+|---|---|
+| Campaign screens | `campaign-space.js` (`window.CX`), drawn in its own shadow root. Data is saved inside the space in `cspaces`. |
+| Sidebar, templates, hand-off | `index.html`. Search for `openMarketingTemplates`, `_drawCs` and `renderContentCampaign`. |
+| High-priority card on the board | `social-space.js` (`.hotbar`) |
+| Assignment email and bell | Edge Function `idea-mail`, action `assign`, at version 4. It checks that the caller can edit in the team and that the person is a member. |
