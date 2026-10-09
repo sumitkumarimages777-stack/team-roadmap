@@ -1293,7 +1293,7 @@ function renderSummary(){
   const yt=ytSeries(), ig=igSeries();
   const more=(k,col)=>{ const gs=TG.goals.filter(g=>g.platform===k&&g.target>0), n=gs.length+(TG.plan[k].time?1:0), open=!!OKR_OPEN[k];
     return `<div class="okr-more ${open?"open":""}"><button data-okrmore="${k}">${open?"▴":"▾"} Other targets (${n})</button>
-      ${open?(n?postingTimeHTML(k,col)+gs.map(g=>goalHTML(g,col)).join(""):`<p class="hint" style="margin:8px 0 0">No other targets for ${PLAT_NAME[k]} yet — set them in the <b>Targets</b> tab.</p>`):""}</div>`; };
+      ${open?(n?postingTimeHTML(k,col)+gs.map(g=>goalHTML(g,col)).join(""):`<p class="hint" style="margin:8px 0 0">No other targets for ${PLAT_NAME[k]} yet — set them in the <b>Our agreement</b> tab.</p>`):""}</div>`; };
   const okr=(k,n,col,series,isLive)=>{
     const tgt=TG.targets[k];
     if(!series.length) return `<div class="okr"><div class="okr-top"><div><div class="lbl" style="margin-bottom:4px">${n} ${AUD(k)}</div>
@@ -2232,7 +2232,7 @@ function mount(){
 
 window.SX = {
   normalize: normalize,
-  tabs: [["targets","Targets"],["summary","Summary"],["ideation","Ideation"],["process","Content Process"],["schedule","Schedule"]],
+  tabs: [["targets","Our agreement"],["summary","Summary"],["ideation","Ideation"],["process","Content Process"],["schedule","Schedule"]],
   /* draw the space. opt: {tab, team, supa, canEdit(), isMember(), me(), people(), save(),
        targets(space), canEditTargets(), saveTargets(space, obj)} */
   render: function(space, wrap, opt){
