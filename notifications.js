@@ -23,7 +23,7 @@
    (SUPA, TEAM, currentUser, hasPerm, adminMembers, userDisplayName,
    userAvatarColor, findUser, toast, openAdmin, renderAdminPage).            */
 var NTF = { list: [], receipts: {}, loaded: false, timer: null, popped: {}, queue: [], showing: false, open: false, hiddenLocal: {}, bannerSeen: {} };
-var NTF_UI = { to: [], audience: "team" };   /* composer state, kept between redraws */
+var NTF_UI = { to: [], audience: "team", edit: null };   /* composer state, kept between redraws; edit = the sent message being changed */
 
 function ntfEl(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function ntfCanSend() { try { return !!SUPA && hasPerm("send_notifications"); } catch (_) { return false; } }
@@ -37,7 +37,7 @@ function ntfWhen(ts) {
 }
 function ntfSender(n) {
   var u = (typeof USERS !== "undefined" ? USERS : []).find(function (x) { return x.id === n.created_by; });
-  return u ? userDisplayName(u) : "Someone";
+  return u ? userDisplayName(u) : "";                      /* teammates may not see the sender's profile */
 }
 function ntfForMe(n) {
   var me = currentUser(); if (!me || n.created_by === me.id) return false;   /* never your own */
@@ -154,7 +154,7 @@ function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receip
   + ".ntf-spot .sp-cta{margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--indigo);color:#fff;font-weight:600;font-size:13.5px;border-radius:99px;padding:7px 14px}"
   + ".ntf-spot .sp-x{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;font-size:18px;color:#7A6A5E;background:rgba(255,255,255,.85);z-index:3;display:flex;align-items:center;justify-content:center}"
   + ".ntf-spot .sp-x:hover{background:#fff;color:var(--ink)}"
-  + ".ntf-spot .sp-own{display:inline-block;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);border:1px solid #F3C3A6;border-radius:99px;padding:1px 8px;margin-left:8px;color:#7A6A5E;letter-spacing:0;text-transform:none;font-family:var(--sans)}"
+  + ".ntf-spot .sp-own{display:inline-block;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);border:1px solid #F3C3A6;border-radius:99px;padding:1px 8px;color:#7A6A5E}"
   + "@media (max-width:760px){.ntf-spot{flex-direction:column;align-items:stretch;padding:14px}.ntf-spot .sp-media,.ntf-spot.playing .sp-media{width:100%}.ntf-spot .sp-txt{padding-right:24px}.ntf-spot .sp-t{font-size:18px}}"
   + "@media (max-width:640px){.ntf-sent .ns-top{flex-direction:column}}";
   var st = document.createElement("style"); st.textContent = css;
@@ -220,7 +220,7 @@ function ntfShowBox(n, asPopup) {
   box.appendChild(ntfEl("h3", "", n.title));
   if (n.body) box.appendChild(ntfEl("div", "np-b", n.body));
   if (n.video_id) box.appendChild(ntfVideo(n.video_id));
-  box.appendChild(ntfEl("div", "np-m", "From " + ntfSender(n) + " · " + ntfWhen(n.created_at)));
+  box.appendChild(ntfEl("div", "np-m", (ntfSender(n) ? "From " + ntfSender(n) + " · " : "") + ntfWhen(n.created_at)));
   var acts = ntfEl("div", "np-a");
   function close() { bg.remove(); NTF.showing = false; setTimeout(ntfNextPopup, 250); }   /* removing the box stops the video */
   var mine = ntfForMe(n);                                  /* false: the sender previewing it */
@@ -301,12 +301,10 @@ function ntfFillSlot(slot) {
       m.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); start(); } };
       b.appendChild(m);
     }
-    var t = ntfEl("div", "sp-txt"), k = ntfEl("div", "sp-k", "📌 " + (n.audience === "team" ? "For the team" : "For you") + " · till " + ntfUntilText(n.place_until));
-    if (own) k.appendChild(ntfEl("span", "sp-own", n.audience === "team" ? "you sent this · the team sees it" : "you sent this"));
-    t.appendChild(k);
+    var t = ntfEl("div", "sp-txt");                           /* just the message: no sender, no dates */
+    if (own) t.appendChild(ntfEl("span", "sp-own", "Only you see this note · banner ends " + ntfUntilText(n.place_until)));
     t.appendChild(ntfEl("div", "sp-t", n.title));
     if (n.body) t.appendChild(ntfEl("div", "sp-b", n.body));
-    t.appendChild(ntfEl("div", "sp-m", "From " + ntfSender(n) + " · " + ntfWhen(n.created_at)));
     var cta = null;
     if (n.video_id) { cta = ntfEl("button", "sp-cta", "▶ Play video"); cta.type = "button"; cta.onclick = function () { b.querySelector(".sp-media").click(); }; t.appendChild(cta); }
     b.appendChild(t);
@@ -384,7 +382,7 @@ function ntfDrawPanel() {
     it.appendChild(ntfEl("div", "ntf-t", n.title));
     if (n.body) it.appendChild(ntfEl("div", "ntf-b", n.body));
     if (n.video_id) it.appendChild(ntfThumb(n.video_id));
-    it.appendChild(ntfEl("div", "ntf-m", ntfSender(n) + " · " + ntfWhen(n.created_at) + (n.audience === "team" ? " · whole team" : " · just you")));
+    it.appendChild(ntfEl("div", "ntf-m", (ntfSender(n) ? ntfSender(n) + " · " : "") + ntfWhen(n.created_at) + (n.audience === "team" ? " · whole team" : " · just you")));
     it.onclick = function () {
       if (n.video_id) { ntfClosePanel(); ntfShowBox(n, false); return; }   /* open it big, to watch */
       it.classList.toggle("expanded");
@@ -428,6 +426,7 @@ function notifBoot() {
 function ntfOpenComposer(user) {
   NTF_UI.audience = user ? "people" : "team";
   NTF_UI.to = user ? [user.id] : [];
+  NTF_UI.edit = null;
   NTF_UI.focus = true;
   openAdmin("notifications");
 }
@@ -449,8 +448,13 @@ function renderAdminNotifications(wrap) {
     .sort(function (a, b) { return userDisplayName(a).localeCompare(userDisplayName(b)); });
 
   /* --- composer --- */
+  var E = NTF_UI.edit;                                       /* editing a sent message, or null */
   var card = ntfEl("div", "ntf-card");
-  card.appendChild(ntfEl("h3", "", "📣 New notification"));
+  card.appendChild(ntfEl("h3", "", E ? "✏️ Edit notification" : "📣 New notification"));
+  if (E) {
+    var eh = ntfEl("div", "hint", "Changes show for everyone straight away. People who already read it, pressed “Got it” or hid the banner aren't asked again.");
+    eh.style.margin = "-6px 0 12px"; card.appendChild(eh);
+  }
 
   card.appendChild(ntfEl("label", "ntf-lab", "Send to"));
   var seg = ntfEl("div", "ntf-seg"), bTeam = ntfEl("button", "", "Whole team"), bPeople = ntfEl("button", "", "Choose people");
@@ -539,16 +543,40 @@ function renderAdminNotifications(wrap) {
   var placeRow = ntfEl("label", "ntf-opt"); placeRow.append(document.createTextNode("Page: "), place);
   var daysRow = ntfEl("label", "ntf-opt"), days = document.createElement("input");
   days.type = "number"; days.min = 1; days.max = 60; days.value = 7; days.style.width = "70px";
-  daysRow.append(document.createTextNode("Show it for "), days, document.createTextNode(" days, then it disappears by itself"));
+  daysRow.append(document.createTextNode("Show it for "), days, document.createTextNode(E ? " days from when it was sent, then it disappears by itself" : " days, then it disappears by itself"));
   pinBox.append(placeRow, daysRow, ntfEl("div", "hint", "It sits at the top of that page, above everything else. Each person can hide it for themselves."));
   if (!places.length) { mPin.r.disabled = true; mPin.l.title = "No page can carry a banner yet (add a Social Media space first)"; }
   card.appendChild(pinBox);
   function drawMode() { popBox.style.display = mPop.r.checked ? "" : "none"; pinBox.style.display = mPin.r.checked ? "" : "none"; }
-  mBell.r.onchange = mPop.r.onchange = mPin.r.onchange = drawMode; drawMode();
+  mBell.r.onchange = mPop.r.onchange = mPin.r.onchange = drawMode;
+  if (E) {                                                    /* fill the form from the sent message */
+    title.value = E.title || ""; body.value = E.body || "";
+    vid.value = E.video_id ? "https://youtu.be/" + E.video_id : ""; vid.oninput();
+    mBell.r.checked = E.bell !== false; mPop.r.checked = !!E.popup; mPin.r.checked = !!E.place;
+    rOnce.r.checked = E.popup_rule === "once"; rTimes.r.checked = E.popup_rule === "times"; rAck.r.checked = E.popup_rule === "until_ack";
+    times.value = E.popup_times || 3; gap.value = E.popup_gap || "visit";
+    if (E.show_until) {
+      var su = new Date(E.show_until); su.setMinutes(su.getMinutes() - su.getTimezoneOffset());
+      untilChk.checked = true; until.disabled = false; until.value = su.toISOString().slice(0, 16);
+    }
+    if (E.place) {
+      if (!places.some(function (pl) { return pl[0] === E.place; })) { var op = document.createElement("option"); op.value = E.place; op.textContent = ntfPlaceLabel(E.place); place.appendChild(op); }
+      place.value = E.place;
+      days.value = Math.max(1, Math.round((new Date(E.place_until) - new Date(E.created_at)) / 86400000));
+    }
+  }
+  drawMode();
 
   var err = ntfEl("div", "ntf-err"); card.appendChild(err);
-  var send = ntfEl("button", "ntf-btn primary", "Send notification"); send.type = "button";
-  var sendRow = ntfEl("div", "ntf-row"); sendRow.style.justifyContent = "flex-end"; sendRow.style.margin = "0"; sendRow.appendChild(send);
+  var sendLabel = E ? "Save changes" : "Send notification";
+  var send = ntfEl("button", "ntf-btn primary", sendLabel); send.type = "button";
+  var sendRow = ntfEl("div", "ntf-row"); sendRow.style.justifyContent = "flex-end"; sendRow.style.margin = "0";
+  if (E) {
+    var cancel = ntfEl("button", "ntf-btn", "Cancel"); cancel.type = "button";
+    cancel.onclick = function () { NTF_UI.edit = null; NTF_UI.to = []; NTF_UI.audience = "team"; renderAdminPage(); };
+    sendRow.appendChild(cancel);
+  }
+  sendRow.appendChild(send);
   card.appendChild(sendRow);
   send.onclick = async function () {
     err.textContent = "";
@@ -568,14 +596,25 @@ function renderAdminNotifications(wrap) {
       show_until: (mPop.r.checked && untilChk.checked && until.value) ? new Date(until.value).toISOString() : null,
       bell: mBell.r.checked,
       place: mPin.r.checked ? place.value : null,
-      place_until: mPin.r.checked ? new Date(Date.now() + nDays * 86400000).toISOString() : null,
+      place_until: mPin.r.checked ? new Date((E ? new Date(E.created_at).getTime() : Date.now()) + nDays * 86400000).toISOString() : null,
       created_by: currentUser().id
     };
+    if (E && row.place_until && new Date(row.place_until).getTime() <= Date.now()) { err.textContent = "With " + nDays + " day" + (nDays > 1 ? "s" : "") + " from when it was sent, the banner has already ended. Make the number bigger."; return; }
     if (row.show_until && new Date(row.show_until).getTime() <= Date.now()) { err.textContent = "The “stop after” time is already past."; return; }
-    send.disabled = true; send.textContent = "Sending…";
-    var res = await SUPA.from("team_notifications").insert(row);
-    send.disabled = false; send.textContent = "Send notification";
-    if (res.error) { err.textContent = "Couldn't send: " + res.error.message; return; }
+    send.disabled = true; send.textContent = E ? "Saving…" : "Sending…";
+    var res;
+    if (E) {                                                  /* team, sender and time stay as they were */
+      delete row.team_slug; delete row.created_by;
+      row.stopped = false;                                    /* saving puts it live again, as set here */
+      res = await SUPA.from("team_notifications").update(row).eq("id", E.id);
+    } else res = await SUPA.from("team_notifications").insert(row);
+    send.disabled = false; send.textContent = sendLabel;
+    if (res.error) { err.textContent = (E ? "Couldn't save: " : "Couldn't send: ") + res.error.message; return; }
+    if (E) {
+      toast("✏️ Changes saved");
+      NTF_UI.edit = null; NTF_UI.to = []; NTF_UI.audience = "team";
+      await ntfRefresh(); renderAdminPage(); return;
+    }
     var who = row.audience === "team" ? "the whole team" : row.recipients.length === 1 ? userDisplayName(members.find(function (u) { return u.id === row.recipients[0]; }) || { email: "1 person" }) : row.recipients.length + " people";
     toast("📣 Sent to " + who);
     NTF_UI.to = []; NTF_UI.audience = "team";
@@ -617,7 +656,7 @@ async function ntfDrawSent(holder) {
     info.appendChild(ntfEl("div", "ntf-t", n.title));
     if (n.body) info.appendChild(ntfEl("div", "ntf-b", n.body));
     if (n.video_id) { var th = ntfThumb(n.video_id); th.style.cursor = "pointer"; th.title = "Preview"; th.onclick = function () { ntfShowBox(n, false); }; info.appendChild(th); }
-    info.appendChild(ntfEl("div", "ntf-m", "By " + ntfSender(n) + " · " + ntfWhen(n.created_at) + " · to " +
+    info.appendChild(ntfEl("div", "ntf-m", (ntfSender(n) ? "By " + ntfSender(n) + " · " : "") + ntfWhen(n.created_at) + " · to " +
       (n.audience === "team" ? "the whole team" : targets.map(function (u) { return userDisplayName(u); }).join(", "))));
     var tags = ntfEl("div");
     if (n.bell !== false) tags.appendChild(ntfEl("span", "ntf-tag", "🔔 Bell"));
@@ -633,7 +672,13 @@ async function ntfDrawSent(holder) {
     info.appendChild(tags);
     var acts = ntfEl("div", "ns-acts");
     var whoBtn = ntfEl("button", "", "Who saw it"); whoBtn.type = "button";
-    acts.appendChild(whoBtn);
+    var edit = ntfEl("button", "", "✏️ Edit"); edit.type = "button"; edit.title = "Change the text, video, who it's for, or how it shows";
+    edit.onclick = function () {
+      NTF_UI.edit = n; NTF_UI.audience = n.audience; NTF_UI.to = (n.recipients || []).slice(); NTF_UI.focus = true;
+      renderAdminPage();
+      var m = document.getElementById("admin-main"); (m || document.documentElement).scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    acts.append(edit, whoBtn);
     if (live) {
       var stop = ntfEl("button", "", banLive && popLive ? "Stop pop-up & banner" : banLive ? "Remove banner" : "Stop pop-up"); stop.type = "button"; stop.title = "Stop it for everyone now (it stays in the bell)";
       stop.onclick = async function () {
