@@ -11,7 +11,9 @@
        student (or a team member who pitched it) sees:
          Later → In review · Next → Planned · Now → In progress ·
          Won't do → Not planned · "✅ Shipped" → Completed
-       and emails them when it changes (if we have their email).
+       and emails them when it changes (if we have their email); a teammate
+       also gets a 🔔 in their bell. Everyone gets a thank-you email right
+       after sending an idea (students only if they left an address).
      * ✉️ in the last column of All ideas — write a message (encouragement,
        "not now, keep them coming"…) and email it; for students it can also
        show as the team's reply on the public board.
@@ -363,4 +365,101 @@ function renderAdminMyIdeas(wrap) {
       holder.appendChild(c);
     });
   });
+}
+
+/* ---------- Administration → ✉️ Idea emails: the words of every idea email ----------
+   One card per moment (thank-you, approved, each status, your ✉️ messages),
+   for students and for teammates: switch it on/off, edit subject + text, send
+   yourself a test, reset to the default. Saved in idea_email_templates
+   (supabase/stage15c_idea_email_templates.sql); the idea-mail function uses
+   them when it sends and gives us its built-in defaults.                       */
+var SID_MAIL_KEYS = [
+  ["thanks",   "🙏 Thank you", "Right after they send an idea"],
+  ["approved", "🙌 Approved", "Their idea goes on the public board (students only)"],
+  ["review",   "👀 In review", "Idea in the Later column"],
+  ["planned",  "🗓 Planned", "Idea moved to Next"],
+  ["progress", "🚀 In progress", "Idea moved to Now"],
+  ["done",     "🎉 Completed", "Ticked “shipped”"],
+  ["declined", "🙏 Not planned", "Idea moved to Won't do"],
+  ["message",  "💬 Your messages", "Wraps what you write with ✉️ — keep {message} in it"]
+];
+var SID_MAILUI = { aud: "student", defaults: null, saved: {} };
+async function renderAdminIdeaEmails(wrap) {
+  var head = sidEl("div", "admin-userhead"), left = sidEl("div");
+  var h2 = sidEl("h2", "", "✉️ Idea emails"); h2.style.margin = "0";
+  var sub = sidEl("div", "hint", "What people get by email at each step of their idea. Switch any email off, change the words, and send yourself a test. Placeholders: {name} {idea} {status} {link} {message}. A “See it on the board” / “Open the team app” button is added at the end.");
+  sub.style.marginTop = "4px"; left.append(h2, sub); head.appendChild(left); wrap.appendChild(head);
+  var seg = sidEl("div", "ntf-seg"), bS = sidEl("button", "", "🎓 Students"), bT = sidEl("button", "", "💡 Teammates");
+  bS.type = bT.type = "button"; seg.append(bS, bT);
+  var segRow = sidEl("div", "ntf-row"); segRow.appendChild(seg); wrap.appendChild(segRow);
+  var holder = sidEl("div", "hint", "Loading…"); wrap.appendChild(holder);
+  bS.onclick = function () { SID_MAILUI.aud = "student"; draw(); };
+  bT.onclick = function () { SID_MAILUI.aud = "team"; draw(); };
+  if (!SID_MAILUI.defaults) {
+    try {
+      var d = await SUPA.functions.invoke("idea-mail", { body: { action: "defaults" } });
+      SID_MAILUI.defaults = (d.data && d.data.defaults) || null;
+    } catch (_) { }
+  }
+  var rs = await SUPA.from("idea_email_templates").select("*").eq("team_slug", TEAM);
+  SID_MAILUI.saved = {};
+  (rs.data || []).forEach(function (r) { SID_MAILUI.saved[r.audience + ":" + r.key] = r; });
+  if (!SID_MAILUI.defaults) { holder.textContent = "Couldn't reach the email service. Reload and try again."; return; }
+  draw();
+  function draw() {
+    bS.className = SID_MAILUI.aud === "student" ? "on" : ""; bT.className = SID_MAILUI.aud === "team" ? "on" : "";
+    holder.className = ""; holder.innerHTML = "";
+    var aud = SID_MAILUI.aud, D = SID_MAILUI.defaults[aud] || {};
+    SID_MAIL_KEYS.forEach(function (k) {
+      if (!D[k[0]]) return;                                   /* "approved" is for students only */
+      holder.appendChild(sidMailCard(aud, k, D[k[0]], SID_MAILUI.saved[aud + ":" + k[0]]));
+    });
+  }
+}
+function sidMailCard(aud, k, def, saved) {
+  var cur = saved || { enabled: true, subject: def.subject, body: def.body };
+  var c = sidEl("div", "ntf-card"); c.style.marginBottom = "14px";
+  var top = sidEl("div", "ntf-row"); top.style.cssText = "justify-content:space-between;margin-bottom:6px";
+  var tl = sidEl("div"); tl.append(sidEl("div", "sc-t", k[1]), sidEl("div", "hint", k[2]));
+  tl.firstChild.style.cssText = "font-weight:700;font-size:15.5px";
+  var tg = sidEl("label", "sid-chk"), on = document.createElement("input"); on.type = "checkbox"; on.checked = cur.enabled !== false;
+  tg.style.marginTop = "0"; tg.append(on, document.createTextNode("Send this email"));
+  top.append(tl, tg); c.appendChild(top);
+  var state = sidEl("span", "sid-tag", saved ? "✏️ Edited" : "Default"); c.appendChild(state);
+  var subj = document.createElement("input"); subj.type = "text"; subj.maxLength = 200; subj.value = cur.subject;
+  var body = document.createElement("textarea"); body.maxLength = 5000; body.value = cur.body; body.style.minHeight = "150px";
+  c.append(sidEl("label", "ntf-lab", "Subject"), subj, sidEl("label", "ntf-lab", "Text"), body);
+  function lock() { subj.disabled = body.disabled = !on.checked; }
+  on.onchange = lock; lock();
+  var msg = sidEl("div", "ntf-err"); c.appendChild(msg);
+  var row = sidEl("div", "ntf-row"); row.style.cssText = "justify-content:flex-end;margin:0;gap:8px";
+  var reset = sidEl("button", "ntf-btn", "Reset to default"), test = sidEl("button", "ntf-btn", "📨 Send me a test"), save = sidEl("button", "ntf-btn primary", "Save");
+  reset.type = test.type = save.type = "button";
+  row.append(reset, test, save); c.appendChild(row);
+  function check() {
+    if (!subj.value.trim() || !body.value.trim()) { msg.textContent = "Subject and text can't be empty."; return false; }
+    if (k[0] === "message" && body.value.indexOf("{message}") < 0) { msg.textContent = "Keep {message} in the text — that's where what you write goes."; return false; }
+    msg.textContent = ""; return true;
+  }
+  save.onclick = async function () {
+    if (!check()) return;
+    save.disabled = true;
+    var r = await SUPA.from("idea_email_templates").upsert({ team_slug: TEAM, key: k[0], audience: aud, enabled: on.checked, subject: subj.value.trim(), body: body.value.trim(), updated_at: new Date().toISOString() });
+    save.disabled = false;
+    if (r.error) { msg.textContent = "Couldn't save: " + r.error.message; return; }
+    SID_MAILUI.saved[aud + ":" + k[0]] = { enabled: on.checked, subject: subj.value.trim(), body: body.value.trim() };
+    state.textContent = "✏️ Edited"; toast(on.checked ? "✉️ Saved" : "🔕 This email is switched off");
+  };
+  reset.onclick = function () { subj.value = def.subject; body.value = def.body; on.checked = true; lock(); msg.textContent = "Back to the default words — press Save to keep them."; };
+  test.onclick = async function () {
+    if (!check()) return;
+    test.disabled = true; test.textContent = "Sending…";
+    var r;
+    try { r = await SUPA.functions.invoke("idea-mail", { body: { action: "test", team: TEAM, audience: aud, subject: subj.value, body: body.value } }); } catch (e) { r = { error: e }; }
+    test.disabled = false; test.textContent = "📨 Send me a test";
+    var d = r && r.data;
+    if (d && d.sent) toast("📨 Test sent to " + d.to);
+    else msg.textContent = "Test didn't go: " + ((d && d.reason) || (r && r.error && r.error.message) || "unknown");
+  };
+  return c;
 }
