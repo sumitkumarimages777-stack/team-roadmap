@@ -15,6 +15,8 @@
 <!-- Social Media space: Summary (live YouTube numbers) / Ideation / Content Process / Schedule -->
 <script src="social-space.js"></script>
 <script src="wiki-utm.js"></script>
+<!-- Notifications: the 🔔 bell and pop-ups (notifications.js) -->
+<script src="notifications.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -4113,6 +4115,7 @@ const PERMS = [
   {key:"create_games",     label:"Create games",          hint:"Make games and submit them for Let's Play"},
   {key:"edit_targets",     label:"Edit social targets",   hint:"Change the targets in Social Media spaces (everyone else can only view them)"},
   {key:"edit_utm",         label:"Edit UTM rules",        hint:"Change the UTM rules in Wiki → Marketing → UTM builder (everyone else can only build links with them)"},
+  {key:"send_notifications",label:"Send notifications",   hint:"Send 🔔 bell messages and pop-ups to the whole team or chosen people (Administration → Notifications)"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
 const LEGACY_PERMS = { admin: PERMS.map(p=>p.key), editor:["view","comment","edit","delete","spaces"], commenter:["view","comment"], viewer:["view"] };
@@ -5723,6 +5726,7 @@ async function start(){
   restorePageAfterRender();
   try{ docOpenFromUrl(); }catch(_){ }
   if(db) loadGames().catch(function(){ });
+  if(db) notifBoot();   // 🔔 bell + pop-ups (notifications.js)
   // approvers: a gentle nudge when teammate requests are waiting
   if(db && hasPerm("approve_requests")){
     refreshPendingCount().then(n=>{ if(n) toast("\uD83D\uDE4B " + n + " teammate request" + (n>1?"s":"") + " waiting \u2014 Administration \u2192 Requests"); });
@@ -18793,6 +18797,7 @@ function adminSections(){
     { k:"requests",    ico:"🙋", lbl:"Requests" + (PENDING_REQUESTS ? " (" + PENDING_REQUESTS + ")" : ""), crumb:"Requests",
                                                                         show: hasPerm("approve_requests"),    render: renderAdminRequests },
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
+    { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
     { k:"permissions", ico:"🔐", lbl:"Roles & permissions",  show: people,                         render: renderAdminPermissions },
     { k:"okrlevels",   ico:"🪜", lbl:"OKR levels",           show: people,                         render: renderAdminOkrLevels },
     { k:"myaccess",    ico:"🔎", lbl:"My access",            show: !!me,                           render: renderMyAccess },
@@ -19808,6 +19813,11 @@ function renderAdminUsers(wrap){
         const del = document.createElement("button"); del.className="person-del"; del.textContent="\u00d7"; del.title="Remove from team";
         del.onclick = async ()=>{ if(confirm("Remove "+u.name+" from this team? Their account stays; they lose access here.")){ await removeMemberFromTeam(u); renderAdminPage(); } };
         ac.append(editBtn, mailBtn, del);
+        if(hasPerm("send_notifications")){
+          const bell = document.createElement("button"); bell.className="person-del"; bell.textContent="\uD83D\uDD14"; bell.title="Send "+userDisplayName(u)+" a notification (bell or pop-up)";
+          bell.onclick = ()=> ntfOpenComposer(u);
+          ac.insertBefore(bell, mailBtn);
+        }
         if(iAmSuper){
           const gone = document.createElement("button"); gone.className="person-del"; gone.textContent="\uD83D\uDDD1\uFE0F"; gone.title="Delete this person permanently (all teams)";
           gone.onclick = ()=> deletePersonForever(u, ()=> renderAdminPage());
