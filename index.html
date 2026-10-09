@@ -4108,7 +4108,7 @@ const PERMS = [
   {key:"comment",          label:"Comment",               hint:"Add comments"},
   {key:"edit",             label:"Create & edit work",    hint:"Add and change cards, roadmap items, docs"},
   {key:"delete",           label:"Delete work",           hint:"Delete cards and items"},
-  {key:"spaces",           label:"Manage spaces",         hint:"Add and remove spaces"},
+  {key:"spaces",           label:"Manage spaces (old)",   hint:"No longer used — “Add spaces” and “Delete spaces” below decide this now"},
   {key:"okr_structure",    label:"OKR structure",         hint:"Restructure OKRs (each objective's own access still applies)"},
   {key:"module_vision",    label:"Module vision",         hint:"Edit “What we're building” on modules"},
   {key:"request_members",  label:"Request teammates",     hint:"Send new people for approval"},
@@ -4118,6 +4118,8 @@ const PERMS = [
   {key:"edit_targets",     label:"Edit social targets",   hint:"Change the targets in Social Media spaces (everyone else can only view them)"},
   {key:"edit_utm",         label:"Edit UTM rules",        hint:"Change the UTM rules in Wiki → Marketing → UTM builder (everyone else can only build links with them)"},
   {key:"send_notifications",label:"Send notifications",   hint:"Send 🔔 bell messages and pop-ups to the whole team or chosen people (Administration → Notifications)"},
+  {key:"add_spaces",       label:"Add spaces",            hint:"Create new spaces (Administration → Spaces). Nobody else sees an Add space button"},
+  {key:"delete_spaces",    label:"Delete spaces",         hint:"See “Delete…” in a space's ⋯ menu and remove whole spaces"},
   {key:"manage_learning",  label:"Run LMS",               hint:"Plan learning drops — videos, articles, polls, quizzes — in Administration → LMS, and see everyone's answers"},
 ];
 // what the 5 old role names meant, for anyone not yet on a custom role
@@ -6385,10 +6387,10 @@ function postComment(){
 }
 
 function actBtn(icon, label, danger, fn){
-  // roles without "Delete work" (or "Manage spaces" for spaces) don't get delete buttons.
+  // roles without "Delete work" (or "Delete spaces" for spaces) don't get delete buttons.
   // Objectives and key results keep their own per-objective access instead.
   if(icon === "trash" && currentUser() && !/objective|key result/i.test(label)
-     && (!hasPerm("delete") || (/space/i.test(label) && !hasPerm("spaces")))){
+     && (!hasPerm("delete") || (/space/i.test(label) && !hasPerm("delete_spaces")))){
     const none = document.createElement("span"); none.style.display = "none"; return none;
   }
   const b = document.createElement("button");
@@ -13316,8 +13318,8 @@ function renderAll(){
           menu.onclick = e=>{ e.stopPropagation(); openRowMenu(menu, [
             {label:"Settings", onClick:()=> openSpaceSettings(ref)},
             {label:"Set background", onClick:()=> openBgPicker(ref)},
-            {label:"Delete\u2026", danger:true, onClick:()=> { if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); }},
-          ]); };
+            hasPerm("delete_spaces") && {label:"Delete\u2026", danger:true, onClick:()=> { if(w.key==="bugs") deleteBuiltinBugs(); else deleteBuiltinDev(); }},
+          ].filter(Boolean)); };
           b.appendChild(menu);
         }
         ws.appendChild(b);
@@ -13375,7 +13377,7 @@ function renderAll(){
           ];
           if(cs.type==="pdt") _items.push({label:"Board mapping", onClick:()=>{ view="pdt"; activeCspace=cs.id; pdtView="mapping"; renderAll(); }});
           _items.push({label: cs.okr ? "Change linked OKR\u2026" : "Link to an OKR\u2026", onClick:()=> csOkrOpen(cs)});
-          _items.push({label:"Delete\u2026", danger:true, onClick: doDelete});
+          if(hasPerm("delete_spaces")) _items.push({label:"Delete\u2026", danger:true, onClick: doDelete});   // only roles given "Delete spaces"
           openRowMenu(menu, _items); };
           b.appendChild(menu);
         }
@@ -13463,13 +13465,7 @@ function renderAll(){
         _moreCs.onclick = ()=> openAllList("spaces");
         ws.appendChild(_moreCs);
       }
-      if(editMode && hasPerm("spaces")){
-        const addSp = document.createElement("button");
-        addSp.className = "ws-item ws-add";
-        addSp.textContent = "\uFF0B Add space";
-        addSp.onclick = ()=> $("tpl-overlay").classList.add("show");
-        ws.appendChild(addSp);
-      }
+      // "＋ Add space" lives in Administration → Spaces now, for roles given "Add spaces"
     });
   }
   // Educational Content sections now live as content-type spaces under SPACES.
@@ -18803,6 +18799,7 @@ function adminSections(){
                                                                         show: hasPerm("approve_requests"),    render: renderAdminRequests },
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
     { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
+    { k:"spaces",      ico:"🗂️", lbl:"Spaces",               show: hasPerm("add_spaces"),          render: renderAdminSpaces },
     { k:"lms",         ico:"🎓", lbl:"LMS",                  show: hasPerm("manage_learning") && !!SUPA, render: renderAdminLms },
     { k:"permissions", ico:"🔐", lbl:"Roles & permissions",  show: people,                         render: renderAdminPermissions },
     { k:"okrlevels",   ico:"🪜", lbl:"OKR levels",           show: people,                         render: renderAdminOkrLevels },
@@ -18814,6 +18811,39 @@ function adminSections(){
     { k:"org",         ico:"🏢", lbl:"Org structure",        show: sup,                            render: renderAdminOrg },
     { k:"danger",      ico:"⚠️", lbl:"Danger zone",          show: sup,                            render: renderAdminDanger },
   ].filter(x=> x.show);
+}
+// Administration → Spaces: the only place to add a space (roles with "Add spaces")
+function renderAdminSpaces(wrap){
+  const head = document.createElement("div"); head.className = "admin-userhead";
+  const left = document.createElement("div");
+  const h2 = document.createElement("h2"); h2.textContent = "Spaces"; h2.style.margin = "0";
+  const sub = document.createElement("div"); sub.className = "hint"; sub.style.marginTop = "4px";
+  sub.textContent = "Only people whose role has “Add spaces” can create one, so the sidebar stays tidy. Give it (and “Delete spaces”) in Roles & permissions.";
+  left.append(h2, sub);
+  const add = document.createElement("button"); add.className = "btn save admin-invite-btn"; add.textContent = "\uFF0B Add space";
+  add.onclick = ()=>{ closeAdmin(); $("tpl-overlay").classList.add("show"); };
+  head.append(left, add);
+  wrap.appendChild(head);
+  const list = document.createElement("div"); list.className = "admin-table";
+  const hr = document.createElement("div"); hr.className = "au-row au-head";
+  ["Space","Type",""].forEach(t=>{ const c = document.createElement("div"); c.className = "au-cell"; c.textContent = t; hr.appendChild(c); });
+  list.appendChild(hr);
+  const TYPE = { social:"Social Media", discovery:"Product roadmap", scrum:"Scrum", pdt:"Product All in One", content:"Educational content", research:"Product Research", competitor:"Competitor Analysis", bugs:"Bugs", module:"Roadmap module" };
+  (CSPACES.list || []).forEach(cs=>{
+    const r = document.createElement("div"); r.className = "au-row";
+    const n = document.createElement("div"); n.className = "au-cell au-name"; n.textContent = cs.name;
+    const t = document.createElement("div"); t.className = "au-cell hint"; t.textContent = TYPE[cs.type] || cs.type;
+    const a = document.createElement("div"); a.className = "au-cell au-acts";
+    const open = document.createElement("button"); open.className = "person-del"; open.textContent = "Open \u2192"; open.title = "Go to this space";
+    open.onclick = ()=>{ closeAdmin(); navToSpace(cs); };
+    a.appendChild(open);
+    r.append(n, t, a); list.appendChild(r);
+  });
+  if(!(CSPACES.list || []).length){ const e = document.createElement("div"); e.className = "empty"; e.style.padding = "24px"; e.textContent = "No spaces yet."; list.appendChild(e); }
+  wrap.appendChild(list);
+  const tip = document.createElement("div"); tip.className = "hint"; tip.style.marginTop = "12px";
+  tip.textContent = hasPerm("delete_spaces") ? "To delete a space: turn on Edit, then use ⋯ → Delete… next to it in the sidebar." : "Deleting a space needs the “Delete spaces” permission.";
+  wrap.appendChild(tip);
 }
 function openAdmin(section){
   if(!currentUser() || !roleOf(currentUser(), TEAM)){ toast("Sign in to a team first"); return; }
@@ -19710,7 +19740,7 @@ function renderAdminPermissions(wrap){
   box.appendChild(t); wrap.appendChild(box);
 
   const note = document.createElement("div"); note.className = "hint"; note.style.cssText = "margin-top:14px;line-height:1.6";
-  note.textContent = "The database enforces View, editing, people and role changes. “Delete work” and “Manage spaces” hide the delete and add-space buttons in the app. To change someone's role, use the Users page.";
+  note.textContent = "The database enforces View, editing, people and role changes. “Delete work”, “Add spaces” and “Delete spaces” hide the delete and add-space buttons in the app. To change someone's role, use the Users page.";
   wrap.appendChild(note);
 
   async function saveRole(r){
