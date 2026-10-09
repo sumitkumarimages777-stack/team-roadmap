@@ -375,7 +375,7 @@ function normalize(space){
 }
 function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function blankIdea(o){ return Object.assign({ id:uid("i"), idea:"", by:"", created:today(), hook:"", cta:"", platform:"ig", vtype:"reel",
-  source:"", tool:"", keywords:[], title:"", desc:"", hashtags:"", why:"", status:"new", comments:[] }, o||{}); }
+  source:"", tool:"", keywords:[], title:"", desc:"", hashtags:"", why:"", studentWhy:"", status:"new", comments:[] }, o||{}); }
 function blankCard(o){ return Object.assign({ id:uid("c"), ideaId:null, idea:"", platform:"ig", vtype:"reel", stage:"todo",
   pre:{source:"",tool:"",keywords:[],why:"",title:"",desc:"",hashtags:""},
   post:{reel:null,thumb:null,postUrl:""}, scheduled:null, published:null, acceptedOn:today(), metrics:null, override:null }, o||{}); }
@@ -1618,6 +1618,7 @@ function renderIdeation(){
       <td class="td-txt" style="color:var(--ink);font-weight:600">${i.title?esc(i.title):`<span class="miss">not set</span>`}</td>
       <td class="td-txt">${i.desc?esc(i.desc):`<span class="miss">not set</span>`}</td>
       <td class="td-txt" style="font-family:var(--mono);font-size:11.5px">${i.hashtags?esc(i.hashtags):`<span class="miss">not set</span>`}</td>
+      <td class="td-txt">${i.studentWhy?esc(i.studentWhy):`<span class="miss">not set</span>`}</td>
       <td class="td-txt">${i.why?esc(i.why):`<span class="miss">not set</span>`}</td>
       <td><select class="stsel ${STATUS_UI[i.status].cls}" data-stidea="${i.id}" ${ro?"disabled":""}>
         ${Object.entries(STATUS_UI).map(([k,v])=>`<option value="${k}" ${i.status===k?"selected":""}>${v.label}</option>`).join("")}</select></td>
@@ -1631,8 +1632,8 @@ function renderIdeation(){
       <div class="tw"><table><thead><tr>
         <th>Idea</th><th>Reported by</th><th>Reported on</th><th>Hook</th><th>CTA</th><th>Platform</th><th>Video type</th>
         <th>Idea source</th><th>Research tool</th><th>Target keyword(s) &amp; volume</th>
-        <th>Title</th><th>Description</th><th>Hashtags</th><th>Why this idea</th><th>Status</th><th>💬</th><th></th>
-      </tr></thead><tbody>${rows||`<tr><td colspan="17" style="color:var(--ink-3)">No ideas yet.${ro?"":" Press <b>+ New idea</b> to log the first one."}</td></tr>`}</tbody></table></div></div>
+        <th>Title</th><th>Description</th><th>Hashtags</th><th>Why students should watch</th><th>Why this idea</th><th>Status</th><th>💬</th><th></th>
+      </tr></thead><tbody>${rows||`<tr><td colspan="18" style="color:var(--ink-3)">No ideas yet.${ro?"":" Press <b>+ New idea</b> to log the first one."}</td></tr>`}</tbody></table></div></div>
 
     <div class="sec"><div class="card" style="background:var(--surface-4)">
       <div class="lbl" style="margin-bottom:7px">How this table works</div>
@@ -1877,6 +1878,8 @@ function openIdea(id,focusComments){
 
     <div class="fld"><label for="i-idea">Idea</label>
       <input id="i-idea" value="${esc(i.idea)}" placeholder="What is the video, in one line?"></div>
+    <div class="fld"><label for="i-studentwhy">Why should students watch this video?</label>
+      <textarea id="i-studentwhy" placeholder="What does a student get from it? e.g. They'll know exactly which CUET subjects to pick">${esc(i.studentWhy||"")}</textarea></div>
     <div class="grid2">
       <div class="fld"><label for="i-by">Reported by</label>
         ${peopleSelect("i-by",i.by)}</div>
@@ -1946,7 +1949,7 @@ function openIdea(id,focusComments){
       <button class="btn" id="xClose2">${canEdit()?"Cancel":"Close"}</button></div>`);
 
     const read=()=>{
-      i.idea=$("#i-idea").value.trim(); i.by=$("#i-by").value.trim(); i.created=$("#i-created").value||today();
+      i.idea=$("#i-idea").value.trim(); i.studentWhy=$("#i-studentwhy").value.trim(); i.by=$("#i-by").value.trim(); i.created=$("#i-created").value||today();
       i.platform=readReg("platform","i-platform",i.platform)||"ig"; i.vtype=readReg("vtype","i-vtype",i.vtype)||"reel";
       i.hook=$("#i-hook").value.trim(); i.cta=$("#i-cta").value.trim();
       i.source=readReg("source","i-source"); i.tool=readReg("tool","i-tool"); i.keywords=readKw("i-");
