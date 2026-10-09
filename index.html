@@ -19,6 +19,8 @@
 <script src="notifications.js"></script>
 <!-- LMS: learning drops (videos, articles, polls, quizzes) — Administration → LMS (lms.js) -->
 <script src="lms.js"></script>
+<!-- "Pitch a product idea" card under Social Media → Ideation (product-pitch.js) -->
+<script src="product-pitch.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -5734,6 +5736,7 @@ async function start(){
   try{ docOpenFromUrl(); }catch(_){ }
   if(db) loadGames().catch(function(){ });
   if(db) notifBoot();   // 🔔 bell + pop-ups (notifications.js)
+  if(db && typeof pitchImport === "function") pitchImport();   // file the team's product pitches into the product space
   // approvers: a gentle nudge when teammate requests are waiting
   if(db && hasPerm("approve_requests")){
     refreshPendingCount().then(n=>{ if(n) toast("\uD83D\uDE4B " + n + " teammate request" + (n>1?"s":"") + " waiting \u2014 Administration \u2192 Requests"); });
@@ -12536,6 +12539,8 @@ function renderContentSocial(){
   });
   // banners pinned on this tab (Administration → Notifications → "Pin it as a banner")
   if(typeof ntfBannerSlot === "function") ntfBannerSlot(wrap, "social:" + cs.id + ":" + socialView);
+  // under the ideas: "Got one for the product too?" (product-pitch.js)
+  if(socialView === "ideation" && typeof pitchCard === "function") pitchCard(wrap);
 }
 
 /* ---------- Content Process: kanban ---------- */
