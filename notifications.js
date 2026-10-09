@@ -7,6 +7,8 @@
          once        — pop up one time
          times       — pop up N times
          until_ack   — keep popping up until they press "Got it"
+       A message can carry a YouTube video (video_id): it plays inside the
+       pop-up, and from the bell.
        at most once per app visit, or once per day, and optionally only
        until a date.
    The database decides who sees what (supabase/stage11a_notifications.sql);
@@ -35,6 +37,29 @@ function ntfSender(n) {
 function ntfForMe(n) {
   var me = currentUser(); if (!me || n.created_by === me.id) return false;   /* never your own */
   return n.audience === "team" || (n.recipients || []).indexOf(me.id) >= 0;
+}
+/* a YouTube link (watch, youtu.be, shorts, live, embed) or a bare id -> the 11-character id, or "" */
+function ntfYouTubeId(s) {
+  s = String(s || "").trim(); if (!s) return "";
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  var m = s.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : "";
+}
+function ntfVideo(id) {
+  var w = ntfEl("div", "ntf-vid"), f = document.createElement("iframe");
+  f.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?rel=0&modestbranding=1";
+  f.title = "YouTube video"; f.loading = "lazy";
+  f.setAttribute("allow", "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen");
+  f.setAttribute("allowfullscreen", "");
+  f.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+  w.appendChild(f);
+  return w;
+}
+function ntfThumb(id) {
+  var t = ntfEl("span", "ntf-thumb"), img = document.createElement("img");
+  img.src = "https://i.ytimg.com/vi/" + encodeURIComponent(id) + "/mqdefault.jpg"; img.alt = "";
+  t.append(img, ntfEl("span", "ntf-play", "▶"));
+  return t;
 }
 function ntfMine() { return NTF.list.filter(ntfForMe); }
 function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receipts[n.id]; return !(r && r.read_at); }).length; }
@@ -97,6 +122,14 @@ function ntfUnread() { return ntfMine().filter(function (n) { var r = NTF.receip
   + ".ntf-who.show{display:block}"
   + ".ntf-who table{border-collapse:collapse;width:100%}"
   + ".ntf-who td{padding:5px 6px;border-top:1px solid var(--line)}"
+  + ".ntf-pop.has-vid{max-width:680px}"
+  + ".ntf-vid{position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000;margin-top:14px}"
+  + ".ntf-vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}"
+  + ".ntf-thumb{position:relative;display:block;width:160px;max-width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#000;margin-top:8px}"
+  + ".ntf-thumb img{width:100%;height:100%;object-fit:cover;display:block}"
+  + ".ntf-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;text-shadow:0 1px 6px rgba(0,0,0,.6);background:rgba(0,0,0,.18)}"
+  + ".ntf-vprev{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);min-height:20px;margin-top:6px}"
+  + ".ntf-vprev .ntf-thumb{width:120px;margin:0}"
   + "@media (max-width:640px){.ntf-sent .ns-top{flex-direction:column}}";
   var st = document.createElement("style"); st.textContent = css;
   (document.head || document.documentElement).appendChild(st);
@@ -148,27 +181,35 @@ function ntfNextPopup() {
   if (NTF.showing) return;
   var n = NTF.queue.shift(); if (!n) return;
   if (!ntfShouldPop(n)) { ntfNextPopup(); return; }
-  NTF.showing = true; NTF.popped[n.id] = 1;
+  NTF.popped[n.id] = 1;
   ntfMark(n, "shown").then(ntfRenderBell);
-  var bg = ntfEl("div", "ntf-pop-bg"), box = ntfEl("div", "ntf-pop");
+  ntfShowBox(n, true);
+}
+/* the message in a box: as a pop-up (asPopup, follows its rule) or opened from the bell */
+function ntfShowBox(n, asPopup) {
+  NTF.showing = true;
+  var bg = ntfEl("div", "ntf-pop-bg"), box = ntfEl("div", "ntf-pop" + (n.video_id ? " has-vid" : ""));
   box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
   box.appendChild(ntfEl("div", "np-k", n.audience === "team" ? "📣 Message for the team" : "📩 Message for you"));
   box.appendChild(ntfEl("h3", "", n.title));
   if (n.body) box.appendChild(ntfEl("div", "np-b", n.body));
+  if (n.video_id) box.appendChild(ntfVideo(n.video_id));
   box.appendChild(ntfEl("div", "np-m", "From " + ntfSender(n) + " · " + ntfWhen(n.created_at)));
   var acts = ntfEl("div", "np-a");
-  function close() { bg.remove(); NTF.showing = false; setTimeout(ntfNextPopup, 250); }
-  if (n.popup_rule === "until_ack") {
+  function close() { bg.remove(); NTF.showing = false; setTimeout(ntfNextPopup, 250); }   /* removing the box stops the video */
+  var mine = ntfForMe(n);                                  /* false: the sender previewing it */
+  var ack = mine && n.popup && n.popup_rule === "until_ack" && !(NTF.receipts[n.id] || {}).acked_at;
+  if (asPopup && ack) {
     var later = ntfEl("button", "ntf-btn", "Remind me later");
     later.onclick = function () { ntfMark(n, "read"); close(); };
     acts.appendChild(later);
   }
-  var ok = ntfEl("button", "ntf-btn primary", n.popup_rule === "until_ack" ? "Got it ✓" : "OK");
-  ok.onclick = function () { ntfMark(n, n.popup_rule === "until_ack" ? "ack" : "read").then(ntfRenderBell); close(); };
+  var ok = ntfEl("button", "ntf-btn primary", ack ? "Got it ✓" : asPopup ? "OK" : "Close");
+  ok.onclick = function () { if (mine) ntfMark(n, ack ? "ack" : "read").then(ntfRenderBell); close(); };
   acts.appendChild(ok);
   box.appendChild(acts);
   bg.appendChild(box);
-  if (n.popup_rule !== "until_ack") bg.onclick = function (e) { if (e.target === bg) ok.onclick(); };
+  if (!(asPopup && ack)) bg.onclick = function (e) { if (e.target === bg) ok.onclick(); };
   document.body.appendChild(bg);
   setTimeout(function () { ok.focus(); }, 30);
 }
@@ -234,8 +275,10 @@ function ntfDrawPanel() {
     it.type = "button";
     it.appendChild(ntfEl("div", "ntf-t", n.title));
     if (n.body) it.appendChild(ntfEl("div", "ntf-b", n.body));
+    if (n.video_id) it.appendChild(ntfThumb(n.video_id));
     it.appendChild(ntfEl("div", "ntf-m", ntfSender(n) + " · " + ntfWhen(n.created_at) + (n.audience === "team" ? " · whole team" : " · just you")));
     it.onclick = function () {
+      if (n.video_id) { ntfClosePanel(); ntfShowBox(n, false); return; }   /* open it big, to watch */
       it.classList.toggle("expanded");
       if (!unread) return;
       unread = false; it.classList.remove("unread");
@@ -331,6 +374,17 @@ function renderAdminNotifications(wrap) {
   card.appendChild(ntfEl("label", "ntf-lab", "Message (optional)"));
   var body = document.createElement("textarea"); body.maxLength = 4000; body.placeholder = "Write the details here…";
   card.appendChild(body);
+  card.appendChild(ntfEl("label", "ntf-lab", "YouTube video (optional)"));
+  var vid = document.createElement("input"); vid.type = "text"; vid.placeholder = "Paste a YouTube link, e.g. https://youtu.be/…";
+  var vprev = ntfEl("div", "ntf-vprev");
+  vid.oninput = function () {
+    vprev.innerHTML = "";
+    var v = vid.value.trim(); if (!v) return;
+    var id = ntfYouTubeId(v);
+    if (!id) { vprev.appendChild(ntfEl("span", "", "⚠️ That doesn't look like a YouTube link.")); return; }
+    vprev.append(ntfThumb(id), ntfEl("span", "", "✓ This video will play inside the message."));
+  };
+  card.append(vid, vprev);
 
   card.appendChild(ntfEl("label", "ntf-lab", "How should they see it?"));
   function radio(name, val, label, checked) {
@@ -370,10 +424,12 @@ function renderAdminNotifications(wrap) {
     var t = title.value.trim();
     if (!t) { err.textContent = "Add a title."; title.focus(); return; }
     if (NTF_UI.audience === "people" && !NTF_UI.to.length) { err.textContent = "Choose at least one person."; return; }
+    var videoId = ntfYouTubeId(vid.value);
+    if (vid.value.trim() && !videoId) { err.textContent = "The video link isn't a YouTube link. Fix it or clear it."; vid.focus(); return; }
     var rule = rTimes.r.checked ? "times" : rAck.r.checked ? "until_ack" : "once";
     var n = Math.max(1, Math.min(20, parseInt(times.value, 10) || 1));
     var row = {
-      team_slug: TEAM, title: t, body: body.value.trim(),
+      team_slug: TEAM, title: t, body: body.value.trim(), video_id: videoId || null,
       audience: NTF_UI.audience, recipients: NTF_UI.audience === "people" ? NTF_UI.to.slice() : [],
       popup: mPop.r.checked, popup_rule: rule, popup_times: rule === "times" ? n : 1, popup_gap: gap.value,
       show_until: (mPop.r.checked && untilChk.checked && until.value) ? new Date(until.value).toISOString() : null,
@@ -423,6 +479,7 @@ async function ntfDrawSent(holder) {
     var box = ntfEl("div", "ntf-sent"), top = ntfEl("div", "ns-top"), info = ntfEl("div");
     info.appendChild(ntfEl("div", "ntf-t", n.title));
     if (n.body) info.appendChild(ntfEl("div", "ntf-b", n.body));
+    if (n.video_id) { var th = ntfThumb(n.video_id); th.style.cursor = "pointer"; th.title = "Preview"; th.onclick = function () { ntfShowBox(n, false); }; info.appendChild(th); }
     info.appendChild(ntfEl("div", "ntf-m", "By " + ntfSender(n) + " · " + ntfWhen(n.created_at) + " · to " +
       (n.audience === "team" ? "the whole team" : targets.map(function (u) { return userDisplayName(u); }).join(", "))));
     var tags = ntfEl("div");
