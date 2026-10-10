@@ -25,6 +25,8 @@
 <script src="student-ideas.js"></script>
 <!-- Marketing mega space: campaigns (Details · Assignment · Calendar · Dashboard) — campaign-space.js -->
 <script src="campaign-space.js"></script>
+<!-- Monthly feedback (My Team tab + Administration) and the suggestion box to Sumit (monthly-feedback.js) -->
+<script src="monthly-feedback.js"></script>
 <script>
 /* ============================================================
    ONE-TIME SETUP with JSONBin (~3 minutes)
@@ -1498,6 +1500,8 @@ body{margin:0}
 .mt-node .mt-av{width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;font-family:var(--disp)}
 .mt-node .mt-nm{font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.2}
 .mt-node .mt-role{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.mt-node .mt-link{margin-top:5px;font-size:10.5px;color:var(--done);background:var(--done-bg);padding:2px 8px;border-radius:99px}
+.mt-node .mt-link.off{color:var(--muted);background:var(--paper);border:1px dashed var(--line-strong)}
 .mt-node .mt-dept{margin-top:2px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);background:var(--indigo-soft);padding:2px 8px;border-radius:99px}
 .mt-node .mt-ctl{position:absolute;top:-12px;right:-12px;display:none;gap:4px}
 .mt-node:hover .mt-ctl{display:flex}
@@ -2757,6 +2761,7 @@ body{margin:0}
         <button id="mt-view-matrix" onclick="mtSetView('matrix')">Matrix</button>
         <button id="mt-view-own" onclick="mtSetView('own')">Ownership</button>
         <button id="mt-view-perf" onclick="mtSetView('perf')">Performance</button>
+        <button id="mt-view-feedback" onclick="mtSetView('feedback')">Monthly feedback</button>
       </div>
       <button class="mt-back" id="mt-back">← Back to workspace</button>
     </div>
@@ -2853,6 +2858,8 @@ body{margin:0}
       <div class="field"><label for="mt-f-role">Role / title</label><input id="mt-f-role" type="text" placeholder="e.g. Product Designer" autocomplete="off"></div>
       <div class="field"><label for="mt-f-dept">Team / department (optional)</label><input id="mt-f-dept" type="text" placeholder="e.g. Product" autocomplete="off"></div>
       <div class="field"><label for="mt-f-ownrole">Accountabilities (from Ownership)</label><select id="mt-f-ownrole"></select></div>
+      <div class="field"><label for="mt-f-uid">Linked login</label><select id="mt-f-uid"></select>
+        <div class="hint" style="margin-top:5px;font-size:12px">Whose box is this? Everyone above a linked box can read that person's monthly feedback once it's sent.</div></div>
       <div class="field"><label>Avatar colour</label><div class="mt-sw" id="mt-sw"></div><input type="hidden" id="mt-f-color"></div>
     </div>
     <div class="btns">
@@ -14241,6 +14248,7 @@ function normalizeOrg(n){
     dept: n.dept?String(n.dept):"",
     color: n.color?String(n.color):"#E8622B",
     ownRole: n.ownRole?String(n.ownRole):"",
+    uid: (typeof n.uid==="string" && /^[0-9a-f-]{36}$/.test(n.uid)) ? n.uid : "",
     children: Array.isArray(n.children)?n.children.map(normalizeOrg).filter(Boolean):[]
   };
 }
@@ -14258,12 +14266,12 @@ function closeTeam(){ $("team-page").style.display="none"; }
 function mtCommit(){ renderTeamPage(); if(typeof pushAll==="function") pushAll(); }
 
 function renderOrgView(){
-  var admin = (typeof can==="function") ? can("admin") : false;
+  var admin = mtCanEditOrg();
   var teamName = (typeof TEAMS!=="undefined" && TEAMS[TEAM] && TEAMS[TEAM].name) || (typeof TEAM!=="undefined" ? TEAM : "Team");
   if($("mt-title-h")) $("mt-title-h").textContent = teamName + " — Team";
   $("mt-tools").innerHTML = admin
     ? (TEAMORG ? '<button class="mt-btn" onclick="mtEdit(\''+TEAMORG.id+'\')">✎ Edit top person</button>' : '')
-    : '<span class="mt-lock">🔒 Only admins can edit</span>';
+    : '<span class="mt-lock">🔒 Only owners can edit</span>';
   var canvas=$("mt-canvas");
   if(!TEAMORG){
     canvas.innerHTML = '<div class="mt-empty"><div class="mt-et">No org chart yet</div>'
@@ -14287,6 +14295,7 @@ function mtNodeHTML(n,isRoot,admin){
   h+='<span class="mt-nm">'+mtEsc(n.name)+'</span>';
   if(n.role) h+='<span class="mt-role">'+mtEsc(n.role)+'</span>';
   if(n.dept) h+='<span class="mt-dept">'+mtEsc(n.dept)+'</span>';
+  if(admin) h+= n.uid ? '<span class="mt-link" title="Linked login">🔗 '+mtEsc(((typeof USERS!=="undefined"?USERS:[]).find(function(u){return u.id===n.uid;})||{name:"linked"}).name)+'</span>' : '<span class="mt-link off" title="Link this box to a login (✎) so seniors can read this person\'s monthly feedback">not linked</span>';
   if(admin) h+='<span class="mt-addrep" onclick="mtAddReport(\''+n.id+'\')">＋ add report</span>';
   var _acc=ownAccForNode(n);
   if(_acc){ var _k='node-'+n.id; accRegisterFull(_k,(_acc.name||n.role||n.name),(_acc.person||n.name||''),_acc.items,(_acc.color||n.color));
@@ -14311,19 +14320,24 @@ function mtOpenDlg(title, vals, onSave, showDel){
   $("mt-f-dept").value=vals.dept||"";
   mtSwatches(vals.color || MT_COLORS[Math.floor(Math.random()*MT_COLORS.length)]);
   mtFillOwnRole(vals.ownRole||"");
+  mtFillUid(vals.uid||"");
   mtSave=onSave;
   $("mt-del").style.display = showDel ? "inline" : "none";
   $("mt-dialog").classList.add("show");
   setTimeout(function(){ $("mt-f-name").focus(); }, 30);
 }
 function mtCloseDlg(){ $("mt-dialog").classList.remove("show"); mtSave=null; }
-function mtReadVals(){ return { name:$("mt-f-name").value.trim(), role:$("mt-f-role").value.trim(), dept:$("mt-f-dept").value.trim(), color:$("mt-f-color").value, ownRole:$("mt-f-ownrole").value }; }
+function mtReadVals(){ return { name:$("mt-f-name").value.trim(), role:$("mt-f-role").value.trim(), dept:$("mt-f-dept").value.trim(), color:$("mt-f-color").value, ownRole:$("mt-f-ownrole").value, uid:$("mt-f-uid").value }; }
+// the login behind a box: decides who reads whose monthly feedback (supabase/stage16a)
+function mtFillUid(cur){ var o='<option value="">— not linked —</option>'; var ppl=(typeof USERS!=="undefined"?USERS:[]).filter(function(u){ return isMember(u, TEAM) || u.id===cur; }); ppl.sort(function(a,b){ return userDisplayName(a).localeCompare(userDisplayName(b)); }); ppl.forEach(function(u){ o+='<option value="'+mtEsc(u.id)+'">'+mtEsc(userDisplayName(u))+' · '+mtEsc(u.email)+'</option>'; }); $("mt-f-uid").innerHTML=o; $("mt-f-uid").value=cur||""; }
+// the org chart decides who reads whose feedback, so only owners (and super-admins) change it
+function mtCanEditOrg(){ var u=currentUser(); return !!u && (u.super || roleOf(u, TEAM)==="owner"); }
 function mtFillOwnRole(cur){ var roles=(typeof TEAMOWN!=="undefined"&&TEAMOWN&&TEAMOWN.roles)?TEAMOWN.roles:[]; var o='<option value="">Auto-match by role name</option>'; roles.forEach(function(r){ o+='<option value="'+r.id+'"'+(r.id===cur?" selected":"")+'>'+mtEsc(r.name||"(unnamed role)")+'</option>'; }); o+='<option value="__none__"'+(cur==="__none__"?" selected":"")+'>None — hide accountabilities</option>'; $("mt-f-ownrole").innerHTML=o; $("mt-f-ownrole").value=cur||""; }
 
 function mtAddTop(){
   mtOpenDlg("Add top person", {}, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
-    TEAMORG = { id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, children:[] };
+    TEAMORG = { id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, uid:v.uid, children:[] };
     mtCloseDlg(); mtCommit();
   }, false);
 }
@@ -14332,7 +14346,7 @@ function mtAddReport(id){
   mtOpenDlg("Add report under "+f.node.name, {}, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
     f.node.children = f.node.children || [];
-    f.node.children.push({ id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, children:[] });
+    f.node.children.push({ id:mtid(), name:v.name, role:v.role, dept:v.dept, color:v.color, ownRole:v.ownRole, uid:v.uid, children:[] });
     mtCloseDlg(); mtCommit();
   }, false);
 }
@@ -14341,7 +14355,7 @@ function mtEdit(id){
   var isRoot = TEAMORG && id===TEAMORG.id;
   mtOpenDlg("Edit "+f.node.name, f.node, function(){
     var v=mtReadVals(); if(!v.name){ $("mt-f-name").focus(); return; }
-    f.node.name=v.name; f.node.role=v.role; f.node.dept=v.dept; f.node.color=v.color; f.node.ownRole=v.ownRole;
+    f.node.name=v.name; f.node.role=v.role; f.node.dept=v.dept; f.node.color=v.color; f.node.ownRole=v.ownRole; f.node.uid=v.uid;
     mtCloseDlg(); mtCommit();
   }, !isRoot);
   $("mt-del").onclick = function(){ mtDel(id); };
@@ -14391,6 +14405,7 @@ function renderTeamPage(){
   if($("mt-view-matrix")) $("mt-view-matrix").classList.toggle("on", mtView==="matrix");
   if($("mt-view-own")) $("mt-view-own").classList.toggle("on", mtView==="own");
   if($("mt-view-perf")) $("mt-view-perf").classList.toggle("on", mtView==="perf");
+  if($("mt-view-feedback")) $("mt-view-feedback").classList.toggle("on", mtView==="feedback");
   if($("mt-sub")) $("mt-sub").textContent = (mtView==="squads")
     ? "Cross-functional squads — each with a mission, one metric, and its members."
     : (mtView==="matrix")
@@ -14399,8 +14414,10 @@ function renderTeamPage(){
     ? "Who decides what — work vs. career vs. pay. The rules, right next to the org."
     : (mtView==="perf")
     ? "KPIs & reviews — ranked best to worst. A fair record for promotions and exits."
+    : (mtView==="feedback")
+    ? "Everyone looks back at their month. Seniors read what the people below them sent, then talk it through in the review meeting."
     : "How the team is organised and who reports to whom. New joiners: this is where you fit in.";
-  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else renderOrgView();
+  if(mtView==="squads") renderSquadsView(); else if(mtView==="matrix") renderMatrixView(); else if(mtView==="own") renderOwnershipView(); else if(mtView==="perf") renderPerformanceView(); else if(mtView==="feedback" && typeof fbRenderTeamView==="function" && SUPA) fbRenderTeamView(); else renderOrgView();
 }
 
 /* ================= Docs: two-pane workspace + rich-text editor ================= */
@@ -19030,6 +19047,10 @@ function adminSections(){
     { k:"request",     ico:"➕",       lbl:"Request a teammate",   show: hasPerm("request_members"),     render: renderRequestTeammate },
     { k:"notifications", ico:"📣", lbl:"Notifications",      show: hasPerm("send_notifications") && !!SUPA, render: renderAdminNotifications },
     { k:"ideaemails",  ico:"✉️", lbl:"Idea emails",          show: hasPerm("review_student_ideas") && !!SUPA, render: renderAdminIdeaEmails },
+    { k:"myfeedback",  ico:"📝", lbl:"My monthly feedback",  show: !!me && !!SUPA && typeof renderAdminMyFeedback === "function", render: renderAdminMyFeedback },
+    { k:"sendbox",     ico:"📮", lbl:"Send to " + (typeof fbBoss === "function" ? fbBoss() : "Sumit"), crumb:"Send to Sumit",
+                                                                        show: !!me && !!SUPA && !sup && typeof renderAdminSendBox === "function", render: renderAdminSendBox },
+    { k:"suggestbox",  ico:"📮", lbl:"Suggestion box",       show: sup && !!SUPA && typeof renderAdminSuggestionBox === "function", render: renderAdminSuggestionBox },
     { k:"myideas",     ico:"💡", lbl:"My product ideas",     show: !!me && !!SUPA && typeof pitchTarget === "function" && !!pitchTarget(), render: renderAdminMyIdeas },
     { k:"roadmaps",    ico:"🗺️", lbl:"Roadmaps",             show: hasPerm("add_roadmaps"),        render: renderAdminRoadmaps },
     { k:"spaces",      ico:"🗂️", lbl:"Spaces",               show: hasPerm("add_spaces"),          render: renderAdminSpaces },

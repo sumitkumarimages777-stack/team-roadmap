@@ -245,9 +245,16 @@ function ntfShowBox(n, asPopup) {
     later.onclick = function () { ntfMark(n, "read"); close(); };
     acts.appendChild(later);
   }
-  var ok = ntfEl("button", "ntf-btn" + (drop ? "" : " primary"), ack ? "Got it ✓" : drop ? "Close" : asPopup ? "OK" : "Close");
+  /* monthly feedback reminder (monthly-feedback.js): straight to the form */
+  var fill = mine && !n.stopped && n.ref && /^feedback:/.test(n.ref) && typeof openAdmin === "function";
+  var ok = ntfEl("button", "ntf-btn" + (drop || fill ? "" : " primary"), ack ? "Got it ✓" : drop ? "Close" : fill && asPopup ? "Later" : asPopup ? "OK" : "Close");
   ok.onclick = function () { if (mine) ntfMark(n, ack ? "ack" : "read").then(ntfRenderBell); close(); };
   acts.appendChild(ok);
+  if (fill) {
+    var go = ntfEl("button", "ntf-btn primary", "✍️ Fill it now");
+    go.onclick = function () { ntfMark(n, "read").then(ntfRenderBell); close(); if (typeof closeTeam === "function") closeTeam(); openAdmin("myfeedback"); };
+    acts.appendChild(go);
+  }
   box.appendChild(acts);
   bg.appendChild(box);
   if (!(asPopup && ack)) bg.onclick = function (e) { if (e.target === bg) ok.onclick(); };
